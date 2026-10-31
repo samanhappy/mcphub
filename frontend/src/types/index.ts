@@ -223,6 +223,7 @@ export interface ServerConfig {
   enabled?: boolean;
   // Per-server visibility for non-admin users.
   visibility?: 'private' | 'group' | 'public';
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   protocolNegotiation?: 'auto' | 'legacy'; // Streamable HTTP defaults to auto; other transports remain legacy.
   enableKeepAlive?: boolean; // Enable remote health checks; disconnected remote servers always retry
@@ -389,6 +390,7 @@ export interface IGroupServerConfig {
 export interface Group {
   owner?: string;
   visibility?: 'private' | 'group' | 'public';
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   id: string;
   name: string;
@@ -419,6 +421,7 @@ export interface ServerFormData {
   passthroughHeaders?: string;
   // Visibility for non-admin users.
   visibility?: 'private' | 'group' | 'public';
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   options?: {
     timeout?: number;
@@ -509,6 +512,7 @@ export interface ServerFormData {
 // Group form data types
 export interface GroupFormData {
   visibility?: Group['visibility'];
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   name: string;
   description: string;
@@ -551,6 +555,7 @@ export interface IUser {
 
 // User management types
 export interface User {
+  userGroups?: string[];
   username: string;
   isAdmin: boolean;
   email?: string;
@@ -564,6 +569,7 @@ export interface UserFormData {
 }
 
 export interface UserUpdateData {
+  userGroups?: string[];
   isAdmin?: boolean;
   newPassword?: string;
   email?: string;

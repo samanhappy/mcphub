@@ -1,9 +1,10 @@
+import UserGroupSelection from './UserGroupSelection';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Group } from '@/types';
 import { apiGet } from '@/utils/fetchInterceptor';
 
-type Access = Pick<Group, 'visibility' | 'sharedWithUsers'>;
+type Access = Pick<Group, 'visibility' | 'sharedWithUserGroups' | 'sharedWithUsers'>;
 
 export default function GroupVisibilityFields({
   groupId,
@@ -17,6 +18,7 @@ export default function GroupVisibilityFields({
   const { t } = useTranslation();
   const [users, setUsers] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [userGroups, setUserGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState(false);
@@ -25,13 +27,15 @@ export default function GroupVisibilityFields({
     let cancelled = false;
     setLoading(true);
     setError(false);
-    apiGet<{ success: boolean; data?: string[] }>(
+    apiGet<{ success: boolean; data?: string[]; userGroups?: string[] }>(
       `/groups/${encodeURIComponent(groupId)}/share-candidates`,
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.success && Array.isArray(result.data)) setUsers(result.data);
-        else setError(true);
+        if (result.success && Array.isArray(result.data)) {
+          setUsers(result.data);
+          setUserGroups(result.userGroups || []);
+        } else setError(true);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -106,6 +110,12 @@ export default function GroupVisibilityFields({
           )}
           {value.visibility === 'group' && (
             <div className="mt-4 rounded border border-[var(--hub-line)] p-3">
+              <UserGroupSelection
+                options={userGroups}
+                selected={value.sharedWithUserGroups || []}
+                disabled={loading || error || !groupId}
+                onChange={(sharedWithUserGroups) => onChange({ sharedWithUserGroups })}
+              />
               <div className="text-sm font-medium text-[var(--hub-ink-2)]">
                 {t('server.shareWithUsers')}
               </div>

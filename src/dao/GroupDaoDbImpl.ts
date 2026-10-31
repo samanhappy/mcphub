@@ -22,6 +22,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: g.servers as any,
       owner: g.owner,
       visibility: g.visibility ?? undefined,
+      sharedWithUserGroups: g.sharedWithUserGroups ?? undefined,
       sharedWithUsers: g.sharedWithUsers ?? undefined,
     }));
   }
@@ -37,6 +38,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: group.servers as any,
       owner: group.owner,
       visibility: group.visibility ?? undefined,
+      sharedWithUserGroups: group.sharedWithUserGroups ?? undefined,
       sharedWithUsers: group.sharedWithUsers ?? undefined,
     };
   }
@@ -49,6 +51,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: entity.servers as any,
       owner: entity.owner,
       visibility: entity.visibility,
+      sharedWithUserGroups: entity.sharedWithUserGroups,
       sharedWithUsers: entity.sharedWithUsers,
     });
     return {
@@ -59,6 +62,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: group.servers as any,
       owner: group.owner,
       visibility: group.visibility ?? undefined,
+      sharedWithUserGroups: group.sharedWithUserGroups ?? undefined,
       sharedWithUsers: group.sharedWithUsers ?? undefined,
     };
   }
@@ -71,6 +75,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: entity.servers as any,
       owner: entity.owner,
       visibility: entity.visibility,
+      sharedWithUserGroups: entity.sharedWithUserGroups,
       sharedWithUsers: entity.sharedWithUsers,
     });
     if (!group) return null;
@@ -82,6 +87,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: group.servers as any,
       owner: group.owner,
       visibility: group.visibility ?? undefined,
+      sharedWithUserGroups: group.sharedWithUserGroups ?? undefined,
       sharedWithUsers: group.sharedWithUsers ?? undefined,
     };
   }
@@ -94,6 +100,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: entity.servers as any,
       owner: entity.owner,
       visibility: entity.visibility,
+      sharedWithUserGroups: entity.sharedWithUserGroups,
       sharedWithUsers: entity.sharedWithUsers,
     });
     if (!group) return null;
@@ -105,6 +112,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: group.servers as any,
       owner: group.owner,
       visibility: group.visibility ?? undefined,
+      sharedWithUserGroups: group.sharedWithUserGroups ?? undefined,
       sharedWithUsers: group.sharedWithUsers ?? undefined,
     };
   }
@@ -131,6 +139,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: g.servers as any,
       owner: g.owner,
       visibility: g.visibility ?? undefined,
+      sharedWithUserGroups: g.sharedWithUserGroups ?? undefined,
       sharedWithUsers: g.sharedWithUsers ?? undefined,
     }));
   }
@@ -149,6 +158,7 @@ export class GroupDaoDbImpl implements GroupDao {
         servers: g.servers as any,
         owner: g.owner,
         visibility: g.visibility ?? undefined,
+        sharedWithUserGroups: g.sharedWithUserGroups ?? undefined,
         sharedWithUsers: g.sharedWithUsers ?? undefined,
       }));
   }
@@ -198,6 +208,7 @@ export class GroupDaoDbImpl implements GroupDao {
       servers: group.servers as any,
       owner: group.owner,
       visibility: group.visibility ?? undefined,
+      sharedWithUserGroups: group.sharedWithUserGroups ?? undefined,
       sharedWithUsers: group.sharedWithUsers ?? undefined,
     };
   }

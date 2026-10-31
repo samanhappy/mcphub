@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "Riêng tư",
     "visibilityPrivate": "Riêng tư — chỉ chủ sở hữu và quản trị viên",
     "visibilityGroupShort": "Chia sẻ",
-    "visibilityGroup": "Chia sẻ — chỉ người dùng được chọn",
+    "visibilityGroup": "Chia sẻ — người dùng và nhóm được chọn",
     "visibilityPublicShort": "Công khai",
     "visibilityPublic": "Công khai — mọi người dùng đã xác thực",
     "visibilityDescription": "Kiểm soát những người dùng (không phải quản trị viên) có thể khám phá và gọi máy chủ này. Quản trị viên luôn có quyền truy cập.",
@@ -1214,6 +1214,9 @@
     "partialSuccess": "Nhập thành công {{count}} trong tổng số {{total}} nhóm. Một vài nhóm bị lỗi:"
   },
   "users": {
+    "userGroups": "Nhóm người dùng",
+    "userGroupsHint": "Phân cách tên nhóm bằng dấu phẩy. Tên phân biệt chữ hoa và chữ thường; dùng cùng tên để nhóm người dùng. Xóa nội dung để bỏ mọi tư cách thành viên.",
+    "shareUserGroupsHint": "Thành viên các nhóm đã chọn có thể dùng tài nguyên này. Quản lý thành viên khi chỉnh sửa người dùng.",
     "add": "Thêm Người dùng",
     "addNew": "Thêm Người dùng mới",
     "edit": "Sửa Người dùng",

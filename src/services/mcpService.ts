@@ -675,6 +675,7 @@ export const updateServerInfoVisibility = (
   serverName: string,
   visibility: ServerConfig['visibility'],
   sharedWithUsers?: string[],
+  sharedWithUserGroups?: string[],
 ): void => {
   const serverInfo = getServerByName(serverName);
   if (!serverInfo) {
@@ -683,12 +684,14 @@ export const updateServerInfoVisibility = (
 
   serverInfo.visibility = visibility;
   serverInfo.sharedWithUsers = sharedWithUsers;
+  serverInfo.sharedWithUserGroups = sharedWithUserGroups;
 
   if (serverInfo.config) {
     serverInfo.config = {
       ...serverInfo.config,
       visibility,
       sharedWithUsers,
+      sharedWithUserGroups,
     };
   }
 };
@@ -2240,6 +2243,7 @@ export const initializeClientsFromSettings = async (
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUserGroups: expandedConf.sharedWithUserGroups,
           sharedWithUsers: expandedConf.sharedWithUsers,
           status: 'disconnected',
           error: null,
@@ -2258,6 +2262,7 @@ export const initializeClientsFromSettings = async (
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUserGroups: expandedConf.sharedWithUserGroups,
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: true,
           status: 'disconnected',
@@ -2294,6 +2299,7 @@ export const initializeClientsFromSettings = async (
         Object.assign(onDemandInfo, {
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUserGroups: expandedConf.sharedWithUserGroups,
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: true,
           config: expandedConf,
@@ -2334,6 +2340,7 @@ export const initializeClientsFromSettings = async (
         Object.assign(existingServer, {
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUserGroups: expandedConf.sharedWithUserGroups,
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: expandedConf.enabled === undefined ? true : expandedConf.enabled,
         });
@@ -2364,6 +2371,7 @@ export const initializeClientsFromSettings = async (
             name,
             owner: expandedConf.owner,
             visibility: expandedConf.visibility,
+            sharedWithUserGroups: expandedConf.sharedWithUserGroups,
             sharedWithUsers: expandedConf.sharedWithUsers,
             status: 'disconnected',
             error: 'Missing OpenAPI specification URL or schema',
@@ -2380,6 +2388,7 @@ export const initializeClientsFromSettings = async (
           name,
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
+          sharedWithUserGroups: expandedConf.sharedWithUserGroups,
           sharedWithUsers: expandedConf.sharedWithUsers,
           status: 'connecting',
           error: null,
@@ -2485,6 +2494,7 @@ export const initializeClientsFromSettings = async (
             name,
             owner: expandedConf.owner,
             visibility: expandedConf.visibility,
+            sharedWithUserGroups: expandedConf.sharedWithUserGroups,
             sharedWithUsers: expandedConf.sharedWithUsers,
             status: 'disconnected',
             error: `Failed to create transport: ${formatErrorForLogging(error)}`,
@@ -2522,6 +2532,7 @@ export const initializeClientsFromSettings = async (
         name,
         owner: expandedConf.owner,
         visibility: expandedConf.visibility,
+        sharedWithUserGroups: expandedConf.sharedWithUserGroups,
         sharedWithUsers: expandedConf.sharedWithUsers,
         status: 'connecting',
         recovery: existingServer?.recovery,
@@ -2807,6 +2818,7 @@ export const getServersInfo = async (
         name: server.name,
         owner: server.owner,
         visibility: server.visibility,
+        sharedWithUserGroups: server.sharedWithUserGroups,
         sharedWithUsers: server.sharedWithUsers,
         // Newly created servers that are enabled should appear as "connecting"
         // until the MCP client initialization completes. Disabled servers remain
@@ -5526,6 +5538,7 @@ const createPrincipalRuntime = async (
     name,
     owner: resolvedConfig.owner,
     visibility: resolvedConfig.visibility,
+    sharedWithUserGroups: resolvedConfig.sharedWithUserGroups,
     sharedWithUsers: resolvedConfig.sharedWithUsers,
     enabled: true,
     config: resolvedConfig,
@@ -5948,6 +5961,7 @@ const listProjectionInputs = async (group: string | undefined, field: ListField)
       enabled: info.enabled,
       owner: info.owner,
       visibility: info.visibility,
+      sharedWithUserGroups: info.sharedWithUserGroups,
       sharedWithUsers: info.sharedWithUsers,
       config: info.config,
     })),

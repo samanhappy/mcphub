@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "Private",
     "visibilityPrivate": "Private — only the owner and admins",
     "visibilityGroupShort": "Shared",
-    "visibilityGroup": "Shared — selected users only",
+    "visibilityGroup": "Shared — selected users and user groups",
     "visibilityPublicShort": "Public",
     "visibilityPublic": "Public — every authenticated user",
     "visibilityDescription": "Controls which non-admin users can discover and call this server. Admins always have access.",
@@ -1214,6 +1214,9 @@
     "partialSuccess": "Imported {{count}} of {{total}} groups successfully. Some groups failed:"
   },
   "users": {
+    "userGroups": "User groups",
+    "userGroupsHint": "Comma-separated group names. Names are case-sensitive; use the same name to group users. Clear this field to remove all memberships.",
+    "shareUserGroupsHint": "Members of selected user groups can use this resource. Manage membership by editing users.",
     "add": "Add User",
     "addNew": "Add New User",
     "edit": "Edit User",

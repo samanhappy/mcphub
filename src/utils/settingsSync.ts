@@ -48,6 +48,7 @@ const declarationSchema = z.object({
           headers: z.record(z.string(), z.string()).optional(),
           description: z.string().optional(),
           owner: z.string().optional(),
+          sharedWithUserGroups: z.array(z.string()).optional(),
           sharedWithUsers: z.array(z.string()).optional(),
           enableKeepAlive: z.boolean().optional(),
           protocolNegotiation: z.enum(['auto', 'legacy']).optional(),
@@ -94,6 +95,7 @@ const declarationSchema = z.object({
         instructions: z.string().optional(),
         owner: z.string().optional(),
         visibility: z.enum(['private', 'group', 'public']).optional(),
+        sharedWithUserGroups: z.array(z.string()).optional(),
         sharedWithUsers: z.array(z.string()).optional(),
         servers: z
           .array(
@@ -252,6 +254,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
         instructions: group.instructions ?? null,
         owner: group.owner ?? null,
         visibility: group.visibility ?? null,
+        sharedWithUserGroups: group.sharedWithUserGroups ?? null,
         sharedWithUsers: group.sharedWithUsers ?? null,
       };
       const unchanged =

@@ -61,7 +61,7 @@ export const createNewUser = async (
 // Update user information
 export const updateUser = async (
   username: string,
-  data: { isAdmin?: boolean; newPassword?: string; email?: string },
+  data: { isAdmin?: boolean; newPassword?: string; email?: string; userGroups?: string[] },
 ): Promise<IUser | null> => {
   try {
     const userDao = getUserDao();
@@ -69,6 +69,10 @@ export const updateUser = async (
 
     if (!user) {
       return null;
+    }
+
+    if (data.userGroups !== undefined) {
+      if (!(await userDao.update(username, { userGroups: data.userGroups }))) return null;
     }
 
     // Update admin status if provided
@@ -134,7 +138,7 @@ export const deleteUser = async (username: string): Promise<boolean> => {
           const sharedWithUsers = server.sharedWithUsers.filter((name) => name !== username);
           await serverDao.update(server.name, { sharedWithUsers });
           const { updateServerInfoVisibility } = await import('./mcpService.js');
-          updateServerInfoVisibility(server.name, server.visibility, sharedWithUsers);
+          updateServerInfoVisibility(server.name, server.visibility, sharedWithUsers, server.sharedWithUserGroups);
         }
       }
     }

@@ -532,3 +532,23 @@ describe('upstream protocol config in dashboard payloads', () => {
     },
   );
 });
+
+
+it('preserves normalized user-group sharing in server saves', () => {
+  const payload = buildServerPayload({
+    formData: {
+      name: 'shared',
+      url: '',
+      command: 'node',
+      arguments: '',
+      env: [],
+      headers: [],
+      visibility: 'group',
+      sharedWithUserGroups: [' readers ', 'readers'],
+    } as ServerFormData,
+    serverType: 'stdio',
+    envVars: [],
+    headerVars: [],
+  });
+  expect(payload.config).toMatchObject({ sharedWithUserGroups: ['readers'] });
+});

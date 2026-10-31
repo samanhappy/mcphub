@@ -7,6 +7,9 @@ describe('server visibility locale strings', () => {
       const localePath = path.join(process.cwd(), 'locales', `${locale}.json`);
       const translations = JSON.parse(fs.readFileSync(localePath, 'utf8'));
 
+      expect(translations.users.userGroups).toBeTruthy();
+      expect(translations.users.userGroupsHint).toBeTruthy();
+      expect(translations.users.shareUserGroupsHint).toBeTruthy();
       expect(translations.server.visibilityGroupShort).toBeTruthy();
       expect(translations.server.visibilityGroup).toBeTruthy();
       expect(translations.server.shareWithUsers).toBeTruthy();
@@ -31,7 +34,7 @@ describe('server visibility locale strings', () => {
     expect(zh.server.visibilityPrivateShort).toBe('私有');
     expect(zh.server.visibilityPrivate).toBe('私有 — 仅所有者和管理员可见');
     expect(zh.server.visibilityGroupShort).toBe('共享');
-    expect(zh.server.visibilityGroup).toBe('共享 — 仅选中的用户可见');
+    expect(zh.server.visibilityGroup).toBe('共享 — 选中的用户及用户组');
     expect(zh.server.visibilityPublicShort).toBe('公开');
     expect(zh.server.visibilityPublic).toBe('公开 — 所有已登录用户可见');
     expect(zh.server.visibilityDescription).toBe(

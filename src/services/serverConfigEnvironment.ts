@@ -17,12 +17,13 @@ export const getServerEnvironment = async (
 };
 
 export const expandServerConfig = async <T extends ServerConfig>(config: T): Promise<T> => {
-  const { owner, visibility, sharedWithUsers, ...transportConfig } = config;
+  const { owner, visibility, sharedWithUsers, sharedWithUserGroups, ...transportConfig } = config;
   // Authorization metadata is literal and must never be controlled by expansion values.
   return {
     ...replaceEnvVars(transportConfig, await getServerEnvironment(config)),
     owner,
     visibility,
     sharedWithUsers,
+    sharedWithUserGroups,
   } as T;
 };

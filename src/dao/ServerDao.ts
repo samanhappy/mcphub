@@ -1,3 +1,4 @@
+import { getUserDao } from './index.js';
 import { assertSmartRoutingNameAvailable } from '../utils/smartRoutingPath.js';
 import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
@@ -315,11 +316,14 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     limit: number,
   ): Promise<PaginatedResult<ServerConfigWithName>> {
     const allServers = await this.getAll();
+    const userGroups = (await getUserDao().findByUsername(username))?.userGroups ?? [];
     const filteredServers = allServers.filter(
       (server) =>
         server.owner === username ||
         server.visibility === 'public' ||
-        (server.visibility === 'group' && server.sharedWithUsers?.includes(username)),
+        (server.visibility === 'group' &&
+          (server.sharedWithUsers?.includes(username) ||
+            server.sharedWithUserGroups?.some((group) => userGroups.includes(group)))),
     );
     const sortedServers = filteredServers.sort((a, b) => {
       const aEnabled = a.enabled !== false;

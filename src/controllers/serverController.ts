@@ -399,7 +399,11 @@ export const getServerShareCandidates = async (req: Request, res: Response): Pro
       .filter((username) => username !== effectiveOwner)
       .sort((left, right) => left.localeCompare(right));
 
-    res.json({ success: true, data: usernames });
+    res.json({
+      success: true,
+      data: usernames,
+      userGroups: [...new Set(users.flatMap((user) => user.userGroups ?? []))].sort(),
+    });
   } catch (error) {
     logger.error('Failed to get server share candidates:', error);
     res.status(500).json({
@@ -1330,6 +1334,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
         finalName,
         normalizedConfig.visibility ?? 'private',
         normalizedConfig.sharedWithUsers,
+        normalizedConfig.sharedWithUserGroups,
       );
       broadcastToolListChanged();
 

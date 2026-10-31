@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "Özel",
     "visibilityPrivate": "Özel — yalnızca sahibi ve yöneticiler",
     "visibilityGroupShort": "Paylaşılan",
-    "visibilityGroup": "Paylaşılan — yalnızca seçilen kullanıcılar",
+    "visibilityGroup": "Paylaşılan — seçilen kullanıcılar ve kullanıcı grupları",
     "visibilityPublicShort": "Herkese açık",
     "visibilityPublic": "Herkese açık — kimliği doğrulanmış tüm kullanıcılar",
     "visibilityDescription": "Yönetici olmayan hangi kullanıcıların bu sunucuyu bulup çağırabileceğini denetler. Yöneticiler her zaman erişebilir.",
@@ -1212,6 +1212,9 @@
     "partialSuccess": "{{total}} gruptan {{count}} tanesi başarıyla içe aktarıldı. Bazı gruplar başarısız oldu:"
   },
   "users": {
+    "userGroups": "Kullanıcı grupları",
+    "userGroupsHint": "Grup adlarını virgülle ayırın. Adlar büyük/küçük harfe duyarlıdır; kullanıcıları gruplamak için aynı adı kullanın. Üyelikleri kaldırmak için alanı temizleyin.",
+    "shareUserGroupsHint": "Seçilen grupların üyeleri bu kaynağı kullanabilir. Üyelikleri kullanıcı düzenleme sayfasında yönetin.",
     "add": "Kullanıcı Ekle",
     "addNew": "Yeni Kullanıcı Ekle",
     "edit": "Kullanıcıyı Düzenle",

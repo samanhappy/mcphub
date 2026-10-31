@@ -254,6 +254,10 @@ export const buildServerPayload = ({
     description,
     options,
     visibility: formData.visibility ?? 'private',
+    sharedWithUserGroups:
+      formData.visibility === 'group'
+        ? normalizeSharedUsers(formData.sharedWithUserGroups)
+        : undefined,
     sharedWithUsers:
       formData.visibility === 'group' ? normalizeSharedUsers(formData.sharedWithUsers) : undefined,
     credentialTemplate: formData.credentialTemplate?.map((slot) => ({

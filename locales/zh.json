@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "私有",
     "visibilityPrivate": "私有 — 仅所有者和管理员可见",
     "visibilityGroupShort": "共享",
-    "visibilityGroup": "共享 — 仅选中的用户可见",
+    "visibilityGroup": "共享 — 选中的用户及用户组",
     "visibilityPublicShort": "公开",
     "visibilityPublic": "公开 — 所有已登录用户可见",
     "visibilityDescription": "控制哪些非管理员用户可以发现并调用此服务器。管理员始终拥有访问权限。",
@@ -1217,6 +1217,9 @@
     "partialSuccess": "成功导入 {{count}} / {{total}} 个分组。部分分组失败："
   },
   "users": {
+    "userGroups": "用户组",
+    "userGroupsHint": "用英文逗号分隔组名。组名区分大小写，相同组名表示同一用户组。清空可移除所有成员关系。",
+    "shareUserGroupsHint": "所选用户组的成员可以使用此资源。在用户编辑页面管理成员关系。",
     "add": "添加",
     "addNew": "添加新用户",
     "edit": "编辑用户",

@@ -35,6 +35,22 @@ const rows = {
 
 const allRows = Object.values(rows);
 
+describe('user-group sharing', () => {
+  const service = new DataService();
+  const server = { owner: 'admin', visibility: 'group', sharedWithUserGroups: ['readers'] };
+  const member = { ...alice, userGroups: ['readers'] };
+
+  it('grants members access without sharing with each username', () => {
+    expect(service.filterData([server], member)).toEqual([server]);
+    expect(service.filterData([server], bob)).toEqual([]);
+  });
+
+  it('removes access when membership changes and never opens private resources', () => {
+    expect(service.filterData([server], { ...member, userGroups: [] })).toEqual([]);
+    expect(service.filterData([{ ...server, visibility: 'private' }], member)).toEqual([]);
+  });
+});
+
 describe('DataService.filterData (visibility, #817)', () => {
   const dataService = new DataService();
 

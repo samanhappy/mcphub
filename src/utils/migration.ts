@@ -115,6 +115,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             isAdmin: user.isAdmin || false,
             email: user.email ?? null,
             ssoUserId: (user as any).ssoUserId ?? null,
+            userGroups: user.userGroups,
           });
           logger.log(`  - Created user: ${user.username}`);
         } else {
@@ -156,6 +157,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             enabled: config.enabled !== undefined ? config.enabled : true,
             owner: config.owner,
             visibility: config.visibility ?? 'private',
+            sharedWithUserGroups: config.sharedWithUserGroups,
             sharedWithUsers: config.sharedWithUsers,
             enableKeepAlive: config.enableKeepAlive,
             protocolNegotiation: config.protocolNegotiation,
@@ -190,6 +192,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             servers: Array.isArray(group.servers) ? group.servers : [],
             owner: group.owner,
             visibility: group.visibility,
+            sharedWithUserGroups: group.sharedWithUserGroups,
             sharedWithUsers: group.sharedWithUsers,
           });
           logger.log(`  - Created group: ${group.name}`);

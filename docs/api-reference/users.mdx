@@ -96,9 +96,10 @@ Returns `404` if the user does not exist.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | `isAdmin` | boolean | Promote/demote the user. |
+| `userGroups` | string[] | Replace case-sensitive user-group memberships (admin only). Empty array removes all memberships; names are trimmed and deduplicated. |
 | `newPassword` | string | Replace the user's password. Must satisfy the password policy. |
 
-- Returns `400` if neither field is supplied, the password fails validation, or the request would demote the last remaining admin.
+- Returns `400` if no supported field is supplied, the password fails validation, or the request would demote the last remaining admin.
 - Returns `404` if the username does not exist.
 
 <Warning>

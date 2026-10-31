@@ -9,10 +9,14 @@ const mockUpdatePassword = jest.fn();
 const mockDelete = jest.fn();
 const mockFindAdmins = jest.fn();
 const mockDeleteBearerKeysByOwner = jest.fn();
+const mockFindServers = jest.fn();
+const mockUpdateServer = jest.fn();
+const mockUpdateServerVisibility = jest.fn();
+jest.mock('../../src/services/mcpService.js', () => ({ updateServerInfoVisibility: mockUpdateServerVisibility }));
 
 jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: () => ({ findAll: async () => [] }),
-  getServerDao: () => ({ findAll: async () => [] }),
+  getServerDao: () => ({ findAll: mockFindServers, update: mockUpdateServer }),
   getUserDao: jest.fn(() => ({
     findByUsername: mockFindByUsername,
     findByEmail: mockFindByEmail,
@@ -36,6 +40,7 @@ import { createNewUser, updateUser, deleteUser } from '../../src/services/userSe
 describe('userService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFindServers.mockResolvedValue([]);
   });
 
   // ── createNewUser ────────────────────────────────────────────
@@ -169,4 +174,13 @@ describe('userService', () => {
       expect(mockDelete).not.toHaveBeenCalled();
     });
   });
+});
+
+
+it('keeps user-group sharing when a deleted user is removed from individual shares', async () => {
+  mockFindAll.mockResolvedValue([{ username: 'alice', isAdmin: false }, { username: 'admin', isAdmin: true }]);
+  mockDelete.mockResolvedValue(true);
+  mockFindServers.mockResolvedValue([{ name: 'shared', visibility: 'group', sharedWithUsers: ['alice'], sharedWithUserGroups: ['readers'] }]);
+  expect(await deleteUser('alice')).toBe(true);
+  expect(mockUpdateServerVisibility).toHaveBeenCalledWith('shared', 'group', [], ['readers']);
 });

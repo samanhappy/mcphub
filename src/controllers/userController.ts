@@ -148,7 +148,17 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
   try {
     const { username } = req.params;
-    const { isAdmin, newPassword, email } = req.body;
+    const { isAdmin, newPassword, email, userGroups } = req.body;
+    if (
+      userGroups !== undefined &&
+      (!Array.isArray(userGroups) ||
+        !userGroups.every((name: unknown) => typeof name === 'string' && name.trim().length > 0))
+    ) {
+      res
+        .status(400)
+        .json({ success: false, message: 'userGroups must be an array of non-empty strings' });
+      return;
+    }
 
     if (!username) {
       res.status(400).json({
@@ -180,6 +190,8 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
     }
 
     const updateData: any = {};
+    if (userGroups !== undefined)
+      updateData.userGroups = [...new Set<string>(userGroups.map((name: string) => name.trim()))];
     if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
     if (email !== undefined) updateData.email = email;
     if (newPassword) {

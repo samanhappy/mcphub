@@ -29,6 +29,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true, name: 'sso_user_id' })
   ssoUserId: string | null;
 
+  @Column({ type: 'text', array: true, nullable: true })
+  userGroups?: string[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

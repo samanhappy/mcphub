@@ -23,6 +23,7 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
   const [formData, setFormData] = useState({
     isAdmin: user.isAdmin,
     email: user.email || '',
+    userGroups: (user.userGroups || []).join(', '),
     newPassword: '',
     confirmPassword: '',
   });
@@ -53,6 +54,14 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
       const updateData: UserUpdateData = {
         isAdmin: formData.isAdmin,
         email: formData.email,
+        userGroups: [
+          ...new Set(
+            formData.userGroups
+              .split(',')
+              .map((name) => name.trim())
+              .filter(Boolean),
+          ),
+        ],
       };
 
       if (formData.newPassword) {
@@ -137,6 +146,21 @@ const EditUserForm = ({ user, onEdit, onCancel }: EditUserFormProps) => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent form-input transition-all duration-200"
                 disabled={isSubmitting}
               />
+            </div>
+
+            <div>
+              <label htmlFor="userGroups" className="block text-sm font-medium text-gray-700 mb-1">
+                {t('users.userGroups')}
+              </label>
+              <input
+                id="userGroups"
+                name="userGroups"
+                value={formData.userGroups}
+                onChange={handleInputChange}
+                disabled={isSubmitting}
+                className="hub-input"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('users.userGroupsHint')}</p>
             </div>
 
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">

@@ -24,6 +24,7 @@ export interface CapabilityCacheStatus {
 
 // User interface
 export interface IUser {
+  userGroups?: string[];
   username: string;
   password: string;
   isAdmin?: boolean;
@@ -34,6 +35,7 @@ export interface IUser {
 // Group interface for server grouping
 export interface IGroup {
   visibility?: 'private' | 'group' | 'public';
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   id: string; // Unique UUID for the group
   name: string; // Display name of the group
@@ -489,9 +491,10 @@ export interface ServerConfig {
   // Per-server visibility for non-admin users.
   //   'private' — only the owner (or admins) can see this server. Default.
   //   'public'  — every authenticated user can see this server.
-  //   'group'   — explicitly selected users can see this server.
+  //   'group'   — selected users and user-group members can see this server.
   // See issues #817 and #1037.
   visibility?: ServerVisibility;
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[]; // Local MCPHub usernames allowed when visibility is 'group'.
   protocolNegotiation?: 'auto' | 'legacy'; // Streamable HTTP defaults to auto; other transports remain legacy.
   enableKeepAlive?: boolean; // Enable remote health checks; disconnected remote servers always retry
@@ -651,6 +654,7 @@ export interface ServerInfo {
   instructions?: string; // Upstream server instructions reported during MCP initialization
   owner?: string; // Owner of the server, defaults to 'admin' user
   visibility?: ServerVisibility; // Carried over from ServerConfig so dataService.filterData can apply #817 visibility rules at runtime.
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[]; // Carried over for restricted user-sharing authorization.
   status: 'connected' | 'connecting' | 'disconnected' | 'oauth_required'; // Current connection status
   error: string | null; // Error message if any
@@ -788,6 +792,7 @@ export interface BatchCreateServersResponse {
 // Request payload for adding a new group
 export interface AddGroupRequest {
   visibility?: IGroup['visibility'];
+  sharedWithUserGroups?: string[];
   sharedWithUsers?: string[];
   name: string; // Name of the group to add
   description?: string; // Optional description of the group
