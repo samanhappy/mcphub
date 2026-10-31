@@ -1,0 +1,45 @@
+tests/integration/personal-credentials.test.ts
+  s_c95afc05c09db2::t_0c4a53983c6f0b 550,558,562,605
+  s_c95afc05c09db2::t_8b18bfd6d11e91 606-607
+tests/services/credentialBindingService.test.ts
+  s_c95afc05c09db2::t_0c4a53983c6f0b 92-95,97-99,101-110,112,114-115
+  s_c95afc05c09db2::t_f08df2320d63b2 91,96,100,111,113
+docs/features/per-user-credentials.mdx
+  s_c95afc05c09db2::t_74b9c69ce245f3 83-84,87
+frontend/src/pages/CredentialsPage.tsx
+  s_c95afc05c09db2::t_e2da3f254f174d 53-55,69-74
+frontend/src/types/index.ts
+  s_c95afc05c09db2::t_203a5ff76840a5 208
+locales/en.json
+  s_c95afc05c09db2::t_9ce3bfd6d2cac5 1517-1518
+locales/es.json
+  s_c95afc05c09db2::t_7b6da1d146c3bd 1517-1518
+locales/fr.json
+  s_c95afc05c09db2::t_94fc13f346d0e1 1515-1516
+locales/tr.json
+  s_c95afc05c09db2::t_e7974bac12e913 1514-1515
+locales/vi.json
+  s_c95afc05c09db2::t_b3c91657aa5dca 1517-1518
+locales/zh.json
+  s_c95afc05c09db2::t_ef22602165760b 1519-1520
+src/controllers/credentialBindingController.ts
+  s_c95afc05c09db2::t_6c2ad8275ffac9 62
+src/services/credentialBindingService.ts
+  s_c95afc05c09db2::t_124c5bfee025ae 155,166-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a0ad3a56781b9b179c7057d53b5ac3a4d38d959",
+  "prompts": {},
+  "sessions": {
+    "s_c95afc05c09db2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19131-6ef2-7612-a184-a5287cd65ef4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
