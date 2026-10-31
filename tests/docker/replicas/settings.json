@@ -1,0 +1,11 @@
+{
+  "users": [],
+  "mcpServers": {},
+  "groups": [],
+  "systemConfig": {
+    "enableSessionRebuild": true,
+    "routing": { "enableBearerAuth": true, "skipAuth": false },
+    "install": { "baseUrl": "http://localhost:3080" },
+    "oauthServer": { "enabled": true, "dynamicRegistration": { "enabled": true } }
+  }
+}

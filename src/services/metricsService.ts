@@ -3,6 +3,10 @@ import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 
 export const metricsEnabled = (): boolean => process.env.ENABLE_METRICS === 'true';
 export const metricsRegistry = new Registry();
+export const configurationVersionGauge = new Gauge({
+  name: 'mcphub_configuration_version', help: 'Desired and applied shared configuration revision.',
+  labelNames: ['state'], registers: [metricsRegistry],
+});
 const calls = new Counter({
   name: 'mcphub_tool_calls_total',
   help: 'Completed client tool calls, including failures before upstream execution.',

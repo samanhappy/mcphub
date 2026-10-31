@@ -48,6 +48,7 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 - **Web 控制台** - 通过浏览器管理服务器配置和运行状态
 - **工具结果压缩** - 在返回客户端前透明压缩大型文本工具输出
 - **数据库模式** - 将配置存储在 PostgreSQL 中，适用于生产环境 ([了解更多](https://docs.mcphub.app/zh/configuration/database-configuration))
+- **多副本部署** - 共享 PostgreSQL 配置，明确会话亲和性与故障重连边界 ([部署指南](https://docs.mcphub.app/zh/configuration/replicas))
 - **Docker 就绪** - 容器化部署，开箱即用
 
 ## 🔧 快速开始

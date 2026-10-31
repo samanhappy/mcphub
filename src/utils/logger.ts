@@ -1,3 +1,7 @@
+import os from 'node:os';
+import { isReplicaMode } from './replicaMode.js';
+import { replicaLogContext } from './replicaLogContext.js';
+
 /**
  * Central logging utility with automatic secret redaction.
  *
@@ -186,6 +190,9 @@ export const redact = <T>(value: T): T =>
 
 const emit = (level: 'log' | 'info' | 'warn' | 'error' | 'debug', args: unknown[]): void => {
   const sanitized = args.map((arg) => redact(arg));
+  if (isReplicaMode()) sanitized.push(replicaLogContext.getStore() ?? {
+    nodeId: process.env.MCPHUB_NODE_ID || os.hostname(),
+  });
   // Route back through console so existing tooling (and tests that spy on
   // console methods) keeps working unchanged.
   console[level](...sanitized);

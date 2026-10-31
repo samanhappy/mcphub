@@ -1,4 +1,5 @@
 import { validateAuthorizationRelay } from '../utils/oauthServerMetadata.js';
+import { withReplicaLock } from './replicaLock.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { FetchLike } from '../utils/ssrf.js';
 import { getCredentialBindingDao, getServerDao, getUserDao } from '../dao/DaoFactory.js';
@@ -31,7 +32,8 @@ export const withPersonalOAuthLock = <T>(
   serverName: string,
   username: string,
   action: () => Promise<T>,
-): Promise<T> => serialize(JSON.stringify([serverName, username]), action);
+): Promise<T> => withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
+  serialize(JSON.stringify([serverName, username]), action));
 
 export const personalAuthorizationRequired = (name: string) =>
   new CredentialBindingError(

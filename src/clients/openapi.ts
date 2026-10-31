@@ -1,4 +1,5 @@
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
+import { isReplicaMode } from '../utils/replicaMode.js';
 import { AxiosHeaders } from 'axios';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { randomUUID } from 'node:crypto';
@@ -1084,7 +1085,7 @@ export class OpenAPIClient {
           this.captureResponseCookies(error.response, resolvedTarget.href, sessionId);
         }
         if (
-          attemptedUpstreamRequest &&
+          !isReplicaMode() && attemptedUpstreamRequest &&
           error.response?.status === 401 &&
           !hasRetriedAfterUnauthorized &&
           authorizationUsedForRequest &&
@@ -1094,7 +1095,7 @@ export class OpenAPIClient {
         }
 
         if (
-          attemptedUpstreamRequest &&
+          !isReplicaMode() && attemptedUpstreamRequest &&
           error.response?.status === 401 &&
           !hasRetriedAfterUnauthorized &&
           (await this.invalidateRefreshableOAuth2Token())

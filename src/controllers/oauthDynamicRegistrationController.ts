@@ -143,7 +143,7 @@ export const registerClient = async (req: Request, res: Response): Promise<void>
     }
 
     // Generate registration access token
-    const registrationAccessToken = createRegistrationToken(clientId);
+    const registrationAccessToken = await createRegistrationToken(clientId);
     const baseUrl = resolveInstallBaseUrl(systemConfig, `${req.protocol}://${req.get('host')}`);
     const registrationClientUri = `${baseUrl}/oauth/register/${clientId}`;
 
@@ -243,7 +243,7 @@ export const getClientConfiguration = async (req: Request, res: Response): Promi
       return;
     }
 
-    const tokenClientId = verifyRegistrationToken(token);
+    const tokenClientId = await verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {
       res.status(401).json({
@@ -316,7 +316,7 @@ export const updateClientConfiguration = async (req: Request, res: Response): Pr
       return;
     }
 
-    const tokenClientId = verifyRegistrationToken(token);
+    const tokenClientId = await verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {
       res.status(401).json({
@@ -500,7 +500,7 @@ export const deleteClientRegistration = async (req: Request, res: Response): Pro
       return;
     }
 
-    const tokenClientId = verifyRegistrationToken(token);
+    const tokenClientId = await verifyRegistrationToken(token);
 
     if (!tokenClientId || tokenClientId !== clientId) {
       res.status(401).json({
@@ -521,7 +521,7 @@ export const deleteClientRegistration = async (req: Request, res: Response): Pro
     }
 
     // Clean up registration token
-    deleteRegistrationToken(token);
+    await deleteRegistrationToken(token);
 
     res.status(204).send();
   } catch (error) {

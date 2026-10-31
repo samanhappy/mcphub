@@ -43,6 +43,7 @@ import { isHostedModeEnabled } from './hostedMode.js';
 import { authenticateForwardAuthToken } from './forwardAuthService.js';
 import { getPublicResourceUrl, getResourceMetadataUrl } from '../utils/protectedResource.js';
 import { logger } from '../utils/logger.js';
+import { isReplicaMode } from '../utils/replicaMode.js';
 
 export interface SessionContext {
   transport: Transport;
@@ -1046,7 +1047,7 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
     transport = transportInfo.transport as NodeStreamableHTTPServerTransport;
   } else if (sessionId) {
     // Case 2: SessionId exists but transport is missing (server restart), check if session rebuild is enabled
-    const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
+    const enableSessionRebuild = !isReplicaMode() && (systemConfig?.enableSessionRebuild || false);
 
     if (enableSessionRebuild) {
       logger.log(
@@ -1205,7 +1206,7 @@ export const handleMcpOtherRequest = async (req: Request, res: Response) => {
   if (!transportEntry) {
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
-    const enableSessionRebuild = systemConfig?.enableSessionRebuild || false;
+    const enableSessionRebuild = !isReplicaMode() && (systemConfig?.enableSessionRebuild || false);
 
     if (enableSessionRebuild) {
       logger.log(

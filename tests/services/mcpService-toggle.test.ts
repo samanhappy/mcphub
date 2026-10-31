@@ -108,6 +108,7 @@ import {
   getServerByName,
   getMcpServer,
   initializeClientsFromSettings,
+  reconcileReplicaServers,
   resetServerOAuthConnection,
   setServerInfosForTest,
   summarizeServerConnections,
@@ -192,6 +193,18 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
     mockServerDao.findAll.mockResolvedValue([]);
     mockClientConnect.mockResolvedValue(undefined);
     mockStderrListeners.clear();
+  });
+
+  it('restores a locally disabled runtime when another replica re-enables the same declaration', async () => {
+    const declaration = { name: 'test-server', enabled: true, command: 'node', args: ['server.js'] };
+    setServerInfosForTest([{
+      name: 'test-server', enabled: false, status: 'disconnected', error: null,
+      tools: [], prompts: [], resources: [], createTime: 1,
+      config: { ...declaration, owner: undefined, visibility: undefined, sharedWithUsers: undefined, sharedWithUserGroups: undefined },
+    } as any]);
+    await reconcileReplicaServers([declaration]);
+    expect(getServerByName('test-server')?.enabled).not.toBe(false);
+    expect(mockClientConnect).toHaveBeenCalledTimes(1);
   });
 
   it('does not reconnect a server with an in-flight OAuth authorization during full reload', async () => {

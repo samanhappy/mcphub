@@ -17,6 +17,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "db:setup": "node dist/db/setup.js",
     "build": "pnpm backend:build && pnpm frontend:build",
     "backend:build": "tsc && node scripts/build-mcp-client.js",
     "start": "node dist/index.js",
@@ -26,6 +27,7 @@
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "jest",
+    "test:replicas": "sh scripts/test-replicas.sh",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",

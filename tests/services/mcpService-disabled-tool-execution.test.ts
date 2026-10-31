@@ -23,6 +23,7 @@ import type { ServerInfo } from '../../src/types/index.js';
 
 const mockLogToolCall = jest.fn().mockResolvedValue(undefined);
 const mockCallTool = jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+let mockLiveServers: any[] = [];
 
 jest.mock('../../src/dao/index.js', () => ({
   getGroupDao: jest.fn(() => ({
@@ -30,7 +31,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findById: jest.fn(async () => undefined),
   })),
   getServerDao: jest.fn(() => ({
-    findAll: jest.fn(async () => []),
+    findAll: jest.fn(async () => mockLiveServers),
     findById: jest.fn(async () => undefined),
   })),
   getSystemConfigDao: jest.fn(() => ({ get: jest.fn(() => Promise.resolve({})) })),
@@ -39,7 +40,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findByName: jest.fn(async () => undefined),
   })),
   getBuiltinResourceDao: jest.fn(() => ({ findEnabled: jest.fn(async () => []) })),
-  getUserDao: jest.fn(() => ({ findByUsername: jest.fn(async () => undefined) })),
+  getUserDao: jest.fn(() => ({ findByUsername: jest.fn(async () => ({ username: 'admin', isAdmin: true })) })),
 }));
 
 jest.mock('../../src/services/services.js', () => ({
@@ -54,7 +55,7 @@ jest.mock('../../src/services/userContextService.js', () => ({
       isAdmin: jest.fn(() => true),
       setCurrentUser: jest.fn(),
       clearCurrentUser: jest.fn(),
-      runWithContext: jest.fn(),
+      runWithContext: jest.fn((action: () => unknown) => action()),
     })),
   },
 }));
@@ -165,6 +166,31 @@ describe('disabled tool must be unresolvable for execution, not just discovery',
     jest.clearAllMocks();
     mockLogToolCall.mockResolvedValue(undefined);
     mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    mockLiveServers = [];
+  });
+
+  it('rejects a server disabled on another replica before local connection refresh', async () => {
+    const previous = process.env.MCPHUB_REPLICA_MODE;
+    process.env.MCPHUB_REPLICA_MODE = 'true';
+    try {
+      mockLiveServers = [{ name: 'gmail', enabled: true, visibility: 'public' }];
+      mcpService.setServerInfosForTest([baseServer({ config: { tools: {} } as any })]);
+      const invoke = () => mcpService.handleCallToolRequest(
+        { params: { name: 'gmail-list_accounts', arguments: {} } }, { sessionId: 'session-1' },
+      );
+      expect((await invoke()).isError).toBeFalsy();
+      mockCallTool.mockClear();
+      mockLiveServers[0].enabled = false;
+      expect((await invoke()).isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+      mockLiveServers[0].enabled = true;
+      mockLiveServers[0].oauth = { identityMode: 'personal' };
+      expect((await invoke()).isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.MCPHUB_REPLICA_MODE;
+      else process.env.MCPHUB_REPLICA_MODE = previous;
+    }
   });
 
   it('rejects a disabled tool addressed by its bare name, and never reaches the upstream client', async () => {
