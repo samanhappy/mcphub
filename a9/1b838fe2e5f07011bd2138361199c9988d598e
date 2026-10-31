@@ -1,0 +1,28 @@
+src/services/groupService.ts
+  s_9a48ce664153a2::t_e1270489a94cdf 4-8,14-20,234,266,321,356,436
+tests/services/groupService-authorization.test.ts
+  s_9a48ce664153a2::t_8590fb3d3d4e67 32-34,50-55,145-154,166-183
+  s_9a48ce664153a2::t_e1270489a94cdf 155-165
+tests/services/groupService-connections.test.ts
+  s_9a48ce664153a2::t_e1270489a94cdf 145-151,165-168
+  s_9a48ce664153a2::t_d9c68d88427ba3 1-7,9,11-16,18-77,80-144,152-164,169-179
+  s_9a48ce664153a2::t_22f0c930d68d80 8,10,17,78-79
+tests/services/groupService-capabilities.test.ts
+  s_9a48ce664153a2::t_e1270489a94cdf 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a91b838fe2e5f07011bd2138361199c9988d598e",
+  "prompts": {},
+  "sessions": {
+    "s_9a48ce664153a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18f5d-d842-7081-ad2c-2a57dfd87fa5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
