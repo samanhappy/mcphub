@@ -1514,6 +1514,8 @@
     "manage": "Quản lý",
     "configured": "Đã cấu hình",
     "required": "Bắt buộc có ràng buộc (binding)",
+    "previewNotice": "Chỉ hiển thị bốn ký tự cuối của giá trị đã lưu. Giá trị có tối đa bốn ký tự được ẩn hoàn toàn. Để thay thế liên kết, hãy nhập giá trị mới cho tất cả các trường.",
+    "savedValue": "Giá trị đã lưu",
     "writeOnly": "Các giá trị đã lưu không thể được hiển thị. Để thay thế một ràng buộc, bạn phải nhập giá trị mới cho tất cả các khe cắm.",
     "replaceValue": "Nhập giá trị thay thế",
     "enterValue": "Nhập thông tin xác thực",

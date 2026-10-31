@@ -88,6 +88,31 @@ test('encrypts at rest, isolates email principals, and returns status only', asy
   ).not.toHaveProperty('env');
 });
 
+test.each(['personal-key-abcd', 'a', 'abcd', '🔑🔒🔐🗝'])(
+  'returns masked previews only when requested: %s',
+  async (value) => {
+    await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': value });
+    expect(await getCredentialBindingStatus('shared', 'alice', stdio)).not.toHaveProperty(
+      'valuePreviews',
+    );
+    const status = await getCredentialBindingStatus('shared', 'alice', stdio, true);
+    expect(status).toHaveProperty('valuePreviews', {
+      'env.PERSONAL_KEY': Array.from(value).length > 4 ? '••••abcd' : '••••',
+    });
+    expect(JSON.stringify(status)).not.toContain(`"${value}"`);
+    await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'replacement-WXYZ' });
+    expect(await getCredentialBindingStatus('shared', 'alice', stdio, true)).toHaveProperty(
+      'valuePreviews',
+      { 'env.PERSONAL_KEY': '••••WXYZ' },
+    );
+    await deleteCredentialBindings({ serverName: 'shared', username: 'alice' });
+    expect(await getCredentialBindingStatus('shared', 'alice', stdio, true)).toHaveProperty(
+      'valuePreviews',
+      {},
+    );
+  },
+);
+
 test('requires all declared slots without implicit organization fallback', async () => {
   await expect(resolveCredentialBinding('shared', 'alice', stdio)).rejects.toThrow('Credentials');
   for (const values of [

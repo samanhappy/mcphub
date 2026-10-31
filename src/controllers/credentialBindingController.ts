@@ -59,7 +59,7 @@ const listCredentials = async (req: Request, res: Response, managed: boolean): P
       servers.map(async (server) => ({
         serverName: server.name,
         credentialTemplate: validateCredentialTemplate(server),
-        ...(await getCredentialBindingStatus(server.name, user.username, server)),
+        ...(await getCredentialBindingStatus(server.name, user.username, server, !managed)),
       })),
     );
     res.json({ success: true, data });

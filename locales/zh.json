@@ -1516,6 +1516,8 @@
     "manage": "管理",
     "configured": "已绑定",
     "required": "需要绑定",
+    "previewNotice": "已保存的值仅显示后四位，不足或等于四位时全部隐藏。替换绑定时，请为所有字段填写新值。",
+    "savedValue": "已保存",
     "writeOnly": "已保存的值无法查看。替换绑定时，请为所有字段填写新值。",
     "replaceValue": "输入替换值",
     "enterValue": "输入凭据",

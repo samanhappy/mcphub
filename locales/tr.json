@@ -1511,6 +1511,8 @@
     "manage": "Yönet",
     "configured": "Yapılandırıldı",
     "required": "Bağlama gerekli",
+    "previewNotice": "Kaydedilen değerlerin yalnızca son dört karakteri gösterilir. Dört veya daha az karakter içeren değerler tamamen gizlenir. Bağlamayı değiştirmek için tüm alanlara yeni değerler girin.",
+    "savedValue": "Kaydedilen değer",
     "writeOnly": "Kaydedilen değerler görüntülenemez. Bağlamayı değiştirmek için tüm alanlara yeni değerler girin.",
     "replaceValue": "Yeni değer girin",
     "enterValue": "Kimlik bilgisi girin",

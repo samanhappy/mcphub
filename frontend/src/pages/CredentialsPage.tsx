@@ -50,7 +50,9 @@ const CredentialForm = ({
           {t(binding.configured ? 'credentials.configured' : 'credentials.required')}
         </span>
       </div>
-      <p className="text-sm text-[var(--hub-ink-3)]">{t('credentials.writeOnly')}</p>
+      <p className="text-sm text-[var(--hub-ink-3)]">
+        {t(binding.valuePreviews ? 'credentials.previewNotice' : 'credentials.writeOnly')}
+      </p>
       {binding.updatedAt && (
         <p className="text-xs text-[var(--hub-ink-3)]">
           {t('credentials.updatedAt')}: {new Date(binding.updatedAt).toLocaleString()}
@@ -64,6 +66,12 @@ const CredentialForm = ({
               {slot.label || slot.name}{' '}
               <span className="hub-mono text-xs font-normal text-[var(--hub-ink-3)]">({id})</span>
             </span>
+            {binding.valuePreviews?.[id] && (
+              <span className="block text-xs text-[var(--hub-ink-3)]">
+                {t('credentials.savedValue')}:{' '}
+                <span className="hub-mono">{binding.valuePreviews[id]}</span>
+              </span>
+            )}
             {slot.target === 'url' ? (
               <select
                 required
