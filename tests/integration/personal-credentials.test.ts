@@ -21,6 +21,7 @@ import { Server as McpServer } from '@modelcontextprotocol/server';
 import request from 'supertest';
 import {
   getServerDao,
+  getUserDao,
   getCredentialBindingDao,
   getSystemConfigDao,
   getGroupDao,
@@ -52,6 +53,7 @@ import {
   cleanupAllServers,
   getServersInfo,
   getServerByName,
+  updateServerInfoVisibility,
   removeServer,
   getServerConnectionStats,
   handleCallToolRequest,
@@ -1711,5 +1713,65 @@ test('on-demand personal snapshots restore isolated tools without spawning and r
     expect(stored).not.toContain('full-alice');
   } finally {
     await removeServer(name);
+  }
+});
+
+
+test('user-group membership grants server and group use, and removal revokes an existing user-key session', async () => {
+  const userDao = getUserDao();
+  const serverDao = getServerDao();
+  const original = await serverDao.findById('shared');
+  const originalUser = await userDao.findByUsername(alice);
+  const group = await getGroupDao().create({
+    name: 'user-membership-team',
+    owner: 'admin',
+    visibility: 'group',
+    sharedWithUserGroups: ['readers'],
+    servers: ['shared'],
+  });
+  const newClients: Client[] = [];
+  try {
+    await userDao.update(alice, { userGroups: ['readers'] });
+    await serverDao.update('shared', {
+      visibility: 'group',
+      sharedWithUsers: [],
+      sharedWithUserGroups: ['readers'],
+    });
+    updateServerInfoVisibility('shared', 'group', [], ['readers']);
+    await bind(alice, 'group-member-credential');
+    const client = await connect(alice, group.name);
+    newClients.push(client);
+    const toolName = (await client.listTools()).tools[0].name;
+    expect(parseIdentity(await client.callTool({ name: toolName })).credential).toBe(
+      'group-member-credential',
+    );
+    const direct = await connect(alice, 'shared');
+    newClients.push(direct);
+    expect((await direct.listTools()).tools).toHaveLength(1);
+    await userDao.update(alice, { userGroups: [] });
+    await expect(client.listTools()).rejects.toThrow(/Group access denied/);
+    await expect(client.callTool({ name: toolName })).rejects.toThrow(/Group access denied/);
+    expect((await direct.listTools()).tools).toHaveLength(0);
+    const denied = await direct.callTool({ name: toolName });
+    expect(denied.isError).toBe(true);
+  } finally {
+    await userDao.update(alice, { userGroups: ['readers'] });
+    for (const client of newClients) {
+      await client.close();
+      clients.splice(clients.indexOf(client), 1);
+    }
+    await userDao.update(alice, { userGroups: originalUser?.userGroups ?? [] });
+    await serverDao.update('shared', {
+      visibility: original!.visibility,
+      sharedWithUsers: original!.sharedWithUsers,
+      sharedWithUserGroups: original!.sharedWithUserGroups,
+    });
+    updateServerInfoVisibility(
+      'shared',
+      original!.visibility,
+      original!.sharedWithUsers,
+      original!.sharedWithUserGroups,
+    );
+    await getGroupDao().delete(group.id);
   }
 });

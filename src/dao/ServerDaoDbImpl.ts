@@ -102,6 +102,7 @@ export class ServerDaoDbImpl implements ServerDao {
       enabled: entity.enabled !== undefined ? entity.enabled : true,
       owner: entity.owner,
       visibility: entity.visibility ?? 'private',
+      sharedWithUserGroups: entity.sharedWithUserGroups,
       sharedWithUsers: entity.sharedWithUsers,
       enableKeepAlive: entity.enableKeepAlive,
       keepAliveInterval: entity.keepAliveInterval,
@@ -156,6 +157,7 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('owner');
     assign('visibility');
     assignNullable('sharedWithUsers');
+    assignNullable('sharedWithUserGroups');
     if (hasOwn('enableKeepAlive')) {
       updateData.enableKeepAlive = entity.enableKeepAlive ?? false;
     }
@@ -297,6 +299,7 @@ export class ServerDaoDbImpl implements ServerDao {
     enabled: boolean;
     owner?: string;
     visibility?: 'private' | 'group' | 'public';
+    sharedWithUserGroups?: string[];
     sharedWithUsers?: string[];
     enableKeepAlive?: boolean;
     keepAliveInterval?: number;
@@ -335,6 +338,7 @@ export class ServerDaoDbImpl implements ServerDao {
       enabled: server.enabled,
       owner: server.owner,
       visibility: server.visibility ?? 'private',
+      sharedWithUserGroups: server.sharedWithUserGroups,
       sharedWithUsers: server.sharedWithUsers,
       enableKeepAlive: server.enableKeepAlive,
       keepAliveInterval: server.keepAliveInterval,

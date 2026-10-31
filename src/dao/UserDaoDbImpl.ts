@@ -17,6 +17,7 @@ export class UserDaoDbImpl implements UserDao {
   private toIUser(u: User): IUser {
     return {
       username: u.username,
+      userGroups: u.userGroups ?? undefined,
       password: u.password,
       isAdmin: u.isAdmin,
       email: u.email ?? undefined,
@@ -54,6 +55,7 @@ export class UserDaoDbImpl implements UserDao {
   async create(entity: Omit<IUser, 'id'>): Promise<IUser> {
     const user = await this.repository.create({
       username: entity.username,
+      userGroups: entity.userGroups,
       password: entity.password,
       isAdmin: entity.isAdmin || false,
       email: entity.email ?? null,
@@ -75,6 +77,7 @@ export class UserDaoDbImpl implements UserDao {
 
   async update(username: string, entity: Partial<IUser>): Promise<IUser | null> {
     const updateData: any = {};
+    if (entity.userGroups !== undefined) updateData.userGroups = entity.userGroups;
     if (entity.password !== undefined) updateData.password = entity.password;
     if (entity.isAdmin !== undefined) updateData.isAdmin = entity.isAdmin;
     if (entity.email !== undefined) updateData.email = entity.email ?? null;

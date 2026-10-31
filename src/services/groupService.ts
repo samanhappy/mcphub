@@ -158,7 +158,10 @@ export const createGroup = async (
   description?: string,
   servers: string[] | IGroupServerConfig[] = [],
   owner?: string,
-  access: Pick<IGroup, 'visibility' | 'sharedWithUsers' | 'instructions'> = {},
+  access: Pick<
+    IGroup,
+    'visibility' | 'sharedWithUsers' | 'sharedWithUserGroups' | 'instructions'
+  > = {},
 ): Promise<IGroup | null> => {
   try {
     const groupDao = getGroupDao();
@@ -185,6 +188,9 @@ export const createGroup = async (
       owner: owner || 'admin',
       visibility: access.visibility ?? 'private',
       sharedWithUsers: [...new Set(access.sharedWithUsers?.map((name) => name.trim()) || [])],
+      sharedWithUserGroups: [
+        ...new Set(access.sharedWithUserGroups?.map((name) => name.trim()) || []),
+      ],
     };
 
     const createdGroup = await groupDao.create(newGroup);

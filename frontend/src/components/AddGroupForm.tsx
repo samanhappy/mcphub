@@ -23,6 +23,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
 
   const [formData, setFormData] = useState<GroupFormData>({
     visibility: 'private',
+    sharedWithUserGroups: [],
     sharedWithUsers: [],
     name: '',
     description: '',
@@ -57,6 +58,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
 
       const result = await createGroup(formData.name, formData.description, formData.servers, {
         visibility: formData.visibility,
+        sharedWithUserGroups: formData.sharedWithUserGroups,
         sharedWithUsers: formData.sharedWithUsers,
         instructions: formData.instructions,
       });

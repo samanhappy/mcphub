@@ -66,6 +66,7 @@ export const prepareCapabilitySnapshot = async (
       enabled,
       visibility,
       sharedWithUsers,
+      sharedWithUserGroups,
       startOnDemand,
       idleTimeoutMs,
       ...launch
@@ -78,6 +79,7 @@ export const prepareCapabilitySnapshot = async (
       enabled,
       visibility,
       sharedWithUsers,
+      sharedWithUserGroups,
       startOnDemand,
       idleTimeoutMs,
     ];

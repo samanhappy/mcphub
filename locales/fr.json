@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "Privé",
     "visibilityPrivate": "Privé — uniquement le propriétaire et les administrateurs",
     "visibilityGroupShort": "Partagé",
-    "visibilityGroup": "Partagé — uniquement avec les utilisateurs sélectionnés",
+    "visibilityGroup": "Partagé — utilisateurs et groupes sélectionnés",
     "visibilityPublicShort": "Public",
     "visibilityPublic": "Public — tous les utilisateurs authentifiés",
     "visibilityDescription": "Contrôle quels utilisateurs non administrateurs peuvent découvrir et appeler ce serveur. Les administrateurs ont toujours accès.",
@@ -1213,6 +1213,9 @@
     "partialSuccess": "{{count}} groupe(s) sur {{total}} importé(s) avec succès. Certains groupes ont échoué :"
   },
   "users": {
+    "userGroups": "Groupes d’utilisateurs",
+    "userGroupsHint": "Noms séparés par des virgules, sensibles à la casse. Utilisez le même nom pour regrouper des utilisateurs. Videz le champ pour retirer les appartenances.",
+    "shareUserGroupsHint": "Les membres des groupes sélectionnés peuvent utiliser cette ressource. Gérez les appartenances en modifiant les utilisateurs.",
     "add": "Ajouter un utilisateur",
     "addNew": "Ajouter un nouvel utilisateur",
     "edit": "Modifier l'utilisateur",

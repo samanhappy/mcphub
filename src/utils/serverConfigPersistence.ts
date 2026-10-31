@@ -344,6 +344,17 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   // Default visibility to 'private' so file-defined and freshly-created servers behave
   // identically to the pre-#817 implicit admin-only behaviour. Operators opt servers in
   // to 'public' or restricted 'group' sharing from the dashboard.
+  if (
+    config.sharedWithUserGroups != null &&
+    (!Array.isArray(config.sharedWithUserGroups) ||
+      !config.sharedWithUserGroups.every(
+        (name: unknown) => typeof name === 'string' && name.trim().length > 0,
+      ))
+  ) {
+    throw new ServerConfigValidationError(
+      'sharedWithUserGroups must be an array of non-empty strings',
+    );
+  }
   const visibility = config.visibility ?? 'private';
   const sharedWithUsers =
     visibility === 'group' ? normalizeSharedUsers(config.sharedWithUsers) : undefined;
@@ -357,6 +368,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     owner,
     visibility,
     sharedWithUsers,
+    sharedWithUserGroups:
+      visibility === 'group' ? normalizeSharedUsers(config.sharedWithUserGroups) : undefined,
     options,
     perSessionClient: config.perSessionClient === true ? true : undefined,
     // The dashboard sends `startOnDemand: undefined` when the toggle is off, which

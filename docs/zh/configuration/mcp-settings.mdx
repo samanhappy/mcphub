@@ -839,3 +839,10 @@ ls -la /path/to/server
 
 
 管理员可以在 **设置 → 系统设置 → 控制台名称** 中自定义名称，也可以在 `mcp_settings.json` 中设置 `systemConfig.dashboardName`（例如 `"dashboardName": "Team MCP"`）。名称会显示在侧栏、页头、登录页和浏览器标签中，首尾空格会被去除，长度上限为 100 个字符。保存空值可恢复默认名称。文件和数据库存储模式均支持持久化此设置。
+
+
+## 用户组共享
+
+管理员可在 **用户 → 编辑 → 用户组** 中用英文逗号分隔组名，也可通过 `PUT /api/users/:username` 提交 `userGroups: ["readers"]`。组名区分大小写，相同名称代表同一用户组；清空数组会移除该用户的所有成员关系。用户组独立于聚合服务器的 Group。
+
+将服务器设为 `visibility: "group"`，并配置 `sharedWithUserGroups: ["readers"]`，即可向该组所有成员授予使用权限。服务器与 Group 的共享界面均可选择用户组；共享 Group 路由不会自动授予其底层服务器权限。成员变更在下次认证请求时生效，包括现有用户级 key 和 OAuth 会话。共享不授予配置管理权限，工具 policy 仍可进一步收紧访问。

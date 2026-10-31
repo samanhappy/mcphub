@@ -17,8 +17,12 @@ export class DataService {
         if (
           currentUser &&
           item.visibility === 'group' &&
-          Array.isArray(item.sharedWithUsers) &&
-          item.sharedWithUsers.includes(currentUser.username)
+          ((Array.isArray(item.sharedWithUsers) &&
+            item.sharedWithUsers.includes(currentUser.username)) ||
+            (Array.isArray(item.sharedWithUserGroups) &&
+              item.sharedWithUserGroups.some((group: string) =>
+                currentUser.userGroups?.includes(group),
+              )))
         ) {
           return true;
         }

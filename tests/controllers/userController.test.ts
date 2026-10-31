@@ -187,3 +187,37 @@ describe('userController', () => {
     });
   });
 });
+
+
+describe('admin-managed user groups', () => {
+  beforeEach(() => jest.clearAllMocks());
+  it('saves normalized memberships without changing another user field', async () => {
+    mockUpdateUser.mockResolvedValue({ username: 'alice', userGroups: ['readers'] });
+    const res = makeRes();
+    await updateExistingUser(
+      makeReq({ params: { username: 'alice' }, body: { userGroups: [' readers ', 'readers'] } }),
+      res,
+    );
+    expect(mockUpdateUser).toHaveBeenCalledWith('alice', { userGroups: ['readers'] });
+    expect(res.status).not.toHaveBeenCalledWith(400);
+  });
+  it.each([null, 'readers', [7], ['']])('rejects malformed membership: %j', async (userGroups) => {
+    const res = makeRes();
+    await updateExistingUser(makeReq({ params: { username: 'alice' }, body: { userGroups } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+  it('does not allow a member to edit memberships', async () => {
+    const res = makeRes();
+    await updateExistingUser(
+      makeReq({
+        user: { username: 'alice', isAdmin: false },
+        params: { username: 'alice' },
+        body: { userGroups: ['writers'] },
+      }),
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+});

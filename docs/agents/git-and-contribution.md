@@ -7,6 +7,8 @@
 
 ## UI screenshots in pull requests
 
+- Unless explicitly requested otherwise, use the English UI for all screenshots.
+
 - Any pull request with visible UI changes must include browser screenshots in the PR body or a PR comment. Upload the images to GitHub so reviewers can view them; local file paths do not count.
 - Show before/after screenshots for changes to existing UI, or the resulting state for new UI. Capture the affected states and viewport sizes, including mobile when responsive behavior changes.
 - Label viewport sizes and disclose mocked data or simulated states. Verify that the uploaded images render in the PR before considering the task complete.

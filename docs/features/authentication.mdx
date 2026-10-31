@@ -34,7 +34,9 @@ Each server has a `visibility` setting (`private` / `group` / `public`) that con
 
 - `'private'` (default): only the server's `owner` (and admins) can see it. Servers seeded from `mcp_settings.json` migrate in with `'private'` to preserve the historical admin-only behaviour.
 - `'public'`: every authenticated user can see and call the server. Use this for servers you want to share across all users of the same MCPHub instance — including social-login users created by Better Auth.
-- `'group'`: the owner and usernames listed in the server's `sharedWithUsers` array can see and call it. Sharing grants runtime access only; selected users cannot edit or delete the server.
+- `'group'`: the owner, usernames listed in `sharedWithUsers`, and members of groups listed in `sharedWithUserGroups` can see and call it. Sharing grants runtime access only; selected users cannot edit or delete the server.
+
+Administrators assign user groups in **Users → Edit → User groups**, using comma-separated, case-sensitive names. The same name on multiple users identifies one user group; clearing a user's list removes all memberships. These user groups are independent of server Groups. Server owners select existing user groups in the server sharing controls; group-route sharing offers the same selection. For example, a user with `userGroups: ["readers"]` can use a server with `visibility: "group"` and `sharedWithUserGroups: ["readers"]`. Membership changes apply on the next authenticated request, including existing user-key and OAuth sessions. Sharing a group route does not grant access to its underlying servers: configure both as needed. Sharing grants usage, not configuration management, and tool policies can further restrict it.
 
 The visibility is editable per server from the dashboard (Server form → Advanced Options → Visibility). Edit an existing server to select local usernames for `'group'` sharing. For deployments where every user should see every server (single-user self-hosted, small trusted team), an operator can set the relevant servers to `'public'` from the dashboard.
 

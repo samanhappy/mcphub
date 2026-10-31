@@ -9,6 +9,7 @@ export const canAccessGroupRoute = (group: IGroup, user?: IUser): boolean =>
 export const validateGroupAccess = (data: {
   visibility?: unknown;
   sharedWithUsers?: unknown;
+  sharedWithUserGroups?: unknown;
 }): string | null => {
   if (
     data.visibility !== undefined &&
@@ -16,14 +17,14 @@ export const validateGroupAccess = (data: {
   ) {
     return 'visibility must be private, group, or public';
   }
-  if (
-    data.sharedWithUsers !== undefined &&
-    (!Array.isArray(data.sharedWithUsers) ||
-      !data.sharedWithUsers.every(
-        (username: unknown) => typeof username === 'string' && username.trim().length > 0,
-      ))
-  ) {
-    return 'sharedWithUsers must be an array of non-empty usernames';
+  for (const field of ['sharedWithUsers', 'sharedWithUserGroups'] as const) {
+    const value = data[field];
+    if (
+      value !== undefined &&
+      (!Array.isArray(value) ||
+        !value.every((name: unknown) => typeof name === 'string' && name.trim().length > 0))
+    )
+      return `${field} must be an array of non-empty strings`;
   }
   return null;
 };

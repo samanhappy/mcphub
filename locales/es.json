@@ -156,7 +156,7 @@
     "visibilityPrivateShort": "Privado",
     "visibilityPrivate": "Privado — solo el propietario y los administradores",
     "visibilityGroupShort": "Compartido",
-    "visibilityGroup": "Compartido — solo usuarios seleccionados",
+    "visibilityGroup": "Compartido — usuarios y grupos seleccionados",
     "visibilityPublicShort": "Público",
     "visibilityPublic": "Público — todos los usuarios autenticados",
     "visibilityDescription": "Controla qué usuarios no administradores pueden descubrir y llamar a este servidor. Los administradores siempre tienen acceso.",
@@ -1214,6 +1214,9 @@
     "partialSuccess": "Se han importado {{count}} de {{total}} grupos correctamente. Algunos grupos han fallado:"
   },
   "users": {
+    "userGroups": "Grupos de usuarios",
+    "userGroupsHint": "Nombres separados por comas y sensibles a mayúsculas. Usa el mismo nombre para agrupar usuarios. Vacía el campo para quitar las membresías.",
+    "shareUserGroupsHint": "Los miembros de los grupos seleccionados pueden usar este recurso. Gestiona las membresías al editar usuarios.",
     "add": "Añadir usuario",
     "addNew": "Añadir nuevo usuario",
     "edit": "Editar usuario",

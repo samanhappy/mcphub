@@ -44,6 +44,9 @@ export class Group {
   visibility?: 'private' | 'group' | 'public';
 
   @Column({ type: 'simple-json', nullable: true })
+  sharedWithUserGroups?: string[];
+
+  @Column({ type: 'simple-json', nullable: true })
   sharedWithUsers?: string[];
 
   // Internal sync ownership; retained when configuration is edited through the dashboard.

@@ -24,6 +24,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
 
   const [formData, setFormData] = useState<GroupFormData>({
     visibility: group.visibility,
+    sharedWithUserGroups: group.sharedWithUserGroups || [],
     sharedWithUsers: group.sharedWithUsers || [],
     name: group.name,
     description: group.description || '',
@@ -58,6 +59,7 @@ const EditGroupForm = ({ group, onEdit, onCancel }: EditGroupFormProps) => {
 
       const result = await updateGroup(group.id, {
         visibility: formData.visibility,
+        sharedWithUserGroups: formData.sharedWithUserGroups,
         sharedWithUsers: formData.sharedWithUsers,
         name: formData.name,
         description: formData.description,

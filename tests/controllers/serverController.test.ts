@@ -159,7 +159,7 @@ describe('serverController - server share candidates', () => {
     mockUserDao.findAll.mockResolvedValue([
       { username: 'charlie', password: 'secret', isAdmin: false },
       { username: 'bob', password: 'secret', isAdmin: false },
-      { username: 'alice', password: 'secret', isAdmin: false },
+      { username: 'alice', password: 'secret', isAdmin: false, userGroups: ['readers', 'readers'] },
     ]);
   });
 
@@ -178,6 +178,7 @@ describe('serverController - server share candidates', () => {
     expect(json).toHaveBeenCalledWith({
       success: true,
       data: ['alice', 'charlie'],
+      userGroups: ['readers'],
     });
   });
 
@@ -207,6 +208,7 @@ describe('serverController - server share candidates', () => {
     expect(json).toHaveBeenCalledWith({
       success: true,
       data: ['alice', 'charlie'],
+      userGroups: [],
     });
   });
 
@@ -1613,7 +1615,7 @@ describe('serverController - updateServer', () => {
       keepAliveInterval: 60000,
       openapi: undefined,
     });
-    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined);
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined, undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
@@ -1645,7 +1647,7 @@ describe('serverController - updateServer', () => {
         sharedWithUsers: ['bob'],
       }),
     );
-    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', ['bob']);
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', ['bob'], undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
   });
@@ -1677,7 +1679,7 @@ describe('serverController - updateServer', () => {
     await updateServer(mockRequest as Request, mockResponse as Response);
 
     expect(mockServerDao.update).toHaveBeenCalled();
-    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined);
+    expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'public', undefined, undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
@@ -1718,7 +1720,7 @@ describe('serverController - updateServer', () => {
     expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', [
       'alice',
       'bob',
-    ]);
+    ], undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
@@ -1771,7 +1773,7 @@ describe('serverController - updateServer', () => {
     expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith('test-server', 'group', [
       'admin2',
       'test2',
-    ]);
+    ], undefined);
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();
     expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
     expect(mockNotifyToolChanged).not.toHaveBeenCalled();
@@ -1811,6 +1813,7 @@ describe('serverController - updateServer', () => {
     expect(mockUpdateServerInfoVisibility).toHaveBeenCalledWith(
       'test-server',
       'private',
+      undefined,
       undefined,
     );
     expect(mockBroadcastToolListChanged).toHaveBeenCalled();

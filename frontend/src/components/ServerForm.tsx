@@ -1,3 +1,4 @@
+import UserGroupSelection from './UserGroupSelection';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -143,6 +144,7 @@ const ServerForm = ({
     passthroughHeaders: initialData?.config?.passthroughHeaders?.join(', ') || '',
     visibility: (initialData?.config?.visibility ?? 'private') as 'private' | 'group' | 'public',
     sharedWithUsers: initialData?.config?.sharedWithUsers || [],
+    sharedWithUserGroups: initialData?.config?.sharedWithUserGroups || [],
     options: {
       maxBufferSize: initialData?.config?.options?.maxBufferSize,
       timeout:
@@ -239,6 +241,7 @@ const ServerForm = ({
   });
 
   const [shareCandidates, setShareCandidates] = useState<string[]>([]);
+  const [shareUserGroups, setShareUserGroups] = useState<string[]>([]);
   const [shareCandidatesLoading, setShareCandidatesLoading] = useState(false);
   const [shareCandidatesError, setShareCandidatesError] = useState(false);
   const [shareUserSearch, setShareUserSearch] = useState('');
@@ -254,7 +257,7 @@ const ServerForm = ({
     setShareCandidatesLoading(true);
     setShareCandidatesError(false);
 
-    void apiGet<{ success: boolean; data?: string[] }>(
+    void apiGet<{ success: boolean; data?: string[]; userGroups?: string[] }>(
       `/servers/${encodeURIComponent(shareCandidatesServer)}/share-candidates`,
     )
       .then((response) => {
@@ -262,6 +265,7 @@ const ServerForm = ({
 
         if (response.success && Array.isArray(response.data)) {
           setShareCandidates(response.data);
+          setShareUserGroups(response.userGroups || []);
         } else {
           setShareCandidatesError(true);
         }
@@ -1968,6 +1972,16 @@ const ServerForm = ({
 
                 {formData.visibility === 'group' && (
                   <div className="mt-4 rounded border border-gray-200 dark:border-gray-700 p-3">
+                    <UserGroupSelection
+                      options={shareUserGroups}
+                      selected={formData.sharedWithUserGroups || []}
+                      disabled={
+                        shareCandidatesLoading || shareCandidatesError || !initialData?.name
+                      }
+                      onChange={(sharedWithUserGroups) =>
+                        setFormData((previous) => ({ ...previous, sharedWithUserGroups }))
+                      }
+                    />
                     <div className="text-sm font-medium text-[var(--hub-ink-2)]">
                       {t('server.shareWithUsers', 'Share with users')}
                     </div>

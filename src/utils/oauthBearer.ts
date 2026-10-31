@@ -24,6 +24,7 @@ export const resolveOAuthUserFromToken = async (token?: string): Promise<IUser |
   return {
     username: oauthToken.username,
     password: '',
+    userGroups: dbUser.userGroups,
     isAdmin: dbUser?.isAdmin || false,
   };
 };
