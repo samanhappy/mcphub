@@ -1,0 +1,204 @@
+src/routes/index.ts
+  s_1cea7af971a5ce::t_ec5d84a838ff64 132-135,230-231,278-282
+tests/docker/replicas/upstream.mjs
+  s_1cea7af971a5ce::t_704016ed2f7aac 7-8,16-18,33-39
+  s_1cea7af971a5ce::t_a75f50c840ec65 1-3,5-6,9-15
+  s_1cea7af971a5ce::t_6c10ffcd43b16b 4,19-32
+tests/utils/replicaMode.test.ts
+  s_1cea7af971a5ce::t_8144ff0534eaed 1-6,12-15,19-21,29-44
+  s_1cea7af971a5ce::t_704016ed2f7aac 7-11,16-18,22-28
+docs/zh/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_4c5738ba9822e8 1-63
+src/utils/logger.ts
+  s_1cea7af971a5ce::t_44d194357f325a 1-4,193-195
+src/services/mcpOAuthProvider.ts
+  s_1cea7af971a5ce::t_1d0c43ce443393 2-4,312-317,701,751-758
+tests/services/mcpService-toggle.test.ts
+  s_1cea7af971a5ce::t_fe6a40f9aba141 202-203
+  s_1cea7af971a5ce::t_4832da498f9931 111,198-201,204-207
+  s_1cea7af971a5ce::t_29b485f97fdf4a 208-209
+src/db/connection.ts
+  s_1cea7af971a5ce::t_c8f4b9845c050c 12,106,221-222
+  s_1cea7af971a5ce::t_ef0a61111b5590 162
+  s_1cea7af971a5ce::t_7a1ddec79d8a3a 223
+src/services/oauthServerService.ts
+  s_1cea7af971a5ce::t_32150591811d09 102,133,170
+  s_1cea7af971a5ce::t_7d5b90765cdc2e 20,339,344
+src/middlewares/replicaConfig.ts
+  s_1cea7af971a5ce::t_04924fafb0e18e 1-4,10-11,13-15,20-26,32-37,49-52,54-56,60-69,72-73,77-81,83,85,91-106,108-111,116-125,136-139
+  s_1cea7af971a5ce::t_6a5c3f6fa1cf32 39-41
+  s_1cea7af971a5ce::t_5fda8fe539e36c 84,86-90,112-113,115,126-135
+  s_1cea7af971a5ce::t_704016ed2f7aac 5-9,27-30,38,42-44,46-48,57-59,74-76
+  s_1cea7af971a5ce::t_7d5b90765cdc2e 45
+  s_1cea7af971a5ce::t_fdcb7b08b8e735 53,82
+  s_1cea7af971a5ce::t_a4d16329a90670 71
+  s_1cea7af971a5ce::t_44d194357f325a 12,16-19,31,70,107
+  s_1cea7af971a5ce::t_c3b796135bd8af 114
+tests/docker/replicas/settings.json
+  s_1cea7af971a5ce::t_fc6851a2e37dc1 6
+  s_1cea7af971a5ce::t_a75f50c840ec65 1,3-5,7-11
+  s_1cea7af971a5ce::t_11b102441f6cd5 2
+docs/zh/configuration/environment-variables.mdx
+  s_1cea7af971a5ce::t_125556c0874996 21-23
+src/services/replicaLock.ts
+  s_1cea7af971a5ce::t_5693a004113616 1-27
+src/controllers/healthController.ts
+  s_1cea7af971a5ce::t_639b6fbc2c04af 59
+  s_1cea7af971a5ce::t_fdcb7b08b8e735 68
+  s_1cea7af971a5ce::t_ec5d84a838ff64 2-5,60-67,69-78
+tests/routes/index.test.ts
+  s_1cea7af971a5ce::t_a4d16329a90670 146-147
+tests/integration/personal-oauth.test.ts
+  s_1cea7af971a5ce::t_11b102441f6cd5 175,194,211,226,259,265
+src/services/metricsService.ts
+  s_1cea7af971a5ce::t_44d194357f325a 6-9
+tests/integration/replica-config.test.ts
+  s_1cea7af971a5ce::t_e4f3e384ad1b88 1-3,18,28-30,33-34,44-45,47,67,71,73-74,77-78,82,85-88,95,197-198
+  s_1cea7af971a5ce::t_16e3a68f248c84 41,60-66,125-139
+  s_1cea7af971a5ce::t_aeb1a1e04b6be2 4-8,15,19,23,26-27,31-32,46,48-54,58-59,72,75-76,99-104,110-115,120,124,140-154,158
+  s_1cea7af971a5ce::t_4fa4d89b292392 16-17,159-163,174-175,181-184,195-196
+  s_1cea7af971a5ce::t_704016ed2f7aac 9-14,20-22,24-25,35-40,42-43,55-57,68-70,79-81,83-84,89-94,96-98,105-109,116-119,121-123,155-157,164-173,176-180,185-194
+tests/docker/replicas/nginx.conf
+  s_1cea7af971a5ce::t_a75f50c840ec65 1-37
+src/services/oauthClientRegistration.ts
+  s_1cea7af971a5ce::t_1d0c43ce443393 13-16,494,531-548
+  s_1cea7af971a5ce::t_aad4bf5865b64a 549
+src/server.ts
+  s_1cea7af971a5ce::t_ec5d84a838ff64 12-14,71,141,215,291,298-300
+  s_1cea7af971a5ce::t_6968c07e66ddf2 15,140,225
+src/services/replicaService.ts
+  s_1cea7af971a5ce::t_7d5b90765cdc2e 8,18,65-69
+  s_1cea7af971a5ce::t_ec5d84a838ff64 5,61,102
+  s_1cea7af971a5ce::t_704016ed2f7aac 20-22,26-30,34-38,63-64,70-73,87-89,96-99,103-105
+  s_1cea7af971a5ce::t_04924fafb0e18e 1-4,6-7,9-16,19,24-25,31-33,39-51,54-58,60,62,74-78,80-84,86,90-95,100-101,106-113
+  s_1cea7af971a5ce::t_fdcb7b08b8e735 17,23,52-53,79
+  s_1cea7af971a5ce::t_5fda8fe539e36c 59,85
+src/db/replicaSchema.ts
+  s_1cea7af971a5ce::t_704016ed2f7aac 18-26,28-30
+  s_1cea7af971a5ce::t_c8f4b9845c050c 3-17,27,31-39
+  s_1cea7af971a5ce::t_e4f3e384ad1b88 1-2
+src/db/entities/index.ts
+  s_1cea7af971a5ce::t_32150591811d09 2,20,40
+src/utils/replicaLogContext.ts
+  s_1cea7af971a5ce::t_44d194357f325a 1-3,7
+  s_1cea7af971a5ce::t_704016ed2f7aac 4-6
+src/services/mcpService.ts
+  s_1cea7af971a5ce::t_16e3a68f248c84 98,6223
+  s_1cea7af971a5ce::t_5693a004113616 4,122,1343,5526,5535-5536,5538-5558,5564,5644,5647
+  s_1cea7af971a5ce::t_5f6efac8ea7540 2-3,1993-1994,2211,2213,2246-2253,2787-2794,2798-2803,6242
+  s_1cea7af971a5ce::t_fdcb7b08b8e735 2795-2797
+  s_1cea7af971a5ce::t_1d0c43ce443393 2804,5537,6218-6222,6227-6232,6234-6240
+  s_1cea7af971a5ce::t_fc9762c0aafe17 6224-6226
+  s_1cea7af971a5ce::t_6fad46d7e6e59c 6233
+  s_1cea7af971a5ce::t_a37f89edfa175f 2805
+docs/docs.json
+  s_1cea7af971a5ce::t_4c5738ba9822e8 47-48,96-97
+src/services/sseService.test.ts
+  s_1cea7af971a5ce::t_451658cd53ed8c 916-932
+  s_1cea7af971a5ce::t_dcc246ec2f2e9b 914-915
+src/utils/replicaMode.ts
+  s_1cea7af971a5ce::t_04c6a4ce584dea 1-16
+src/db/setup.ts
+  s_1cea7af971a5ce::t_c8f4b9845c050c 1-5,7-13,15-22
+  s_1cea7af971a5ce::t_11b102441f6cd5 6,14
+tests/docker/replicas/refresh-worker.mjs
+  s_1cea7af971a5ce::t_6c10ffcd43b16b 1-21
+src/db/entities/OAuthState.ts
+  s_1cea7af971a5ce::t_32150591811d09 1-24
+docs/agents/architecture.md
+  s_1cea7af971a5ce::t_4c5738ba9822e8 29-30
+package.json
+  s_1cea7af971a5ce::t_75d48116586761 30
+  s_1cea7af971a5ce::t_c8f4b9845c050c 20
+tests/controllers/healthController.test.ts
+  s_1cea7af971a5ce::t_639b6fbc2c04af 14,61-67,177
+src/models/OAuth.ts
+  s_1cea7af971a5ce::t_32150591811d09 6-8,12,82,85,88-93,105,107-111,128,130-132,151,154,158-163,177,179-183,201,203-208,334-336
+  s_1cea7af971a5ce::t_04c6a4ce584dea 9
+  s_1cea7af971a5ce::t_62a53647b0eac9 11,87,106,129,157,178,202,282,294,333
+  s_1cea7af971a5ce::t_c2476d208d2f4e 10
+src/clients/openapi.ts
+  s_1cea7af971a5ce::t_1d0c43ce443393 2,1088,1098
+src/services/sseService.ts
+  s_1cea7af971a5ce::t_6a5c3f6fa1cf32 46,1050,1209
+README.zh.md
+  s_1cea7af971a5ce::t_125556c0874996 51
+src/middlewares/userContext.ts
+  s_1cea7af971a5ce::t_fc6851a2e37dc1 63
+src/index.ts
+  s_1cea7af971a5ce::t_ec5d84a838ff64 8,168
+src/utils/migration.ts
+  s_1cea7af971a5ce::t_11b102441f6cd5 2,422-423
+  s_1cea7af971a5ce::t_c6e1913cac89d1 424
+tests/docker/replicas/compose.yml
+  s_1cea7af971a5ce::t_11b102441f6cd5 13
+  s_1cea7af971a5ce::t_a75f50c840ec65 1-12,14-18,23-39,41-73
+  s_1cea7af971a5ce::t_ac9af902d17845 40,74-75
+  s_1cea7af971a5ce::t_fc6851a2e37dc1 19-22
+src/services/personalOAuthService.ts
+  s_1cea7af971a5ce::t_5693a004113616 2,35-36
+src/services/oauthSettingsStore.ts
+  s_1cea7af971a5ce::t_4342ed6b53f5b9 62-65
+  s_1cea7af971a5ce::t_932bdc84580080 4-7,48-49,61,66-68
+  s_1cea7af971a5ce::t_54cde3685534d1 69
+tests/docker/replicas/smoke.mjs
+  s_1cea7af971a5ce::t_75d48116586761 1-9,12,24-26,35-41,53-56,62-63,72-73,80-82,99,109-120,134,140-141,148-150,164-165,174-182,193,198-201,254-258,262-267,323-329,345,349-353,359-360,362-364,382
+  s_1cea7af971a5ce::t_704016ed2f7aac 13-23,29-34,42-52,57-61,64-71,74-79,83-98,100-108,121-133,135-139,151-163,167-173,183-192,194-197,202-253,259-261,330-344,346-348,354-358,365-374,376-381
+  s_1cea7af971a5ce::t_451658cd53ed8c 283-300,302-304,306-315,317-319,321-322
+  s_1cea7af971a5ce::t_6c10ffcd43b16b 268-282
+  s_1cea7af971a5ce::t_7d5b90765cdc2e 10-11,361,375
+  s_1cea7af971a5ce::t_8144ff0534eaed 166
+  s_1cea7af971a5ce::t_ac9af902d17845 27-28
+  s_1cea7af971a5ce::t_fc9762c0aafe17 142-147
+  s_1cea7af971a5ce::t_01d5fcc42a550b 301,305,316,320
+docs/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_4c5738ba9822e8 1-67
+tests/middlewares/userContext.test.ts
+  s_1cea7af971a5ce::t_602f1da275f352 6,61-79
+  s_1cea7af971a5ce::t_540ca40af051ce 80-81
+tests/services/mcpService-disabled-tool-execution.test.ts
+  s_1cea7af971a5ce::t_932bdc84580080 26,34,43,58,169-185,190-193
+  s_1cea7af971a5ce::t_6fad46d7e6e59c 186-189
+README.md
+  s_1cea7af971a5ce::t_125556c0874996 52
+README.fr.md
+  s_1cea7af971a5ce::t_125556c0874996 49
+src/controllers/metricsController.ts
+  s_1cea7af971a5ce::t_44d194357f325a 2-3,12,30-35
+tests/models/oauth.test.ts
+  s_1cea7af971a5ce::t_2032803ae20d9c 180-181,193,201,215,219-220,227,229-230,317-318,321,324-326,329-333,338-339,406
+tests/docker/replicas/Dockerfile
+  s_1cea7af971a5ce::t_a75f50c840ec65 1-15
+src/controllers/oauthDynamicRegistrationController.ts
+  s_1cea7af971a5ce::t_2032803ae20d9c 146,246,319,503,524
+tests/integration/replica-oauth.test.ts
+  s_1cea7af971a5ce::t_04c6a4ce584dea 2,11,14,34,36-37
+  s_1cea7af971a5ce::t_704016ed2f7aac 16-23,26-31,42-44,47-53,55-56,72-79
+  s_1cea7af971a5ce::t_432ae5d468f326 1,3-10,12-13,15,24-25,32-33,35,38-41,45-46,54,57-63,66-71,80-84
+  s_1cea7af971a5ce::t_4fa4d89b292392 64-65
+src/db/transactionContext.ts
+  s_1cea7af971a5ce::t_c8f4b9845c050c 1-12,16-23
+  s_1cea7af971a5ce::t_704016ed2f7aac 13-15
+scripts/test-replicas.sh
+  s_1cea7af971a5ce::t_75d48116586761 1-10
+docs/configuration/environment-variables.mdx
+  s_1cea7af971a5ce::t_125556c0874996 13-15
+tests/integration/user-offboarding.test.ts
+  s_1cea7af971a5ce::t_2032803ae20d9c 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "743901220a08f50961eb1b185702c9374fd4e2f2",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
