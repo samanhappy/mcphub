@@ -20,6 +20,9 @@ jest.mock('../../src/dao/index.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   notifyToolChanged: jest.fn(),
+  broadcastToolListChanged: jest.fn(),
+  broadcastPromptListChanged: jest.fn(),
+  broadcastResourceListChanged: jest.fn(),
 }));
 
 jest.mock('../../src/services/userContextService.js', () => ({

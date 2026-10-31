@@ -29,6 +29,9 @@ jest.mock('../../src/dao/index.js', () => ({
 
 jest.mock('../../src/services/mcpService.js', () => ({
   notifyToolChanged: jest.fn(),
+  broadcastToolListChanged: jest.fn(),
+  broadcastPromptListChanged: jest.fn(),
+  broadcastResourceListChanged: jest.fn(),
 }));
 
 jest.mock('../../src/services/services.js', () => ({
@@ -44,7 +47,12 @@ jest.mock('../../src/services/userContextService.js', () => ({
   },
 }));
 
-import { notifyToolChanged } from '../../src/services/mcpService.js';
+import {
+  notifyToolChanged,
+  broadcastToolListChanged,
+  broadcastPromptListChanged,
+  broadcastResourceListChanged,
+} from '../../src/services/mcpService.js';
 import {
   createGroup,
   getAllGroups,
@@ -134,7 +142,45 @@ describe('groupService authorization', () => {
     await expect(removeServerFromGroup('group-1', 'server-1')).resolves.toEqual(
       expect.objectContaining({ servers: [] }),
     );
-    expect(notifyToolChanged).toHaveBeenCalledTimes(1);
+    expect(broadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(broadcastPromptListChanged).toHaveBeenCalledTimes(1);
+    expect(broadcastResourceListChanged).toHaveBeenCalledTimes(1);
+    expect(notifyToolChanged).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['metadata', () => updateGroup('group-1', { description: 'updated' })],
+    ['membership replacement', () => updateGroupServers('group-1', ['server-2'])],
+    ['membership addition', () => addServerToGroup('group-1', 'server-2')],
+  ])(
+    'broadcasts all capability lists without reconnecting on %s changes',
+    async (_name, mutate) => {
+      mockUserContextService.getCurrentUser.mockReturnValue({ username: 'admin', isAdmin: true });
+      await expect(mutate()).resolves.not.toBeNull();
+      expect(notifyToolChanged).not.toHaveBeenCalled();
+      expect(broadcastToolListChanged).toHaveBeenCalledTimes(1);
+      expect(broadcastPromptListChanged).toHaveBeenCalledTimes(1);
+      expect(broadcastResourceListChanged).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('broadcasts only tools when the tool selection changes', async () => {
+    mockUserContextService.getCurrentUser.mockReturnValue({ username: 'admin', isAdmin: true });
+    await expect(updateServerToolsInGroup('group-1', 'server-1', [])).resolves.not.toBeNull();
+    expect(notifyToolChanged).not.toHaveBeenCalled();
+    expect(broadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(broadcastPromptListChanged).not.toHaveBeenCalled();
+    expect(broadcastResourceListChanged).not.toHaveBeenCalled();
+  });
+
+  it('does not write or notify when adding an existing member', async () => {
+    mockUserContextService.getCurrentUser.mockReturnValue({ username: 'admin', isAdmin: true });
+    await expect(addServerToGroup('group-1', 'server-1')).resolves.toEqual(adminOwnedGroup);
+    expect(mockGroupDao.update).not.toHaveBeenCalled();
+    expect(notifyToolChanged).not.toHaveBeenCalled();
+    expect(broadcastToolListChanged).not.toHaveBeenCalled();
+    expect(broadcastPromptListChanged).not.toHaveBeenCalled();
+    expect(broadcastResourceListChanged).not.toHaveBeenCalled();
   });
 
   it('allows admins to mutate groups they do not own', async () => {
