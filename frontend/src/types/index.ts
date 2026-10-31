@@ -205,6 +205,7 @@ export interface MyCredentialBinding {
   credentialTemplate: CredentialSlot[];
   configured: boolean;
   configuredSlots: string[];
+  valuePreviews?: Record<string, string>;
   updatedAt: string | null;
 }
 

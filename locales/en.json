@@ -1514,6 +1514,8 @@
     "manage": "Manage",
     "configured": "Configured",
     "required": "Binding required",
+    "previewNotice": "Only the last four characters of saved values are shown. Values of four characters or fewer are fully masked. To replace a binding, enter new values for every slot.",
+    "savedValue": "Saved value",
     "writeOnly": "Saved values cannot be displayed. To replace a binding, enter new values for every slot.",
     "replaceValue": "Enter replacement value",
     "enterValue": "Enter credential",

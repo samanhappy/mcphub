@@ -547,7 +547,7 @@ test('args credentials reach the child literally, isolate users, and redact fail
   }
 });
 
-test('dashboard bindings are write-only, self-scoped, and preserve the shared safe view', async () => {
+test('dashboard bindings return self-scoped masked previews and preserve the shared safe view', async () => {
   expect(getServerConnectionStats()).toEqual({ total: 0, connected: 0, disconnected: 0 });
   expect((await request(app).get('/api/credentials')).status).toBe(401);
   expect((await bind(alice, 'alice-sentinel')).status).toBe(200);
@@ -555,9 +555,11 @@ test('dashboard bindings are write-only, self-scoped, and preserve the shared sa
     .get('/api/credentials')
     .set('x-auth-token', apiToken(alice));
   expect(aliceStatus.body.data[0].configured).toBe(true);
+  expect(aliceStatus.body.data[0].valuePreviews).toEqual({ 'env.PERSONAL_KEY': '••••inel' });
   expect(JSON.stringify(aliceStatus.body)).not.toContain('alice-sentinel');
   const bobStatus = await request(app).get('/api/credentials').set('x-auth-token', apiToken(bob));
   expect(bobStatus.body.data[0].configured).toBe(false);
+  expect(bobStatus.body.data[0].valuePreviews).toEqual({});
   const config = await request(app).get('/api/servers/shared').set('x-auth-token', apiToken(alice));
   expect(config.body.data.config.configRestricted).toBe(true);
   expect(config.body.data.config.credentialTemplate).toEqual([
@@ -600,6 +602,9 @@ test('admins provision write-only target bindings with live isolation and explic
     configuredSlots: ['env.PERSONAL_KEY'],
     updatedAt: expect.any(String),
   });
+  expect(
+    status.body.data.find((entry: any) => entry.serverName === 'shared'),
+  ).not.toHaveProperty('valuePreviews');
   expect(JSON.stringify(status.body)).not.toContain('admin-provisioned-sentinel');
   expect(JSON.stringify(status.body)).not.toContain('encryptedValues');
   expect((await update(apiToken('admin'), { values: { 'env.PERSONAL_KEY': '' } })).status).toBe(

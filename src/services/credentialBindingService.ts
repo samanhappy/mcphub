@@ -152,6 +152,7 @@ export const getCredentialBindingStatus = async (
   serverName: string,
   username: string,
   config: ServerConfig,
+  includePreviews = false,
 ) => {
   const binding = await getCredentialBindingDao().get(serverName, username);
   const slots = validateCredentialTemplate(config) || [];
@@ -162,6 +163,16 @@ export const getCredentialBindingStatus = async (
   return {
     configured: slots.length > 0 && configuredSlots.length === slots.length,
     configuredSlots,
+    ...(includePreviews
+      ? {
+          valuePreviews: Object.fromEntries(
+            configuredSlots.map((id) => {
+              const characters = Array.from(values[id]);
+              return [id, `••••${characters.length > 4 ? characters.slice(-4).join('') : ''}`];
+            }),
+          ),
+        }
+      : {}),
     updatedAt: binding?.updatedAt ?? null,
   };
 };
