@@ -578,7 +578,7 @@ test('dashboard bindings return self-scoped masked previews and preserve the sha
   ).not.toBe(200);
 });
 
-test('admins provision write-only target bindings with live isolation and explicit authentication', async () => {
+test('admins receive masked target previews while preserving isolation and authentication', async () => {
   const endpoint = `/api/users/${encodeURIComponent(alice)}/credentials`;
   const values = { 'env.PERSONAL_KEY': 'admin-provisioned-sentinel' };
   await bind(bob, 'bob-admin-test');
@@ -603,10 +603,8 @@ test('admins provision write-only target bindings with live isolation and explic
     configured: true,
     configuredSlots: ['env.PERSONAL_KEY'],
     updatedAt: expect.any(String),
+    valuePreviews: { 'env.PERSONAL_KEY': '••••inel' },
   });
-  expect(
-    status.body.data.find((entry: any) => entry.serverName === 'shared'),
-  ).not.toHaveProperty('valuePreviews');
   expect(JSON.stringify(status.body)).not.toContain('admin-provisioned-sentinel');
   expect(JSON.stringify(status.body)).not.toContain('encryptedValues');
   expect((await update(apiToken('admin'), { values: { 'env.PERSONAL_KEY': '' } })).status).toBe(

@@ -168,7 +168,11 @@ export const getCredentialBindingStatus = async (
           valuePreviews: Object.fromEntries(
             configuredSlots.map((id) => {
               const characters = Array.from(values[id]);
-              return [id, `••••${characters.length > 4 ? characters.slice(-4).join('') : ''}`];
+              const visible = characters.length <= 4 ? 1 : characters.length <= 8 ? 2 : 4;
+              return [
+                id,
+                `••••${characters.length > 1 ? characters.slice(-visible).join('') : ''}`,
+              ];
             }),
           ),
         }
