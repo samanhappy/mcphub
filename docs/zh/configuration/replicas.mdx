@@ -25,6 +25,52 @@ DB_SYNCHRONIZE=false MCPHUB_REPLICA_MODE=true MCPHUB_NODE_ID=a pnpm start
 
 接入节点启动时不创建扩展、不修改表结构、不重建向量索引。缺少数据库结构、管理员种子、持久密钥，或接入节点启用了声明式同步，都会阻止启动。stdio 服务器需要各节点具有一致的程序、环境和本地文件；子进程与文件系统状态不会自动共享。
 
+## 使用 Docker 镜像部署
+
+仓库的 [`examples/replicas/`](https://github.com/samanhappy/mcphub/tree/main/examples/replicas) 提供可直接使用的 Compose 示例，包含两个 MCPHub 副本、持久化 PostgreSQL、一次性建库任务和 Nginx。需要支持 `--wait` 的 Docker Compose v2。镜像必须包含多副本功能，并使用固定版本标签或 digest；给旧镜像设置环境变量不会增加此功能。正式版本包含该功能前，可在本 PR 的检出目录中使用标准 Dockerfile 构建：
+
+```sh
+# 在包含多副本功能的仓库根目录执行
+docker build -t mcphub:replicas .
+cd examples/replicas
+
+# 仅在全新安装时生成一次；保留此文件并备份其中的密钥。
+umask 077
+cat > .env <<EOF
+MCPHUB_IMAGE=mcphub:replicas
+POSTGRES_PASSWORD=$(openssl rand -hex 24)
+JWT_SECRET=$(openssl rand -hex 32)
+MCPHUB_CREDENTIAL_ENCRYPTION_KEY=$(openssl rand -base64 32)
+ADMIN_PASSWORD=$(openssl rand -hex 24)
+INSTALL_BASE_URL=http://localhost:3080
+EOF
+
+docker compose up -d --wait postgres
+docker compose run --rm setup
+docker compose up -d --wait hub-a hub-b proxy
+docker compose ps
+curl --fail http://localhost:3080/nodes/a/readyz
+curl --fail http://localhost:3080/nodes/b/readyz
+```
+
+打开 `http://localhost:3080`，使用 `admin` 和 `.env` 中的 `ADMIN_PASSWORD` 登录。如使用已发布镜像，可跳过构建，将 `MCPHUB_IMAGE` 改为其固定标签或 digest，并在建库前拉取。建库任务和两个副本始终使用同一镜像；`node dist/db/setup.js` 在容器内执行，宿主机无需安装 Node.js 或 pnpm。只读 `settings.json` 用于初始化空安装，默认关闭 OAuth 服务；启动后通过管理界面/API 管理共享配置。共享配置和凭据存入 PostgreSQL，不共用可写设置文件或 stdio 数据卷。
+
+网关仅绑定宿主机回环地址；对外部署时通过 HTTPS 入口暴露，并在**首次建库前**将 `INSTALL_BASE_URL` 改为实际 HTTPS 地址，确保所有节点使用相同的安装及 OAuth 对外地址。示例 Nginx 已配置流式响应、亲和性请求头及固定节点入口。Compose 健康检查仅控制首次启动顺序，Nginx 不主动轮询 `/readyz`，也不会自动摘除未就绪节点；生产流量入口需要单独实现。重建容器可能改变 IP，更新后端后应重建或重载 Nginx。此单机示例不提供宿主机、数据库或负载均衡自身的容灾。
+
+已有安装应复用原数据库、JWT 密钥和凭据加密密钥，并在建库前备份数据库及密钥。升级应用时不要重新生成 `.env` 或顺便修改数据库密码。涉及表结构变更时先停止接流量和副本；本示例采用维护窗口，不假定所有结构变更都支持滚动升级：
+
+```sh
+docker compose stop proxy hub-a hub-b
+# 将 .env 中 MCPHUB_IMAGE 改为新固定版本后拉取；
+# 使用本地镜像时，则构建新版本并跳过 pull。
+docker compose pull setup hub-a hub-b
+docker compose run --rm setup
+docker compose up -d --wait hub-a hub-b
+docker compose up -d --force-recreate proxy
+```
+
+建库失败时保持服务停止，先检查错误再继续。`docker compose down` 保留数据库命名卷；`docker compose down -v` 会删除它。不要将 `.env` 提交到版本库，数据库备份必须同时保留对应密钥。此 Compose 文件不会自动迁移已有文件模式安装，迁移时需要先将原设置文件及凭据 sidecar 挂载到建库任务中。
+
 ## 配置与授权
 
 数据库触发器在配置写入的同一事务中递增版本，覆盖后台、CLI 和导入等入口。副本每 5 秒检查版本，刷新变化的服务器并保留未变化的连接。已应用版本表示配置已加载，不代表所有上游均已连接；上游连接失败单独报告为降级。

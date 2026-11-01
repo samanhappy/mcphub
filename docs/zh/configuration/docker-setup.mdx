@@ -7,6 +7,8 @@ description: '使用 Docker 和 Docker Compose 部署 MCPHub'
 
 本指南介绍使用 Docker 部署 MCPHub，包括开发和生产配置。
 
+多个 MCPHub 副本共享 PostgreSQL 时，请使用[多副本 Docker 部署指南](/zh/configuration/replicas#使用-docker-镜像部署)及配套 Compose 示例，按独立建库、启动副本的顺序部署，并遵守会话亲和性和故障恢复边界。
+
 ## Docker 快速开始
 
 ### 使用预构建镜像

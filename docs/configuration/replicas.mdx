@@ -25,6 +25,52 @@ DB_SYNCHRONIZE=false MCPHUB_REPLICA_MODE=true MCPHUB_NODE_ID=a pnpm start
 
 Serving replicas do not create extensions, synchronize tables or rebuild vector indexes at startup. A missing schema, unseeded database, missing persistent secrets, or serving-node `MCPHUB_SETTINGS_SYNC` is a startup error. Keep local binaries, environment variables and files consistent when using stdio servers; their child-process and local filesystem state is not shared.
 
+## Deploy Docker images with Compose
+
+The repository includes a deployment example in [`examples/replicas/`](https://github.com/samanhappy/mcphub/tree/main/examples/replicas): two MCPHub containers, a persistent PostgreSQL database, a one-off setup job, and Nginx. It requires Docker Compose v2 with `--wait` support. Use a versioned image or digest that includes replica mode; an older published image will not gain this feature by setting environment variables. Until a release includes it, build from the PR checkout using the standard Dockerfile:
+
+```sh
+# From the repository root, on a checkout containing replica mode
+docker build -t mcphub:replicas .
+cd examples/replicas
+
+# Run only for a NEW installation; retain this file and back up its secrets.
+umask 077
+cat > .env <<EOF
+MCPHUB_IMAGE=mcphub:replicas
+POSTGRES_PASSWORD=$(openssl rand -hex 24)
+JWT_SECRET=$(openssl rand -hex 32)
+MCPHUB_CREDENTIAL_ENCRYPTION_KEY=$(openssl rand -base64 32)
+ADMIN_PASSWORD=$(openssl rand -hex 24)
+INSTALL_BASE_URL=http://localhost:3080
+EOF
+
+docker compose up -d --wait postgres
+docker compose run --rm setup
+docker compose up -d --wait hub-a hub-b proxy
+docker compose ps
+curl --fail http://localhost:3080/nodes/a/readyz
+curl --fail http://localhost:3080/nodes/b/readyz
+```
+
+Open `http://localhost:3080` and sign in as `admin` with the `ADMIN_PASSWORD` in `.env`. To use a published image instead, skip the build, set `MCPHUB_IMAGE` to its fixed tag or digest and pull it before running setup. The setup job and both replicas always use that same image; `node dist/db/setup.js` runs inside the image, so the host needs no Node.js or pnpm. The read-only `settings.json` seeds an empty installation with the OAuth server disabled; manage shared configuration through the dashboard/API after startup. Shared configuration and credentials are stored in PostgreSQL, without shared writable settings files or stdio volumes.
+
+The gateway binds only to host loopback; expose it through your HTTPS ingress and set `INSTALL_BASE_URL` to that external HTTPS URL **before setup**. Configure the same public installation/OAuth URLs on all nodes. The included Nginx configuration provides streaming, affinity headers and fixed node endpoints. Compose health checks gate initial startup, but Nginx does not actively poll `/readyz` or automatically drain unhealthy nodes: production routing must do that separately. Container recreation can change IP addresses; recreate/reload Nginx after changing backends. This single-host example does not protect against host, database or load-balancer loss.
+
+For an existing installation, reuse the current database, JWT secret and credential encryption key; back up the database and keys before setup. Do not regenerate `.env` or rotate the database password during an application upgrade. Stop traffic and replicas before schema changes; this example uses a maintenance window rather than assuming every schema change supports rolling upgrades:
+
+```sh
+docker compose stop proxy hub-a hub-b
+# Update MCPHUB_IMAGE in .env to the new fixed version, then pull it
+# (or build the new local image and skip this pull).
+docker compose pull setup hub-a hub-b
+docker compose run --rm setup
+docker compose up -d --wait hub-a hub-b
+docker compose up -d --force-recreate proxy
+```
+
+If setup fails, leave serving containers stopped and inspect its error before continuing. `docker compose down` keeps the named database volume; `docker compose down -v` deletes it. Keep `.env` out of source control and preserve its secrets alongside database backups. This Compose file does not migrate an existing file-based installation automatically; that requires mounting its settings and credential sidecars into the setup job first.
+
 ## Configuration and authorization
 
 Database triggers advance a shared revision in the same transaction as configuration writes, including imports. Nodes check every five seconds and reconcile changed server definitions while preserving unchanged connections. The desired and applied revisions refer to loaded configuration, not successful connectivity to every upstream. An unavailable upstream is reported as degraded separately.

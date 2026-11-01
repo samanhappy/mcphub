@@ -1,0 +1,7 @@
+{
+  "mcpServers": {},
+  "users": [],
+  "systemConfig": {
+    "oauthServer": { "enabled": false }
+  }
+}

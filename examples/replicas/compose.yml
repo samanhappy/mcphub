@@ -1,0 +1,73 @@
+x-environment: &environment
+  NODE_ENV: production
+  USE_DB: 'true'
+  DB_URL: postgresql://mcphub:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/mcphub
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  MCPHUB_CREDENTIAL_ENCRYPTION_KEY: ${MCPHUB_CREDENTIAL_ENCRYPTION_KEY:?Set MCPHUB_CREDENTIAL_ENCRYPTION_KEY}
+  INSTALL_BASE_URL: ${INSTALL_BASE_URL:-http://localhost:3080}
+  MCPHUB_SETTING_PATH: /app/replica-settings.json
+  DB_SYNCHRONIZE: 'false'
+  MCPHUB_REPLICA_MODE: 'true'
+  TRUST_PROXY: '1'
+
+x-hub: &hub
+  image: ${MCPHUB_IMAGE:?Set MCPHUB_IMAGE to a replica-capable image tag or digest}
+  environment: *environment
+  volumes: ['./settings.json:/app/replica-settings.json:ro']
+  restart: unless-stopped
+  stop_grace_period: 20s
+  depends_on:
+    postgres: { condition: service_healthy }
+  healthcheck:
+    test: [CMD, node, -e, "fetch('http://localhost:3000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 5s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: mcphub
+      POSTGRES_USER: mcphub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U mcphub -d mcphub]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  setup:
+    <<: *hub
+    profiles: [setup]
+    environment:
+      <<: *environment
+      DB_SYNCHRONIZE: 'true'
+      MCPHUB_REPLICA_MODE: 'false'
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD for initial setup}
+    command: [node, dist/db/setup.js]
+    restart: 'no'
+    healthcheck: { disable: true }
+
+  hub-a:
+    <<: *hub
+    environment: { <<: *environment, MCPHUB_NODE_ID: a }
+
+  hub-b:
+    <<: *hub
+    environment: { <<: *environment, MCPHUB_NODE_ID: b }
+
+  proxy:
+    image: nginx:alpine
+    ports: ['127.0.0.1:3080:80']
+    volumes: ['./nginx.conf:/etc/nginx/nginx.conf:ro']
+    restart: unless-stopped
+    depends_on:
+      hub-a: { condition: service_healthy }
+      hub-b: { condition: service_healthy }
+
+volumes:
+  postgres_data:
