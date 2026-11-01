@@ -10,6 +10,9 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port. |
+| `MCPHUB_REPLICA_MODE` | `false` | Opt in to [multi-replica deployment](/configuration/replicas). Requires PostgreSQL, persistent shared keys, and `DB_SYNCHRONIZE=false`. |
+| `MCPHUB_NODE_ID` | hostname | Node identity in replica diagnostics, response headers, logs and metrics. |
+| `DB_SYNCHRONIZE` | `true` | Set to `false` on serving replicas; run `pnpm db:setup` separately with this set to `true`. |
 | `BASE_PATH` | `''` | Mount-point prefix when MCPHub is served under a sub-path (e.g. `/mcphub`). |
 | `SMART_ROUTING_PATH` | `$smart` | Smart Routing path segment, e.g. `my_smart` for `/mcp/my_smart`. Use 1–64 ASCII letters, digits, hyphens or underscores. Restart required. The legacy `$smart` endpoint remains available. Server/group names and group IDs must not conflict with this value. |
 | `DEFAULT_REQUEST_TIMEOUT` | `60000` | Default request timeout (ms) for upstream MCP server requests when a server does not set `options.timeout`. |

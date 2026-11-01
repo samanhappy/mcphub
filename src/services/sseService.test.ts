@@ -913,6 +913,25 @@ describe('sseService', () => {
       expect(mockInstance.handleRequest).toHaveBeenCalledWith(req, res, req.body);
     });
 
+    it('requires reinitialization on another replica even when session rebuild is enabled', async () => {
+      const previous = process.env.MCPHUB_REPLICA_MODE;
+      process.env.MCPHUB_REPLICA_MODE = 'true';
+      try {
+        setMockSystemConfig({ routing: { enableGlobalRoute: true, enableBearerAuth: false }, enableSessionRebuild: true });
+        const req = createMockRequest({
+          params: { group: 'test-group' }, headers: { 'mcp-session-id': 'other-node-session' },
+          body: { method: 'tools/list' },
+        });
+        const res = createMockResponse();
+        await handleMcpPostRequest(req, res);
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(NodeStreamableHTTPServerTransport).not.toHaveBeenCalled();
+      } finally {
+        if (previous === undefined) delete process.env.MCPHUB_REPLICA_MODE;
+        else process.env.MCPHUB_REPLICA_MODE = previous;
+      }
+    });
+
     it('should rebuild sessions without issuing synthetic initialize requests', async () => {
       setMockSystemConfig({
         routing: {

@@ -49,6 +49,7 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 - **MCP Apps Proxy** - Transparently forward interactive MCP Apps on single-server routes ([Learn more](https://docs.mcphub.app/features/mcp-apps))
 - **Tool Result Compression** - Transparently reduce large text tool outputs before they reach clients
 - **Database Mode** - Store configuration in PostgreSQL for production environments ([Learn more](https://docs.mcphub.app/configuration/database-configuration))
+- **Multiple Replicas** - Share PostgreSQL configuration with explicit session affinity and reconnect boundaries ([Deployment guide](https://docs.mcphub.app/configuration/replicas))
 - **Docker-Ready** - Deploy instantly with containerized setup
 
 ## 🔧 Quick Start

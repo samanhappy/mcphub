@@ -3,6 +3,7 @@ import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { JWT_SECRET } from '../../src/config/jwt.js';
+import { UserContextService } from '../../src/services/userContextService.js';
 
 const getSystemConfigMock = jest.fn();
 const findByUsernameMock = jest.fn();
@@ -55,6 +56,27 @@ describe('sseUserContextMiddleware', () => {
     countMock.mockReset();
     resolveOAuthUserFromHeadersMock.mockResolvedValue(null);
     getBearerTokenFromHeadersMock.mockReturnValue(undefined);
+  });
+
+  it('forwards asynchronous storage failures to Express instead of leaving the request open', async () => {
+    const error = new Error('database unavailable');
+    getSystemConfigMock.mockRejectedValueOnce(error);
+    const context = UserContextService.getInstance();
+    const run = context.runWithContext.bind(context);
+    const observed = jest.spyOn(context, 'runWithContext').mockImplementation((callback) => {
+      const result = run(callback);
+      // Observe the rejected callback even when the middleware forgets to await it.
+      if (result instanceof Promise) void result.catch(() => undefined);
+      return result;
+    });
+    const next = jest.fn();
+    try {
+      await sseUserContextMiddleware({ params: {}, headers: {} } as Request, createResponse().response, next);
+      await waitForAsyncMiddleware();
+      expect(next).toHaveBeenCalledWith(error);
+    } finally {
+      observed.mockRestore();
+    }
   });
 
   it('rejects user-scoped SSE requests when JWT user is not found in persistence', async () => {

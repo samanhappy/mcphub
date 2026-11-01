@@ -11,7 +11,7 @@ jest.mock('../../src/db/connection.js', () => ({
   getDatabaseHealth: jest.fn(() => mockGetDatabaseHealth()),
 }));
 
-import { healthCheck } from '../../src/controllers/healthController.js';
+import { healthCheck, livenessCheck } from '../../src/controllers/healthController.js';
 
 describe('healthController', () => {
   const originalUseDb = process.env.USE_DB;
@@ -56,6 +56,13 @@ describe('healthController', () => {
       lastError: null,
       reconnecting: false,
     });
+  });
+
+  it('keeps liveness healthy when the database is down', () => {
+    process.env.USE_DB = 'true';
+    mockGetDatabaseHealth.mockReturnValue({ healthy: false, lastError: 'database down' });
+    livenessCheck(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(200);
   });
 
   afterAll(() => {

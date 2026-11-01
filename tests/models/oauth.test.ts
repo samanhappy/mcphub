@@ -177,8 +177,8 @@ describe('OAuth Model', () => {
   });
 
   describe('Authorization Code Management', () => {
-    test('should save and retrieve authorization code', () => {
-      const code = saveAuthorizationCode({
+    test('should save and retrieve authorization code', async () => {
+      const code = await saveAuthorizationCode({
         redirectUri: 'http://localhost:3000/callback',
         scope: 'read write',
         clientId: 'test-client',
@@ -190,7 +190,7 @@ describe('OAuth Model', () => {
       expect(code).toBeDefined();
       expect(typeof code).toBe('string');
 
-      const retrieved = getAuthorizationCode(code);
+      const retrieved = await getAuthorizationCode(code);
       expect(retrieved).toBeDefined();
       expect(retrieved?.redirectUri).toBe('http://localhost:3000/callback');
       expect(retrieved?.clientId).toBe('test-client');
@@ -198,7 +198,7 @@ describe('OAuth Model', () => {
     });
 
     test('should not retrieve expired authorization code', async () => {
-      const code = saveAuthorizationCode(
+      const code = await saveAuthorizationCode(
         {
           redirectUri: 'http://localhost:3000/callback',
           scope: 'read',
@@ -212,22 +212,22 @@ describe('OAuth Model', () => {
       // Wait a bit to ensure expiration
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const retrieved = getAuthorizationCode(code);
+      const retrieved = await getAuthorizationCode(code);
       expect(retrieved).toBeUndefined();
     });
 
-    test('should revoke authorization code', () => {
-      const code = saveAuthorizationCode({
+    test('should revoke authorization code', async () => {
+      const code = await saveAuthorizationCode({
         redirectUri: 'http://localhost:3000/callback',
         scope: 'read',
         clientId: 'test-client',
         username: 'testuser',
       });
 
-      expect(getAuthorizationCode(code)).toBeDefined();
+      expect(await getAuthorizationCode(code)).toBeDefined();
 
-      revokeAuthorizationCode(code);
-      expect(getAuthorizationCode(code)).toBeUndefined();
+      await revokeAuthorizationCode(code);
+      expect(await getAuthorizationCode(code)).toBeUndefined();
     });
   });
 
@@ -314,29 +314,29 @@ describe('OAuth Model', () => {
   });
 
   describe('Registration Access Token Lifecycle', () => {
-    test('should create and verify a registration access token', () => {
-      const token = createRegistrationToken('test-client');
+    test('should create and verify a registration access token', async () => {
+      const token = await createRegistrationToken('test-client');
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
-      expect(verifyRegistrationToken(token)).toBe('test-client');
+      expect(await verifyRegistrationToken(token)).toBe('test-client');
     });
 
-    test('should not verify an expired registration access token', () => {
-      const expired = createRegistrationToken('test-client', -1); // Expired immediately
-      expect(verifyRegistrationToken(expired)).toBeNull();
+    test('should not verify an expired registration access token', async () => {
+      const expired = await createRegistrationToken('test-client', -1); // Expired immediately
+      expect(await verifyRegistrationToken(expired)).toBeNull();
     });
 
-    test('should delete a registration access token', () => {
-      const token = createRegistrationToken('test-client');
-      expect(verifyRegistrationToken(token)).toBe('test-client');
-      deleteRegistrationToken(token);
-      expect(verifyRegistrationToken(token)).toBeNull();
+    test('should delete a registration access token', async () => {
+      const token = await createRegistrationToken('test-client');
+      expect(await verifyRegistrationToken(token)).toBe('test-client');
+      await deleteRegistrationToken(token);
+      expect(await verifyRegistrationToken(token)).toBeNull();
     });
 
     test('should sweep expired registration access tokens during cleanup', async () => {
       const before = countRegistrationTokens();
-      createRegistrationToken('live-client');
-      createRegistrationToken('expired-client', -1); // Expired immediately
+      await createRegistrationToken('live-client');
+      await createRegistrationToken('expired-client', -1); // Expired immediately
 
       expect(countRegistrationTokens()).toBe(before + 2);
 
@@ -403,7 +403,7 @@ describe('OAuth Model', () => {
       const client = dynamicClient();
       await createOAuthClient(client);
 
-      saveAuthorizationCode(
+      await saveAuthorizationCode(
         {
           redirectUri: 'https://claude.ai/api/mcp/auth_callback',
           scope: 'read',

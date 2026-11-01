@@ -5,6 +5,7 @@ import { createFetchWithProxy, getProxyConfigFromEnv } from './services/proxy.js
 import { isRetryableDbError } from './utils/dbRetry.js';
 import { hydrateSystemConfigCache, getCachedSystemConfig } from './utils/systemConfigCache.js';
 import { logger } from './utils/logger.js';
+import { validateReplicaEnvironment } from './utils/replicaMode.js';
 import {
   startHostedEventSubscriber,
   stopHostedEventSubscriber,
@@ -164,6 +165,7 @@ const setupGlobalProxyFetch = (): void => {
 
 async function boot() {
   try {
+    validateReplicaEnvironment();
     setupGlobalProxyFetch();
 
     // Check if database mode is enabled

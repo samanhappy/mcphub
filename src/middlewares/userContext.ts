@@ -60,7 +60,7 @@ export const sseUserContextMiddleware = async (
   try {
     const userContextService = UserContextService.getInstance();
     const username = req.params.user;
-    userContextService.runWithContext(async () => {
+    await userContextService.runWithContext(async () => {
       if (username) {
         const authenticatedUser = await resolveAuthenticatedUserForSse(req);
 

@@ -172,7 +172,7 @@ test.each([false, true])(
         authProvider: p.provider,
         fetch: fetchFn,
       }).finishAuth(user, override ? issuer : undefined);
-      expect(p.provider.tokens()?.access_token).toBe(`token-${user}`);
+      expect((await p.provider.tokens())?.access_token).toBe(`token-${user}`);
     }
     expect(tokenRequests[0].get('code_verifier')).toBe(aPending.codeVerifier);
     expect(tokenRequests[1].get('code_verifier')).toBe(bPending.codeVerifier);
@@ -191,7 +191,7 @@ test.each([false, true])(
         Array(3).fill(`${issuer}/token`),
       );
     }
-    expect((await provider('bob')).provider.tokens()?.access_token).toBe('token-bob');
+    expect((await (await provider('bob')).provider.tokens())?.access_token).toBe('token-bob');
     expect(mockDefinition.oauth).not.toHaveProperty('accessToken');
     const persisted = fs.readFileSync(
       `${process.env.MCPHUB_SETTING_PATH}.credentials.json`,
@@ -208,7 +208,7 @@ test('disconnection rejects a late SDK token save and never restores the old bin
   await expect(
     a.provider.saveTokens({ access_token: 'late', token_type: 'Bearer' }),
   ).rejects.toThrow('changed');
-  expect((await provider('alice')).provider.tokens()).toBeUndefined();
+  expect(await (await provider('alice')).provider.tokens()).toBeUndefined();
 });
 
 test('coalesces concurrent refresh requests for the same user binding', async () => {
@@ -223,7 +223,7 @@ test('coalesces concurrent refresh requests for the same user binding', async ()
     [1, 2].map(() => auth(a.provider, { serverUrl: mockDefinition.url!, fetchFn: wrapped })),
   );
   expect(tokenRequests).toHaveLength(1);
-  expect((await provider('alice')).provider.tokens()?.access_token).toBe('token-alice');
+  expect((await (await provider('alice')).provider.tokens())?.access_token).toBe('token-alice');
 });
 
 test('a failed refresh response does not poison subsequent refresh attempts', async () => {
@@ -256,13 +256,13 @@ test('an active personal OAuth flow survives normalization of the default SSE ty
     await expect(auth(a.provider, { serverUrl: mockDefinition.url!, fetchFn })).resolves.toBe(
       'AUTHORIZED',
     );
-    expect((await provider('alice')).provider.tokens()?.access_token).toBe('token-alice');
+    expect((await (await provider('alice')).provider.tokens())?.access_token).toBe('token-alice');
     expect(tokenRequests[0].get('refresh_token')).toBe('refresh-alice');
     mockDefinition.type = 'streamable-http';
     await expect(
       a.provider.saveTokens({ access_token: 'late', token_type: 'Bearer' }),
     ).rejects.toThrow('changed');
-    expect((await provider('alice')).provider.tokens()).toBeUndefined();
+    expect(await (await provider('alice')).provider.tokens()).toBeUndefined();
   } finally {
     mockDefinition.type = originalType;
   }

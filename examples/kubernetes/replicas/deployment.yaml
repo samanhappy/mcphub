@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcphub
+spec:
+  replicas: 2
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcphub
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcphub
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcphub
+      containers:
+        - name: mcphub
+          image: samanhappy/mcphub:latest
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 3000 }
+          envFrom:
+            - configMapRef: { name: mcphub-config }
+            - secretRef: { name: mcphub-secrets }
+          env:
+            - name: MCPHUB_NODE_ID
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+          startupProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 5
+            failureThreshold: 120
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 6
+            failureThreshold: 1
+          lifecycle:
+            preStop:
+              exec:
+                command: [node, -e, 'setTimeout(() => {}, 5000)']
+          volumeMounts:
+            - { name: settings, mountPath: /etc/mcphub, readOnly: true }
+      volumes:
+        - name: settings
+          configMap: { name: mcphub-settings }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mcphub
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcphub

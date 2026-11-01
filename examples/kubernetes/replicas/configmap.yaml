@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcphub-config
+data:
+  NODE_ENV: production
+  PORT: '3000'
+  USE_DB: 'true'
+  DB_SYNCHRONIZE: 'false'
+  MCPHUB_REPLICA_MODE: 'true'
+  MCPHUB_SETTING_PATH: /etc/mcphub/mcp_settings.json
+  INSTALL_BASE_URL: https://mcphub.example.com
+  TRUST_PROXY: '1'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcphub-settings
+data:
+  mcp_settings.json: |
+    {
+      "mcpServers": {},
+      "users": [],
+      "systemConfig": { "oauthServer": { "enabled": false } }
+    }

@@ -26,6 +26,8 @@ When adding or changing a persisted field, update every applicable layer:
 
 Database mode is selected at startup by the code in `src/dao/DaoFactory.ts`: `USE_DB=true` enables it; when `USE_DB` is unset, a configured `DB_URL` enables it; an explicit `USE_DB=false` disables it.
 
+Multi-replica mode is explicit (`MCPHUB_REPLICA_MODE=true`). Run `pnpm db:setup` once before serving with `DB_SYNCHRONIZE=false`; `src/db/replicaSchema.ts` tracks configuration writes transactionally, and `src/services/replicaService.ts` reconciles them every five seconds. Configuration API handlers use a request-scoped database transaction; preserve that scope when adding DAO access. Sessions and application workflow state remain local. See [replica deployment](../configuration/replicas.mdx) for the supported boundaries and `pnpm test:replicas` for disposable Docker verification.
+
 Personal credential import is independent of user seeding. Validate source and destination ciphertext with the existing runtime key before importing, and commit bindings with their internal `credential_binding_imports` receipts in one transaction. Receipts must survive binding deletion to prevent retained source files from restoring revoked credentials; keep them out of configuration exports.
 
 ## Bearer-key invariant

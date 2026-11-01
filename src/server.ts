@@ -9,7 +9,10 @@ import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
 import fs from 'fs';
-import { initUpstreamServers, connected, cleanupAllServers } from './services/mcpService.js';
+import { initUpstreamServers, connected, cleanupAllServers, reconcileReplicaServers } from './services/mcpService.js';
+import { startReplicaSync, stopReplicaSync } from './services/replicaService.js';
+import { replicaRequestContext } from './middlewares/replicaConfig.js';
+import { isReplicaMode } from './utils/replicaMode.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
 import { initI18n } from './utils/i18n.js';
@@ -65,6 +68,7 @@ export class AppServer {
 
   constructor() {
     this.app = express();
+    this.app.use(replicaRequestContext);
     this.app.set('trust proxy', resolveTrustProxySetting());
     // Delegate-based CORS so the Host header is available for the same-host
     // check inside resolveCorsOrigin.
@@ -133,8 +137,8 @@ export class AppServer {
       await initRoutes(this.app);
       logger.log('Server initialized successfully');
 
-      initUpstreamServers()
-        .then(() => {
+      const upstreamInitialization = initUpstreamServers()
+        .then(async () => {
           logger.log('MCP server initialized successfully');
 
           // Original routes (global and group-based)
@@ -208,6 +212,7 @@ export class AppServer {
             sseUserContextMiddleware,
             handleMcpOtherRequest,
           );
+          await startReplicaSync(reconcileReplicaServers);
         })
         .catch((error) => {
           logger.error('Error initializing MCP server', safeStringify({ error }));
@@ -217,6 +222,7 @@ export class AppServer {
           // Find and serve frontend
           this.findAndServeFrontend();
         });
+      if (isReplicaMode()) await upstreamInitialization;
     } catch (error) {
       logger.error('Error initializing server', safeStringify({ error }));
       throw error;
@@ -282,11 +288,15 @@ export class AppServer {
    */
   async shutdown(): Promise<void> {
     logger.log('[SHUTDOWN] Starting graceful shutdown...');
+    await stopReplicaSync();
 
     // Stop accepting new connections while existing requests finish within the grace period.
     const httpShutdown = this.server
       ? closeHttpServer(this.server, this.connections)
       : Promise.resolve();
+
+    // In-flight calls still need their upstream clients until HTTP draining completes.
+    await httpShutdown;
 
     // Close all MCP clients and stateless modern MCP exchanges.
     try {
@@ -297,7 +307,6 @@ export class AppServer {
       logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
     }
 
-    await httpShutdown;
     this.server = null;
 
     // Close database connection if in database mode
