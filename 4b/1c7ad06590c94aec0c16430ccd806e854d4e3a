@@ -1,0 +1,19 @@
+tests/integration/replica-config.test.ts
+  s_1cea7af971a5ce::t_df1b31d94642c8 18,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b1c7ad06590c94aec0c16430ccd806e854d4e3a",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
