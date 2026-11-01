@@ -1,0 +1,34 @@
+docs/configuration/docker-setup.mdx
+  s_1cea7af971a5ce::t_5ca0dec0620f9e 10-11
+docs/zh/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_5ca0dec0620f9e 28-55,57-73
+  s_1cea7af971a5ce::t_e7a3e842752bdc 56
+docs/zh/configuration/docker-setup.mdx
+  s_1cea7af971a5ce::t_5ca0dec0620f9e 10-11
+examples/replicas/settings.json
+  s_1cea7af971a5ce::t_d57b22a5ce915b 1-7
+docs/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_e7a3e842752bdc 56
+  s_1cea7af971a5ce::t_5ca0dec0620f9e 28-55,57-73
+examples/replicas/compose.yml
+  s_1cea7af971a5ce::t_d57b22a5ce915b 8,16
+  s_1cea7af971a5ce::t_cfa956fa5e0910 1-7,9-15,17-73
+examples/replicas/nginx.conf
+  s_1cea7af971a5ce::t_cfa956fa5e0910 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e64afab1d256c9030ca464102fb7f2fe2291320",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
