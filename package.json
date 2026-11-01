@@ -52,7 +52,7 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "@google/genai": "^1.44.0",
-    "@huggingface/tokenizers": "^0.1.3",
+    "@huggingface/tokenizers": "^0.2.0",
     "@modelcontextprotocol/client": "2.1.0",
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.1.0",
