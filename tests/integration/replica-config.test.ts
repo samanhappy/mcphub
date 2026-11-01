@@ -15,6 +15,7 @@ import request from 'supertest';
 import { scopedDataSource } from '../../src/db/transactionContext.js';
 import { getAppDataSource } from '../../src/db/connection.js';
 import { replicaConfiguration } from '../../src/middlewares/replicaConfig.js';
+import { authenticatedRouteRateLimiter } from '../../src/utils/rateLimit.js';
 import {
   startReplicaSync,
   stopReplicaSync,
@@ -57,7 +58,7 @@ dbSuite('replica configuration revisions', () => {
     await installReplicaSchema(source);
     process.env.MCPHUB_REPLICA_MODE = 'true';
     app = express();
-    app.use(express.json(), replicaConfiguration);
+    app.use(express.json(), authenticatedRouteRateLimiter, replicaConfiguration);
     app.use((req, _res, next) => {
       (req as express.Request & { user: { username: string; isAdmin: boolean } }).user = {
         username: 'admin',
