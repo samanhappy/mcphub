@@ -18,6 +18,7 @@ export const hasPersonalOAuth = (config?: ServerConfig): boolean =>
   config?.oauth?.identityMode === 'personal';
 export const personalOAuthContexts = new WeakMap<ServerConfig, PersonalOAuthContext>();
 const queues = new Map<string, Promise<unknown>>();
+const renewals = new Map<string, Promise<PersonalOAuthContext>>();
 const serialize = async <T>(key: string, action: () => Promise<T>): Promise<T> => {
   const previous = queues.get(key) || Promise.resolve();
   const next = previous.catch(() => undefined).then(action);
@@ -51,6 +52,7 @@ export const personalAuthorizationRequired = (name: string) =>
 const declarationOAuth = (oauth?: OAuth): OAuth => {
   const {
     accessToken: _,
+    accessTokenExpiresAt: _expiry,
     refreshToken: __,
     pendingAuthorization: ___,
     ...declaration
@@ -258,12 +260,17 @@ export class PersonalOAuthContext {
     _name: string,
     tokens: {
       accessToken: string;
+      accessTokenExpiresAt?: number | null;
       refreshToken?: string | null;
       clearPendingAuthorization?: boolean;
     },
   ) {
     const saved = await this.mutate(({ oauth }) => {
       oauth.accessToken = tokens.accessToken;
+      if (tokens.accessTokenExpiresAt !== undefined) {
+        if (tokens.accessTokenExpiresAt === null) delete oauth.accessTokenExpiresAt;
+        else oauth.accessTokenExpiresAt = tokens.accessTokenExpiresAt;
+      }
       if (tokens.refreshToken !== undefined) oauth.refreshToken = tokens.refreshToken || undefined;
       const metadata = oauth.pendingAuthorization?.discoveryState?.authorizationServerMetadata;
       if (
@@ -276,6 +283,37 @@ export class PersonalOAuthContext {
     });
     this.refresh = undefined;
     return saved;
+  }
+  async renewTokens(action: () => Promise<void>): Promise<void> {
+    const key = JSON.stringify([this.serverName, this.username, this.revision]);
+    let renewal = renewals.get(key);
+    if (!renewal) {
+      renewal = (async () => {
+        await this.assertCurrent();
+        if (
+          (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
+          this.revision
+        )
+          throw new CredentialBindingError('Personal authorization changed; reconnect');
+        await action();
+        return this;
+      })();
+      renewals.set(key, renewal);
+    }
+    try {
+      const renewed = await renewal;
+      await this.assertCurrent();
+      if (
+        (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
+        renewed.revision
+      )
+        throw new CredentialBindingError('Personal authorization changed; reconnect');
+      this.revision = renewed.revision;
+      this.config = renewed.config;
+      personalOAuthContexts.set(this.config, this);
+    } finally {
+      if (renewals.get(key) === renewal) renewals.delete(key);
+    }
   }
   updatePendingAuthorization(
     _name: string,
@@ -293,6 +331,7 @@ export class PersonalOAuthContext {
     return this.mutate(({ oauth }) => {
       if (scope === 'all' || scope === 'tokens') {
         delete oauth.accessToken;
+        delete oauth.accessTokenExpiresAt;
         delete oauth.refreshToken;
       }
       if (scope === 'all' || scope === 'client') {

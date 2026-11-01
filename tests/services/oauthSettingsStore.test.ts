@@ -3,7 +3,11 @@ jest.mock('../../src/dao/index.js', () => ({
 }));
 
 import { getServerDao } from '../../src/dao/index.js';
-import { persistClientCredentials } from '../../src/services/oauthSettingsStore.js';
+import {
+  persistClientCredentials,
+  persistTokens,
+  clearOAuthData,
+} from '../../src/services/oauthSettingsStore.js';
 
 describe('persistClientCredentials: explicitly-empty vs unset scopes (#1227)', () => {
   const findById = jest.fn();
@@ -50,5 +54,21 @@ describe('persistClientCredentials: explicitly-empty vs unset scopes (#1227)', (
     });
 
     expect(result?.oauth.scopes).toEqual(['read', 'write']);
+  });
+
+  it('preserves absolute token expiry through shared storage and clears it with tokens', async () => {
+    const saved = await persistTokens('pcloud', {
+      accessToken: 'token',
+      accessTokenExpiresAt: 12345,
+    });
+    expect(saved?.oauth.accessTokenExpiresAt).toBe(12345);
+    findById.mockResolvedValue({ name: 'pcloud', ...saved });
+    expect(
+      (await persistTokens('pcloud', { accessToken: 'new', accessTokenExpiresAt: null }))?.oauth
+        .accessTokenExpiresAt,
+    ).toBeUndefined();
+    expect((await clearOAuthData('pcloud', 'tokens'))?.oauth).not.toHaveProperty(
+      'accessTokenExpiresAt',
+    );
   });
 });

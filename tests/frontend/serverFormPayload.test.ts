@@ -552,3 +552,16 @@ it('preserves normalized user-group sharing in server saves', () => {
   });
   expect(payload.config).toMatchObject({ sharedWithUserGroups: ['readers'] });
 });
+
+test('preserves shared OAuth expiry when saving the form', () => {
+  const payload = buildServerPayload({
+    formData: {
+      name: 'remote', url: 'https://example.com/mcp', command: '', arguments: '',
+      env: [], headers: [], oauth: { accessToken: 'opaque', accessTokenExpiresAt: 12345 },
+    },
+    serverType: 'streamable-http',
+    envVars: [],
+    headerVars: [],
+  });
+  expect(payload.config.oauth?.accessTokenExpiresAt).toBe(12345);
+});

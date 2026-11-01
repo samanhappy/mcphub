@@ -2,6 +2,15 @@ import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfi
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 
 describe('normalizeServerConfigForPersistence', () => {
+  it('preserves absolute OAuth expiry alongside its shared access token', () => {
+    const config = {
+      type: 'streamable-http' as const,
+      url: 'https://example.com/mcp',
+      oauth: { accessToken: 'opaque', accessTokenExpiresAt: 12345 },
+    };
+    expect(normalizeServerConfigForPersistence(config).oauth?.accessTokenExpiresAt).toBe(12345);
+  });
+
   it('keeps remote keep-alive checks disabled by default', () => {
     const normalized = normalizeServerConfigForPersistence({
       type: 'streamable-http',

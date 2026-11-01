@@ -159,7 +159,9 @@ You can rely on auto-detection for most servers or declare OAuth settings explic
 1. **Initialization** – On startup MCPHub processes every server entry, discovers metadata, and registers the client if `dynamicRegistration.enabled` is true.
 2. **User Authorization** – Initiating a connection launches the system browser to the server’s authorize page with PKCE parameters.
 3. **Callback Handling** – The built-in route (`/oauth/callback`) verifies the `state`, completes the token exchange, and saves the tokens via the MCP SDK.
-4. **Token Lifecycle** – Access and refresh tokens are cached in memory, refreshed automatically, and written back to `mcp_settings.json`.
+4. **Token Lifecycle** – MCPHub persists `expires_in` as an absolute `accessTokenExpiresAt` timestamp. Before returning an expired token to the transport, it renews through the SDK and saves the rotated refresh token. Shared tokens use server settings; personal tokens remain in the user's encrypted binding. Expiry survives runtime recreation, and concurrent personal renewals for the same binding revision within one MCPHub process share one refresh.
+
+Tokens saved before expiry tracking, or issued without `expires_in`, retain HTTP 401-based SDK recovery; MCPHub cannot infer an opaque token's expiry. Reauthorize an existing personal connection to establish expiry tracking. Early revocation can still appear as an error inside a successful MCP tool response rather than an HTTP 401. MCPHub returns that error without automatically replaying the tool, because a retry could duplicate side effects. Reconnect through the dashboard for supported recovery; there is no separate personal refresh endpoint.
 
 ## Tips & Troubleshooting
 - Confirm that the redirect URI used during authorization exactly matches one of the `redirect_uris` registered with the authorization server.

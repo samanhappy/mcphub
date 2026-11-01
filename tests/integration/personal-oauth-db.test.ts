@@ -105,11 +105,19 @@ dbSuite('personal OAuth PostgreSQL persistence', () => {
   test('encrypted user bindings survive reload and reject a refresh after disconnect', async () => {
     const a = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
     const b = await PersonalOAuthContext.load('gitlab', 'bob', mockDefinition);
-    await a.persistTokens('gitlab', { accessToken: 'alice-secret', refreshToken: 'alice-refresh' });
+    await a.persistTokens('gitlab', {
+      accessToken: 'alice-secret',
+      refreshToken: 'alice-refresh',
+      accessTokenExpiresAt: 12345,
+    });
     await b.persistTokens('gitlab', { accessToken: 'bob-secret' });
     expect(
       (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth?.accessToken,
     ).toBe('alice-secret');
+    expect(
+      (await resolvePersonalOAuth('gitlab', 'alice', mockDefinition)).config.oauth
+        ?.accessTokenExpiresAt,
+    ).toBe(12345);
     expect(JSON.stringify(await mockSource.getRepository(CredentialBinding).find())).not.toMatch(
       /alice-secret|bob-secret/,
     );

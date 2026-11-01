@@ -217,6 +217,12 @@ export const normalizeOAuth = (
   if (clientSecret) normalized.clientSecret = clientSecret;
   if (scopes !== undefined) normalized.scopes = scopes;
   if (accessToken) normalized.accessToken = accessToken;
+  if (
+    accessToken &&
+    typeof oauth.accessTokenExpiresAt === 'number' &&
+    Number.isFinite(oauth.accessTokenExpiresAt)
+  )
+    normalized.accessTokenExpiresAt = oauth.accessTokenExpiresAt;
   if (refreshToken) normalized.refreshToken = refreshToken;
   if (authorizationEndpoint) normalized.authorizationEndpoint = authorizationEndpoint;
   if (tokenEndpoint) normalized.tokenEndpoint = tokenEndpoint;
