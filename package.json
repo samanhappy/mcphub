@@ -98,7 +98,7 @@
     "tough-cookie": "^6.0.2",
     "tree-kill": "^1.2.2",
     "typeorm": "^1.1.0",
-    "undici": "^7.28.0",
+    "undici": "^8.12.3",
     "uuid": "^14.0.0"
   },
   "devDependencies": {
