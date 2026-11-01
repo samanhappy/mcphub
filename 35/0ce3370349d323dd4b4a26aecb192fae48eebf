@@ -11,6 +11,7 @@ src/services/mcpOAuthProvider.ts
   s_4455457452ef43::t_a6481db6ed5533 327-332,351-356,396-399,403-410
   s_4455457452ef43::t_8c0081eb42f17e 26
   s_4455457452ef43::t_ca3b562c30b0ce 363-364,367
+  s_4455457452ef43::t_6c3667528bb7dd 337-349
 src/utils/settingsSync.ts
   s_4455457452ef43::t_222af5df24eafa 166
 docs/features/oauth.mdx
