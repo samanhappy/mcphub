@@ -23,6 +23,7 @@ import {
  */
 
 import { randomBytes } from 'node:crypto';
+import { auth } from '../clients/mcpSdkClient.js';
 import type {
   OAuthClientProvider,
   OAuthDiscoveryState,
@@ -74,6 +75,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   private _codeVerifier?: string;
   private _currentState?: string;
   private _systemInstallBaseUrl?: string;
+  private renewal?: Promise<void>;
 
   constructor(serverName: string, serverConfig: ServerConfig, systemInstallBaseUrl?: string) {
     this.personal = personalOAuthContexts.get(serverConfig);
@@ -309,12 +311,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   /**
    * Get stored OAuth tokens
    */
-  async tokens(): Promise<OAuthTokens | undefined> {
-    if (isReplicaMode()) {
-      const latest = await this.settings.loadServerConfig(this.serverName);
-      if (!latest) return undefined;
-      this.serverConfig = await expandServerConfig(latest);
-    }
+  private storedTokens(): OAuthTokens | undefined {
     // Use cached config only (tokens are updated via saveTokens which updates cache)
     const serverConfig = this.serverConfig;
 
@@ -326,9 +323,78 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       access_token: serverConfig.oauth.accessToken,
       token_type: 'Bearer',
       refresh_token: serverConfig.oauth.refreshToken,
-      // Note: expires_in is not typically stored, only the token itself
-      // The SDK will handle token refresh when needed
+      ...(serverConfig.oauth.accessTokenExpiresAt !== undefined
+        ? {
+            expires_in: Math.max(
+              0,
+              Math.floor((serverConfig.oauth.accessTokenExpiresAt - Date.now()) / 1000),
+            ),
+          }
+        : {}),
     };
+  }
+
+  async tokens(): Promise<OAuthTokens | undefined> {
+    if (isReplicaMode()) {
+      const latest = await this.settings.loadServerConfig(this.serverName);
+      if (!latest) return undefined;
+      this.serverConfig = await expandServerConfig(latest);
+    }
+    const oauth = this.serverConfig.oauth;
+    if (
+      !oauth?.accessToken ||
+      oauth.accessTokenExpiresAt === undefined ||
+      oauth.accessTokenExpiresAt > Date.now()
+    )
+      return this.storedTokens();
+    if (!oauth.refreshToken) {
+      throw new Error('OAuth access token expired; reconnect');
+    }
+    if (!this.renewal) {
+      const renew = async () => {
+        if (!this.serverConfig.url) throw new Error('Missing OAuth resource URL');
+        // SDK issuer annotation re-saves tokens; do not turn remaining lifetime into a new expiry.
+        const provider = new Proxy(this, {
+          get: (target, property) => {
+            if (property === 'tokens') return () => {
+              const stored = this.storedTokens();
+              if (!stored) return undefined;
+              const { expires_in: _expiry, ...tokens } = stored;
+              return tokens;
+            };
+            const value = Reflect.get(target, property);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        const fetchFn = await createOAuthFetch(this.serverConfig);
+        const result = await auth(provider, {
+          serverUrl: this.serverConfig.url,
+          fetchFn: this.personal?.wrapFetch(fetchFn) ?? fetchFn,
+        });
+        if (result !== 'AUTHORIZED') throw new Error('OAuth authorization required; reconnect');
+      };
+      this.renewal = withReplicaLock(
+        JSON.stringify(['oauth', this.serverName, this.personal?.username || 'shared']),
+        async () => {
+          if (isReplicaMode() && !this.personal) {
+            const latest = await this.settings.loadServerConfig(this.serverName);
+            if (!latest) throw new Error('Server no longer exists');
+            this.serverConfig = await expandServerConfig(latest);
+            const expiry = this.serverConfig.oauth?.accessTokenExpiresAt;
+            if (expiry === undefined || expiry > Date.now()) return;
+          }
+          await (this.personal ? this.personal.renewTokens(renew) : renew());
+        },
+      );
+    }
+    const renewal = this.renewal;
+    try {
+      await renewal;
+      if (this.personal) this.serverConfig = this.personal.config;
+      return this.storedTokens();
+    } finally {
+      if (this.renewal === renewal) this.renewal = undefined;
+    }
   }
 
   /**
@@ -336,14 +402,28 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Called by SDK after successful token exchange or refresh
    */
   async saveTokens(tokens: OAuthTokens): Promise<void> {
+    if (
+      tokens.expires_in !== undefined &&
+      (!Number.isFinite(tokens.expires_in) || tokens.expires_in < 0)
+    )
+      throw new Error('Invalid OAuth token expiry');
     const currentOAuth = this.serverConfig.oauth;
     const accessTokenChanged = currentOAuth?.accessToken !== tokens.access_token;
+    const accessTokenExpiresAt =
+      tokens.expires_in !== undefined
+        ? Date.now() + tokens.expires_in * 1000
+        : accessTokenChanged
+          ? null
+          : undefined;
+    const expiryChanged =
+      accessTokenExpiresAt !== undefined &&
+      currentOAuth?.accessTokenExpiresAt !== (accessTokenExpiresAt ?? undefined);
     const refreshTokenProvided = tokens.refresh_token !== undefined;
     const refreshTokenChanged =
       refreshTokenProvided && currentOAuth?.refreshToken !== tokens.refresh_token;
     const hadPending = Boolean(currentOAuth?.pendingAuthorization);
 
-    if (!accessTokenChanged && !refreshTokenChanged && !hadPending) {
+    if (!accessTokenChanged && !refreshTokenChanged && !expiryChanged && !hadPending) {
       return;
     }
 
@@ -355,6 +435,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     const updatedConfig = await this.settings.persistTokens(this.serverName, {
       accessToken: tokens.access_token,
+      accessTokenExpiresAt,
       refreshToken: refreshTokenProvided ? (tokens.refresh_token ?? null) : undefined,
       clearPendingAuthorization: hadPending,
     });

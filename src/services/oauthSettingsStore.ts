@@ -131,12 +131,17 @@ export const persistTokens = async (
   serverName: string,
   tokens: {
     accessToken: string;
+    accessTokenExpiresAt?: number | null;
     refreshToken?: string | null;
     clearPendingAuthorization?: boolean;
   },
 ): Promise<ServerConfigWithOAuth | undefined> => {
   return mutateOAuthSettings(serverName, ({ oauth }) => {
     oauth.accessToken = tokens.accessToken;
+    if (tokens.accessTokenExpiresAt !== undefined) {
+      if (tokens.accessTokenExpiresAt === null) delete oauth.accessTokenExpiresAt;
+      else oauth.accessTokenExpiresAt = tokens.accessTokenExpiresAt;
+    }
 
     if (tokens.refreshToken !== undefined) {
       if (tokens.refreshToken) {
@@ -178,6 +183,7 @@ export const clearOAuthData = async (
   return mutateOAuthSettings(serverName, ({ oauth }) => {
     if (scope === 'tokens' || scope === 'all') {
       delete oauth.accessToken;
+      delete oauth.accessTokenExpiresAt;
       delete oauth.refreshToken;
     }
 

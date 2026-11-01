@@ -33,7 +33,7 @@ export const buildDuplicateServerName = (sourceName: string): string => {
  */
 export const buildDuplicateSource = (server: Server): Server => {
   const { oauth, ...config } = server.config ?? {};
-  const { accessToken, refreshToken, pendingAuthorization, ...oauthConfig } = oauth ?? {};
+  const { accessToken, accessTokenExpiresAt, refreshToken, pendingAuthorization, ...oauthConfig } = oauth ?? {};
 
   return {
     name: buildDuplicateServerName(server.name),

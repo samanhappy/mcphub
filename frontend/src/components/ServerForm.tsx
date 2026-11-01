@@ -105,6 +105,7 @@ const ServerForm = ({
       clientSecret: oauth?.clientSecret || '',
       scopes: oauth?.scopes ? oauth.scopes.join(' ') : '',
       accessToken: oauth?.accessToken || '',
+      accessTokenExpiresAt: oauth?.accessTokenExpiresAt,
       refreshToken: oauth?.refreshToken || '',
       authorizationEndpoint: oauth?.authorizationEndpoint || '',
       tokenEndpoint: oauth?.tokenEndpoint || '',

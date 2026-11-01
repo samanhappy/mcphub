@@ -30,6 +30,9 @@ import {
 } from '../../src/services/oauthClientRegistration.js';
 import { mutateOAuthSettings } from '../../src/services/oauthSettingsStore.js';
 import { MCPHubOAuthProvider, createOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
+import * as replicaMode from '../../src/utils/replicaMode.js';
+import * as replicaLock from '../../src/services/replicaLock.js';
+import { loadServerConfig, persistTokens } from '../../src/services/oauthSettingsStore.js';
 
 describe('MCPHubOAuthProvider redirect URI resolution', () => {
   const originalEnv = process.env;
@@ -353,4 +356,31 @@ test('personal OAuth cannot create an unscoped provider or read a shared token',
   expect(() => new MCPHubOAuthProvider('gitlab', {
     url: 'https://gitlab.example/mcp', oauth: { identityMode: 'personal', accessToken: 'shared' },
   })).toThrow('Personal authorization required');
+});
+
+test('replica renewal rechecks shared expiry after acquiring the credential lock', async () => {
+  const mode = jest.spyOn(replicaMode, 'isReplicaMode').mockReturnValue(true);
+  const lock = jest.spyOn(replicaLock, 'withReplicaLock')
+    .mockImplementation(async (_scope, action) => action());
+  const config = {
+    url: 'https://example.com/mcp',
+    oauth: { accessToken: 'old', refreshToken: 'refresh', accessTokenExpiresAt: 0 },
+  };
+  jest.mocked(loadServerConfig)
+    .mockResolvedValueOnce(config)
+    .mockResolvedValueOnce({
+      ...config,
+      oauth: { ...config.oauth, accessToken: 'renewed-by-peer', accessTokenExpiresAt: Date.now() + 3600_000 },
+    });
+  try {
+    const provider = new MCPHubOAuthProvider('upstream', config);
+    expect((await provider.tokens())?.access_token).toBe('renewed-by-peer');
+    expect(lock).toHaveBeenCalledWith(
+      JSON.stringify(['oauth', 'upstream', 'shared']), expect.any(Function),
+    );
+    expect(persistTokens).not.toHaveBeenCalled();
+  } finally {
+    mode.mockRestore();
+    lock.mockRestore();
+  }
 });

@@ -106,7 +106,11 @@ const buildOAuthConfig = (
       nextOAuth.scopes = parsedScopes;
     }
   }
-  if (accessToken && oauth.identityMode !== 'personal') nextOAuth.accessToken = accessToken;
+  if (accessToken && oauth.identityMode !== 'personal') {
+    nextOAuth.accessToken = accessToken;
+    if (oauth.accessTokenExpiresAt !== undefined)
+      nextOAuth.accessTokenExpiresAt = oauth.accessTokenExpiresAt;
+  }
   if (refreshToken && oauth.identityMode !== 'personal') nextOAuth.refreshToken = refreshToken;
   if (authorizationEndpoint) nextOAuth.authorizationEndpoint = authorizationEndpoint;
   if (tokenEndpoint) nextOAuth.tokenEndpoint = tokenEndpoint;

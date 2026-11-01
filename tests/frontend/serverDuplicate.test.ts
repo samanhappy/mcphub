@@ -70,6 +70,7 @@ describe('buildDuplicateSource', () => {
           authorizationEndpoint: 'https://example.com/authorize',
           tokenEndpoint: 'https://example.com/token',
           accessToken: 'access-token',
+          accessTokenExpiresAt: 12345,
           refreshToken: 'refresh-token',
           pendingAuthorization: {
             authorizationUrl: 'https://example.com/authorize?state=1',
@@ -91,6 +92,7 @@ describe('buildDuplicateSource', () => {
       tokenEndpoint: 'https://example.com/token',
     });
     expect(duplicate.config?.oauth?.accessToken).toBeUndefined();
+    expect(duplicate.config?.oauth?.accessTokenExpiresAt).toBeUndefined();
     expect(duplicate.config?.oauth?.refreshToken).toBeUndefined();
     expect(duplicate.config?.oauth?.pendingAuthorization).toBeUndefined();
   });
