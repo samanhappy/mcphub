@@ -180,6 +180,7 @@ const deferred = <T>() => {
 };
 
 describe('startOnDemand lifecycle', () => {
+  const previousReplicaMode = process.env.MCPHUB_REPLICA_MODE;
   let createTransportSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -200,6 +201,8 @@ describe('startOnDemand lifecycle', () => {
 
   afterEach(() => {
     createTransportSpy.mockRestore();
+    if (previousReplicaMode === undefined) delete process.env.MCPHUB_REPLICA_MODE;
+    else process.env.MCPHUB_REPLICA_MODE = previousReplicaMode;
   });
 
   it('wakes a sleeping on-demand server on a regular tools/call and arms idle shutdown', async () => {
@@ -234,6 +237,45 @@ describe('startOnDemand lifecycle', () => {
 
     // Clean up the armed timer so jest can exit.
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
+  });
+
+  it('coalesces concurrent replica calls to a sleeping runtime and publishes the live client', async () => {
+    jest.useFakeTimers();
+    process.env.MCPHUB_REPLICA_MODE = 'true';
+    mockFindAll.mockResolvedValue([ON_DEMAND_CONFIG]);
+    const connecting = deferred<void>();
+    const connected = deferred<void>();
+    mockConnect.mockImplementationOnce(() => {
+      connecting.resolve();
+      return connected.promise;
+    });
+    const info = createSleepingServerInfo();
+    mcpService.setServerInfosForTest([info as any]);
+    const call = () =>
+      mcpService.handleCallToolRequest(
+        { params: { name: 'demo::ping', arguments: {} } },
+        { sessionId: 'replica-wake' },
+      );
+    const first = call();
+    await connecting.promise;
+    const second = call();
+    try {
+      await jest.advanceTimersByTimeAsync(0);
+      expect(mockConnect).toHaveBeenCalledTimes(1);
+      connected.resolve();
+      const results = await Promise.all([first, second]);
+      expect(results.every((result) => result.isError === false)).toBe(true);
+      expect(mockConnect).toHaveBeenCalledTimes(1);
+      expect(mockCallTool).toHaveBeenCalledTimes(2);
+      expect(mcpService.getServerByName('demo')?.client).toBe(mockClient);
+      expect(mcpService.getServerByName('demo')?.status).toBe('connected');
+    } finally {
+      connected.resolve();
+      await Promise.all([first, second]);
+      mcpService.closeServer('demo');
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
   });
 
   describe.each(['direct', 'call_tool'])('post-wake route resolution on %s calls', (operation) => {
@@ -321,7 +363,12 @@ describe('startOnDemand lifecycle', () => {
     expect(serverInfo.idleTimeoutId).toBeFalsy();
   });
 
-  describe.each(['direct', 'call_tool'])('idle shutdown during %s calls (issue #1163)', (route) => {
+  describe.each([
+    ['single', 'direct'],
+    ['single', 'call_tool'],
+    ['replica', 'direct'],
+    ['replica', 'call_tool'],
+  ])('idle shutdown during %s %s calls (issue #1163)', (mode, route) => {
     const result = { content: [{ type: 'text', text: 'pong' }], isError: false };
     const config = { ...ON_DEMAND_CONFIG, idleTimeoutMs: 1000 };
     const call = () =>
@@ -346,6 +393,8 @@ describe('startOnDemand lifecycle', () => {
 
     beforeEach(() => {
       jest.useFakeTimers();
+      process.env.MCPHUB_REPLICA_MODE = mode === 'replica' ? 'true' : 'false';
+      mockFindAll.mockResolvedValue([config]);
       mcpService.setServerInfosForTest([
         createSleepingServerInfo({
           status: 'connected',

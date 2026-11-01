@@ -6231,10 +6231,29 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
     const live = byName.get(info.name);
     if (!live || live.enabled === false) return [];
     if (hasPersonalAuthentication(live) !== hasPersonalAuthentication(info.config)) return [];
-    return [{ ...info, owner: live.owner, visibility: live.visibility,
-      sharedWithUsers: live.sharedWithUsers, sharedWithUserGroups: live.sharedWithUserGroups,
-      config: { ...info.config, tools: live.tools, prompts: live.prompts, resources: live.resources },
-    }];
+    // Project request authorization while keeping all lifecycle reads/writes on the runtime.
+    return [
+      new Proxy(info, {
+        get(target, property) {
+          switch (property) {
+            case 'owner':
+            case 'visibility':
+            case 'sharedWithUsers':
+            case 'sharedWithUserGroups':
+              return live[property];
+            case 'config':
+              return {
+                ...target.config,
+                tools: live.tools,
+                prompts: live.prompts,
+                resources: live.resources,
+              };
+            default:
+              return Reflect.get(target, property);
+          }
+        },
+      }),
+    ];
   });
   return context.runWithContext(() => principalServerScope.run(visible, action), user ?? null);
 };

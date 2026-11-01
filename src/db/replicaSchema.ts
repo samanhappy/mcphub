@@ -21,6 +21,7 @@ export const installReplicaSchema = async (source: DataSource): Promise<void> =>
       'users',
       'user_configs',
       'bearer_keys',
+      'oauth_clients',
       'builtin_prompts',
       'builtin_resources',
       'credential_bindings',

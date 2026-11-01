@@ -180,6 +180,14 @@ describe('disabled tool must be unresolvable for execution, not just discovery',
       );
       expect((await invoke()).isError).toBeFalsy();
       mockCallTool.mockClear();
+      mockLiveServers[0].tools = { list_accounts: { enabled: false } };
+      expect((await invoke()).isError).toBe(true);
+      expect(mockCallTool).not.toHaveBeenCalled();
+      // The request projection must not overwrite the cached runtime configuration.
+      expect(mcpService.getServerByName('gmail')?.config?.tools).toEqual({});
+      mockLiveServers[0].tools = {};
+      expect((await invoke()).isError).toBeFalsy();
+      mockCallTool.mockClear();
       mockLiveServers[0].enabled = false;
       expect((await invoke()).isError).toBe(true);
       expect(mockCallTool).not.toHaveBeenCalled();

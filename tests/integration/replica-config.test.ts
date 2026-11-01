@@ -1,4 +1,13 @@
 import { DataSource } from 'typeorm';
+import { OAuthClient } from '../../src/db/entities/OAuthClient.js';
+import { OAuthClientDaoDbImpl } from '../../src/dao/OAuthClientDaoDbImpl.js';
+import {
+  createClient,
+  getAllClients,
+  updateClient,
+  regenerateSecret,
+  deleteClient,
+} from '../../src/controllers/oauthClientController.js';
 import { Server } from '../../src/db/entities/Server.js';
 import { installReplicaSchema } from '../../src/db/replicaSchema.js';
 import express from 'express';
@@ -22,6 +31,7 @@ jest.mock('../../src/db/connection.js', () => ({
 }));
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getServerDao: () => new ServerDaoDbImpl(),
+  getOAuthClientDao: () => new OAuthClientDaoDbImpl(),
   getSystemConfigDao: () => ({ get: async () => ({}) }),
 }));
 
@@ -39,7 +49,7 @@ dbSuite('replica configuration revisions', () => {
       password: 'mcphub_test',
       database: 'mcphub_test',
       applicationName: 'replica-config-tests',
-      entities: [Server],
+      entities: [Server, OAuthClient],
       synchronize: true,
     });
     await source.initialize();
@@ -48,6 +58,18 @@ dbSuite('replica configuration revisions', () => {
     process.env.MCPHUB_REPLICA_MODE = 'true';
     app = express();
     app.use(express.json(), replicaConfiguration);
+    app.use((req, _res, next) => {
+      (req as express.Request & { user: { username: string; isAdmin: boolean } }).user = {
+        username: 'admin',
+        isAdmin: true,
+      };
+      next();
+    });
+    app.get('/oauth/clients', getAllClients);
+    app.post('/oauth/clients', createClient);
+    app.put('/oauth/clients/:clientId', updateClient);
+    app.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
+    app.delete('/oauth/clients/:clientId', deleteClient);
     app.get('/servers', async (_req, res) => {
       res.json(await getAppDataSource().getRepository(Server).find());
     });
@@ -67,10 +89,12 @@ dbSuite('replica configuration revisions', () => {
   });
   beforeEach(async () => {
     await source.getRepository(Server).delete({ name: 'replica-test' });
+    await source.getRepository(OAuthClient).clear();
   });
   afterAll(async () => {
     await stopReplicaSync();
     await source?.getRepository(Server).delete({ name: 'replica-test' });
+    await source?.getRepository(OAuthClient).clear();
     await source?.destroy();
     if (oldMode === undefined) delete process.env.MCPHUB_REPLICA_MODE;
     else process.env.MCPHUB_REPLICA_MODE = oldMode;
@@ -108,6 +132,50 @@ dbSuite('replica configuration revisions', () => {
       ),
     );
     expect(results.map((response) => response.status).sort()).toEqual([200, 412]);
+  });
+
+  test('OAuth client creation, editing, secret rotation and deletion advance the API ETag', async () => {
+    const before = await request(app).get('/oauth/clients');
+    const created = await request(app)
+      .post('/oauth/clients')
+      .set('If-Match', before.headers.etag)
+      .send({ name: 'replica-client', redirectUris: ['https://client.example/callback'] });
+    expect(created.status).toBe(201);
+    const path = `/oauth/clients/${created.body.client.clientId}`;
+    let etag = created.headers.etag;
+    expect(etag).not.toBe(before.headers.etag);
+    for (const mutate of [
+      () => request(app).put(path).send({ name: 'edited-client' }),
+      () => request(app).post(`${path}/regenerate-secret`),
+      () => request(app).delete(path),
+    ]) {
+      const response = await mutate().set('If-Match', etag);
+      expect(response.status).toBe(200);
+      expect(response.headers.etag).not.toBe(etag);
+      expect((await request(app).get('/oauth/clients')).headers.etag).toBe(response.headers.etag);
+      etag = response.headers.etag;
+    }
+  });
+
+  test('concurrent OAuth client edits with the same ETag preserve the winning update', async () => {
+    const created = await request(app)
+      .post('/oauth/clients')
+      .send({ name: 'replica-client', redirectUris: ['https://client.example/callback'] });
+    expect(created.status).toBe(201);
+    const results = await Promise.all(
+      ['first', 'second'].map((name) =>
+        request(app)
+          .put(`/oauth/clients/${created.body.client.clientId}`)
+          .set('If-Match', created.headers.etag)
+          .send({ name }),
+      ),
+    );
+    expect(results.map((response) => response.status).sort()).toEqual([200, 412]);
+    const winner = results.find((response) => response.status === 200)!;
+    const stored = await source.getRepository(OAuthClient).findOneByOrFail({
+      clientId: created.body.client.clientId,
+    });
+    expect(stored.name).toBe(winner.body.client.name);
   });
 
   test('an unsuccessful API mutation rolls back both data and revision before responding', async () => {
