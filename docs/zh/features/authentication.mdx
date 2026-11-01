@@ -27,6 +27,10 @@ Dashboard JWT 和 MCPHub 内置 OAuth 授权绑定签发时的用户密码哈希
 
 ## Better Auth（GitHub / Google / 本地 OIDC）
 
+<Warning>
+  **从 MCPHub v1.1.14 或更早版本升级：** Better Auth 1.7 将通用 OIDC 登录入口改为 `/sign-in/social`，Provider 回调路径从 `/oauth2/callback/<providerId>` 改为 `/callback/<providerId>`。升级前请在身份提供商中添加新的完整重定向 URI：`<MCPHub 公开地址><Better Auth basePath>/callback/<providerId>`。使用默认挂载路径和 Provider ID 时为 `https://mcphub.example.com/api/auth/better/callback/oidc`。请包含安装使用的 `BASE_PATH` 及自定义 `BETTER_AUTH_BASE_PATH`。旧实例仍在运行时，请同时保留旧 URI。这是身份提供商返回 MCPHub 的回调地址，并非登录完成后的仪表盘跳转地址。
+</Warning>
+
 MCPHub 可以通过 Better Auth 为 Dashboard 提供第三方登录。当前支持：
 
 - GitHub

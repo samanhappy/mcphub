@@ -125,6 +125,10 @@ OAuth access tokens issued here authenticate MCP transport requests and `/oauth/
 
 ## Better Auth (GitHub / Google / local OIDC)
 
+<Warning>
+  **Upgrading from MCPHub v1.1.14 or earlier:** Better Auth 1.7 uses `/sign-in/social` for generic OIDC login and changes the provider callback from `/oauth2/callback/<providerId>` to `/callback/<providerId>`. Add the new exact redirect URI to your identity provider before upgrading: `<public MCPHub URL><Better Auth basePath>/callback/<providerId>`. With the default mount and provider ID, this is `https://mcphub.example.com/api/auth/better/callback/oidc`. Include any installation `BASE_PATH` and custom `BETTER_AUTH_BASE_PATH`. Keep the old URI allowed while older instances remain in service. This is the identity provider callback, not the dashboard destination after login.
+</Warning>
+
 Better Auth is optional and initialized once at process startup. That means any change to either `BETTER_AUTH_*` environment variables or stored `systemConfig.auth.betterAuth` values still requires a restart.
 
 Non-secret Better Auth settings can now live either in environment variables or in `systemConfig.auth.betterAuth` (from `mcp_settings.json` or the database-backed system config). The priority order is:

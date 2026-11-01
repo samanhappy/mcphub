@@ -38,14 +38,14 @@ export const startOidcLogin = async ({
   errorCallbackURL,
   basePathOverride,
 }: StartOidcLoginOptions): Promise<void> => {
-  const response = await fetch(`${resolveBaseUrl(basePathOverride)}/sign-in/oauth2`, {
+  const response = await fetch(`${resolveBaseUrl(basePathOverride)}/sign-in/social`, {
     method: 'POST',
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      providerId,
+      provider: providerId,
       callbackURL,
       errorCallbackURL,
     }),
@@ -55,7 +55,7 @@ export const startOidcLogin = async ({
     throw new Error('OIDC sign-in request failed.');
   }
 
-const data = await response.json().catch(() => ({})) as { url?: string; redirect?: boolean };
+  const data = (await response.json().catch(() => ({}))) as { url?: string; redirect?: boolean };
   if (!data.redirect || !data.url) {
     throw new Error('OIDC sign-in did not return a redirect URL.');
   }
