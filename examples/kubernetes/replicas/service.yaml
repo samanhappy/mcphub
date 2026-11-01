@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcphub
+  annotations:
+    traefik.ingress.kubernetes.io/service.nativelb: 'false'
+    traefik.ingress.kubernetes.io/service.sticky.cookie: 'true'
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: mcphub_affinity
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: 'true'
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: 'true'
+spec:
+  selector:
+    app.kubernetes.io/name: mcphub
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcphub
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [mcphub.example.com]
+      secretName: mcphub-tls
+  rules:
+    - host: mcphub.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcphub
+                port: { name: http }

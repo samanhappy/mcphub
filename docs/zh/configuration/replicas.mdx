@@ -72,6 +72,63 @@ docker compose up -d --force-recreate proxy
 
 建库失败时保持服务停止，先检查错误再继续。`docker compose down` 保留数据库命名卷；`docker compose down -v` 会删除它。不要将 `.env` 提交到版本库，数据库备份必须同时保留对应密钥。此 Compose 文件不会自动迁移已有文件模式安装，迁移时需要先将原设置文件及凭据 sidecar 挂载到建库任务中。
 
+## Kubernetes 部署
+
+[`examples/kubernetes/replicas/`](https://github.com/samanhappy/mcphub/tree/main/examples/kubernetes/replicas) 提供独立建库 Job、双副本 Deployment、共享 ConfigMap、Service/Ingress 和 PodDisruptionBudget。默认使用官方 `samanhappy/mcphub:latest` 镜像；生产部署前，将 `setup-job.yaml` 和 `deployment.yaml` **两处镜像**固定为同一版本或 digest。
+
+先准备可访问且支持 pgvector 的 PostgreSQL，并为建库任务提供相应权限；数据库部署和备份不包含在清单中。对外暴露示例 Ingress 还需已有 Traefik 控制器、`websecure` 入口、DNS，以及 `mcphub` 命名空间中的 `mcphub-tls` TLS Secret。建库前，将 `configmap.yaml` 和 `service.yaml` 中的 `mcphub.example.com` 改为实际对外域名。只读初始配置不包含服务器，默认关闭 OAuth；建库后通过管理界面/API 管理共享配置。
+
+```sh
+# 在仓库根目录执行；仅在全新安装时创建密钥。
+cd examples/kubernetes/replicas
+kubectl create namespace mcphub
+umask 077
+cat > .env <<EOF
+DB_URL=postgresql://mcphub:REPLACE_ME@postgres.example.com:5432/mcphub
+JWT_SECRET=$(openssl rand -hex 32)
+MCPHUB_CREDENTIAL_ENCRYPTION_KEY=$(openssl rand -base64 32)
+EOF
+cat > .env.local <<EOF
+ADMIN_PASSWORD=$(openssl rand -hex 24)
+EOF
+# 创建 Secret 前，先将 .env 中 DB_URL 改为实际数据库连接串。
+kubectl -n mcphub create secret generic mcphub-secrets --from-env-file=.env
+kubectl -n mcphub create secret generic mcphub-admin --from-env-file=.env.local
+kubectl -n mcphub apply -f configmap.yaml
+kubectl -n mcphub apply -f setup-job.yaml
+kubectl -n mcphub wait --for=condition=complete job/mcphub-setup --timeout=600s && \
+  kubectl -n mcphub apply -f deployment.yaml
+```
+
+仅在 Job 成功后继续。失败时先通过 `kubectl -n mcphub logs job/mcphub-setup` 排查，再创建接入 Pod；`backoffLimit: 0` 禁止自动重试表结构变更。同一时间只运行一个建库 Job，不要放进每个 Pod 的 init container。升级时复用数据库和共享密钥。首次管理员密码保存在 `.env.local`，仅建库 Job 接收该 Secret。妥善保存这两个本地密钥文件，并随数据库备份保留对应的 JWT/加密密钥。
+
+```sh
+# 对外暴露 HTTPS 前，确保当前命名空间中已有 mcphub-tls。
+kubectl -n mcphub rollout status deployment/mcphub --timeout=600s
+kubectl -n mcphub apply -f service.yaml
+kubectl -n mcphub get pods -l app.kubernetes.io/name=mcphub -o wide
+kubectl -n mcphub get endpointslices -l kubernetes.io/service-name=mcphub
+curl --fail https://mcphub.example.com/readyz
+```
+
+[启动和存活探针](https://kubernetes.io/docs/concepts/workloads/pods/probes/)使用 `/livez`，就绪探针使用 `/readyz`，使数据库故障导致摘流，而非因存活检查触发重启。按上游需求调整十分钟启动预算和资源限制。节点标识取 Pod 名；调度器优先跨主机分散副本，宿主机冗余至少需要两个工作节点。PDB 在主动驱逐时保留一个副本，不能防止崩溃或显式缩容。preStop 等待五秒，让端点变化先传播，再接收 SIGTERM；30 秒退出宽限期包含该等待及 MCPHub 最多十秒的 HTTP 排空。应根据入口摘流耗时调整这些值，Pod 丢失仍会中断原会话。
+
+示例使用 [Traefik 的 Service Cookie 亲和性](https://doc.traefik.io/traefik/reference/routing-configuration/kubernetes/ingress/#on-service)，直接路由到已就绪 Pod 端点。有状态客户端必须从初始化开始保存并回传 `mcphub_affinity`；Cookie 带 Secure 标记，因此必须使用 HTTPS。不能保留 Cookie 的客户端需另配控制器支持的稳定请求头路由或固定 Pod 入口。其他 Ingress 控制器需要替换对应亲和性配置，仅修改 `ingressClassName` 不够。不要为 MCP 请求添加响应缓冲或重试中间件，并按长连接需求配置控制器的请求/响应超时；这些清单不负责安装和配置控制器本身。
+
+涉及表结构变更的升级，应先备份数据库、停止接入 Pod，并将两处镜像改为同一个新固定版本，在维护窗口内执行：
+
+```sh
+kubectl -n mcphub scale deployment/mcphub --replicas=0
+kubectl -n mcphub wait --for=delete pod -l app.kubernetes.io/name=mcphub --timeout=120s
+kubectl -n mcphub delete job mcphub-setup --ignore-not-found
+kubectl -n mcphub apply -f setup-job.yaml
+kubectl -n mcphub wait --for=condition=complete job/mcphub-setup --timeout=600s && \
+  kubectl -n mcphub apply -f deployment.yaml
+kubectl -n mcphub rollout status deployment/mcphub --timeout=600s
+```
+
+建库失败时保持副本停止。RollingUpdate 参数用于表结构及配置兼容时的镜像滚动更新，不代表任意表结构变更都能混跑。Kubernetes 不会共享 Pod 间的 stdio 进程、Cookie 状态或本地文件；集群、数据库及入口本身的高可用仍需部署方保障。
+
 ## 配置与授权
 
 数据库触发器在配置写入的同一事务中递增版本，覆盖后台、CLI 和导入等入口。副本每 5 秒检查版本，刷新变化的服务器并保留未变化的连接。已应用版本表示配置已加载，不代表所有上游均已连接；上游连接失败单独报告为降级。

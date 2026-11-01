@@ -72,6 +72,63 @@ docker compose up -d --force-recreate proxy
 
 If setup fails, leave serving containers stopped and inspect its error before continuing. `docker compose down` keeps the named database volume; `docker compose down -v` deletes it. Keep `.env` out of source control and preserve its secrets alongside database backups. This Compose file does not migrate an existing file-based installation automatically; that requires mounting its settings and credential sidecars into the setup job first.
 
+## Deploy on Kubernetes
+
+[`examples/kubernetes/replicas/`](https://github.com/samanhappy/mcphub/tree/main/examples/kubernetes/replicas) contains an independent setup Job, a two-replica Deployment, shared ConfigMaps, a Service/Ingress and a PodDisruptionBudget. It uses the official `samanhappy/mcphub:latest` image; before production deployment, set **both** `setup-job.yaml` and `deployment.yaml` to the same fixed version or digest.
+
+Provide a reachable PostgreSQL database with pgvector support and setup permissions. Database provisioning/backups are external to these manifests. To expose the example Ingress, provide a Traefik controller with a `websecure` entrypoint, DNS and a TLS Secret named `mcphub-tls` in namespace `mcphub`. Replace `mcphub.example.com` in `configmap.yaml` and `service.yaml` with your public hostname before setup. The read-only seed configuration starts with no servers and OAuth disabled; manage shared configuration through the dashboard/API after setup.
+
+```sh
+# From the repository root; create secrets only for a NEW installation.
+cd examples/kubernetes/replicas
+kubectl create namespace mcphub
+umask 077
+cat > .env <<EOF
+DB_URL=postgresql://mcphub:REPLACE_ME@postgres.example.com:5432/mcphub
+JWT_SECRET=$(openssl rand -hex 32)
+MCPHUB_CREDENTIAL_ENCRYPTION_KEY=$(openssl rand -base64 32)
+EOF
+cat > .env.local <<EOF
+ADMIN_PASSWORD=$(openssl rand -hex 24)
+EOF
+# Edit DB_URL in .env to the actual connection string before creating the Secret.
+kubectl -n mcphub create secret generic mcphub-secrets --from-env-file=.env
+kubectl -n mcphub create secret generic mcphub-admin --from-env-file=.env.local
+kubectl -n mcphub apply -f configmap.yaml
+kubectl -n mcphub apply -f setup-job.yaml
+kubectl -n mcphub wait --for=condition=complete job/mcphub-setup --timeout=600s && \
+  kubectl -n mcphub apply -f deployment.yaml
+```
+
+Only continue after the Job succeeds. On failure, inspect `kubectl -n mcphub logs job/mcphub-setup` and resolve it before creating serving pods; `backoffLimit: 0` prevents automatic schema retries. Keep one setup Job active at most; do not run schema preparation in each pod's init container. Retain the existing database and shared secrets on upgrades. The initial administrator password is in `.env.local`; only the Job receives that Secret. Keep both local secret files private and preserve the JWT/encryption keys with database backups.
+
+```sh
+# Ensure mcphub-tls exists in this namespace before exposing HTTPS.
+kubectl -n mcphub rollout status deployment/mcphub --timeout=600s
+kubectl -n mcphub apply -f service.yaml
+kubectl -n mcphub get pods -l app.kubernetes.io/name=mcphub -o wide
+kubectl -n mcphub get endpointslices -l kubernetes.io/service-name=mcphub
+curl --fail https://mcphub.example.com/readyz
+```
+
+The [startup/liveness probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/) use `/livez`; readiness uses `/readyz` so a database outage removes pods from routing without causing liveness restarts. Tune the ten-minute startup budget and resource limits for your upstreams. Pod names identify replicas. The scheduler prefers spreading pods across hosts; provide at least two worker nodes for host redundancy. The PDB keeps one replica during voluntary evictions, but does not prevent crashes or explicit scale-down. A five-second preStop delay allows endpoint changes to propagate before SIGTERM; the 30-second termination grace period includes that delay and MCPHub's ten-second HTTP drain. Tune these values for your ingress propagation time; active sessions still disconnect on pod loss.
+
+The example uses [Traefik's Service cookie affinity](https://doc.traefik.io/traefik/reference/routing-configuration/kubernetes/ingress/#on-service), routing directly to ready pod endpoints. Stateful clients must save and resend `mcphub_affinity` starting with initialization; this requires HTTPS because the cookie is Secure. Clients that cannot preserve cookies need a controller-specific stable header route or a fixed pod endpoint. Other ingress controllers require their own affinity configuration; changing `ingressClassName` alone is insufficient. Do not add buffering or retry middleware for MCP requests; set the controller's request/response timeouts for long-lived SSE connections. These manifests do not install or configure the controller itself.
+
+For an upgrade with schema changes, back up the database and stop serving pods before preparing the new schema. Edit both image references to the same new fixed version, then use a maintenance window:
+
+```sh
+kubectl -n mcphub scale deployment/mcphub --replicas=0
+kubectl -n mcphub wait --for=delete pod -l app.kubernetes.io/name=mcphub --timeout=120s
+kubectl -n mcphub delete job mcphub-setup --ignore-not-found
+kubectl -n mcphub apply -f setup-job.yaml
+kubectl -n mcphub wait --for=condition=complete job/mcphub-setup --timeout=600s && \
+  kubectl -n mcphub apply -f deployment.yaml
+kubectl -n mcphub rollout status deployment/mcphub --timeout=600s
+```
+
+Leave replicas stopped if setup fails. RollingUpdate settings protect image-only rollouts when the schema and configuration are compatible; they do not make arbitrary schema changes safe to roll out concurrently. Kubernetes does not share stdio processes, cookie jars or local files between pods. Cluster, database and ingress availability remain deployment responsibilities.
+
 ## Configuration and authorization
 
 Database triggers advance a shared revision in the same transaction as configuration writes, including imports. Nodes check every five seconds and reconcile changed server definitions while preserving unchanged connections. The desired and applied revisions refer to loaded configuration, not successful connectivity to every upstream. An unavailable upstream is reported as degraded separately.
