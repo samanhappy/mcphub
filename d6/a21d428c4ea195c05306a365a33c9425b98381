@@ -1,0 +1,42 @@
+locales/fr.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1518
+locales/tr.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1517
+locales/en.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1520
+src/services/credentialBindingService.ts
+  s_6b1f5170322b28::t_11dfb138112ee1 172-175
+  s_6b1f5170322b28::t_fbf2e69094fdcc 171
+locales/vi.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1520
+tests/integration/personal-credentials.test.ts
+  s_6b1f5170322b28::t_fbf2e69094fdcc 606
+  s_6b1f5170322b28::t_11dfb138112ee1 581
+tests/services/credentialBindingService.test.ts
+  s_6b1f5170322b28::t_385bed66c0b4b6 101,103,110
+  s_6b1f5170322b28::t_fbf2e69094fdcc 91-100
+locales/zh.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1522
+locales/es.json
+  s_6b1f5170322b28::t_fbf2e69094fdcc 1520
+src/controllers/credentialBindingController.ts
+  s_6b1f5170322b28::t_fbf2e69094fdcc 62
+docs/features/per-user-credentials.mdx
+  s_6b1f5170322b28::t_586ea2cb11f24f 83,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6a21d428c4ea195c05306a365a33c9425b98381",
+  "prompts": {},
+  "sessions": {
+    "s_6b1f5170322b28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19559-0200-7182-b11c-33c2c3f59809",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
