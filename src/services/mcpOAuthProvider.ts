@@ -354,10 +354,14 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       const renew = async () => {
         if (!this.serverConfig.url) throw new Error('Missing OAuth resource URL');
         // SDK issuer annotation re-saves tokens; do not turn remaining lifetime into a new expiry.
-        const { expires_in: _expiry, ...tokens } = this.storedTokens()!;
         const provider = new Proxy(this, {
           get: (target, property) => {
-            if (property === 'tokens') return () => tokens;
+            if (property === 'tokens') return () => {
+              const stored = this.storedTokens();
+              if (!stored) return undefined;
+              const { expires_in: _expiry, ...tokens } = stored;
+              return tokens;
+            };
             const value = Reflect.get(target, property);
             return typeof value === 'function' ? value.bind(target) : value;
           },

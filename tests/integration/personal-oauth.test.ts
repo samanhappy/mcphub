@@ -740,3 +740,22 @@ test.each(['/oauth/relay/gitlab', '/oauth/relay/gitlab?state=forged', '/oauth/re
     expect(fetchSpy).not.toHaveBeenCalled();
   },
 );
+
+
+test('#1432 invalid_grant clears rejected credentials and prepares authorization', async () => {
+  const a = await provider('alice');
+  await a.provider.saveTokens({ access_token: 'expired', refresh_token: 'rejected', token_type: 'Bearer', expires_in: 0 });
+  let refreshes = 0;
+  jest.mocked(createOAuthFetch).mockResolvedValue(async (input, init) => {
+    if (!String(input).endsWith('/token')) return fetchFn(input, init);
+    refreshes++;
+    return Response.json({ error: 'invalid_grant' }, { status: 400 });
+  });
+  await expect(a.provider.tokens()).rejects.toThrow();
+  expect(refreshes).toBe(1);
+  expect(await a.provider.tokens()).toBeUndefined();
+  const restored = await provider('alice');
+  expect(await restored.provider.tokens()).toBeUndefined();
+  expect(restored.context.config.oauth.refreshToken).toBeUndefined();
+  expect(restored.context.authorizationUrl).toBeDefined();
+});
