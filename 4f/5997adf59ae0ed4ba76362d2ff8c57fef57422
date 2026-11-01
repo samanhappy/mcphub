@@ -1,0 +1,33 @@
+examples/kubernetes/replicas/configmap.yaml
+  s_1cea7af971a5ce::t_7d032f85638129 1-25
+docs/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_f4c5d6aaf09240 75-131
+docs/zh/installation.mdx
+  s_1cea7af971a5ce::t_f4c5d6aaf09240 255-256
+docs/zh/configuration/replicas.mdx
+  s_1cea7af971a5ce::t_f4c5d6aaf09240 75-131
+examples/kubernetes/replicas/setup-job.yaml
+  s_1cea7af971a5ce::t_7d032f85638129 1-33
+examples/kubernetes/replicas/deployment.yaml
+  s_1cea7af971a5ce::t_7d032f85638129 1-76
+docs/installation.mdx
+  s_1cea7af971a5ce::t_f4c5d6aaf09240 255-256
+examples/kubernetes/replicas/service.yaml
+  s_1cea7af971a5ce::t_7d032f85638129 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f5997adf59ae0ed4ba76362d2ff8c57fef57422",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
