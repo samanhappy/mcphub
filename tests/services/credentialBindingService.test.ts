@@ -88,16 +88,26 @@ test('encrypts at rest, isolates email principals, and returns status only', asy
   ).not.toHaveProperty('env');
 });
 
-test.each(['personal-key-abcd', 'a', 'abcd', '🔑🔒🔐🗝'])(
+test.each([
+  ['personal-key-abcd', '••••abcd'],
+  ['a', '••••'],
+  ['ab', '••••b'],
+  ['abc', '••••c'],
+  ['abcd', '••••d'],
+  ['abcde', '••••de'],
+  ['abcdefgh', '••••gh'],
+  ['abcdefghi', '••••fghi'],
+  ['🔑🔒🔐🗝', '••••🗝'],
+])(
   'returns masked previews only when requested: %s',
-  async (value) => {
+  async (value, preview) => {
     await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': value });
     expect(await getCredentialBindingStatus('shared', 'alice', stdio)).not.toHaveProperty(
       'valuePreviews',
     );
     const status = await getCredentialBindingStatus('shared', 'alice', stdio, true);
     expect(status).toHaveProperty('valuePreviews', {
-      'env.PERSONAL_KEY': Array.from(value).length > 4 ? '••••abcd' : '••••',
+      'env.PERSONAL_KEY': preview,
     });
     expect(JSON.stringify(status)).not.toContain(`"${value}"`);
     await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'replacement-WXYZ' });

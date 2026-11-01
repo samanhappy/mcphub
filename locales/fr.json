@@ -1515,7 +1515,7 @@
     "manage": "Gérer",
     "configured": "Configuré",
     "required": "Association requise",
-    "previewNotice": "Seuls les quatre derniers caractères des valeurs enregistrées sont affichés. Les valeurs de quatre caractères ou moins sont entièrement masquées. Pour remplacer une association, renseignez tous les champs.",
+    "previewNotice": "Les valeurs enregistrées affichent leurs 4 derniers caractères, 2 pour les valeurs de 5 à 8 caractères et 1 pour celles de 2 à 4 caractères. Les valeurs d’un seul caractère sont entièrement masquées. Pour remplacer une association, renseignez tous les champs.",
     "savedValue": "Valeur enregistrée",
     "writeOnly": "Les valeurs enregistrées ne sont jamais affichées. Pour remplacer une association, renseignez tous les champs.",
     "replaceValue": "Nouvelle valeur",

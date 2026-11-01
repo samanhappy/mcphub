@@ -1517,7 +1517,7 @@
     "manage": "Gestionar",
     "configured": "Configurado",
     "required": "Vinculación obligatoria",
-    "previewNotice": "Solo se muestran los últimos cuatro caracteres de los valores guardados. Los valores de cuatro caracteres o menos se ocultan por completo. Para reemplazar una vinculación, introduce nuevos valores para cada campo.",
+    "previewNotice": "Los valores guardados muestran solo los últimos 4 caracteres; los de 5–8 muestran 2 y los de 2–4 muestran 1. Los valores de un carácter se ocultan por completo. Para reemplazar una vinculación, introduce nuevos valores para cada campo.",
     "savedValue": "Valor guardado",
     "writeOnly": "Los valores guardados no se pueden mostrar. Para reemplazar una vinculación, introduce nuevos valores para cada campo.",
     "replaceValue": "Introduce el valor de reemplazo",
