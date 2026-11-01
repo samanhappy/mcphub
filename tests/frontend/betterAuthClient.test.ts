@@ -44,7 +44,7 @@ describe('betterAuthClient', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/api/auth/better/sign-in/oauth2',
+      'http://localhost:5173/api/auth/better/sign-in/social',
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
@@ -52,7 +52,7 @@ describe('betterAuthClient', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          providerId: 'local-oidc',
+          provider: 'local-oidc',
           callbackURL: '/oauth/authorize?client_id=mcphub',
           errorCallbackURL: '/login',
         }),
