@@ -44,7 +44,7 @@ overrides:
   qs: 6.16.0
   rollup: 4.59.0
   tar@7.5.10: 7.5.13
-  uuid: 14.0.0
+  uuid: 14.0.3
 
 pnpmfileChecksum: sha256-3bo+X3m9acxXSC0vVE085iGfn+vmN/CIgtnT24S01fc=
 
@@ -205,8 +205,8 @@ importers:
         specifier: ^7.28.0
         version: 7.30.1
       uuid:
-        specifier: 14.0.0
-        version: 14.0.0
+        specifier: 14.0.3
+        version: 14.0.3
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.3
@@ -5390,8 +5390,8 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
-  uuid@14.0.0:
-    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
+  uuid@14.0.3:
+    resolution: {integrity: sha512-Sc5u1VVln93y1Xnz4R+CunOZc7R9LUcTmhj7Rc7Eg3HVcf7rVn2FOoa812fe0W8p3jD7xeoGSYbfqCGGH2B6xw==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -7191,7 +7191,7 @@ snapshots:
 
   '@types/uuid@11.0.0':
     dependencies:
-      uuid: 14.0.0
+      uuid: 14.0.3
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -10984,7 +10984,7 @@ snapshots:
 
   utils-merge@1.0.1: {}
 
-  uuid@14.0.0: {}
+  uuid@14.0.3: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
