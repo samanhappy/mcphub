@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse, BearerKey } from '@/types';
+import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
 import { useToast } from '@/contexts/ToastContext';
@@ -136,7 +137,7 @@ interface SystemSettings {
       betterAuth?: Partial<BetterAuthConfig>;
     };
     enableSessionRebuild?: boolean;
-    network?: { allowedCidrs?: string[] };
+    network?: { allowedCidrs?: string[]; fakeIpExceptions?: FakeIpException[] };
     activityLog?: {
       storeToolPayload?: boolean;
     };
@@ -166,6 +167,8 @@ interface SettingsContextValue {
   betterAuthConfig: BetterAuthConfig;
   nameSeparator: string;
   enableSessionRebuild: boolean;
+  fakeIpExceptions: FakeIpException[];
+  updateFakeIpExceptions: (value: FakeIpException[]) => Promise<boolean>;
   allowedCidrs: string[];
   updateAllowedCidrs: (value: string[]) => Promise<boolean>;
   storeToolPayload: boolean;
@@ -420,6 +423,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
+  const [fakeIpExceptions, setFakeIpExceptions] = useState<FakeIpException[]>([]);
   const [allowedCidrs, setAllowedCidrs] = useState<string[]>([]);
   const [toolPolicies, setToolPolicies] = useState<ToolPolicyRule[]>();
   const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
@@ -570,6 +574,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         setAllowRegistration(data.data?.systemConfig?.auth?.allowRegistration === true);
         setBetterAuthConfig(normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth));
       }
+      if (data.success) setFakeIpExceptions(data.data?.systemConfig?.network?.fakeIpExceptions ?? []);
       if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
@@ -1102,6 +1107,25 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  const updateFakeIpExceptions = async (value: FakeIpException[]): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const data = await apiPut('/system-config', { network: { fakeIpExceptions: value } });
+      if (!data.success) {
+        showToast(data.message || data.error || t('settings.fakeIp.saveFailed'), 'error');
+        return false;
+      }
+      setFakeIpExceptions(data.data.network.fakeIpExceptions ?? []);
+      showToast(t('settings.systemConfigUpdated'));
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('settings.fakeIp.saveFailed'), 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateAllowedCidrs = async (value: string[]): Promise<boolean> => {
     setLoading(true);
     try {
@@ -1275,6 +1299,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    fakeIpExceptions,
+    updateFakeIpExceptions,
     allowedCidrs,
     updateAllowedCidrs,
     storeToolPayload,

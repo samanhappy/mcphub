@@ -887,6 +887,8 @@ Use the smallest necessary ranges. Broad ranges such as `0.0.0.0/0` or `::/0` al
 
 ### Fake-IP DNS with TUN routing
 
+In **Settings → Security → Fake-IP DNS exceptions**, administrators can select a server, enter its exact hostname, add or delete rules, and save. The server selector stores its stable ID. Removing all rows and saving clears the exceptions.
+
 For SSE and Streamable HTTP upstreams behind a trusted local Fake-IP/TUN setup, administrators can grant an exact hostname on one stable server ID access to `198.18.0.0/15`, without globally allowing that range:
 
 ```json
