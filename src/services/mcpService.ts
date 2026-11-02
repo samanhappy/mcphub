@@ -1773,7 +1773,7 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
   const allowInternal = !!ownerUser?.isAdmin && !hasUrlCredentialSlots(conf);
 
   if (conf.url) {
-    await assertSafeUrl(conf.url, { allowInternal });
+    await assertSafeUrl(conf.url, { allowInternal, serverId: conf.id });
   }
 
   if (conf.type === 'streamable-http') {
@@ -1787,6 +1787,9 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
+      undefined,
+      undefined,
+      conf.id,
     );
 
     // Create OAuth provider if configured - SDK will handle authentication automatically
@@ -1827,6 +1830,9 @@ export const createTransportFromConfig = async (name: string, conf: ServerConfig
     const requestAwareFetch = createRedirectValidatingFetch(
       createRequestContextAwareFetch(baseFetch, conf.passthroughHeaders),
       allowInternal,
+      undefined,
+      undefined,
+      conf.id,
     );
 
     // Create OAuth provider if configured - SDK will handle authentication automatically

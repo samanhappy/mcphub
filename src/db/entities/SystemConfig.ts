@@ -16,7 +16,7 @@ export class SystemConfig {
   id: string;
 
   @Column({ type: 'simple-json', nullable: true })
-  network?: { allowedCidrs?: string[] };
+  network?: import('../../types/index.js').SystemConfig['network'];
 
   @Column({ type: 'simple-json', nullable: true })
   routing?: Record<string, any>;

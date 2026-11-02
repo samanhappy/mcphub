@@ -123,7 +123,10 @@ describe('system configuration authorization', () => {
         routing: {
           skipAuth: true,
         },
-        network: { allowedCidrs: ['0.0.0.0/0'] },
+        network: {
+          allowedCidrs: ['0.0.0.0/0'],
+          fakeIpExceptions: [{ serverId: 'trusted', hostname: 'mcp.example.com' }],
+        },
       });
 
     expect(response.status).toBe(403);

@@ -1,7 +1,7 @@
 import { validateToolPolicies } from '../utils/toolPolicy.js';
 import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { matchesNamePattern } from '../utils/namePattern.js';
-import { validateAllowedCidrs } from '../utils/ssrf.js';
+import { validateAllowedCidrs, validateFakeIpExceptions } from '../utils/ssrf.js';
 import {
   copyCredentialBindings,
   deleteCredentialBindings,
@@ -2103,10 +2103,17 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       return;
     }
     const hasNetworkUpdate = network !== undefined;
-    if (hasNetworkUpdate && (!network || !validateAllowedCidrs(network.allowedCidrs))) {
+    if (
+      hasNetworkUpdate &&
+      (!network ||
+        (network.allowedCidrs === undefined && network.fakeIpExceptions === undefined) ||
+        (network.allowedCidrs !== undefined && !validateAllowedCidrs(network.allowedCidrs)) ||
+        (network.fakeIpExceptions !== undefined &&
+          !validateFakeIpExceptions(network.fakeIpExceptions)))
+    ) {
       res.status(400).json({
         success: false,
-        message: 'network.allowedCidrs must be an array of valid IPv4 or IPv6 CIDRs',
+        message: 'Invalid network allowedCidrs or fakeIpExceptions',
       });
       return;
     }
@@ -2879,7 +2886,15 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
     }
 
     if (hasNetworkUpdate) {
-      systemConfig.network = { allowedCidrs: [...new Set<string>(network.allowedCidrs)] };
+      systemConfig.network = {
+        ...systemConfig.network,
+        ...(network.allowedCidrs !== undefined
+          ? { allowedCidrs: [...new Set<string>(network.allowedCidrs)] }
+          : {}),
+        ...(network.fakeIpExceptions !== undefined
+          ? { fakeIpExceptions: network.fakeIpExceptions }
+          : {}),
+      };
     }
 
     if (toolPolicies !== undefined) systemConfig.toolPolicies = toolPolicies;

@@ -281,6 +281,7 @@ export interface SystemConfig {
   toolPolicies?: ToolPolicyRule[];
   network?: {
     allowedCidrs?: string[]; // Admin-managed ranges reachable by non-admin-owned upstreams.
+    fakeIpExceptions?: Array<{ serverId: string; hostname: string }>;
   };
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled

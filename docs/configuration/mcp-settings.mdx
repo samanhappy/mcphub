@@ -885,6 +885,28 @@ Only admins can update the list through `PUT /api/system-config` with `{"network
 
 Use the smallest necessary ranges. Broad ranges such as `0.0.0.0/0` or `::/0` also allow sensitive internal destinations, including loopback and cloud metadata endpoints.
 
+### Fake-IP DNS with TUN routing
+
+For SSE and Streamable HTTP upstreams behind a trusted local Fake-IP/TUN setup, administrators can grant an exact hostname on one stable server ID access to `198.18.0.0/15`, without globally allowing that range:
+
+```json
+{
+  "systemConfig": {
+    "network": {
+      "fakeIpExceptions": [
+        { "serverId": "existing-server-uuid", "hostname": "mcp.example.com" }
+      ]
+    }
+  }
+}
+```
+
+Use the existing server's `id` from `GET /api/servers` (not its display name). Hostnames must be lowercase ASCII DNS names, with no scheme, port, wildcard or trailing dot; use punycode for internationalized names. A missing ID never matches. In database mode, use the admin-only `PUT /api/system-config` with `{"network":{"fakeIpExceptions":[{"serverId":"existing-server-uuid","hostname":"mcp.example.com"}]}}`. An empty array clears exceptions. Updating either network list preserves the other, including when changing CIDRs through Settings.
+
+The exception applies to requests made through the named server's MCP transport fetch, including SDK OAuth requests that reuse that fetch. Initial DNS answers, every redirect destination and socket-time DNS answers follow the same policy. Every answer must pass; loopback, private and metadata addresses receive no additional permission. IP-literal URLs and unrelated hostnames or server IDs do not match. Redirects to another hostname require their own matching exception if they resolve to Fake-IP addresses; public destinations remain subject to normal policy. Existing global CIDR allowances and administrator-owner bypasses still apply, so use a non-admin-owned server and no broad CIDR allowances when this narrower boundary is required. Removing an exception affects later requests and lookups, but does not terminate existing streams or connections.
+
+Guarded connections use direct socket DNS validation and bypass configured HTTP/HTTPS proxies. A system-level TUN must intercept and route these connections, and its DNS mapping must agree with the DNS visible inside the MCPHub process/container. Merely allowing the synthetic range does not establish routing. MCPHub trusts the local DNS/TUN mapping and cannot determine the real destination behind a synthetic address; only grant exceptions for trusted endpoints and a trusted proxy environment. TLS still uses the original hostname. This policy does not enable explicit HTTP proxy routing or add exceptions to OpenAPI requests, separate OAuth discovery/token/registration fetches, or anonymous CIMD URLs; these keep their existing SSRF policy. OAuth setups using those separate fetches may therefore still need real DNS results for their endpoints.
+
 ## On-demand tool snapshots
 
 For stdio servers, `startOnDemand: true` keeps the child process asleep until it is needed. MCPHub persists the last successful raw tool discovery so a restart can restore `tools/list` without starting every on-demand server. An empty tool list is also a valid snapshot. The first tool call still connects to the upstream and refreshes discovery; tools removed upstream cannot execute from the snapshot. Failed calls trigger a discovery refresh without replaying the call.

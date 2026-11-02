@@ -21,6 +21,7 @@ export interface AssertSafeUrlOptions {
   allowInternal?: boolean;
   lookup?: SsrfLookup;
   allowedCidrs?: string[];
+  serverId?: string;
 }
 
 export function validateAllowedCidrs(value: unknown): value is string[] {
@@ -40,10 +41,51 @@ export function validateAllowedCidrs(value: unknown): value is string[] {
   );
 }
 
+export function validateFakeIpExceptions(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((rule) => {
+      if (
+        !rule ||
+        typeof rule.serverId !== 'string' ||
+        !rule.serverId.trim() ||
+        typeof rule.hostname !== 'string'
+      )
+        return false;
+      const host = rule.hostname;
+      return (
+        host.length <= 253 &&
+        host === host.toLowerCase() &&
+        isIP(host) === 0 &&
+        host.includes('.') &&
+        host
+          .split('.')
+          .every((label: string) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+      );
+    })
+  );
+}
+
+function allowsFakeIp(ip: string, hostname?: string, serverId?: string): boolean {
+  if (!hostname || !serverId || isIP(hostname) || isIP(ip) !== 4) return false;
+  const n = ipv4ToInt(ip);
+  if (n < 0xc6120000 || n > 0xc613ffff) return false;
+  const rules = getCachedSystemConfig()?.network?.fakeIpExceptions;
+  return (
+    validateFakeIpExceptions(rules) &&
+    rules!.some((rule) => rule.serverId === serverId && rule.hostname === hostname.toLowerCase())
+  );
+}
+
 // Read on each request/socket lookup so removing a range also affects existing clients.
-function isDisallowedIp(ip: string, allowedCidrs?: string[]): boolean {
+function isDisallowedIp(
+  ip: string,
+  allowedCidrs?: string[],
+  hostname?: string,
+  serverId?: string,
+): boolean {
   if (!isIP(ip)) return true;
-  if (!isBlockedIp(ip)) return false;
+  if (!isBlockedIp(ip) || allowsFakeIp(ip, hostname, serverId)) return false;
   const cidrs = allowedCidrs ?? getCachedSystemConfig()?.network?.allowedCidrs ?? [];
   if (!validateAllowedCidrs(cidrs)) return true;
   const blockList = new BlockList();
@@ -141,11 +183,18 @@ const defaultLookup: SsrfLookup = async (host) => {
 
 /** Validate the very DNS result handed to the socket, without a second resolution. */
 export const createSafeLookup =
-  (lookup: SsrfLookup = defaultLookup, allowedCidrs?: string[]): LookupFunction =>
+  (
+    lookup: SsrfLookup = defaultLookup,
+    allowedCidrs?: string[],
+    serverId?: string,
+  ): LookupFunction =>
   (hostname, options, callback) => {
     void lookup(hostname)
       .then((addresses) => {
-        if (!addresses.length || addresses.some((ip) => isDisallowedIp(ip, allowedCidrs))) {
+        if (
+          !addresses.length ||
+          addresses.some((ip) => isDisallowedIp(ip, allowedCidrs, hostname, serverId))
+        ) {
           throw new UnsafeUrlError(`Blocked or empty DNS result for ${hostname}`);
         }
         const records = addresses
@@ -180,7 +229,7 @@ export async function assertSafeUrl(
   rawUrl: string,
   opts: AssertSafeUrlOptions = {},
 ): Promise<string> {
-  const { allowInternal = false, lookup = defaultLookup, allowedCidrs } = opts;
+  const { allowInternal = false, lookup = defaultLookup, allowedCidrs, serverId } = opts;
 
   let parsed: URL;
   try {
@@ -215,7 +264,7 @@ export async function assertSafeUrl(
     throw new UnsafeUrlError(`No addresses resolved for host: ${host}`);
   }
   for (const addr of addresses) {
-    if (isDisallowedIp(addr, allowedCidrs)) {
+    if (isDisallowedIp(addr, allowedCidrs, host, serverId)) {
       throw new UnsafeUrlError(`Host ${host} resolves to blocked address: ${addr}`);
     }
   }
@@ -235,19 +284,20 @@ export function createRedirectValidatingFetch(
   allowInternal: boolean,
   lookup: SsrfLookup = defaultLookup,
   allowedCidrs?: string[],
+  serverId?: string,
 ): FetchLike {
   const maxHops = 5;
   const dispatcher = allowInternal
     ? undefined
-    : lookup === defaultLookup && allowedCidrs === undefined
+    : !serverId && lookup === defaultLookup && allowedCidrs === undefined
       ? safeDispatcher
-      : lookup === defaultLookup && allowedCidrs?.length === 0
+      : !serverId && lookup === defaultLookup && allowedCidrs?.length === 0
         ? publicOnlyDispatcher
-        : new Agent({ connect: { lookup: createSafeLookup(lookup, allowedCidrs) } });
+        : new Agent({ connect: { lookup: createSafeLookup(lookup, allowedCidrs, serverId) } });
   return async (url, init) => {
     let currentUrl = typeof url === 'string' ? url : url.toString();
     let hops = 0;
-    currentUrl = await assertSafeUrl(currentUrl, { allowInternal, lookup, allowedCidrs });
+    currentUrl = await assertSafeUrl(currentUrl, { allowInternal, lookup, allowedCidrs, serverId });
     let response = await baseFetch(currentUrl, {
       ...init,
       ...(dispatcher ? { dispatcher } : {}),
@@ -264,7 +314,12 @@ export function createRedirectValidatingFetch(
         return response;
       }
       const resolvedUrl = new URL(location, currentUrl).toString();
-      currentUrl = await assertSafeUrl(resolvedUrl, { allowInternal, lookup, allowedCidrs });
+      currentUrl = await assertSafeUrl(resolvedUrl, {
+        allowInternal,
+        lookup,
+        allowedCidrs,
+        serverId,
+      });
       hops++;
       response = await baseFetch(currentUrl, {
         ...init,

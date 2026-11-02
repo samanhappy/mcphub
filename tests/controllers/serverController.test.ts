@@ -892,6 +892,35 @@ describe('serverController - updateSystemConfig', () => {
     }
   });
 
+  it('saves scoped Fake-IP rules', async () => {
+    const fakeIpExceptions = [{ serverId: 'trusted', hostname: 'mcp.example.com' }];
+    mockRequest.body = { network: { fakeIpExceptions } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ network: expect.objectContaining({ fakeIpExceptions }) }),
+    );
+  });
+
+  it('preserves scoped rules when the dashboard updates CIDRs', async () => {
+    const fakeIpExceptions = [{ serverId: 'trusted', hostname: 'mcp.example.com' }];
+    mockSystemConfigDao.get.mockResolvedValue({ network: { fakeIpExceptions } });
+    mockRequest.body = { network: { allowedCidrs: [] } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ network: { fakeIpExceptions, allowedCidrs: [] } }),
+    );
+  });
+
+  it.each([null, [{}], [{ serverId: 'trusted', hostname: '*' }]])(
+    'rejects invalid Fake-IP rules %s',
+    async (fakeIpExceptions) => {
+      mockRequest.body = { network: { fakeIpExceptions } };
+      await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+      expect(mockStatus).toHaveBeenCalledWith(400);
+      expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([null, {}, { allowedCidrs: '192.168.1.0/24' }, { allowedCidrs: ['192.168.1.0/33'] }])(
     'rejects invalid network configuration %s without saving',
     async (network) => {
