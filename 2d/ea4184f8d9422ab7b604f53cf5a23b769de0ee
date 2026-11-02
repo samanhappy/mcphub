@@ -1,0 +1,48 @@
+docs/zh/configuration/mcp-settings.mdx
+  s_b3348a37a38314::t_c1c2fe873d46f0 792-793
+tests/frontend/fakeIpExceptionsSettings.test.ts
+  s_b3348a37a38314::t_c1c2fe873d46f0 1-52
+frontend/src/contexts/SettingsContext.tsx
+  s_b3348a37a38314::t_87ceb6c86d1264 140,170-171,426,577,1110-1128,1302-1303
+  s_b3348a37a38314::t_3a25e583e34aff 11
+frontend/src/components/FakeIpExceptionsSettings.tsx
+  s_b3348a37a38314::t_87ceb6c86d1264 1-2,4-115
+  s_b3348a37a38314::t_8da87b17aa9e3e 3
+src/types/index.ts
+  s_b3348a37a38314::t_87ceb6c86d1264 285
+  s_b3348a37a38314::t_5299952ffe1263 1
+docs/configuration/mcp-settings.mdx
+  s_b3348a37a38314::t_c1c2fe873d46f0 890-891
+frontend/src/pages/SettingsPage.tsx
+  s_b3348a37a38314::t_2504f1c08311db 20,753-754,4249-4257
+locales/en.json
+  s_b3348a37a38314::t_3b814c13dc80ab 859-872
+locales/es.json
+  s_b3348a37a38314::t_f5fba871dd416d 859-872
+locales/fr.json
+  s_b3348a37a38314::t_6fffb8475f3d74 858-871
+locales/tr.json
+  s_b3348a37a38314::t_5d6fda04547dcc 858-871
+locales/vi.json
+  s_b3348a37a38314::t_3f7fdeee64cc71 859-872
+locales/zh.json
+  s_b3348a37a38314::t_da91a76916ddda 861-874
+src/types/network.ts
+  s_b3348a37a38314::t_8119fb63143761 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dea4184f8d9422ab7b604f53cf5a23b769de0ee",
+  "prompts": {},
+  "sessions": {
+    "s_b3348a37a38314": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a199e2-a971-7022-a1b8-4e4c7cd094cf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
