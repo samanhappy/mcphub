@@ -291,5 +291,69 @@ describe('Parameter Conversion Utilities', () => {
 
       expect(result.config).toEqual({ key: 'value' });
     });
+
+    it('should wrap a single value in an array when schema type is array', () => {
+      const schema = {
+        properties: {
+          ids: { type: 'array', items: { type: 'integer' } },
+          tags: { type: 'array', items: { type: 'string' } },
+          anything: { type: 'array' },
+        },
+      };
+
+      expect(convertParametersToTypes({ ids: '5', tags: 'solo', anything: 7 }, schema)).toEqual({
+        ids: [5],
+        tags: ['solo'],
+        anything: [7],
+      });
+    });
+
+    it('should treat a type list with one non-null member as that type', () => {
+      const schema = {
+        properties: {
+          limit: { type: ['integer', 'null'] },
+          ids: { type: ['array', 'null'], items: { type: ['integer', 'null'] } },
+        },
+      };
+
+      expect(convertParametersToTypes({ limit: '10', ids: '5,6' }, schema)).toEqual({
+        limit: 10,
+        ids: [5, 6],
+      });
+      expect(convertParametersToTypes({ limit: null, ids: null }, schema)).toEqual({
+        limit: null,
+        ids: null,
+      });
+    });
+
+    it('should treat anyOf and oneOf with one non-null member as that member', () => {
+      const schema = {
+        properties: {
+          opt: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
+          flag: { oneOf: [{ type: 'null' }, { type: 'boolean' }] },
+          ids: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+        },
+      };
+
+      expect(convertParametersToTypes({ opt: '3', flag: 'true', ids: '8' }, schema)).toEqual({
+        opt: 3,
+        flag: true,
+        ids: [8],
+      });
+    });
+
+    it('should keep values unchanged when more than one non-null type is allowed', () => {
+      const schema = {
+        properties: {
+          either: { type: ['integer', 'string'] },
+          mixed: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+        },
+      };
+
+      expect(convertParametersToTypes({ either: '5', mixed: '5' }, schema)).toEqual({
+        either: '5',
+        mixed: '5',
+      });
+    });
   });
 });

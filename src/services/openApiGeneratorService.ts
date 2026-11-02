@@ -42,7 +42,12 @@ function convertToolSchemaToOpenAPI(tool: Tool): {
 
     // For simple tools with only primitive parameters, use query parameters
     const hasComplexTypes = Object.values(properties).some(
-      (prop: any) => prop.type === 'object' || prop.type === 'array' || prop.type === 'string',
+      (prop: any) =>
+        prop.type === 'object' ||
+        prop.type === 'array' ||
+        prop.type === 'string' ||
+        Array.isArray(prop.type) ||
+        ['anyOf', 'oneOf', 'allOf', '$ref'].some((keyword) => prop[keyword] !== undefined),
     );
 
     if (!hasComplexTypes && Object.keys(properties).length <= 10) {

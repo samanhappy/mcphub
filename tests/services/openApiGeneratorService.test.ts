@@ -125,6 +125,97 @@ describe('OpenAPI Generator Service', () => {
     });
   });
 
+  describe('tool input schema conversion', () => {
+    const generateOperations = async (properties: Record<string, unknown>) => {
+      mockGetServersInfo.mockResolvedValue([
+        {
+          name: 'example',
+          status: 'connected',
+          tools: [
+            {
+              name: 'example-lookup',
+              description: 'Lookup',
+              inputSchema: { type: 'object', properties },
+            },
+          ],
+        },
+      ] as any);
+
+      const spec = await generateOpenAPISpec();
+      return spec.paths['/tools/example/lookup'] as Record<string, any>;
+    };
+
+    it('should keep primitive-only tools as query parameters', async () => {
+      const operations = await generateOperations({
+        limit: { type: 'integer', description: 'Max rows' },
+        ratio: { type: 'number' },
+        enabled: { type: 'boolean' },
+      });
+
+      expect(operations).toHaveProperty('get');
+      expect(operations).not.toHaveProperty('post');
+      expect(operations.get.parameters).toEqual([
+        {
+          name: 'limit',
+          in: 'query',
+          required: false,
+          description: 'Max rows',
+          schema: { type: 'integer' },
+        },
+        {
+          name: 'ratio',
+          in: 'query',
+          required: false,
+          description: 'Parameter ratio',
+          schema: { type: 'number' },
+        },
+        {
+          name: 'enabled',
+          in: 'query',
+          required: false,
+          description: 'Parameter enabled',
+          schema: { type: 'boolean' },
+        },
+      ]);
+    });
+
+    it('should send a nullable array through the request body instead of a query parameter', async () => {
+      const ids = { type: ['array', 'null'], items: { type: 'integer' } };
+      const operations = await generateOperations({ ids, n: { type: 'integer' } });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(operations.post.parameters).toBeUndefined();
+      expect(operations.post.requestBody.content['application/json'].schema.properties).toEqual({
+        ids,
+        n: { type: 'integer' },
+      });
+    });
+
+    it('should send a nullable scalar through the request body instead of a query parameter', async () => {
+      const operations = await generateOperations({ limit: { type: ['integer', 'null'] } });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(operations.post.requestBody.content['application/json'].schema.properties).toEqual({
+        limit: { type: ['integer', 'null'] },
+      });
+    });
+
+    it.each([
+      ['anyOf', { anyOf: [{ type: 'integer' }, { type: 'null' }] }],
+      ['oneOf', { oneOf: [{ type: 'integer' }, { type: 'boolean' }] }],
+      ['allOf', { allOf: [{ $ref: '#/$defs/Limit' }] }],
+      ['$ref', { $ref: '#/$defs/Limit' }],
+    ])('should send a property declared with %s through the request body', async (_name, opt) => {
+      const operations = await generateOperations({ opt, n: { type: 'integer' } });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(operations.post.requestBody.content['application/json'].schema.properties).toEqual({
+        opt,
+        n: { type: 'integer' },
+      });
+    });
+  });
+
   describe('getToolStats', () => {
     it('should return valid tool statistics', async () => {
       const stats = await getToolStats();
