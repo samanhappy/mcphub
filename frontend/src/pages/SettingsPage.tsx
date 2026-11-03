@@ -1,5 +1,5 @@
 import { useBranding } from '@/contexts/BrandingContext';
-import { getSmartRoutingPath } from '@/utils/runtime';
+import { getRuntimeConfig, getSmartRoutingPath } from '@/utils/runtime';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -993,6 +993,10 @@ const SettingsPage: React.FC = () => {
     }));
   };
 
+  const usesDefaultBearerHeader =
+    !routingConfig.bearerAuthHeaderName.trim() ||
+    routingConfig.bearerAuthHeaderName.trim().toLowerCase() === 'authorization';
+
   const handleRoutingConfigChange = async (
     key:
       | 'enableGlobalRoute'
@@ -1000,6 +1004,7 @@ const SettingsPage: React.FC = () => {
       | 'enableBearerAuth'
       | 'bearerAuthKey'
       | 'bearerAuthHeaderName'
+      | 'allowAuthorizationPassthrough'
       | 'jsonBodyLimit'
       | 'skipAuth',
     value: boolean | string,
@@ -2042,6 +2047,40 @@ const SettingsPage: React.FC = () => {
                   </button>
                 </div>
               </div>}
+
+              {isAdmin && !getRuntimeConfig().isHosted && (
+                <div className="flex items-start justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                  <div className="min-w-0">
+                    <h3 id="authorization-passthrough-label" className="font-medium text-gray-700">
+                      {t('settings.allowAuthorizationPassthrough')}
+                    </h3>
+                    <p id="authorization-passthrough-description" className="text-sm text-gray-500">
+                      {t('settings.allowAuthorizationPassthroughDescription')}
+                    </p>
+                    {usesDefaultBearerHeader && (
+                      <p id="authorization-passthrough-requirement" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                        {t('settings.allowAuthorizationPassthroughRequirement')}
+                      </p>
+                    )}
+                  </div>
+                  <Switch
+                    aria-labelledby="authorization-passthrough-label"
+                    aria-describedby={
+                      usesDefaultBearerHeader
+                        ? 'authorization-passthrough-description authorization-passthrough-requirement'
+                        : 'authorization-passthrough-description'
+                    }
+                    className="shrink-0 mt-1"
+                    disabled={
+                      loading || (!routingConfig.allowAuthorizationPassthrough && usesDefaultBearerHeader)
+                    }
+                    checked={routingConfig.allowAuthorizationPassthrough}
+                    onCheckedChange={(checked) =>
+                      handleRoutingConfigChange('allowAuthorizationPassthrough', checked)
+                    }
+                  />
+                </div>
+              )}
 
               <div className="flex flex-wrap justify-between items-center gap-3">
                 <p className="text-sm text-gray-600">

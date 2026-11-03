@@ -21,6 +21,7 @@ interface RoutingConfig {
   enableBearerAuth: boolean;
   bearerAuthKey: string;
   bearerAuthHeaderName: string;
+  allowAuthorizationPassthrough: boolean;
   jsonBodyLimit: string;
   skipAuth: boolean;
 }
@@ -355,6 +356,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     enableBearerAuth: true,
     bearerAuthKey: '',
     bearerAuthHeaderName: 'Authorization',
+    allowAuthorizationPassthrough: false,
     jsonBodyLimit: '1mb',
     skipAuth: false,
   });
@@ -457,6 +459,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
           bearerAuthHeaderName:
             data.data.systemConfig.routing.bearerAuthHeaderName || 'Authorization',
+          allowAuthorizationPassthrough:
+            data.data.systemConfig.routing.allowAuthorizationPassthrough === true,
           jsonBodyLimit: data.data.systemConfig.routing.jsonBodyLimit || '1mb',
           skipAuth: data.data.systemConfig.routing.skipAuth ?? false,
         });

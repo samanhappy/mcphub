@@ -780,7 +780,7 @@ ls -la /path/to/server
 }
 ```
 
-数据库模式通过仅限管理员的 `PUT /api/system-config` 提交以下请求体，调用该管理接口时使用当前配置的 MCPHub 鉴权头：
+管理员也可在 **设置 → 密钥 → 允许透传 Authorization** 中开启，开启前需先保存独立的 MCPHub 鉴权头；hosted 模式不显示该开关。数据库模式还可通过仅限管理员的 `PUT /api/system-config` 提交以下请求体，调用该管理接口时使用当前配置的 MCPHub 鉴权头：
 
 ```json
 {

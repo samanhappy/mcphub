@@ -679,7 +679,7 @@ You can also configure runtime routing and authentication behavior under `system
 - This instance-wide opt-in trusts every configured passthrough destination with the caller's upstream token. Only enable it for trusted destinations; passthrough configuration remains admin-only. Existing installations keep filtering `Authorization` until explicitly opted in.
 - `jsonBodyLimit` defaults to `1mb` and controls the Express JSON parser limit for API requests, including large inline OpenAPI schema uploads.
 
-In database mode, use the admin-only `PUT /api/system-config` endpoint (authenticate with the currently configured MCPHub header):
+Administrators can enable this in **Settings → Keys → Allow Authorization passthrough** after saving a separate MCPHub authentication header. The switch is hidden in hosted mode. In database mode, you can also use the admin-only `PUT /api/system-config` endpoint (authenticate with the currently configured MCPHub header):
 
 ```json
 {
