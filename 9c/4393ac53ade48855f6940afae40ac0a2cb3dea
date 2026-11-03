@@ -1,0 +1,76 @@
+frontend/src/pages/CredentialsPage.tsx
+  s_ad653f9724707a::t_248f187c55e4b3 4,21,23,28-40,42,45-50,53-55,57,59,61-62,64,69-74,77,79-80,82,84,89-90,92-94,97-100,102-113,115-117,119-120,122-129,131-142,144-161,163-165,167-173,175-177,179,181-189,191-194,196,198-212,214-227,230-237,242-243,245,247-249,251,253,257,259-262,264-265,267-287,290,293-312,315,318-321,323,326
+  s_ad653f9724707a::t_6abccb6174b3bc 22
+  s_ad653f9724707a::t_d6a30a6f7440f5 56
+  s_ad653f9724707a::t_6566b4c145ecca 58
+  s_ad653f9724707a::t_4caac235bb6b3e 63
+  s_ad653f9724707a::t_4eead9a7aeea0f 78
+  s_ad653f9724707a::t_6bb66ab97e8b18 81
+  s_ad653f9724707a::t_d8b5249b9ce922 83
+  s_ad653f9724707a::t_049cee56296f26 85-88
+  s_ad653f9724707a::t_a05f84abd92a59 91
+  s_ad653f9724707a::t_2eb6f551afe81a 101
+  s_ad653f9724707a::t_8217853728f471 114
+  s_ad653f9724707a::t_fb7b2322680dff 118
+  s_ad653f9724707a::t_73b3144db7b8d6 130
+  s_ad653f9724707a::t_6dedc7b20d5d8f 143
+  s_ad653f9724707a::t_57a2d74e515c0a 162
+  s_ad653f9724707a::t_4e8fb4228a3a7b 166
+  s_ad653f9724707a::t_74ed6b9b6676c7 174
+  s_ad653f9724707a::t_70c2e94cbceef7 178
+  s_ad653f9724707a::t_3f8de4f68d40ba 180
+  s_ad653f9724707a::t_bbc327183c47e6 190
+  s_ad653f9724707a::t_4b981feaf578fe 195
+  s_ad653f9724707a::t_6461721eb7571a 197
+  s_ad653f9724707a::t_bc8c8abc3eb803 213
+  s_ad653f9724707a::t_8426fa0b1c9306 229
+  s_ad653f9724707a::t_436ed47ea7a8da 238-239
+  s_ad653f9724707a::t_6fee891c6bb53a 241
+  s_ad653f9724707a::t_925744c4be5979 244
+  s_ad653f9724707a::t_013eb314fcbbc8 246
+  s_ad653f9724707a::t_e1e5a3b6999305 250
+  s_ad653f9724707a::t_05c33984023bcd 252
+  s_ad653f9724707a::t_ccbe3899231f19 254-256
+  s_ad653f9724707a::t_e095f39df428a7 266
+  s_ad653f9724707a::t_e2d92609930bc9 288-289
+  s_ad653f9724707a::t_4b5eb48cdd1c5a 291-292
+  s_ad653f9724707a::t_8fa1c5cc634448 313-314
+  s_ad653f9724707a::t_1bf52678a34fc2 316-317
+frontend/src/utils/credentialCopySources.ts
+  s_ad653f9724707a::t_248f187c55e4b3 1-19
+  s_ad653f9724707a::t_920f8db1412728 20-36
+docs/features/per-user-credentials.mdx
+  s_ad653f9724707a::t_73cd6ff6887e3c 111-112
+docs/zh/features/per-user-credentials.mdx
+  s_ad653f9724707a::t_7cdd1966f10ca2 109-110
+locales/en.json
+  s_ad653f9724707a::t_0bd7e307552f2a 1559-1574
+locales/es.json
+  s_ad653f9724707a::t_2373178f39ce7e 1559-1574
+locales/fr.json
+  s_ad653f9724707a::t_a307a5597bc051 1557-1572
+locales/tr.json
+  s_ad653f9724707a::t_3965767d4bac7f 1556-1571
+locales/vi.json
+  s_ad653f9724707a::t_b72e8569cdb2f1 1559-1574
+locales/zh.json
+  s_ad653f9724707a::t_68fcfd7be558d0 1561-1576
+tests/frontend/credentialCopySources.test.ts
+  s_ad653f9724707a::t_2ae0ba6b63aae0 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c4393ac53ade48855f6940afae40ac0a2cb3dea",
+  "prompts": {},
+  "sessions": {
+    "s_ad653f9724707a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a18c-ac86-7fa0-9275-60490ad4c70f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
