@@ -98,37 +98,69 @@ function normalizeNullability(node: Schema): Schema {
 
   if (Array.isArray(result.type)) {
     const types = result.type.filter((type: unknown) => type !== 'null');
-    nullable = types.length !== result.type.length;
+    const acceptsNull = types.length !== result.type.length;
     if (types.length === 0) {
       delete result.type;
     } else if (types.length === 1) {
       result.type = types[0];
+      if (acceptsNull) {
+        result.nullable = true;
+      }
     } else {
       delete result.type;
-      const union = { anyOf: types.map((type: unknown) => ({ type })) };
+      const members: Schema[] = types.map((type: unknown) => ({ type }));
+      if (acceptsNull) {
+        members[0] = markNullable(members[0], false);
+      }
       if (result.anyOf === undefined) {
-        result.anyOf = union.anyOf;
+        result.anyOf = members;
       } else {
-        result.allOf = [...(result.allOf ?? []), union];
+        result.allOf = [...(result.allOf ?? []), { anyOf: members }];
       }
     }
   }
 
   for (const key of ['anyOf', 'oneOf']) {
     if (!Array.isArray(result[key]) || !result[key].some(isNullSchema)) continue;
-    nullable = true;
     const members = result[key].filter((member: unknown) => !isNullSchema(member));
     delete result[key];
     if (members.length === 1) {
       // The node's own keywords (description, default, ...) take priority over the member's
       Object.assign(result, { ...members[0], ...result });
+      nullable = true;
     } else if (members.length > 1) {
+      // `nullable` must sit next to a `type`, so it goes on the first member that has one. One
+      // member is enough for anyOf, and for oneOf null has to match exactly one member
+      const typed = members.findIndex(
+        (member: unknown) => !!member && typeof (member as Schema).type === 'string',
+      );
+      if (typed >= 0) {
+        members[typed] = markNullable(members[typed]);
+      } else {
+        nullable = true;
+      }
       result[key] = members;
+    } else {
+      nullable = true;
     }
   }
 
-  if (nullable) {
-    result.nullable = true;
+  return nullable ? markNullable(result) : result;
+}
+
+/**
+ * Make a schema accept null in OpenAPI 3.0. `nullable` only counts next to a `type`, and an
+ * `enum` accepts null only when it lists it. `extendEnum` is false when the schema's own enum
+ * is meant to keep excluding null.
+ */
+function markNullable(schema: Schema, extendEnum = true): Schema {
+  const marked: Schema = { ...schema };
+  const hasEnum = Array.isArray(marked.enum);
+  if (hasEnum && extendEnum && !marked.enum.includes(null)) {
+    marked.enum = [...marked.enum, null];
   }
-  return result;
+  if (typeof marked.type === 'string' || !hasEnum) {
+    marked.nullable = true;
+  }
+  return marked;
 }

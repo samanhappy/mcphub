@@ -225,7 +225,7 @@ describe('OpenAPI Generator Service', () => {
       });
 
       expect(bodyProperties(operations)).toEqual({
-        value: { oneOf: [{ type: 'integer' }, { type: 'boolean' }], nullable: true },
+        value: { oneOf: [{ type: 'integer', nullable: true }, { type: 'boolean' }] },
       });
     });
 
@@ -235,7 +235,7 @@ describe('OpenAPI Generator Service', () => {
       });
 
       expect(bodyProperties(operations)).toEqual({
-        value: { anyOf: [{ type: 'string' }, { type: 'integer' }], nullable: true },
+        value: { anyOf: [{ type: 'string', nullable: true }, { type: 'integer' }] },
       });
     });
 
