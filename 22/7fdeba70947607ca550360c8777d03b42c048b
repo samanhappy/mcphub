@@ -1,0 +1,40 @@
+tests/services/mcpService-passthrough-headers.test.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 1,226-242
+  s_f982e41d362a05::t_13569e85cca695 243
+tests/integration/passthrough-credentials.test.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 9-46
+src/types/index.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 291
+docs/zh/configuration/mcp-settings.mdx
+  s_f982e41d362a05::t_3bf3411eb6bbda 768-799
+src/utils/passthroughHeaders.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 1,15-19,22-23
+src/controllers/serverController.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 2120-2129,2147,2422-2423
+  s_f982e41d362a05::t_d3a6404b6d3cc0 2424-2425
+tests/controllers/serverController.test.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 952-976
+docs/configuration/mcp-settings.mdx
+  s_f982e41d362a05::t_3bf3411eb6bbda 668,677-679,682-693
+  s_f982e41d362a05::t_6dcfeb927cd618 694
+frontend/src/services/configService.ts
+  s_f982e41d362a05::t_3bf3411eb6bbda 13
+tests/utils/passthroughHeaders.test.ts
+  s_f982e41d362a05::t_6b4908ef0d5aaf 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "227fdeba70947607ca550360c8777d03b42c048b",
+  "prompts": {},
+  "sessions": {
+    "s_f982e41d362a05": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a0b2-1752-7610-93f9-be3a0bc63642",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
