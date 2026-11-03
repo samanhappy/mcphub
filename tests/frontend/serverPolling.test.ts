@@ -11,6 +11,23 @@ describe('server polling policy', () => {
     expect(policy.success([server('disconnected')])).toBe(2000);
   });
 
+  it('keeps polling after reinstall while package metadata resolves despite stable status', () => {
+    let now = 0;
+    const policy = createServerPollingPolicy(() => now, 60000);
+    for (now = 0; now < 60000; now += 2000) {
+      expect(policy.success([server('connected')])).toBe(2000);
+    }
+    expect(policy.success([server('connected')])).toBe(30000);
+  });
+
+  it('preserves the action deadline when a polling session restarts', () => {
+    let now = 58000;
+    const policy = createServerPollingPolicy(() => now, 60000);
+    for (let i = 0; i < 3; i++) expect(policy.success([server('connected')])).toBe(2000);
+    now = 60000;
+    expect(policy.success([server('connected')])).toBe(30000);
+  });
+
   it('keeps connecting servers fast but caps each window at one minute', () => {
     let now = 0;
     const policy = createServerPollingPolicy(() => now);
