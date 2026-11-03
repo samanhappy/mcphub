@@ -6,7 +6,7 @@ import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { authenticateForwardAuthToken } from '../services/forwardAuthService.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
-import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
 const isTestEnv =
@@ -121,7 +121,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   // Forward auth runs first: a JWT from the configured issuer either
   // authenticates here or is rejected, and never falls back to other methods.
   const forwardAuthResult = await authenticateForwardAuthToken(
-    getBearerTokenFromHeaders(req.headers, systemConfig),
+    getForwardAuthTokenFromHeaders(req.headers, systemConfig),
     systemConfig,
   );
   if (forwardAuthResult.status === 'rejected') {

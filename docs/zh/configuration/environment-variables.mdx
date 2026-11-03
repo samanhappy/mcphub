@@ -116,6 +116,7 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `FORWARD_AUTH_ISSUER` | 期望的 `iss` 声明。必填。 |
 | `FORWARD_AUTH_AUDIENCE` | 接受的 `aud` 值，支持逗号分隔或 JSON 数组；值中可以包含空格。必填。 |
 | `FORWARD_AUTH_ALGORITHMS` | 允许的非对称算法，默认 `RS256,ES256`。永远不接受 `HS*` 和 `none`。 |
+| `FORWARD_AUTH_TOKEN_HEADER` | 携带 JWT 的请求头，可为原始 JWT 或 `Bearer <jwt>`（例如 `Cf-Access-Jwt-Assertion`）。默认使用 Bearer 认证请求头。 |
 | `FORWARD_AUTH_USERNAME_CLAIM` | 新建用户的用户名所用声明，默认 `preferred_username`。 |
 | `FORWARD_AUTH_EMAIL_CLAIM` | 新建用户的邮箱所用声明，默认 `email`。 |
 | `FORWARD_AUTH_AUTO_CREATE` | 为新身份创建非管理员本地用户，默认 `true`。 |

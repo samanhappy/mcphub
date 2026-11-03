@@ -128,6 +128,23 @@ Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
 
 JWT 从配置的 Bearer 请求头中读取（默认为 `Authorization: Bearer <jwt>`）。
 
+部分网关会在自己的请求头中发送不带 `Bearer` 前缀的 JWT，例如 Cloudflare Access 会为每个放行的请求添加 `Cf-Access-Jwt-Assertion`。将 `jwks.tokenHeader` 设置为该请求头名称后，令牌将从该请求头读取，可以是原始 JWT，也可以是 `Bearer <jwt>`。设置令牌请求头后，转发认证只读取该请求头，Bearer 请求头仍可用于 Bearer 密钥和 OAuth 令牌。即使该请求头列在 `passthroughHeaders` 中，MCPHub 也不会将其转发给上游服务器。请求头名称无效时，转发认证将被禁用。
+
+```json
+"forwardAuth": {
+  "enabled": true,
+  "mode": "jwks",
+  "jwks": {
+    "uri": "https://<team>.cloudflareaccess.com/cdn-cgi/access/certs",
+    "issuer": "https://<team>.cloudflareaccess.com",
+    "audience": "<Access 应用的 AUD 标签>",
+    "tokenHeader": "Cf-Access-Jwt-Assertion"
+  },
+  "usernameClaim": "email",
+  "emailClaim": "email"
+}
+```
+
 **验证**
 
 - 令牌使用 `jwks.uri` 进行验证。密钥会被缓存，遇到未知 `kid` 时会重新获取，因此身份提供方轮换密钥无需重启。

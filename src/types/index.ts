@@ -250,6 +250,7 @@ export interface ForwardAuthJwksConfig {
   issuer?: string; // Expected `iss` claim; tokens with this issuer are verified and never fall back
   audience?: string | string[]; // Accepted `aud` claim value(s)
   algorithms?: string[]; // Allowed asymmetric algorithms (default: RS256, ES256)
+  tokenHeader?: string; // Header carrying the JWT, raw or as `Bearer <jwt>` (default: the bearer auth header)
 }
 
 export interface ForwardAuthConfig {

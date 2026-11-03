@@ -15,6 +15,7 @@ import {
   resolveStringArraySetting,
   resolveStringSetting,
 } from '../utils/settingResolvers.js';
+import { resolveForwardAuthTokenHeaderName } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -39,6 +40,8 @@ const DEFAULT_USERNAME_CLAIM = 'preferred_username';
 const DEFAULT_EMAIL_CLAIM = 'email';
 const CLOCK_TOLERANCE_SECONDS = 30;
 const MAX_USERNAME_LENGTH = 255;
+// RFC 9110 field-name: one or more token characters.
+const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
 // Only asymmetric algorithms are meaningful with a remote JWKS. HS* and `none`
 // are never accepted, whatever the configuration says.
@@ -62,6 +65,7 @@ export interface ForwardAuthRuntimeConfig {
   issuer?: string;
   audience: string[];
   algorithms: string[];
+  tokenHeader?: string;
   usernameClaim: string;
   emailClaim: string;
   autoCreate: boolean;
@@ -133,6 +137,7 @@ export const resolveForwardAuthRuntimeConfig = (
     DEFAULT_ALGORITHMS,
   );
   const algorithms = configuredAlgorithms.filter((alg) => ASYMMETRIC_ALGORITHMS.has(alg));
+  const tokenHeader = resolveForwardAuthTokenHeaderName(systemConfig);
   const usernameClaim =
     resolveStringSetting(
       process.env.FORWARD_AUTH_USERNAME_CLAIM,
@@ -173,6 +178,9 @@ export const resolveForwardAuthRuntimeConfig = (
         `jwks.algorithms must list only asymmetric algorithms (${[...ASYMMETRIC_ALGORITHMS].join(', ')})`,
       );
       enabled = false;
+    } else if (tokenHeader && !HEADER_NAME_PATTERN.test(tokenHeader)) {
+      reportConfigError('jwks.tokenHeader must be a valid HTTP header name');
+      enabled = false;
     }
   }
 
@@ -183,6 +191,7 @@ export const resolveForwardAuthRuntimeConfig = (
     issuer,
     audience,
     algorithms,
+    tokenHeader,
     usernameClaim,
     emailClaim,
     autoCreate,

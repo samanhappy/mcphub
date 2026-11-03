@@ -67,3 +67,35 @@ export const getBearerTokenFromHeaders = (
 
   return parseBearerAuthorization(authHeader);
 };
+
+/**
+ * Header that carries the forward-auth JWT instead of the bearer auth header,
+ * for gateways that send it raw (e.g. Cloudflare Access `Cf-Access-Jwt-Assertion`).
+ */
+export const resolveForwardAuthTokenHeaderName = (
+  systemConfig?: SystemConfig | null,
+): string | undefined =>
+  process.env.FORWARD_AUTH_TOKEN_HEADER?.trim() ||
+  systemConfig?.auth?.forwardAuth?.jwks?.tokenHeader?.trim() ||
+  undefined;
+
+/**
+ * Read the forward-auth JWT: from the configured token header, sent raw or as
+ * `Bearer <jwt>`, otherwise from the bearer auth header.
+ */
+export const getForwardAuthTokenFromHeaders = (
+  headers: IncomingHttpHeaders | Record<string, HeaderValue>,
+  systemConfig?: SystemConfig | null,
+): string | null => {
+  const tokenHeader = resolveForwardAuthTokenHeaderName(systemConfig);
+  if (!tokenHeader) {
+    return getBearerTokenFromHeaders(headers, systemConfig);
+  }
+
+  const headerValue = findHeaderValue(headers, tokenHeader);
+  const value = (Array.isArray(headerValue) ? headerValue[0] : headerValue)?.trim();
+  if (!value) {
+    return null;
+  }
+  return parseBearerAuthorization(value) ?? value;
+};

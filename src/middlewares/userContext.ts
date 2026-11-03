@@ -4,7 +4,7 @@ import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from '../services/userContextService.js';
 import { IUser } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
-import { getBearerTokenFromHeaders } from '../utils/bearerAuth.js';
+import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
 const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | null> => {
@@ -14,8 +14,11 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
     return oauthUser;
   }
 
-  const bearerToken = getBearerTokenFromHeaders(req.headers, systemConfig);
-  if (bearerToken) {
+  // Bearer and forward-auth tokens are verified by the transport's bearer auth.
+  if (
+    getBearerTokenFromHeaders(req.headers, systemConfig) ||
+    getForwardAuthTokenFromHeaders(req.headers, systemConfig)
+  ) {
     return null;
   }
 
@@ -66,7 +69,10 @@ export const sseUserContextMiddleware = async (
 
         if (!authenticatedUser) {
           const systemConfig = await getSystemConfigDao().get();
-          if (getBearerTokenFromHeaders(req.headers, systemConfig)) {
+          if (
+            getBearerTokenFromHeaders(req.headers, systemConfig) ||
+            getForwardAuthTokenFromHeaders(req.headers, systemConfig)
+          ) {
             next();
             return;
           }

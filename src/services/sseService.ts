@@ -31,6 +31,7 @@ import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import {
   getBearerAuthHeaderValue,
   getBearerTokenFromHeaders,
+  getForwardAuthTokenFromHeaders,
   parseBearerAuthorization,
 } from '../utils/bearerAuth.js';
 import {
@@ -505,7 +506,10 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   // Forward auth runs before keys and OAuth tokens: a JWT from the configured
   // issuer either authenticates here or is rejected, with no fallback.
-  const forwardAuthResult = await authenticateForwardAuthToken(presentedToken, systemConfig);
+  const forwardAuthResult = await authenticateForwardAuthToken(
+    getForwardAuthTokenFromHeaders(req.headers, systemConfig),
+    systemConfig,
+  );
   if (forwardAuthResult.status === 'rejected') {
     return { valid: false, reason: 'invalid' };
   }

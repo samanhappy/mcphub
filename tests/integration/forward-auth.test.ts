@@ -400,3 +400,84 @@ describe('forward auth (JWKS) on MCP transport routes', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('forward auth from a dedicated token header', () => {
+  const TOKEN_HEADER = 'Cf-Access-Jwt-Assertion';
+
+  beforeAll(() => {
+    process.env.FORWARD_AUTH_TOKEN_HEADER = TOKEN_HEADER;
+  });
+
+  afterAll(() => {
+    delete process.env.FORWARD_AUTH_TOKEN_HEADER;
+  });
+
+  const initialize = (url: string, headers: Record<string, string>) => {
+    let req = request(app).post(url).set('Accept', 'application/json, text/event-stream');
+    for (const [name, value] of Object.entries(headers)) req = req.set(name, value);
+    return req.send({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: { name: 'forward-auth-header-e2e', version: '1' },
+      },
+    });
+  };
+
+  it('authenticates the dashboard API from a raw JWT in the token header', async () => {
+    const res = await whoami({ [TOKEN_HEADER]: await signToken() });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toEqual({ username: 'gateway.user', isAdmin: false });
+  });
+
+  it('no longer reads the forward-auth JWT from the bearer header', async () => {
+    const res = await whoami({ Authorization: `Bearer ${await signToken()}` });
+    expect(res.status).toBe(401);
+  });
+
+  it('does not fall back when the token header carries an invalid configured-issuer JWT', async () => {
+    const res = await whoami({
+      [TOKEN_HEADER]: await signToken({ key: attackerKey }),
+      'x-auth-token': createUserToken('admin', true),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('lets other-issuer JWTs in the token header fall through to the existing methods', async () => {
+    const res = await whoami({
+      [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      'x-auth-token': createUserToken('admin', true),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.user.username).toBe('admin');
+  });
+
+  it('authenticates an MCP client that sends only the token header', async () => {
+    const client = new Client({ name: 'forward-auth-header-e2e', version: '1' });
+    clients.push(client);
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`${hubUrl}/mcp`), {
+        requestInit: { headers: { [TOKEN_HEADER]: await signToken() } },
+      }),
+    );
+    expect(client.getServerVersion()).toBeDefined();
+  });
+
+  it('rejects an invalid token-header JWT on MCP routes with a bearer challenge', async () => {
+    const res = await initialize('/mcp', { [TOKEN_HEADER]: await signToken({ key: attackerKey }) });
+    expect(res.status).toBe(401);
+    expect(res.headers['www-authenticate']).toContain('invalid_token');
+  });
+
+  it('applies the token header to user-scoped MCP routes', async () => {
+    const own = await initialize('/gateway.user/mcp', { [TOKEN_HEADER]: await signToken() });
+    expect(own.status).toBe(200);
+
+    const other = await initialize('/local.user/mcp', { [TOKEN_HEADER]: await signToken() });
+    expect(other.status).toBe(403);
+  });
+});

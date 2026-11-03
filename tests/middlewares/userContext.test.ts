@@ -10,6 +10,7 @@ const findByUsernameMock = jest.fn();
 const countMock = jest.fn();
 const resolveOAuthUserFromHeadersMock = jest.fn();
 const getBearerTokenFromHeadersMock = jest.fn();
+const getForwardAuthTokenFromHeadersMock = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getSystemConfigDao: () => ({
@@ -27,6 +28,7 @@ jest.mock('../../src/utils/oauthBearer.js', () => ({
 
 jest.mock('../../src/utils/bearerAuth.js', () => ({
   getBearerTokenFromHeaders: getBearerTokenFromHeadersMock,
+  getForwardAuthTokenFromHeaders: getForwardAuthTokenFromHeadersMock,
 }));
 
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
@@ -56,6 +58,7 @@ describe('sseUserContextMiddleware', () => {
     countMock.mockReset();
     resolveOAuthUserFromHeadersMock.mockResolvedValue(null);
     getBearerTokenFromHeadersMock.mockReturnValue(undefined);
+    getForwardAuthTokenFromHeadersMock.mockReturnValue(null);
   });
 
   it('forwards asynchronous storage failures to Express instead of leaving the request open', async () => {
@@ -195,5 +198,23 @@ describe('sseUserContextMiddleware', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(status).toHaveBeenCalledWith(401);
+  });
+
+  it('defers user-scoped requests carrying a forward-auth token to the transport bearer auth', async () => {
+    getForwardAuthTokenFromHeadersMock.mockReturnValue('gateway.jwt.token');
+    const { response, status } = createResponse();
+    const next = jest.fn();
+    const req = {
+      params: { user: 'alice' },
+      header: () => undefined,
+      query: {},
+      headers: { 'cf-access-jwt-assertion': 'gateway.jwt.token' },
+    } as unknown as Request;
+
+    await sseUserContextMiddleware(req, response, next);
+    await waitForAsyncMiddleware();
+
+    expect(next).toHaveBeenCalledWith();
+    expect(status).not.toHaveBeenCalled();
   });
 });

@@ -49,3 +49,28 @@ describe('Authorization passthrough policy', () => {
     },
   );
 });
+
+describe('forward-auth token header passthrough policy', () => {
+  afterEach(() => {
+    delete process.env.FORWARD_AUTH_TOKEN_HEADER;
+  });
+
+  it.each(['Cf-Access-Jwt-Assertion', 'cf-access-jwt-assertion'])(
+    'never forwards the configured forward-auth token header: %s',
+    (name) => {
+      jest.mocked(isHostedModeEnabled).mockReturnValue(false);
+      jest.mocked(getCachedSystemConfig).mockReturnValue({
+        auth: { forwardAuth: { jwks: { tokenHeader: 'Cf-Access-Jwt-Assertion' } } },
+      });
+      expect(isSafePassthroughHeader(name)).toBe(false);
+    },
+  );
+
+  it('never forwards a token header set by env override', () => {
+    jest.mocked(isHostedModeEnabled).mockReturnValue(false);
+    jest.mocked(getCachedSystemConfig).mockReturnValue({});
+    process.env.FORWARD_AUTH_TOKEN_HEADER = 'X-Gateway-Jwt';
+    expect(isSafePassthroughHeader('X-Gateway-Jwt')).toBe(false);
+    expect(isSafePassthroughHeader('X-Other')).toBe(true);
+  });
+});

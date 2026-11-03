@@ -17,6 +17,7 @@ const ENV_KEYS = [
   'FORWARD_AUTH_USERNAME_CLAIM',
   'FORWARD_AUTH_EMAIL_CLAIM',
   'FORWARD_AUTH_AUTO_CREATE',
+  'FORWARD_AUTH_TOKEN_HEADER',
 ];
 
 const withForwardAuth = (
@@ -123,6 +124,30 @@ describe('resolveForwardAuthRuntimeConfig', () => {
   ])('stays disabled when %s', (_label, settings) => {
     expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings as any)).enabled).toBe(false);
   });
+
+  it('resolves a token header from settings, overridden by env', () => {
+    const settings = {
+      ...validSettings,
+      jwks: { ...validSettings.jwks, tokenHeader: 'Cf-Access-Jwt-Assertion' },
+    };
+    expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings))).toMatchObject({
+      enabled: true,
+      tokenHeader: 'Cf-Access-Jwt-Assertion',
+    });
+
+    process.env.FORWARD_AUTH_TOKEN_HEADER = 'X-Gateway-Jwt';
+    expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings)).tokenHeader).toBe(
+      'X-Gateway-Jwt',
+    );
+  });
+
+  it.each(['Cf Access Jwt', 'X-Jwt:', 'Jwté'])(
+    'stays disabled for an invalid token header name %j',
+    (tokenHeader) => {
+      const settings = { ...validSettings, jwks: { ...validSettings.jwks, tokenHeader } };
+      expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings)).enabled).toBe(false);
+    },
+  );
 
   it('stays disabled for an unsupported mode', () => {
     process.env.FORWARD_AUTH_MODE = 'header';
