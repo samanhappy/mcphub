@@ -6,7 +6,7 @@ const STABLE_SAMPLES = 3;
 type ServerStatus = { name: string; status: string };
 
 // One policy per polling session; explicit refreshes start a new fast window.
-export const createServerPollingPolicy = (now = Date.now) => {
+export const createServerPollingPolicy = (now = Date.now, minimumFastUntil = 0) => {
   let fastUntil = now() + FAST_WINDOW;
   let fast = true;
   let previous: string | undefined;
@@ -27,7 +27,10 @@ export const createServerPollingPolicy = (now = Date.now) => {
       previous = signature;
       failures = 0;
       const connecting = servers.some((server) => server.status === 'connecting');
-      fast = now() < fastUntil && (connecting || stableSamples < STABLE_SAMPLES);
+      // Package metadata can finish after the connection status has stabilized.
+      fast =
+        now() < minimumFastUntil ||
+        (now() < fastUntil && (connecting || stableSamples < STABLE_SAMPLES));
       return fast ? FAST_INTERVAL : NORMAL_INTERVAL;
     },
     failure(): number {
