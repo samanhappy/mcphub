@@ -1496,7 +1496,8 @@ describe('serverController - resetToolDescription', () => {
     await resetToolDescription(mockRequest as Request, mockResponse as Response);
 
     expect(mockServerDao.updateTools).toHaveBeenCalledWith('test-server', {});
-    expect(mockNotifyToolChanged).toHaveBeenCalled();
+    expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
     expect(mockSyncToolEmbedding).toHaveBeenCalledWith('test-server', 'test-server::search');
     expect(mockJson).toHaveBeenCalledWith({
       success: true,
@@ -3337,7 +3338,8 @@ describe('batchToggleTools', () => {
     expect(live.config.tools).toEqual({
       delete_a: { enabled: false, description: 'Keep', hiddenParams: ['secret'] },
     });
-    expect(mockNotifyToolChanged).toHaveBeenCalledTimes(1);
+    expect(mockBroadcastToolListChanged).toHaveBeenCalledTimes(1);
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,

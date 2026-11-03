@@ -146,6 +146,20 @@ const loadAuthorizedServer = async (
   return server;
 };
 
+// Tool, prompt and resource settings change what is exposed, not how upstream
+// servers connect, so their handlers only broadcast. The unscoped
+// notifyToolChanged() would re-initialize every enabled server that is not
+// connected and re-spawn its stdio process. See #938 and #1426.
+const broadcastPromptSettingsChanged = (): void => {
+  broadcastToolListChanged();
+  broadcastPromptListChanged();
+};
+
+const broadcastResourceSettingsChanged = (): void => {
+  broadcastToolListChanged();
+  broadcastResourceListChanged();
+};
+
 const ensureNonAdminCanManageConfig = (
   req: Request,
   res: Response,
@@ -996,7 +1010,12 @@ export const deleteServer = async (req: Request, res: Response): Promise<void> =
 
     const result = await removeServer(existingServer.name);
     if (result.success) {
-      notifyToolChanged();
+      // removeServer already closed the server and dropped it from serverInfos.
+      // Only broadcast: a full re-init would reconnect every other server that
+      // is not connected (see #938).
+      broadcastToolListChanged();
+      broadcastPromptListChanged();
+      broadcastResourceListChanged();
       res.json({
         success: true,
         message: 'Server removed successfully',
@@ -1736,7 +1755,7 @@ export const batchToggleTools = async (req: Request, res: Response): Promise<voi
         return;
       }
       if (liveServer?.config) liveServer.config = { ...liveServer.config, tools };
-      notifyToolChanged();
+      broadcastToolListChanged();
     }
     const data: BatchToggleToolsResponse = { matchedTools, enabled };
     res.json({ success: true, data });
@@ -1794,20 +1813,16 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // For an already-connected server, notifyToolChanged()'s full re-init pass
-    // takes the "already connected" shortcut and preserves the in-memory
-    // serverInfo verbatim (see registerAllTools) instead of applying the
-    // freshly-persisted tools config — so findToolOnServer's enabled check
-    // would keep seeing the pre-toggle state until the server reconnects for
-    // an unrelated reason. Patch the live config in place so the toggle takes
-    // effect immediately, without waiting for (or forcing) a reconnect.
+    // findToolOnServer's enabled check reads the in-memory serverInfo.config,
+    // which nothing reloads from settings while the server stays connected.
+    // Patch the live config in place so the toggle takes effect immediately,
+    // without waiting for (or forcing) a reconnect.
     const liveServer = getServerByName(serverName);
     if (liveServer?.config) {
       liveServer.config = { ...liveServer.config, tools };
     }
 
-    // Notify that tools have changed
-    notifyToolChanged();
+    broadcastToolListChanged();
 
     res.json({
       success: true,
@@ -1882,7 +1897,7 @@ export const updateToolDescription = async (req: Request, res: Response): Promis
     }
 
     // Notify that tools have changed
-    notifyToolChanged();
+    broadcastToolListChanged();
 
     syncToolEmbedding(serverName, toolName);
 
@@ -1983,7 +1998,7 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
       liveServer.config = { ...liveServer.config, tools };
     }
 
-    notifyToolChanged();
+    broadcastToolListChanged();
     syncToolEmbedding(serverName, toolName);
 
     res.json({
@@ -2035,7 +2050,7 @@ export const resetToolDescription = async (req: Request, res: Response): Promise
       return;
     }
 
-    notifyToolChanged();
+    broadcastToolListChanged();
     syncToolEmbedding(serverName, toolName);
 
     const defaultDescription =
@@ -2969,8 +2984,8 @@ export const togglePrompt = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Notify that tools have changed (as prompts are part of the tool listing)
-    notifyToolChanged();
+    // Notify that prompts have changed
+    broadcastPromptSettingsChanged();
 
     res.json({
       success: true,
@@ -3039,8 +3054,8 @@ export const updatePromptDescription = async (req: Request, res: Response): Prom
       return;
     }
 
-    // Notify that tools have changed (as prompts are part of the tool listing)
-    notifyToolChanged();
+    // Notify that prompts have changed
+    broadcastPromptSettingsChanged();
 
     res.json({
       success: true,
@@ -3089,7 +3104,7 @@ export const resetPromptDescription = async (req: Request, res: Response): Promi
       return;
     }
 
-    notifyToolChanged();
+    broadcastPromptSettingsChanged();
 
     const defaultDescription =
       getServerByName(serverName)?.prompts.find((prompt) => prompt.name === promptName)
@@ -3163,7 +3178,7 @@ export const toggleResource = async (req: Request, res: Response): Promise<void>
     }
 
     // Notify that tools/resources metadata has changed
-    notifyToolChanged();
+    broadcastResourceSettingsChanged();
 
     res.json({
       success: true,
@@ -3233,7 +3248,7 @@ export const updateResourceDescription = async (req: Request, res: Response): Pr
     }
 
     // Notify that tools/resources metadata has changed
-    notifyToolChanged();
+    broadcastResourceSettingsChanged();
 
     res.json({
       success: true,
@@ -3282,7 +3297,7 @@ export const resetResourceDescription = async (req: Request, res: Response): Pro
       return;
     }
 
-    notifyToolChanged();
+    broadcastResourceSettingsChanged();
 
     const defaultDescription =
       getServerByName(serverName)?.resources.find((resource) => resource.uri === resourceUri)
