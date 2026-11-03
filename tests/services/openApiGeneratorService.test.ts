@@ -125,6 +125,229 @@ describe('OpenAPI Generator Service', () => {
     });
   });
 
+  describe('tool input schema conversion', () => {
+    const generateSpec = async (properties: Record<string, unknown>, root: object = {}) => {
+      mockGetServersInfo.mockResolvedValue([
+        {
+          name: 'example',
+          status: 'connected',
+          tools: [
+            {
+              name: 'example-lookup',
+              description: 'Lookup',
+              inputSchema: { type: 'object', properties, ...root },
+            },
+          ],
+        },
+      ] as any);
+
+      return generateOpenAPISpec();
+    };
+
+    const generateOperations = async (properties: Record<string, unknown>, root: object = {}) => {
+      const spec = await generateSpec(properties, root);
+      return spec.paths['/tools/example/lookup'] as Record<string, any>;
+    };
+
+    const bodyProperties = (operations: Record<string, any>) =>
+      operations.post.requestBody.content['application/json'].schema.properties;
+
+    it('should keep primitive-only tools as query parameters', async () => {
+      const operations = await generateOperations({
+        limit: { type: 'integer', description: 'Max rows' },
+        ratio: { type: 'number' },
+        enabled: { type: 'boolean' },
+      });
+
+      expect(operations).toHaveProperty('get');
+      expect(operations).not.toHaveProperty('post');
+      expect(operations.get.parameters).toEqual([
+        {
+          name: 'limit',
+          in: 'query',
+          required: false,
+          description: 'Max rows',
+          schema: { type: 'integer' },
+        },
+        {
+          name: 'ratio',
+          in: 'query',
+          required: false,
+          description: 'Parameter ratio',
+          schema: { type: 'number' },
+        },
+        {
+          name: 'enabled',
+          in: 'query',
+          required: false,
+          description: 'Parameter enabled',
+          schema: { type: 'boolean' },
+        },
+      ]);
+    });
+
+    it('should send a nullable array through the request body as an OpenAPI 3.0 nullable', async () => {
+      const operations = await generateOperations({
+        ids: { type: ['array', 'null'], items: { type: 'integer' } },
+        n: { type: 'integer' },
+      });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(operations.post.parameters).toBeUndefined();
+      expect(bodyProperties(operations)).toEqual({
+        ids: { type: 'array', items: { type: 'integer' }, nullable: true },
+        n: { type: 'integer' },
+      });
+    });
+
+    it('should send a nullable scalar through the request body as an OpenAPI 3.0 nullable', async () => {
+      const operations = await generateOperations({ limit: { type: ['integer', 'null'] } });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(bodyProperties(operations)).toEqual({
+        limit: { type: 'integer', nullable: true },
+      });
+    });
+
+    it('should turn an anyOf with a null member into a nullable schema', async () => {
+      const operations = await generateOperations({
+        limit: { description: 'Max rows', anyOf: [{ type: 'integer' }, { type: 'null' }] },
+      });
+
+      expect(bodyProperties(operations)).toEqual({
+        limit: { description: 'Max rows', type: 'integer', nullable: true },
+      });
+    });
+
+    it('should keep the other members of a nullable oneOf', async () => {
+      const operations = await generateOperations({
+        value: { oneOf: [{ type: 'integer' }, { type: 'boolean' }, { type: 'null' }] },
+      });
+
+      expect(bodyProperties(operations)).toEqual({
+        value: { oneOf: [{ type: 'integer', nullable: true }, { type: 'boolean' }] },
+      });
+    });
+
+    it('should turn a type list into an anyOf', async () => {
+      const operations = await generateOperations({
+        value: { type: ['string', 'integer', 'null'] },
+      });
+
+      expect(bodyProperties(operations)).toEqual({
+        value: { anyOf: [{ type: 'string', nullable: true }, { type: 'integer' }] },
+      });
+    });
+
+    it('should convert nullable schemas nested in properties, items and combinators', async () => {
+      const operations = await generateOperations({
+        filter: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { type: ['string', 'null'] } },
+            type: { allOf: [{ anyOf: [{ type: 'string' }, { type: 'null' }] }] },
+          },
+        },
+      });
+
+      expect(bodyProperties(operations)).toEqual({
+        filter: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { type: 'string', nullable: true } },
+            type: { allOf: [{ type: 'string', nullable: true }] },
+          },
+        },
+      });
+    });
+
+    it('should replace const with a single-value enum', async () => {
+      const operations = await generateOperations({
+        kind: { const: 'search' },
+        filter: { type: 'object' },
+      });
+
+      expect(bodyProperties(operations)).toEqual({
+        kind: { enum: ['search'] },
+        filter: { type: 'object' },
+      });
+    });
+
+    it.each([
+      ['oneOf', { oneOf: [{ type: 'integer' }, { type: 'boolean' }] }],
+      ['allOf', { allOf: [{ type: 'integer' }] }],
+    ])('should send a property declared with %s through the request body', async (_name, opt) => {
+      const operations = await generateOperations({ opt, n: { type: 'integer' } });
+
+      expect(operations).not.toHaveProperty('get');
+      expect(bodyProperties(operations)).toEqual({ opt, n: { type: 'integer' } });
+    });
+
+    it('should inline local $defs references, including inside allOf', async () => {
+      const operations = await generateOperations(
+        {
+          limit: { $ref: '#/$defs/Limit', description: 'Max rows' },
+          page: { allOf: [{ $ref: '#/$defs/Limit' }] },
+          legacy: { $ref: '#/definitions/Legacy' },
+        },
+        {
+          $defs: { Limit: { type: ['integer', 'null'], minimum: 1 } },
+          definitions: { Legacy: { type: 'string' } },
+        },
+      );
+
+      expect(bodyProperties(operations)).toEqual({
+        limit: { type: 'integer', minimum: 1, nullable: true, description: 'Max rows' },
+        page: { allOf: [{ type: 'integer', minimum: 1, nullable: true }] },
+        legacy: { type: 'string' },
+      });
+    });
+
+    it('should not leave a recursive definition as an unresolved reference', async () => {
+      const operations = await generateOperations(
+        { tree: { $ref: '#/$defs/Node' } },
+        {
+          $defs: {
+            Node: {
+              type: 'object',
+              properties: { value: { type: 'string' }, child: { $ref: '#/$defs/Node' } },
+            },
+          },
+        },
+      );
+
+      expect(bodyProperties(operations)).toEqual({
+        tree: {
+          type: 'object',
+          properties: { value: { type: 'string' }, child: {} },
+        },
+      });
+    });
+
+    it('should produce a document that validates as OpenAPI 3.0.3', async () => {
+      const spec = await generateSpec(
+        {
+          limit: { $ref: '#/$defs/Limit' },
+          ids: { type: ['array', 'null'], items: { type: 'integer' } },
+          name: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+          page: { allOf: [{ $ref: '#/$defs/Limit' }] },
+          kind: { const: 'search' },
+          mixed: { type: ['string', 'integer', 'null'] },
+          tree: { $ref: '#/$defs/Node' },
+        },
+        {
+          $defs: {
+            Limit: { type: ['integer', 'null'], minimum: 1 },
+            Node: { type: 'object', properties: { child: { $ref: '#/$defs/Node' } } },
+          },
+        },
+      );
+
+      const SwaggerParser = (await import('@apidevtools/swagger-parser')).default;
+      await expect(SwaggerParser.validate(JSON.parse(JSON.stringify(spec)))).resolves.toBeDefined();
+    });
+  });
+
   describe('getToolStats', () => {
     it('should return valid tool statistics', async () => {
       const stats = await getToolStats();

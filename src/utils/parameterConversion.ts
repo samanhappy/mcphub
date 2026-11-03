@@ -4,6 +4,32 @@ import { logger } from './logger.js';
  */
 
 /**
+ * Resolve the schema that decides how a value is converted. A `type` list or an
+ * `anyOf`/`oneOf` union that has exactly one non-null member (the usual encoding of a
+ * nullable parameter) is treated as that member; anything more ambiguous is left alone.
+ */
+function resolveEffectiveSchema(propDef: Record<string, any>): Record<string, any> {
+  if (Array.isArray(propDef.type)) {
+    const types = propDef.type.filter((type: unknown) => type !== 'null');
+    return types.length === 1 ? { ...propDef, type: types[0] } : propDef;
+  }
+  if (propDef.type === undefined) {
+    for (const key of ['anyOf', 'oneOf']) {
+      if (!Array.isArray(propDef[key])) continue;
+      const members = propDef[key].filter(
+        (member: any) => member && typeof member === 'object' && member.type !== 'null',
+      );
+      if (members.length === 1) {
+        const rest = { ...propDef };
+        delete rest[key];
+        return resolveEffectiveSchema({ ...rest, ...members[0] });
+      }
+    }
+  }
+  return propDef;
+}
+
+/**
  * Convert parameters to their proper types based on the tool's input schema
  * This ensures that form-submitted string values are converted to the correct types
  * (e.g., numbers, booleans, arrays) before being passed to MCP tools.
@@ -31,7 +57,8 @@ export function convertParametersToTypes(
       continue;
     }
 
-    const propType = propDef.type;
+    const effectiveDef = resolveEffectiveSchema(propDef);
+    const propType = effectiveDef.type;
 
     try {
       switch (propType) {
@@ -64,17 +91,25 @@ export function convertParametersToTypes(
 
         case 'array': {
           // Handle array conversion if needed (e.g., comma-separated strings)
-          const items =
+          let items =
             typeof value === 'string' && value.includes(',')
               ? value.split(',').map((item) => item.trim())
               : value;
           if (
-            Array.isArray(items) &&
-            ['integer', 'number', 'boolean'].includes(propDef.items?.type)
+            !Array.isArray(items) &&
+            items !== '' &&
+            ['string', 'number', 'boolean'].includes(typeof items)
           ) {
+            // A single query or form value arrives as a scalar; the schema wants an array
+            items = [items];
+          }
+          const itemsDef =
+            effectiveDef.items && typeof effectiveDef.items === 'object'
+              ? resolveEffectiveSchema(effectiveDef.items)
+              : undefined;
+          if (Array.isArray(items) && ['integer', 'number', 'boolean'].includes(itemsDef?.type)) {
             convertedParams[key] = items.map(
-              (item) =>
-                convertParametersToTypes({ item }, { properties: { item: propDef.items } }).item,
+              (item) => convertParametersToTypes({ item }, { properties: { item: itemsDef } }).item,
             );
           } else {
             convertedParams[key] = items;

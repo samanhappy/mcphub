@@ -134,3 +134,94 @@ describe('HTTP tool numeric parameters', () => {
     },
   );
 });
+
+describe('HTTP tool nullable, union and single-item array parameters', () => {
+  const inputSchema = {
+    type: 'object',
+    properties: {
+      ids: { type: 'array', items: { type: 'integer' } },
+      nullableIds: { type: ['array', 'null'], items: { type: 'integer' } },
+      tags: { type: 'array', items: { type: 'string' } },
+      limit: { type: ['integer', 'null'] },
+      flag: { anyOf: [{ type: 'boolean' }, { type: 'null' }] },
+      unionIds: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      mixed: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+      either: { type: ['integer', 'string'] },
+    },
+  };
+
+  const forwardedArguments = async (method: 'GET' | 'POST', args: Record<string, unknown>) => {
+    mockGetServerByName.mockReturnValue({
+      tools: [{ name: 'example-lookup', inputSchema }],
+    });
+    mockHandleCallToolRequest.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    const app = express();
+    app.use(express.json());
+    app.get('/tools/:serverName/:toolName', executeToolViaOpenAPI);
+    app.post('/tools/:serverName/:toolName', executeToolViaOpenAPI);
+
+    const response =
+      method === 'GET'
+        ? await request(app).get('/tools/example/lookup').query(args)
+        : await request(app).post('/tools/example/lookup').send(args);
+
+    expect(response.status).toBe(200);
+    const calls = mockHandleCallToolRequest.mock.calls;
+    return calls[calls.length - 1][0].params.arguments;
+  };
+
+  it('converts single query values using the effective schema type', async () => {
+    const forwarded = await forwardedArguments('GET', {
+      ids: '5',
+      nullableIds: '7',
+      tags: 'solo',
+      limit: '10',
+      flag: 'true',
+      unionIds: '3',
+    });
+
+    expect(forwarded).toEqual({
+      ids: [5],
+      nullableIds: [7],
+      tags: ['solo'],
+      limit: 10,
+      flag: true,
+      unionIds: [3],
+    });
+  });
+
+  it('converts comma-separated query values using the effective schema type', async () => {
+    const forwarded = await forwardedArguments('GET', { nullableIds: '1,2', unionIds: '3, 4' });
+
+    expect(forwarded).toEqual({ nullableIds: [1, 2], unionIds: [3, 4] });
+  });
+
+  it('wraps single non-array values from a JSON body when the schema says array', async () => {
+    const forwarded = await forwardedArguments('POST', { ids: '5', nullableIds: 7, tags: 'solo' });
+
+    expect(forwarded).toEqual({ ids: [5], nullableIds: [7], tags: ['solo'] });
+  });
+
+  it('keeps null for nullable parameters', async () => {
+    const forwarded = await forwardedArguments('POST', {
+      nullableIds: null,
+      limit: null,
+      flag: null,
+      unionIds: null,
+    });
+
+    expect(forwarded).toEqual({ nullableIds: null, limit: null, flag: null, unionIds: null });
+  });
+
+  it('leaves values unchanged when the schema allows more than one non-null type', async () => {
+    const forwarded = await forwardedArguments('POST', { mixed: '5', either: '5' });
+
+    expect(forwarded).toEqual({ mixed: '5', either: '5' });
+  });
+
+  it('keeps arrays that are already arrays', async () => {
+    const forwarded = await forwardedArguments('POST', { ids: ['5', '6'], nullableIds: ['7'] });
+
+    expect(forwarded).toEqual({ ids: [5, 6], nullableIds: [7] });
+  });
+});
