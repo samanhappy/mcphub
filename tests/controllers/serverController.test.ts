@@ -949,6 +949,31 @@ describe('serverController - updateSystemConfig', () => {
     );
   });
 
+  it.each([true, false])('persists the Authorization passthrough opt-in: %s', async (enabled) => {
+    mockRequest.body = { routing: { allowAuthorizationPassthrough: enabled } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routing: expect.objectContaining({ allowAuthorizationPassthrough: enabled }),
+      }),
+    );
+  });
+
+  it('rejects non-boolean Authorization passthrough settings', async () => {
+    mockRequest.body = { routing: { allowAuthorizationPassthrough: 'true' } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-admin Authorization passthrough opt-in', async () => {
+    mockRequest.user = { username: 'regular-user', isAdmin: false };
+    mockRequest.body = { routing: { allowAuthorizationPassthrough: true } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(403);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it('persists a positive embedding dimension setting', async () => {
     mockRequest.body = {
       smartRouting: {

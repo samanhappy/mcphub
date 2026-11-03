@@ -665,6 +665,7 @@ You can also configure runtime routing and authentication behavior under `system
     "routing": {
       "enableBearerAuth": true,
       "bearerAuthHeaderName": "X-MCP-Authorization",
+      "allowAuthorizationPassthrough": true,
       "jsonBodyLimit": "5mb",
       "skipAuth": false
     }
@@ -673,8 +674,23 @@ You can also configure runtime routing and authentication behavior under `system
 ```
 
 - `bearerAuthHeaderName` defaults to `Authorization` and controls which incoming header MCPHub reads for Bearer authentication.
-- Use a custom header such as `X-MCP-Authorization` when an upstream MCP/OpenAPI server also needs to passthrough `Authorization`.
+- `allowAuthorizationPassthrough` defaults to `false`. To forward a caller's upstream `Authorization`, an administrator must explicitly enable it, use a separate MCPHub authentication header such as `X-MCP-Authorization`, and list `Authorization` in the trusted server's `passthroughHeaders` (HTTP MCP) or `openapi.passthroughHeaders` (OpenAPI).
+- The MCPHub authentication header is always blocked. `Authorization` remains blocked in hosted mode, and `Cookie`, `Proxy-Authorization`, `X-Auth-Token`, and `X-Api-Key` remain blocked regardless of the opt-in. Listing a blocked header does not forward it.
+- This instance-wide opt-in trusts every configured passthrough destination with the caller's upstream token. Only enable it for trusted destinations; passthrough configuration remains admin-only. Existing installations keep filtering `Authorization` until explicitly opted in.
 - `jsonBodyLimit` defaults to `1mb` and controls the Express JSON parser limit for API requests, including large inline OpenAPI schema uploads.
+
+Administrators can enable this in **Settings → Keys → Allow Authorization passthrough** after saving a separate MCPHub authentication header. The switch is hidden in hosted mode. In database mode, you can also use the admin-only `PUT /api/system-config` endpoint (authenticate with the currently configured MCPHub header):
+
+```json
+{
+  "routing": {
+    "bearerAuthHeaderName": "X-MCP-Authorization",
+    "allowAuthorizationPassthrough": true
+  }
+}
+```
+
+After configuring the server's passthrough list, send `X-MCP-Authorization: Bearer <mcphub-key>` and `Authorization: Bearer <upstream-user-token>` with each MCP request. Static upstream headers and personal credentials remain separate authentication options; they do not replace per-request caller tokens.
 
 ## Tool Result Compression
 

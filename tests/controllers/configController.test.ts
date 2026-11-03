@@ -1,4 +1,4 @@
-import { getMcpSettingsJson } from '../../src/controllers/configController.js';
+import { getMcpSettingsJson, getRuntimeConfig } from '../../src/controllers/configController.js';
 import * as DaoFactory from '../../src/dao/DaoFactory.js';
 import { Request, Response } from 'express';
 
@@ -218,5 +218,24 @@ describe('ConfigController - getMcpSettingsJson', () => {
         message: 'Failed to get MCP settings',
       });
     });
+  });
+});
+
+describe('ConfigController - runtime hosting mode', () => {
+  const previousMode = process.env.HUB_MODE;
+  afterEach(() => {
+    if (previousMode === undefined) delete process.env.HUB_MODE;
+    else process.env.HUB_MODE = previousMode;
+  });
+
+  it.each(['hosted', 'self-hosted'])('reports %s mode to the dashboard', (mode) => {
+    process.env.HUB_MODE = mode;
+    const json = jest.fn();
+    getRuntimeConfig({} as Request, { setHeader: jest.fn(), json } as unknown as Response);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isHosted: mode === 'hosted' }),
+      }),
+    );
   });
 });

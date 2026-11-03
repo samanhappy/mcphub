@@ -6,6 +6,44 @@ jest.mock('../../src/utils/systemConfigCache.js', () => ({
 }));
 
 describe('OpenAPI caller credential isolation', () => {
+  beforeEach(() => {
+    jest.mocked(getCachedSystemConfig).mockReturnValue({
+      routing: { bearerAuthHeaderName: 'X-Hub-Key' },
+    });
+  });
+
+  it('forwards Authorization only after an explicit instance opt-in', async () => {
+    jest.mocked(getCachedSystemConfig).mockReturnValue({
+      routing: { bearerAuthHeaderName: 'X-Hub-Key', allowAuthorizationPassthrough: true },
+    });
+    const client = new OpenAPIClient({
+      type: 'openapi',
+      openapi: { schema: {}, passthroughHeaders: ['Authorization', 'X-Hub-Key', 'Cookie'] },
+    }) as any;
+    client.baseUrl = 'https://8.8.8.8';
+    client.tools = [
+      {
+        name: 'test',
+        method: 'get',
+        path: '/test',
+        parameters: [],
+        inputSchema: { type: 'object' },
+      },
+    ];
+    const request = jest.fn().mockResolvedValue({ data: {}, status: 200, headers: {} });
+    client.httpClient = { request, defaults: { headers: { common: {} } } };
+    await client.callTool(
+      'test',
+      {},
+      {
+        Authorization: 'Bearer upstream-user',
+        'X-Hub-Key': 'Bearer hub-secret',
+        Cookie: 'secret',
+      },
+    );
+    expect(request.mock.calls[0][0].headers).toEqual({ Authorization: 'Bearer upstream-user' });
+  });
+
   it('filters persisted sensitive passthrough headers before the HTTP request', async () => {
     const names = [
       'Authorization',
