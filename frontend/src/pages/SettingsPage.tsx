@@ -17,6 +17,7 @@ import type { BearerKey, User } from '@/types';
 import { useServerContext } from '@/contexts/ServerContext';
 import { useGroupData } from '@/hooks/useGroupData';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FakeIpExceptionsSettings from '@/components/FakeIpExceptionsSettings';
 import ToolPolicyPanel from '@/components/ToolPolicyPanel';
 import SmartRoutingIndexPanel from '@/components/SmartRoutingIndexPanel';
 import { useAuth } from '@/contexts/AuthContext';
@@ -749,6 +750,8 @@ const SettingsPage: React.FC = () => {
     betterAuthConfig,
     nameSeparator,
     enableSessionRebuild,
+    fakeIpExceptions,
+    updateFakeIpExceptions,
     allowedCidrs,
     updateAllowedCidrs,
     storeToolPayload,
@@ -4280,6 +4283,15 @@ const SettingsPage: React.FC = () => {
                     {t('common.save')}
                   </button>
                 </div>
+              )}
+
+              {isAdmin && (
+                <FakeIpExceptionsSettings
+                  value={fakeIpExceptions}
+                  servers={servers}
+                  loading={loading}
+                  onSave={updateFakeIpExceptions}
+                />
               )}
 
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">

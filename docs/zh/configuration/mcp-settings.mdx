@@ -819,6 +819,30 @@ ls -la /path/to/server
 
 请仅放行必要的最小范围。`0.0.0.0/0` 或 `::/0` 等过大的范围也会放行回环地址、云元数据端点等敏感内网目标。
 
+### 配合 TUN 路由使用 Fake-IP DNS
+
+管理员可在**设置 → 安全 → Fake-IP DNS 例外**中选择服务器、填写精确域名，增删规则后保存。服务器选择器保存稳定 ID；删除全部规则并保存可清空例外。
+
+对于可信本地 Fake-IP/TUN 环境中的 SSE 和 Streamable HTTP 上游，管理员可以仅允许一个稳定服务器 ID 的精确域名访问 `198.18.0.0/15`，无需全局放行该网段：
+
+```json
+{
+  "systemConfig": {
+    "network": {
+      "fakeIpExceptions": [
+        { "serverId": "existing-server-uuid", "hostname": "mcp.example.com" }
+      ]
+    }
+  }
+}
+```
+
+使用 `GET /api/servers` 返回的现有服务器 `id`，而非显示名称。域名必须是小写 ASCII DNS 名称，不能包含协议、端口、通配符或末尾点；国际化域名使用 punycode。缺少 ID 时不会匹配。数据库模式通过仅管理员可用的 `PUT /api/system-config` 配置，请求体为 `{"network":{"fakeIpExceptions":[{"serverId":"existing-server-uuid","hostname":"mcp.example.com"}]}}`。空数组清空例外。更新任一网络列表都会保留另一列表，包括在设置页修改 CIDR。
+
+例外适用于通过指定服务器 MCP 传输 fetch 发出的请求，包括复用该 fetch 的 SDK OAuth 请求。初始 DNS、每个重定向目标和建连时的 DNS 均执行同一策略，所有解析结果必须通过检查；不会额外放行回环、私网和元数据地址。IP 字面量 URL、其他域名或其他服务器 ID 均不匹配。跳转到其他域名且解析为 Fake-IP 时，需要独立匹配的例外；公网地址继续遵守普通策略。已有全局 CIDR 白名单和管理员所有者豁免仍然生效；需要此窄范围边界时，应使用非管理员拥有的服务器且不配置宽泛 CIDR。移除例外影响后续请求与解析，不会中止已有流或连接。
+
+受保护连接使用直接 socket DNS 校验，绕过配置的 HTTP/HTTPS 代理。系统级 TUN 必须接管并路由这些连接，其 DNS 映射必须与 MCPHub 进程或容器内可见的 DNS 一致。仅放行合成网段并不能建立路由。MCPHub 信任本地 DNS/TUN 映射，无法确认合成地址背后的真实目标；仅对可信端点及可信代理环境配置例外。TLS 仍使用原始域名。本策略不启用显式 HTTP 代理路由，也不为 OpenAPI 请求、独立的 OAuth 发现/令牌/注册 fetch 或匿名 CIMD URL 增加例外，这些请求继续遵守原有 SSRF 策略。使用这些独立 fetch 的 OAuth 配置，仍可能需要端点返回真实 DNS 地址。
+
 ## 按需启动的工具快照
 
 对于 stdio 服务器，`startOnDemand: true` 让子进程在需要时才启动。MCPHub 会持久化最近一次成功发现的原始工具目录，重启后可直接恢复 `tools/list`，无需逐个启动所有按需服务器。成功发现的空工具列表也是有效快照。首次工具调用仍连接真实上游并刷新目录，上游已删除的工具不能仅凭快照执行。失败调用会触发目录刷新，但不会重放调用。

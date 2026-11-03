@@ -11,7 +11,12 @@ import {
 
 let mockCidrs: string[] = [];
 jest.mock('../../src/utils/systemConfigCache.js', () => ({
-  getCachedSystemConfig: () => ({ network: { allowedCidrs: mockCidrs } }),
+  getCachedSystemConfig: () => ({
+    network: {
+      allowedCidrs: mockCidrs,
+      fakeIpExceptions: [{ serverId: 'trusted', hostname: 'mcp.example.com' }],
+    },
+  }),
 }));
 
 it('permits real fetch and axios requests only while the internal address is allowlisted', async () => {
@@ -77,4 +82,21 @@ it('keeps the shared public-only dispatcher strict during DNS rebinding despite 
   } finally {
     mockCidrs = [];
   }
+});
+
+it('blocks Fake-IP rebinding to metadata during the actual fetch socket lookup', async () => {
+  const lookup = jest
+    .fn()
+    .mockResolvedValueOnce(['198.18.0.1'])
+    .mockResolvedValue(['169.254.169.254']);
+  await expect(
+    createRedirectValidatingFetch(
+      fetch,
+      false,
+      lookup,
+      undefined,
+      'trusted',
+    )('http://mcp.example.com:3999/mcp'),
+  ).rejects.toThrow();
+  expect(lookup).toHaveBeenCalledTimes(2);
 });

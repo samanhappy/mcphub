@@ -1,3 +1,4 @@
+import type { FakeIpException } from './network.js';
 import type { ToolPolicyRule, PolicyDecision } from './toolPolicy.js';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import {
@@ -281,6 +282,7 @@ export interface SystemConfig {
   toolPolicies?: ToolPolicyRule[];
   network?: {
     allowedCidrs?: string[]; // Admin-managed ranges reachable by non-admin-owned upstreams.
+    fakeIpExceptions?: FakeIpException[];
   };
   routing?: {
     enableGlobalRoute?: boolean; // Controls whether the /sse endpoint without group is enabled

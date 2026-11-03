@@ -46,6 +46,13 @@ describe('SystemConfigDaoImpl smart-routing migration', () => {
     expect(await dao.get()).toMatchObject({ nameSeparator: '::', network: { allowedCidrs: [] } });
   });
 
+  it('round-trips scoped Fake-IP exceptions', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, systemConfig: {} });
+    const fakeIpExceptions = [{ serverId: 'trusted', hostname: 'mcp.example.com' }];
+    await new SystemConfigDaoImpl().update({ network: { fakeIpExceptions } });
+    expect((await new SystemConfigDaoImpl().get()).network?.fakeIpExceptions).toEqual(fakeIpExceptions);
+  });
+
   it('round-trips policy rules, rejects malformed writes, and fails closed on unreadable configuration', async () => {
     writeSettings(settingsPath, { mcpServers: {}, systemConfig: {} });
     const dao = new SystemConfigDaoImpl();

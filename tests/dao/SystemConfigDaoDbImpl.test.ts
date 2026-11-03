@@ -8,7 +8,7 @@ jest.mock('../../src/db/repositories/SystemConfigRepository.js', () => ({
 }));
 
 it('preserves the network policy in database DAO reads, updates and resets', async () => {
-  const network = { allowedCidrs: ['192.168.1.0/24', 'fd00::/64'] };
+  const network = { allowedCidrs: ['192.168.1.0/24', 'fd00::/64'], fakeIpExceptions: [{serverId: 'trusted', hostname: 'mcp.example.com'}] };
   mockGet.mockResolvedValue({ network });
   mockUpdate.mockResolvedValue({ network });
   mockReset.mockResolvedValue({});
