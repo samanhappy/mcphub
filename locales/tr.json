@@ -1553,6 +1553,21 @@
     "copy": "Kimlik bilgilerini kopyala",
     "copyHint": "Kopyalanan bilgiler bağımsızdır. Kaynak değişiklikleri eşitlenmez. Kopyalamadan önce hedef sunucuya güvendiğinizden emin olun.",
     "confirmOverwrite": "Bu sunucunun mevcut tüm kimlik bilgilerini değiştir.",
-    "copied": "Kimlik bilgileri kopyalandı"
+    "copied": "Kimlik bilgileri kopyalandı",
+    "savedStatus": "Kimlik bilgileri kaydedildi",
+    "notSet": "Ayarlanmadı",
+    "update": "Kimlik bilgilerini güncelle",
+    "configure": "Kimlik bilgilerini yapılandır",
+    "moreActions": "Diğer işlemler",
+    "replaceHint": "Bu sunucunun tüm kimlik bilgilerini değiştirmek için her alanı doldurun. Kayıtlı değerler gizli kalır.",
+    "configureHint": "Tüm zorunlu alanları doldurun veya başka sunucudan kopyalayın.",
+    "replace": "Kimlik bilgilerini değiştir",
+    "cancel": "İptal",
+    "sourceMissing": "Eksik alanlar: {{slots}}",
+    "sourceUnconfigured": "Kimlik bilgileri yapılandırılmamış",
+    "sourceUrlMismatch": "URL değerleri eşleşmiyor",
+    "noOtherServers": "Kimlik bilgisi alanları olan başka sunucu yok",
+    "noSourcesHelp": "Kopyalamadan önce eşleşen alanları olan başka bir sunucuda kişisel kimlik bilgilerini yapılandırın.",
+    "deleteConfirm": "{{server}} kimlik bilgileri silinsin mi? Sonraki istekler için yeniden yapılandırmanız gerekir."
   }
 }

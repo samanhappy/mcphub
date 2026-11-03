@@ -1556,6 +1556,21 @@
     "copy": "Copy credentials",
     "copyHint": "Copied credentials are independent. Later changes to the source will not sync. Verify that you trust the target server before copying.",
     "confirmOverwrite": "Replace all existing credentials for this server.",
-    "copied": "Credentials copied"
+    "copied": "Credentials copied",
+    "savedStatus": "Credentials saved",
+    "notSet": "Not set",
+    "update": "Update credentials",
+    "configure": "Configure credentials",
+    "moreActions": "More actions",
+    "replaceHint": "Enter every field to replace all saved credentials for this server. Saved values remain masked.",
+    "configureHint": "Fill in every required field, or copy credentials from another server.",
+    "replace": "Replace credentials",
+    "cancel": "Cancel",
+    "sourceMissing": "Missing fields: {{slots}}",
+    "sourceUnconfigured": "Credentials not configured",
+    "sourceUrlMismatch": "URL values do not match",
+    "noOtherServers": "No other servers with credential slots",
+    "noSourcesHelp": "Configure personal credentials on another server with matching fields before copying.",
+    "deleteConfirm": "Delete credentials for {{server}}? Future requests will require you to configure credentials again."
   }
 }
