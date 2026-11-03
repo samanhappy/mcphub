@@ -2,6 +2,8 @@ import { handleOAuthRelay } from '../controllers/oauthRelayController.js';
 import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
 import {
+  copyMyCredential,
+  copyUserCredential,
   listMyCredentials,
   updateMyCredential,
   listUserCredentials,
@@ -292,6 +294,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/users/:username/credentials', listUserCredentials);
   authenticatedRouter.put('/users/:username/credentials/:name', updateUserCredential);
   authenticatedRouter.delete('/users/:username/credentials/:name', updateUserCredential);
+  authenticatedRouter.post('/users/:username/credentials/:name/copy', copyUserCredential);
+  authenticatedRouter.post('/credentials/:name/copy', copyMyCredential);
   authenticatedRouter.get('/credentials', listMyCredentials);
   authenticatedRouter.put('/credentials/:name', updateMyCredential);
   authenticatedRouter.delete('/credentials/:name', updateMyCredential);

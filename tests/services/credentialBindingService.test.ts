@@ -9,6 +9,8 @@ import {
   resolveCredentialBinding,
   deleteCredentialBindings,
   copyCredentialBindings,
+  copyPersonalCredentialBinding,
+  decryptCredentialValues,
   credentialBindingEvents,
   missingCredentialError,
 } from '../../src/services/credentialBindingService.js';
@@ -645,4 +647,116 @@ test('allows local key generation when USE_DB explicitly disables DB_URL auto-de
   delete process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY;
   await saveCredentialBinding('shared', 'alice', stdio, { 'env.PERSONAL_KEY': 'secret' });
   expect(fs.existsSync(`${process.env.MCPHUB_SETTING_PATH}.credentials.key`)).toBe(true);
+});
+
+describe('copying personal credentials', () => {
+  test('re-encrypts for the destination, invalidates its runtime, and remains independent', async () => {
+    await saveCredentialBinding('source', 'alice', stdio, {
+      'env.PERSONAL_KEY': 'original-secret',
+    });
+    const invalidate = jest.fn();
+    credentialBindingEvents.on('invalidate', invalidate);
+    try {
+      await copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio);
+      const dao = new CredentialBindingDaoImpl();
+      const source = (await dao.get('source', 'alice'))!;
+      const target = (await dao.get('target', 'alice'))!;
+      expect(target.encryptedValues).not.toBe(source.encryptedValues);
+      expect(await decryptCredentialValues(target)).toEqual({
+        'env.PERSONAL_KEY': 'original-secret',
+      });
+      expect(invalidate).toHaveBeenCalledWith({ serverName: 'target', username: 'alice' });
+      await deleteCredentialBindings({ serverName: 'source', username: 'alice' });
+      expect(
+        (await resolveCredentialBinding('target', 'alice', stdio)).config.env?.PERSONAL_KEY,
+      ).toBe('original-secret');
+      expect(await dao.get('target', 'bob')).toBeNull();
+    } finally {
+      credentialBindingEvents.off('invalidate', invalidate);
+    }
+  });
+
+  test('requires explicit overwrite and preserves the target on decryption failure', async () => {
+    await saveCredentialBinding('source', 'alice', stdio, { 'env.PERSONAL_KEY': 'new-secret' });
+    await saveCredentialBinding('target', 'alice', stdio, { 'env.PERSONAL_KEY': 'old-secret' });
+    await expect(
+      copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio),
+    ).rejects.toThrow('Confirm overwriting');
+    await copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio, true);
+    const dao = new CredentialBindingDaoImpl();
+    const target = await dao.get('target', 'alice');
+    await dao.save({ ...(await dao.get('source', 'alice'))!, encryptedValues: 'damaged' });
+    await expect(
+      copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio, true),
+    ).rejects.toThrow('Unable to unlock');
+    expect(await dao.get('target', 'alice')).toEqual(target);
+  });
+
+  test('matches headers case-insensitively and drops extra source slots', async () => {
+    const source: ServerConfig = {
+      type: 'streamable-http',
+      url: 'https://example.com/mcp',
+      credentialTemplate: [
+        { target: 'headers', name: 'X-API-Key' },
+        { target: 'headers', name: 'X-Extra' },
+      ],
+    };
+    const target: ServerConfig = {
+      ...source,
+      credentialTemplate: [{ target: 'headers', name: 'x-api-key' }],
+    };
+    await saveCredentialBinding('source', 'alice', source, {
+      'headers.X-API-Key': 'secret',
+      'headers.X-Extra': 'extra',
+    });
+    await copyPersonalCredentialBinding('source', 'target', 'alice', source, target);
+    expect(
+      await decryptCredentialValues((await new CredentialBindingDaoImpl().get('target', 'alice'))!),
+    ).toEqual({ 'headers.x-api-key': 'secret' });
+  });
+
+  test('rejects missing sources, same-server copies, incompatible slots and disallowed URL values', async () => {
+    await expect(
+      copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio),
+    ).rejects.toThrow('not configured');
+    await expect(
+      copyPersonalCredentialBinding('source', 'source', 'alice', stdio, stdio),
+    ).rejects.toThrow('different source');
+    const other: ServerConfig = {
+      ...stdio,
+      credentialTemplate: [{ target: 'env', name: 'OTHER_KEY' }],
+    };
+    await expect(
+      copyPersonalCredentialBinding('source', 'target', 'alice', stdio, other),
+    ).rejects.toThrow('incompatible');
+    const regional: ServerConfig = {
+      type: 'streamable-http',
+      url: 'https://example.com/{{url.region}}',
+      credentialTemplate: [{ target: 'url', name: 'region', allowed: ['us', 'eu'] }],
+    };
+    await saveCredentialBinding('source', 'alice', regional, { 'url.region': 'eu' });
+    const target = {
+      ...regional,
+      credentialTemplate: [{ target: 'url' as const, name: 'region', allowed: ['us'] }],
+    };
+    await expect(
+      copyPersonalCredentialBinding('source', 'target', 'alice', regional, target),
+    ).rejects.toThrow('URL');
+    expect(await new CredentialBindingDaoImpl().get('target', 'alice')).toBeNull();
+  });
+
+  test('does not overwrite a target changed while copying', async () => {
+    await saveCredentialBinding('source', 'alice', stdio, { 'env.PERSONAL_KEY': 'source-secret' });
+    const compare = jest
+      .spyOn(CredentialBindingDaoImpl.prototype, 'compareAndSave')
+      .mockResolvedValueOnce(false);
+    try {
+      await expect(
+        copyPersonalCredentialBinding('source', 'target', 'alice', stdio, stdio),
+      ).rejects.toThrow('Target credentials changed');
+      expect(await new CredentialBindingDaoImpl().get('target', 'alice')).toBeNull();
+    } finally {
+      compare.mockRestore();
+    }
+  });
 });

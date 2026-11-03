@@ -4,6 +4,7 @@ import type { BearerKey } from '../types/index.js';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { authorizationService, type RequestPrincipal } from '../services/authorizationService.js';
 import {
+  copyPersonalCredentialBinding,
   deleteCredentialBindings,
   getCredentialBindingStatus,
   saveCredentialBinding,
@@ -96,3 +97,46 @@ export const updateMyCredential = (req: Request, res: Response) =>
 export const listUserCredentials = (req: Request, res: Response) => listCredentials(req, res, true);
 export const updateUserCredential = (req: Request, res: Response) =>
   updateCredential(req, res, true);
+
+const copyCredential = async (req: Request, res: Response, managed: boolean): Promise<void> => {
+  try {
+    const user = await resolveUser(req, res, managed);
+    if (!user) return;
+    const { sourceServer, overwrite } = req.body || {};
+    if (
+      typeof sourceServer !== 'string' ||
+      !sourceServer ||
+      (overwrite !== undefined && typeof overwrite !== 'boolean')
+    )
+      throw new CredentialBindingError('Provide a source server and an optional boolean overwrite');
+    const dao = getServerDao();
+    const source = await dao.findById(sourceServer);
+    const target = await dao.findById(req.params.name);
+    if (
+      !source ||
+      !target ||
+      [source, target].some(
+        (server) =>
+          !hasCredentialTemplate(server) ||
+          !authorizationService.can('server.discover', server, user),
+      )
+    ) {
+      res.status(404).json({ success: false, message: 'Server not available' });
+      return;
+    }
+    await copyPersonalCredentialBinding(
+      source.name,
+      target.name,
+      user.username,
+      source,
+      target,
+      overwrite,
+    );
+    res.json({ success: true });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+export const copyMyCredential = (req: Request, res: Response) => copyCredential(req, res, false);
+export const copyUserCredential = (req: Request, res: Response) => copyCredential(req, res, true);
