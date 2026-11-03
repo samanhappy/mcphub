@@ -1,3 +1,4 @@
+import * as systemConfigCache from '../../src/utils/systemConfigCache.js';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { SSEClientTransport, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import fs from 'node:fs';
@@ -221,6 +222,24 @@ describe('MCP Service - passthrough headers for upstream MCP transports', () => 
       expect(sentHeaders.get('authorization')).toBe('Bearer static-token');
     },
   );
+
+  it('forwards caller Authorization with the instance opt-in while blocking the hub key', async () => {
+    const config = jest.spyOn(systemConfigCache, 'getCachedSystemConfig').mockReturnValue({
+      routing: { bearerAuthHeaderName: 'X-Hub-Key', allowAuthorizationPassthrough: true },
+    });
+    try {
+      const fetch = createRequestContextAwareFetch(mockBaseFetch, ['Authorization', 'X-Hub-Key']);
+      await RequestContextService.getInstance().runWithCustomRequestContext(
+        { headers: { authorization: 'Bearer upstream-user', 'x-hub-key': 'Bearer hub-secret' } },
+        () => fetch('https://example.com/mcp', { headers: { Authorization: 'Bearer static' } }),
+      );
+      const sent = new Headers(mockBaseFetch.mock.calls[0][1]?.headers);
+      expect(sent.get('authorization')).toBe('Bearer upstream-user');
+      expect(sent.has('x-hub-key')).toBe(false);
+    } finally {
+      config.mockRestore();
+    }
+  });
 
   it('blocks caller credentials from existing configs while forwarding business headers', async () => {
     const names = [

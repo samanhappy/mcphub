@@ -765,6 +765,38 @@ ls -la /path/to/server
 
 省略该选项时保留 SDK 默认值 10 MiB（10485760 字节）。上限用于读取包含 MCP 消息封装的序列化数据的缓冲区。响应超过上限会关闭传输连接。提高上限会允许使用更多内存，请按服务器需求设置有限上限。零、负数、小数和非有限值均被拒绝。该选项不会改变 HTTP 传输或 SDK 处理大消息的性能。
 
+## Authorization 请求头透传
+
+默认禁止透传 `Authorization`。管理员如需向可信上游传递每次请求的调用者令牌，必须在文件模式的 `mcp_settings.json` 中显式配置：
+
+```json
+{
+  "systemConfig": {
+    "routing": {
+      "bearerAuthHeaderName": "X-MCP-Authorization",
+      "allowAuthorizationPassthrough": true
+    }
+  }
+}
+```
+
+数据库模式通过仅限管理员的 `PUT /api/system-config` 提交以下请求体，调用该管理接口时使用当前配置的 MCPHub 鉴权头：
+
+```json
+{
+  "routing": {
+    "bearerAuthHeaderName": "X-MCP-Authorization",
+    "allowAuthorizationPassthrough": true
+  }
+}
+```
+
+同时，在可信服务器的 `passthroughHeaders`（HTTP MCP）或 `openapi.passthroughHeaders`（OpenAPI）中列出 `Authorization`。随后每次 MCP 请求分别发送 `X-MCP-Authorization: Bearer <mcphub-key>` 和 `Authorization: Bearer <upstream-user-token>`。
+
+`allowAuthorizationPassthrough` 默认关闭，已有部署升级后不会自动开始透传。MCPHub 实际使用的鉴权头始终禁止透传；hosted 模式始终禁止透传 `Authorization`。`Cookie`、`Proxy-Authorization`、`X-Auth-Token` 和 `X-Api-Key` 也不受此开关影响，列入配置仍不会转发。
+
+该开关作用于整个实例，只应对可信上游启用；透传配置仍只允许管理员创建或修改。静态请求头和个人凭据是独立认证方式，不能等价替代每次请求携带的调用者令牌。
+
 ## 放行内网上游网络
 
 管理员可在设置页维护**允许访问的上游 CIDR 范围**，JSON 存储模式也可配置 `systemConfig.network.allowedCidrs`：

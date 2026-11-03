@@ -288,6 +288,7 @@ export interface SystemConfig {
     enableBearerAuth?: boolean; // Controls whether MCP endpoints require bearer authentication
     bearerAuthKey?: string; // Legacy bearer auth key (used for one-time migration)
     bearerAuthHeaderName?: string; // Header name used to receive bearer credentials for MCP/API requests (default: 'Authorization')
+    allowAuthorizationPassthrough?: boolean; // Admin opt-in; requires a separate MCPHub auth header.
     jsonBodyLimit?: string; // JSON request body size limit used by Express parser (default: '1mb'), including OpenAPI schema uploads
     skipAuth?: boolean; // Controls whether the dashboard requires login
   };

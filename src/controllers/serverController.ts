@@ -2117,6 +2117,16 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         });
       return;
     }
+    if (
+      routing?.allowAuthorizationPassthrough !== undefined &&
+      typeof routing.allowAuthorizationPassthrough !== 'boolean'
+    ) {
+      res.status(400).json({
+        success: false,
+        message: 'routing.allowAuthorizationPassthrough must be a boolean',
+      });
+      return;
+    }
     const hasNetworkUpdate = network !== undefined;
     if (hasNetworkUpdate && (!network || !validateAllowedCidrs(network.allowedCidrs))) {
       res.status(400).json({
@@ -2134,6 +2144,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof routing.enableBearerAuth === 'boolean' ||
         typeof routing.bearerAuthKey === 'string' ||
         typeof routing.bearerAuthHeaderName === 'string' ||
+        typeof routing.allowAuthorizationPassthrough === 'boolean' ||
         typeof routing.jsonBodyLimit === 'string' ||
         typeof routing.skipAuth === 'boolean');
 
@@ -2406,6 +2417,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
       if (typeof routing.bearerAuthHeaderName === 'string') {
         systemConfig.routing.bearerAuthHeaderName = routing.bearerAuthHeaderName.trim();
+      }
+
+      if (typeof routing.allowAuthorizationPassthrough === 'boolean') {
+        systemConfig.routing.allowAuthorizationPassthrough = routing.allowAuthorizationPassthrough;
       }
 
       if (typeof routing.jsonBodyLimit === 'string') {

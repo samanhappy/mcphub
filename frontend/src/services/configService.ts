@@ -10,6 +10,7 @@ export interface SystemConfig {
     enableBearerAuth?: boolean;
     bearerAuthKey?: string;
     bearerAuthHeaderName?: string;
+    allowAuthorizationPassthrough?: boolean; // Admin opt-in; requires a separate MCPHub auth header.
     jsonBodyLimit?: string;
     dashboardName?: string;
     skipAuth?: boolean;
