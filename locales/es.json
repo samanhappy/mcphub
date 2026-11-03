@@ -1549,6 +1549,13 @@
     "empty": "Ningún servidor compartido requiere credenciales personales.",
     "targetUser": "Gestionar credenciales de",
     "myCredentials": "Mis credenciales",
-    "updatedAt": "Última actualización"
+    "updatedAt": "Última actualización",
+    "copyFrom": "Copiar de otro servidor",
+    "chooseSource": "Selecciona un servidor de origen",
+    "noSources": "No hay servidores configurados compatibles",
+    "copy": "Copiar credenciales",
+    "copyHint": "Las credenciales copiadas son independientes. Los cambios del origen no se sincronizan. Confía en el servidor de destino antes de copiar.",
+    "confirmOverwrite": "Reemplazar todas las credenciales de este servidor.",
+    "copied": "Credenciales copiadas"
   }
 }

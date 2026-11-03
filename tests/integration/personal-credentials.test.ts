@@ -35,6 +35,8 @@ import {
   userContextMiddleware,
 } from '../../src/middlewares/userContext.js';
 import {
+  copyMyCredential,
+  copyUserCredential,
   listUserCredentials,
   updateUserCredential,
   listMyCredentials,
@@ -177,6 +179,8 @@ beforeAll(async () => {
   app.get('/api/users/:username/credentials', listUserCredentials);
   app.put('/api/users/:username/credentials/:name', updateUserCredential);
   app.delete('/api/users/:username/credentials/:name', updateUserCredential);
+  app.post('/api/credentials/:name/copy', copyMyCredential);
+  app.post('/api/users/:username/credentials/:name/copy', copyUserCredential);
   app.get('/api/credentials', listMyCredentials);
   app.put('/api/credentials/:name', updateMyCredential);
   app.delete('/api/credentials/:name', updateMyCredential);
@@ -1772,4 +1776,71 @@ test('user-group membership grants server and group use, and removal revokes an 
     );
     await getGroupDao().delete(group.id);
   }
+});
+
+test('credential copy API scopes both endpoints to one authorized target user', async () => {
+  const source = (await getServerDao().findById('shared'))!;
+  await getServerDao().create({
+    ...source,
+    name: 'copy-target',
+    owner: 'admin',
+    visibility: 'public',
+  });
+  await getServerDao().create({
+    ...source,
+    name: 'copy-private',
+    owner: 'admin',
+    visibility: 'private',
+  });
+  await bind(alice, 'alice-copy-sentinel');
+  await bind(bob, 'bob-copy-sentinel');
+  const copy = (target: string, body: unknown, username = alice) =>
+    request(app)
+      .post(`/api/credentials/${target}/copy`)
+      .set('x-auth-token', apiToken(username))
+      .send(body);
+  expect((await copy('copy-target', { sourceServer: 'shared', username: bob })).status).toBe(200);
+  const { resolveCredentialBinding } = await import(
+    '../../src/services/credentialBindingService.js'
+  );
+  expect(
+    (await resolveCredentialBinding('copy-target', alice, source)).config.env?.PERSONAL_KEY,
+  ).toBe('alice-copy-sentinel');
+  expect(await getCredentialBindingDao().get('copy-target', bob)).toBeNull();
+  const client = await connect(alice);
+  const toolName = `shared${getNameSeparator()}identity`;
+  expect(parseIdentity(await client.callTool({ name: toolName })).credential).toBe('alice-copy-sentinel');
+  await request(app).put('/api/credentials/copy-target')
+    .set('x-auth-token', apiToken(alice))
+    .send({ values: { 'env.PERSONAL_KEY': 'copied-runtime-sentinel' } });
+  expect((await copy('shared', { sourceServer: 'copy-target', overwrite: true })).status).toBe(200);
+  expect(parseIdentity(await client.callTool({ name: toolName })).credential).toBe('copied-runtime-sentinel');
+
+  expect((await copy('copy-target', { sourceServer: 'shared' })).status).toBe(400);
+  expect((await copy('copy-target', { sourceServer: 'shared', overwrite: 'true' })).status).toBe(
+    400,
+  );
+  expect(
+    (await copy('copy-target', { sourceServer: 'copy-private', overwrite: true })).status,
+  ).toBe(404);
+  expect((await copy('copy-private', { sourceServer: 'shared' })).status).toBe(404);
+  expect(
+    (await request(app).post('/api/credentials/copy-target/copy').send({ sourceServer: 'shared' }))
+      .status,
+  ).toBe(401);
+  const managed = (actor: string) =>
+    request(app)
+      .post(`/api/users/${encodeURIComponent(bob)}/credentials/copy-target/copy`)
+      .set('x-auth-token', apiToken(actor))
+      .send({ sourceServer: 'shared' });
+  expect((await managed(alice)).status).toBe(403);
+  const response = await managed('admin');
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({ success: true });
+  expect(
+    (await resolveCredentialBinding('copy-target', bob, source)).config.env?.PERSONAL_KEY,
+  ).toBe('bob-copy-sentinel');
+  await getCredentialBindingDao().delete({ serverName: 'copy-target' });
+  await getServerDao().delete('copy-target');
+  await getServerDao().delete('copy-private');
 });

@@ -1547,6 +1547,13 @@
     "empty": "Aucun serveur partagé ne nécessite d’identifiants personnels.",
     "targetUser": "Gérer les identifiants de",
     "myCredentials": "Mes identifiants",
-    "updatedAt": "Dernière mise à jour"
+    "updatedAt": "Dernière mise à jour",
+    "copyFrom": "Copier depuis un autre serveur",
+    "chooseSource": "Choisir un serveur source",
+    "noSources": "Aucun serveur configuré compatible",
+    "copy": "Copier les identifiants",
+    "copyHint": "Les identifiants copiés sont indépendants. Les changements de la source ne sont pas synchronisés. Vérifiez que le serveur cible est fiable.",
+    "confirmOverwrite": "Remplacer tous les identifiants existants de ce serveur.",
+    "copied": "Identifiants copiés"
   }
 }

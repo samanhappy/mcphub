@@ -3,19 +3,38 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import type { User, MyCredentialBinding } from '../types';
-import { apiDelete, apiGet, apiPut, type ApiResponse } from '../utils/fetchInterceptor';
+import { apiDelete, apiGet, apiPost, apiPut, type ApiResponse } from '../utils/fetchInterceptor';
 
 const CredentialForm = ({
   binding,
   baseUrl,
+  bindings,
   onChange,
 }: {
   binding: MyCredentialBinding;
   baseUrl: string;
+  bindings: MyCredentialBinding[];
   onChange: () => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
+  const [sourceServer, setSourceServer] = useState('');
+  const [overwrite, setOverwrite] = useState(false);
+  const slotId = (slot: MyCredentialBinding['credentialTemplate'][number]) =>
+    `${slot.target}.${slot.target === 'headers' ? slot.name.toLowerCase() : slot.name}`;
+  const sources = bindings.filter(
+    (source) =>
+      source.serverName !== binding.serverName &&
+      source.configured &&
+      binding.credentialTemplate.every((target) =>
+        source.credentialTemplate.some(
+          (slot) =>
+            slotId(slot) === slotId(target) &&
+            (target.target !== 'url' ||
+              slot.allowed?.every((value) => target.allowed?.includes(value))),
+        ),
+      ),
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const save = async (remove: boolean) => {
@@ -29,6 +48,26 @@ const CredentialForm = ({
       if (!result.success) throw new Error(result.message || t('credentials.failed'));
       setValues({});
       setMessage(t(remove ? 'credentials.deleted' : 'credentials.saved'));
+      await onChange();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t('credentials.failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await apiPost<ApiResponse>(
+        `${baseUrl}/${encodeURIComponent(binding.serverName)}/copy`,
+        { sourceServer, overwrite },
+      );
+      if (!result.success) throw new Error(result.message || t('credentials.failed'));
+      setValues({});
+      setSourceServer('');
+      setOverwrite(false);
+      setMessage(t('credentials.copied'));
       await onChange();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('credentials.failed'));
@@ -58,6 +97,53 @@ const CredentialForm = ({
           {t('credentials.updatedAt')}: {new Date(binding.updatedAt).toLocaleString()}
         </p>
       )}
+      <div className="space-y-3 rounded-lg border border-[var(--hub-line)] p-4">
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">{t('credentials.copyFrom')}</span>
+          <select
+            className="hub-input"
+            value={sourceServer}
+            disabled={busy || !sources.length}
+            onChange={(event) => {
+              setSourceServer(event.target.value);
+              setOverwrite(false);
+            }}
+          >
+            <option value="">
+              {t(sources.length ? 'credentials.chooseSource' : 'credentials.noSources')}
+            </option>
+            {sources.map((source) => (
+              <option key={source.serverName} value={source.serverName}>
+                {source.serverName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-xs text-[var(--hub-ink-3)]">{t('credentials.copyHint')}</p>
+        {sourceServer && binding.updatedAt && (
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={overwrite}
+              disabled={busy}
+              onChange={(event) => setOverwrite(event.target.checked)}
+            />
+            <span>{t('credentials.confirmOverwrite')}</span>
+          </label>
+        )}
+        <button
+          type="button"
+          className="hub-btn"
+          disabled={
+            busy ||
+            !sources.some((source) => source.serverName === sourceServer) ||
+            (!!binding.updatedAt && !overwrite)
+          }
+          onClick={() => void copy()}
+        >
+          {t('credentials.copy')}
+        </button>
+      </div>
       {binding.credentialTemplate.map((slot) => {
         const id = `${slot.target}.${slot.name}`;
         return (
@@ -192,6 +278,7 @@ function CredentialList({ baseUrl }: { baseUrl: string }) {
         <CredentialForm
           key={binding.serverName}
           binding={binding}
+          bindings={bindings}
           baseUrl={baseUrl}
           onChange={reload}
         />

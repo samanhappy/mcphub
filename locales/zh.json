@@ -1551,6 +1551,13 @@
     "empty": "暂无需要个人凭据的共享服务器。",
     "targetUser": "管理用户凭据",
     "myCredentials": "我的凭据",
-    "updatedAt": "最后更新"
+    "updatedAt": "最后更新",
+    "copyFrom": "从其他服务器复制",
+    "chooseSource": "选择来源服务器",
+    "noSources": "没有已配置且兼容的服务器",
+    "copy": "复制凭据",
+    "copyHint": "复制后的凭据独立保存，来源后续的变更不会同步。复制前请确认目标服务器可信。",
+    "confirmOverwrite": "替换此服务器现有的全部凭据。",
+    "copied": "凭据已复制"
   }
 }
