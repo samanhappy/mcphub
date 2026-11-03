@@ -103,6 +103,11 @@ Two image variants are published under `samanhappy/mcphub`:
 
 See [Docker Setup](https://docs.mcphub.app/configuration/docker-setup) for build options and Docker-in-Docker configuration.
 
+### One-Click Deploy
+
+<a href="https://repocloud.io/details/MCPHub/"><img src="https://d16t0pc4846x52.cloudfront.net/deploylobe.svg" alt="Deploy on RepoCloud" height="42"></a>
+<a href="https://railway.com/deploy/mcphub"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="42"></a>
+
 ### Upgrading deployments with personal credentials
 
 Database mode requires a persistent `MCPHUB_CREDENTIAL_ENCRYPTION_KEY` or an existing key file; it no longer generates a local key automatically. Before replacing a working container, back up its original key and preserve the same value in deployment secrets. A database backup alone cannot recover encrypted credentials if the key is lost. See the [Credential Key Upgrade and Recovery Guide](docs/configuration/credential-key-upgrade.mdx) for working deployments and recovery after a failed upgrade.
