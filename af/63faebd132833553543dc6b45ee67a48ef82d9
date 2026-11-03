@@ -1,0 +1,46 @@
+locales/zh.json
+  s_f982e41d362a05::t_ce984a3e18611e 874-876
+locales/en.json
+  s_f982e41d362a05::t_ce984a3e18611e 872-874
+locales/vi.json
+  s_f982e41d362a05::t_ce984a3e18611e 872-874
+locales/tr.json
+  s_f982e41d362a05::t_ce984a3e18611e 871-873
+tests/controllers/configController.test.ts
+  s_f982e41d362a05::t_9c5278c40317dd 1,223-240
+  s_f982e41d362a05::t_1f10ba1a82a2a0 241
+docs/configuration/mcp-settings.mdx
+  s_f982e41d362a05::t_161e940a2d44df 682
+locales/fr.json
+  s_f982e41d362a05::t_ce984a3e18611e 871-873
+src/controllers/configController.ts
+  s_f982e41d362a05::t_dc8922e053641e 1,41
+docs/zh/configuration/mcp-settings.mdx
+  s_f982e41d362a05::t_161e940a2d44df 783
+frontend/src/pages/SettingsPage.tsx
+  s_f982e41d362a05::t_ce984a3e18611e 2,996-999,1007,2051-2067,2073,2077-2083
+  s_f982e41d362a05::t_6a3440b8d2cd40 2068-2072,2074-2076
+  s_f982e41d362a05::t_ef999fce3fdced 2084
+frontend/src/types/runtime.ts
+  s_f982e41d362a05::t_dc8922e053641e 5
+locales/es.json
+  s_f982e41d362a05::t_ce984a3e18611e 872-874
+frontend/src/contexts/SettingsContext.tsx
+  s_f982e41d362a05::t_dc8922e053641e 24,359,462-463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af63faebd132833553543dc6b45ee67a48ef82d9",
+  "prompts": {},
+  "sessions": {
+    "s_f982e41d362a05": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a0b2-1752-7610-93f9-be3a0bc63642",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
