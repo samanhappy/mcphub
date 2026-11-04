@@ -2,29 +2,29 @@ import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
 import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from '../services/userContextService.js';
+import { resolveForwardAuthRuntimeConfig } from '../services/forwardAuthService.js';
 import { IUser, SystemConfig } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
-import {
-  getBearerTokenFromHeaders,
-  getForwardAuthTokenFromHeaders,
-  resolveForwardAuthTokenHeaderName,
-} from '../utils/bearerAuth.js';
+import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * A gateway JWT in a dedicated header can arrive next to an OAuth token in the
- * bearer header. Forward auth takes precedence, so the transport's bearer auth
- * must pick the user instead of this middleware resolving the OAuth token first.
+ * The gateway JWT from a dedicated header, only while forward auth is active.
+ * It can arrive next to an OAuth token in the bearer header; forward auth takes
+ * precedence, so the transport's bearer auth must pick the user instead of this
+ * middleware resolving the OAuth token first.
  */
-const hasDedicatedForwardAuthToken = (req: Request, systemConfig?: SystemConfig | null): boolean =>
-  Boolean(
-    resolveForwardAuthTokenHeaderName(systemConfig) &&
-      getForwardAuthTokenFromHeaders(req.headers, systemConfig),
-  );
+const getDedicatedForwardAuthToken = (
+  req: Request,
+  systemConfig?: SystemConfig | null,
+): string | null => {
+  const { enabled, tokenHeader } = resolveForwardAuthRuntimeConfig(systemConfig);
+  return enabled && tokenHeader ? getForwardAuthTokenFromHeaders(req.headers, systemConfig) : null;
+};
 
 const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | null> => {
   const systemConfig = await getSystemConfigDao().get();
-  if (hasDedicatedForwardAuthToken(req, systemConfig)) {
+  if (getDedicatedForwardAuthToken(req, systemConfig)) {
     return null;
   }
 
@@ -34,10 +34,7 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
   }
 
   // Bearer and forward-auth tokens are verified by the transport's bearer auth.
-  if (
-    getBearerTokenFromHeaders(req.headers, systemConfig) ||
-    getForwardAuthTokenFromHeaders(req.headers, systemConfig)
-  ) {
+  if (getBearerTokenFromHeaders(req.headers, systemConfig)) {
     return null;
   }
 
@@ -90,7 +87,7 @@ export const sseUserContextMiddleware = async (
           const systemConfig = await getSystemConfigDao().get();
           if (
             getBearerTokenFromHeaders(req.headers, systemConfig) ||
-            getForwardAuthTokenFromHeaders(req.headers, systemConfig)
+            getDedicatedForwardAuthToken(req, systemConfig)
           ) {
             next();
             return;
@@ -115,7 +112,7 @@ export const sseUserContextMiddleware = async (
         logger.log(`User context set for SSE/MCP endpoint: ${username}`);
       } else {
         const systemConfig = await getSystemConfigDao().get();
-        const bearerUser = hasDedicatedForwardAuthToken(req, systemConfig)
+        const bearerUser = getDedicatedForwardAuthToken(req, systemConfig)
           ? null
           : await resolveOAuthUserFromHeaders(req.headers, systemConfig);
 

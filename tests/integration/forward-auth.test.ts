@@ -1,4 +1,5 @@
 jest.mock('openid-client', () => ({}));
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +17,7 @@ import { handleMcpPostRequest, transports } from '../../src/services/sseService.
 import { cleanupAllServers, initializeClientsFromSettings } from '../../src/services/mcpService.js';
 import { resetForwardAuthStateForTests } from '../../src/services/forwardAuthService.js';
 import { UserContextService } from '../../src/services/userContextService.js';
+import { RequestContextService } from '../../src/services/requestContextService.js';
 import { clearSettingsCache } from '../../src/config/index.js';
 import { createUserToken } from '../utils/testHelpers.js';
 import type { McpSettings } from '../../src/types/index.js';
@@ -533,6 +535,40 @@ describe('forward auth from a dedicated token header', () => {
       const headers = { ...OAUTH_HEADERS, [TOKEN_HEADER]: await signToken() };
       expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(200);
       expect((await usersSetFor('/local.user/mcp', headers)).status).toBe(403);
+    });
+
+    it('scopes stateless client state to the gateway JWT that authenticated the request', async () => {
+      const gatewayJwt = await signToken();
+      const contexts = jest.spyOn(RequestContextService.getInstance(), 'getRequestContext');
+      try {
+        await request(app)
+          .post('/mcp')
+          .set('Accept', 'application/json, text/event-stream')
+          .set('MCP-Protocol-Version', '2026-07-28')
+          .set('Authorization', OAUTH_HEADERS.Authorization)
+          .set(TOKEN_HEADER, gatewayJwt)
+          .send({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/list',
+            params: {
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          });
+        const scopes = contexts.mock.results
+          .map(({ value }) => value?.clientStateScope)
+          .filter(Boolean);
+        expect(scopes).toContain(
+          createHash('sha256')
+            .update(JSON.stringify([gatewayJwt, 'gateway.user', '']))
+            .digest('hex'),
+        );
+      } finally {
+        contexts.mockRestore();
+      }
     });
 
     it('falls through to the OAuth user when the token header carries another issuer', async () => {

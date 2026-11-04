@@ -1024,7 +1024,10 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       context.clientCapabilities = requestMeta?.['io.modelcontextprotocol/clientCapabilities'];
       // Bind application state to the authenticated credential, user and route.
       // Never treat caller-provided correlation metadata as identity.
-      const token = getBearerTokenFromHeaders(req.headers, systemConfig);
+      const token =
+        bearerAuthResult.keyName === FORWARD_AUTH_METHOD_LABEL
+          ? getForwardAuthTokenFromHeaders(req.headers, systemConfig)
+          : getBearerTokenFromHeaders(req.headers, systemConfig);
       if (token && (systemConfig?.routing?.enableBearerAuth ?? true)) {
         context.clientStateScope = createHash('sha256')
           .update(JSON.stringify([token, username || '', group || '']))
