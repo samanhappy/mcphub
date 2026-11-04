@@ -580,5 +580,14 @@ describe('forward auth from a dedicated token header', () => {
       expect(users).toContain('local.user');
       expect(users).not.toContain('gateway.user');
     });
+
+    it('scopes user routes to the OAuth user when the token header carries another issuer', async () => {
+      const headers = {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      };
+      expect((await usersSetFor('/local.user/mcp', headers)).status).toBe(200);
+      expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(403);
+    });
   });
 });

@@ -455,6 +455,15 @@ const resolveUserLevelKeyUser = async (req: Request, key: BearerKey): Promise<Be
   return { valid: true, user, keyId: key.id, keyName: key.name, kind: 'user' };
 };
 
+// User routes only accept the matching user, whichever credential selected it.
+const oauthUserResult = (req: Request, user: IUser): BearerAuthResult => {
+  const requestedUsername = req.params.user;
+  if (requestedUsername && requestedUsername !== user.username) {
+    return { valid: false, reason: 'forbidden' };
+  }
+  return { valid: true, user, keyName: OAUTH_AUTH_METHOD_LABEL };
+};
+
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
@@ -559,7 +568,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       logger.log('Recognized OAuth bearer token (auth disabled)');
-      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+      return oauthUserResult(req, oauthUser);
     }
 
     return { valid: true };
@@ -578,7 +587,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       logger.log('Authenticated request using OAuth bearer token without configured keys');
-      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+      return oauthUserResult(req, oauthUser);
     }
 
     logger.warn(
@@ -610,7 +619,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const oauthUser = await resolveOAuthUserFromToken(token);
   if (oauthUser) {
     logger.log('Authenticated request using OAuth bearer token (no matching static key)');
-    return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+    return oauthUserResult(req, oauthUser);
   }
 
   logger.warn('Bearer authentication failed: token did not match any key or OAuth user');
