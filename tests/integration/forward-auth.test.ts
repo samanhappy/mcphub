@@ -15,6 +15,7 @@ import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
 import { handleMcpPostRequest, transports } from '../../src/services/sseService.js';
 import { cleanupAllServers, initializeClientsFromSettings } from '../../src/services/mcpService.js';
 import { resetForwardAuthStateForTests } from '../../src/services/forwardAuthService.js';
+import { UserContextService } from '../../src/services/userContextService.js';
 import { clearSettingsCache } from '../../src/config/index.js';
 import { createUserToken } from '../utils/testHelpers.js';
 import type { McpSettings } from '../../src/types/index.js';
@@ -26,6 +27,24 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   saveToolsAsVectorEmbeddings: jest.fn(),
   syncAllServerToolsEmbeddings: jest.fn(),
 }));
+// One fixed OAuth access token resolves to local.user; everything else is real.
+jest.mock('../../src/utils/oauthBearer.js', () => {
+  const actual = jest.requireActual('../../src/utils/oauthBearer.js');
+  const token = 'oauth-token-local-user';
+  const user = { username: 'local.user', password: '', isAdmin: false };
+  return {
+    ...actual,
+    resolveOAuthUserFromToken: jest.fn(async (presented?: string) =>
+      presented === token ? user : actual.resolveOAuthUserFromToken(presented),
+    ),
+    resolveOAuthUserFromHeaders: jest.fn(
+      async (headers: Record<string, unknown>, config: unknown) =>
+        headers.authorization === `Bearer ${token}`
+          ? user
+          : actual.resolveOAuthUserFromHeaders(headers, config),
+    ),
+  };
+});
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: jest.fn(async () => ({ enabled: false })),
 }));
@@ -479,5 +498,51 @@ describe('forward auth from a dedicated token header', () => {
 
     const other = await initialize('/local.user/mcp', { [TOKEN_HEADER]: await signToken() });
     expect(other.status).toBe(403);
+  });
+
+  describe('alongside an MCPHub OAuth token', () => {
+    const OAUTH_HEADERS = { Authorization: 'Bearer oauth-token-local-user' };
+
+    const usersSetFor = async (url: string, headers: Record<string, string>) => {
+      const setCurrentUser = jest.spyOn(UserContextService.getInstance(), 'setCurrentUser');
+      try {
+        const res = await initialize(url, headers);
+        return { status: res.status, users: setCurrentUser.mock.calls.map(([u]) => u.username) };
+      } finally {
+        setCurrentUser.mockRestore();
+      }
+    };
+
+    it('runs an OAuth-only request as the OAuth user', async () => {
+      const { status, users } = await usersSetFor('/mcp', OAUTH_HEADERS);
+      expect(status).toBe(200);
+      expect(users).toContain('local.user');
+    });
+
+    it('runs the request as the forward-auth user when both identities are presented', async () => {
+      const { status, users } = await usersSetFor('/mcp', {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken(),
+      });
+      expect(status).toBe(200);
+      expect(users).toContain('gateway.user');
+      expect(users).not.toContain('local.user');
+    });
+
+    it('scopes user routes to the forward-auth user when both identities are presented', async () => {
+      const headers = { ...OAUTH_HEADERS, [TOKEN_HEADER]: await signToken() };
+      expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(200);
+      expect((await usersSetFor('/local.user/mcp', headers)).status).toBe(403);
+    });
+
+    it('falls through to the OAuth user when the token header carries another issuer', async () => {
+      const { status, users } = await usersSetFor('/mcp', {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      });
+      expect(status).toBe(200);
+      expect(users).toContain('local.user');
+      expect(users).not.toContain('gateway.user');
+    });
   });
 });

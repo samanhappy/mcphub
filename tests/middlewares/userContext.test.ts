@@ -11,6 +11,7 @@ const countMock = jest.fn();
 const resolveOAuthUserFromHeadersMock = jest.fn();
 const getBearerTokenFromHeadersMock = jest.fn();
 const getForwardAuthTokenFromHeadersMock = jest.fn();
+const resolveForwardAuthTokenHeaderNameMock = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getSystemConfigDao: () => ({
@@ -29,6 +30,7 @@ jest.mock('../../src/utils/oauthBearer.js', () => ({
 jest.mock('../../src/utils/bearerAuth.js', () => ({
   getBearerTokenFromHeaders: getBearerTokenFromHeadersMock,
   getForwardAuthTokenFromHeaders: getForwardAuthTokenFromHeadersMock,
+  resolveForwardAuthTokenHeaderName: resolveForwardAuthTokenHeaderNameMock,
 }));
 
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
@@ -56,9 +58,11 @@ describe('sseUserContextMiddleware', () => {
     getSystemConfigMock.mockResolvedValue({});
     findByUsernameMock.mockReset();
     countMock.mockReset();
+    resolveOAuthUserFromHeadersMock.mockReset();
     resolveOAuthUserFromHeadersMock.mockResolvedValue(null);
     getBearerTokenFromHeadersMock.mockReturnValue(undefined);
     getForwardAuthTokenFromHeadersMock.mockReturnValue(null);
+    resolveForwardAuthTokenHeaderNameMock.mockReturnValue(undefined);
   });
 
   it('forwards asynchronous storage failures to Express instead of leaving the request open', async () => {
@@ -74,7 +78,11 @@ describe('sseUserContextMiddleware', () => {
     });
     const next = jest.fn();
     try {
-      await sseUserContextMiddleware({ params: {}, headers: {} } as Request, createResponse().response, next);
+      await sseUserContextMiddleware(
+        { params: {}, headers: {} } as Request,
+        createResponse().response,
+        next,
+      );
       await waitForAsyncMiddleware();
       expect(next).toHaveBeenCalledWith(error);
     } finally {
@@ -217,4 +225,41 @@ describe('sseUserContextMiddleware', () => {
     expect(next).toHaveBeenCalledWith();
     expect(status).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['global', {}],
+    ['user-scoped', { user: 'alice' }],
+  ])(
+    'leaves the %s route user to the transport when a dedicated forward-auth header is present',
+    async (_label, params) => {
+      resolveForwardAuthTokenHeaderNameMock.mockReturnValue('Cf-Access-Jwt-Assertion');
+      getForwardAuthTokenFromHeadersMock.mockReturnValue('gateway.jwt.token');
+      resolveOAuthUserFromHeadersMock.mockResolvedValue({ username: 'alice', isAdmin: false });
+      const context = UserContextService.getInstance();
+      const setCurrentUser = jest.spyOn(context, 'setCurrentUser');
+      const { response, status } = createResponse();
+      const next = jest.fn();
+      const req = {
+        params,
+        header: () => undefined,
+        query: {},
+        headers: {
+          authorization: 'Bearer oauth-token',
+          'cf-access-jwt-assertion': 'gateway.jwt.token',
+        },
+      } as unknown as Request;
+
+      try {
+        await sseUserContextMiddleware(req, response, next);
+        await waitForAsyncMiddleware();
+
+        expect(next).toHaveBeenCalledWith();
+        expect(status).not.toHaveBeenCalled();
+        expect(resolveOAuthUserFromHeadersMock).not.toHaveBeenCalled();
+        expect(setCurrentUser).not.toHaveBeenCalled();
+      } finally {
+        setCurrentUser.mockRestore();
+      }
+    },
+  );
 });
