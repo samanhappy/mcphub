@@ -590,4 +590,47 @@ describe('forward auth from a dedicated token header', () => {
       expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(403);
     });
   });
+
+  describe('with bearer auth disabled', () => {
+    const setEnableBearerAuth = (enabled: boolean) => {
+      const settingsPath = process.env.MCPHUB_SETTING_PATH as string;
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      settings.systemConfig.routing.enableBearerAuth = enabled;
+      fs.writeFileSync(settingsPath, JSON.stringify(settings));
+      clearSettingsCache();
+      JsonFileDaoFactory.getInstance().resetInstances();
+    };
+
+    beforeAll(() => setEnableBearerAuth(false));
+    afterAll(() => setEnableBearerAuth(true));
+
+    const otherIssuerHeader = async () => ({
+      [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+    });
+
+    it('still requires authentication on user routes when the token header carries another issuer', async () => {
+      const res = await initialize('/local.user/mcp', await otherIssuerHeader());
+      expect(res.status).toBe(401);
+    });
+
+    it('still resolves the dashboard session on user routes when the token header carries another issuer', async () => {
+      const own = await initialize('/local.user/mcp', {
+        ...(await otherIssuerHeader()),
+        'x-auth-token': createUserToken('local.user', false),
+      });
+      expect(own.status).toBe(200);
+
+      const other = await initialize('/local.user/mcp', {
+        ...(await otherIssuerHeader()),
+        'x-auth-token': createUserToken('admin', true),
+      });
+      expect(other.status).toBe(403);
+    });
+
+    it('authenticates user routes from a configured-issuer token header', async () => {
+      const headers = { [TOKEN_HEADER]: await signToken() };
+      expect((await initialize('/gateway.user/mcp', headers)).status).toBe(200);
+      expect((await initialize('/local.user/mcp', headers)).status).toBe(403);
+    });
+  });
 });

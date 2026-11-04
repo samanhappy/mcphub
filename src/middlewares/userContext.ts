@@ -2,24 +2,31 @@ import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
 import { getSystemConfigDao } from '../dao/index.js';
 import { UserContextService } from '../services/userContextService.js';
-import { resolveForwardAuthRuntimeConfig } from '../services/forwardAuthService.js';
+import {
+  isForwardAuthToken,
+  resolveForwardAuthRuntimeConfig,
+} from '../services/forwardAuthService.js';
 import { IUser, SystemConfig } from '../types/index.js';
 import { resolveOAuthUserFromHeaders } from '../utils/oauthBearer.js';
 import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * The gateway JWT from a dedicated header, only while forward auth is active.
+ * The gateway JWT from a dedicated header, only when forward auth owns it.
  * It can arrive next to an OAuth token in the bearer header; forward auth takes
  * precedence, so the transport's bearer auth must pick the user instead of this
- * middleware resolving the OAuth token first.
+ * middleware resolving the OAuth token first. Any other value in the header is
+ * ignored, as forward auth ignores it.
  */
 const getDedicatedForwardAuthToken = (
   req: Request,
   systemConfig?: SystemConfig | null,
 ): string | null => {
-  const { enabled, tokenHeader } = resolveForwardAuthRuntimeConfig(systemConfig);
-  return enabled && tokenHeader ? getForwardAuthTokenFromHeaders(req.headers, systemConfig) : null;
+  if (!resolveForwardAuthRuntimeConfig(systemConfig).tokenHeader) {
+    return null;
+  }
+  const token = getForwardAuthTokenFromHeaders(req.headers, systemConfig);
+  return isForwardAuthToken(token, systemConfig) ? token : null;
 };
 
 const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | null> => {

@@ -34,6 +34,9 @@ jest.mock('../../src/utils/bearerAuth.js', () => ({
 
 jest.mock('../../src/services/forwardAuthService.js', () => ({
   resolveForwardAuthRuntimeConfig: resolveForwardAuthRuntimeConfigMock,
+  // Unit tests stand in for a configured-issuer JWT with any token value.
+  isForwardAuthToken: (token?: string | null) =>
+    Boolean(token) && Boolean(resolveForwardAuthRuntimeConfigMock()?.enabled),
 }));
 
 const enableForwardAuthTokenHeader = () =>

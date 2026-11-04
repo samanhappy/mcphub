@@ -311,6 +311,31 @@ const describeVerificationError = (error: unknown): string => {
   return error instanceof Error ? error.message : 'verification failed';
 };
 
+const claimsConfiguredIssuer = (
+  token: string,
+  config: ForwardAuthRuntimeConfig,
+): config is ForwardAuthRuntimeConfig & { jwksUri: string; issuer: string } => {
+  if (!config.enabled || !config.jwksUri || !config.issuer) {
+    return false;
+  }
+  try {
+    return decodeJwt(token).iss === config.issuer;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Whether forward auth owns this token: it then either authenticates or
+ * rejects it, and other methods are never tried. The signature is not checked.
+ */
+export const isForwardAuthToken = (
+  token: string | null | undefined,
+  systemConfig?: SystemConfig | null,
+): boolean =>
+  Boolean(token) &&
+  claimsConfiguredIssuer(token as string, resolveForwardAuthRuntimeConfig(systemConfig));
+
 /**
  * Authenticate a bearer token as a forward-auth JWT.
  *
@@ -328,17 +353,7 @@ export const authenticateForwardAuthToken = async (
   }
 
   const config = resolveForwardAuthRuntimeConfig(systemConfig);
-  if (!config.enabled || !config.jwksUri || !config.issuer) {
-    return { status: 'skipped' };
-  }
-
-  let unverifiedIssuer: string | undefined;
-  try {
-    unverifiedIssuer = decodeJwt(token).iss;
-  } catch {
-    return { status: 'skipped' };
-  }
-  if (unverifiedIssuer !== config.issuer) {
+  if (!claimsConfiguredIssuer(token, config)) {
     return { status: 'skipped' };
   }
 

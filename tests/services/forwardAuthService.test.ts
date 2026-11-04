@@ -1,6 +1,7 @@
 import {
   authenticateForwardAuthToken,
   buildForwardAuthSsoUserId,
+  isForwardAuthToken,
   isForwardAuthUser,
   resetForwardAuthStateForTests,
   resolveForwardAuthRuntimeConfig,
@@ -185,5 +186,39 @@ describe('forward-auth identity namespace', () => {
     expect(id.length).toBeLessThanOrEqual(255);
     expect(isForwardAuthUser({ ssoUserId: id })).toBe(true);
     expect(isForwardAuthUser({ ssoUserId: 'better-auth-id' })).toBe(false);
+  });
+});
+
+describe('isForwardAuthToken', () => {
+  // decodeJwt only reads the claims, so the signature can be anything here.
+  const unsignedJwt = (claims: Record<string, unknown>) =>
+    ['{"alg":"RS256"}', JSON.stringify(claims), 'signature']
+      .map((part) => Buffer.from(part).toString('base64url'))
+      .join('.');
+
+  beforeEach(() => {
+    for (const key of ENV_KEYS) delete process.env[key];
+    resetForwardAuthStateForTests();
+  });
+
+  it('claims JWTs that name the configured issuer', () => {
+    const token = unsignedJwt({ iss: 'https://idp.example.test/' });
+    expect(isForwardAuthToken(token, withForwardAuth(validSettings))).toBe(true);
+  });
+
+  it('leaves other tokens to the other methods', () => {
+    const config = withForwardAuth(validSettings);
+    expect(isForwardAuthToken(unsignedJwt({ iss: 'https://other.example.test/' }), config)).toBe(
+      false,
+    );
+    expect(isForwardAuthToken('not-a-jwt', config)).toBe(false);
+    expect(isForwardAuthToken(null, config)).toBe(false);
+  });
+
+  it('claims nothing while forward auth is disabled', () => {
+    const token = unsignedJwt({ iss: 'https://idp.example.test/' });
+    expect(isForwardAuthToken(token, withForwardAuth({ ...validSettings, enabled: false }))).toBe(
+      false,
+    );
   });
 });
