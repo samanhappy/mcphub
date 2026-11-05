@@ -1,6 +1,7 @@
 import {
   authenticateForwardAuthToken,
   buildForwardAuthSsoUserId,
+  isForwardAuthToken,
   isForwardAuthUser,
   resetForwardAuthStateForTests,
   resolveForwardAuthRuntimeConfig,
@@ -17,6 +18,7 @@ const ENV_KEYS = [
   'FORWARD_AUTH_USERNAME_CLAIM',
   'FORWARD_AUTH_EMAIL_CLAIM',
   'FORWARD_AUTH_AUTO_CREATE',
+  'FORWARD_AUTH_TOKEN_HEADER',
 ];
 
 const withForwardAuth = (
@@ -124,6 +126,30 @@ describe('resolveForwardAuthRuntimeConfig', () => {
     expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings as any)).enabled).toBe(false);
   });
 
+  it('resolves a token header from settings, overridden by env', () => {
+    const settings = {
+      ...validSettings,
+      jwks: { ...validSettings.jwks, tokenHeader: 'Cf-Access-Jwt-Assertion' },
+    };
+    expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings))).toMatchObject({
+      enabled: true,
+      tokenHeader: 'Cf-Access-Jwt-Assertion',
+    });
+
+    process.env.FORWARD_AUTH_TOKEN_HEADER = 'X-Gateway-Jwt';
+    expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings)).tokenHeader).toBe(
+      'X-Gateway-Jwt',
+    );
+  });
+
+  it.each(['Cf Access Jwt', 'X-Jwt:', 'Jwté'])(
+    'stays disabled for an invalid token header name %j',
+    (tokenHeader) => {
+      const settings = { ...validSettings, jwks: { ...validSettings.jwks, tokenHeader } };
+      expect(resolveForwardAuthRuntimeConfig(withForwardAuth(settings)).enabled).toBe(false);
+    },
+  );
+
   it('stays disabled for an unsupported mode', () => {
     process.env.FORWARD_AUTH_MODE = 'header';
     expect(resolveForwardAuthRuntimeConfig(withForwardAuth(validSettings)).enabled).toBe(false);
@@ -160,5 +186,39 @@ describe('forward-auth identity namespace', () => {
     expect(id.length).toBeLessThanOrEqual(255);
     expect(isForwardAuthUser({ ssoUserId: id })).toBe(true);
     expect(isForwardAuthUser({ ssoUserId: 'better-auth-id' })).toBe(false);
+  });
+});
+
+describe('isForwardAuthToken', () => {
+  // decodeJwt only reads the claims, so the signature can be anything here.
+  const unsignedJwt = (claims: Record<string, unknown>) =>
+    ['{"alg":"RS256"}', JSON.stringify(claims), 'signature']
+      .map((part) => Buffer.from(part).toString('base64url'))
+      .join('.');
+
+  beforeEach(() => {
+    for (const key of ENV_KEYS) delete process.env[key];
+    resetForwardAuthStateForTests();
+  });
+
+  it('claims JWTs that name the configured issuer', () => {
+    const token = unsignedJwt({ iss: 'https://idp.example.test/' });
+    expect(isForwardAuthToken(token, withForwardAuth(validSettings))).toBe(true);
+  });
+
+  it('leaves other tokens to the other methods', () => {
+    const config = withForwardAuth(validSettings);
+    expect(isForwardAuthToken(unsignedJwt({ iss: 'https://other.example.test/' }), config)).toBe(
+      false,
+    );
+    expect(isForwardAuthToken('not-a-jwt', config)).toBe(false);
+    expect(isForwardAuthToken(null, config)).toBe(false);
+  });
+
+  it('claims nothing while forward auth is disabled', () => {
+    const token = unsignedJwt({ iss: 'https://idp.example.test/' });
+    expect(isForwardAuthToken(token, withForwardAuth({ ...validSettings, enabled: false }))).toBe(
+      false,
+    );
   });
 });

@@ -31,6 +31,7 @@ import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import {
   getBearerAuthHeaderValue,
   getBearerTokenFromHeaders,
+  getForwardAuthTokenFromHeaders,
   parseBearerAuthorization,
 } from '../utils/bearerAuth.js';
 import {
@@ -454,6 +455,15 @@ const resolveUserLevelKeyUser = async (req: Request, key: BearerKey): Promise<Be
   return { valid: true, user, keyId: key.id, keyName: key.name, kind: 'user' };
 };
 
+// User routes only accept the matching user, whichever credential selected it.
+const oauthUserResult = (req: Request, user: IUser): BearerAuthResult => {
+  const requestedUsername = req.params.user;
+  if (requestedUsername && requestedUsername !== user.username) {
+    return { valid: false, reason: 'forbidden' };
+  }
+  return { valid: true, user, keyName: OAUTH_AUTH_METHOD_LABEL };
+};
+
 const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
@@ -505,7 +515,10 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
 
   // Forward auth runs before keys and OAuth tokens: a JWT from the configured
   // issuer either authenticates here or is rejected, with no fallback.
-  const forwardAuthResult = await authenticateForwardAuthToken(presentedToken, systemConfig);
+  const forwardAuthResult = await authenticateForwardAuthToken(
+    getForwardAuthTokenFromHeaders(req.headers, systemConfig),
+    systemConfig,
+  );
   if (forwardAuthResult.status === 'rejected') {
     return { valid: false, reason: 'invalid' };
   }
@@ -555,7 +568,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       logger.log('Recognized OAuth bearer token (auth disabled)');
-      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+      return oauthUserResult(req, oauthUser);
     }
 
     return { valid: true };
@@ -574,7 +587,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     const oauthUser = await resolveOAuthUserFromToken(token);
     if (oauthUser) {
       logger.log('Authenticated request using OAuth bearer token without configured keys');
-      return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+      return oauthUserResult(req, oauthUser);
     }
 
     logger.warn(
@@ -606,7 +619,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
   const oauthUser = await resolveOAuthUserFromToken(token);
   if (oauthUser) {
     logger.log('Authenticated request using OAuth bearer token (no matching static key)');
-    return { valid: true, user: oauthUser, keyName: OAUTH_AUTH_METHOD_LABEL };
+    return oauthUserResult(req, oauthUser);
   }
 
   logger.warn('Bearer authentication failed: token did not match any key or OAuth user');
@@ -1020,7 +1033,10 @@ export const handleMcpPostRequest = async (req: Request, res: Response): Promise
       context.clientCapabilities = requestMeta?.['io.modelcontextprotocol/clientCapabilities'];
       // Bind application state to the authenticated credential, user and route.
       // Never treat caller-provided correlation metadata as identity.
-      const token = getBearerTokenFromHeaders(req.headers, systemConfig);
+      const token =
+        bearerAuthResult.keyName === FORWARD_AUTH_METHOD_LABEL
+          ? getForwardAuthTokenFromHeaders(req.headers, systemConfig)
+          : getBearerTokenFromHeaders(req.headers, systemConfig);
       if (token && (systemConfig?.routing?.enableBearerAuth ?? true)) {
         context.clientStateScope = createHash('sha256')
           .update(JSON.stringify([token, username || '', group || '']))

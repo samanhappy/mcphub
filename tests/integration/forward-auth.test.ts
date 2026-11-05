@@ -1,4 +1,5 @@
 jest.mock('openid-client', () => ({}));
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +16,8 @@ import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
 import { handleMcpPostRequest, transports } from '../../src/services/sseService.js';
 import { cleanupAllServers, initializeClientsFromSettings } from '../../src/services/mcpService.js';
 import { resetForwardAuthStateForTests } from '../../src/services/forwardAuthService.js';
+import { UserContextService } from '../../src/services/userContextService.js';
+import { RequestContextService } from '../../src/services/requestContextService.js';
 import { clearSettingsCache } from '../../src/config/index.js';
 import { createUserToken } from '../utils/testHelpers.js';
 import type { McpSettings } from '../../src/types/index.js';
@@ -26,6 +29,24 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   saveToolsAsVectorEmbeddings: jest.fn(),
   syncAllServerToolsEmbeddings: jest.fn(),
 }));
+// One fixed OAuth access token resolves to local.user; everything else is real.
+jest.mock('../../src/utils/oauthBearer.js', () => {
+  const actual = jest.requireActual('../../src/utils/oauthBearer.js');
+  const token = 'oauth-token-local-user';
+  const user = { username: 'local.user', password: '', isAdmin: false };
+  return {
+    ...actual,
+    resolveOAuthUserFromToken: jest.fn(async (presented?: string) =>
+      presented === token ? user : actual.resolveOAuthUserFromToken(presented),
+    ),
+    resolveOAuthUserFromHeaders: jest.fn(
+      async (headers: Record<string, unknown>, config: unknown) =>
+        headers.authorization === `Bearer ${token}`
+          ? user
+          : actual.resolveOAuthUserFromHeaders(headers, config),
+    ),
+  };
+});
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
   getBetterAuthRuntimeConfig: jest.fn(async () => ({ enabled: false })),
 }));
@@ -398,5 +419,218 @@ describe('forward auth (JWKS) on MCP transport routes', () => {
   it('forbids user-scoped routes for a different user', async () => {
     const res = await initialize('/local.user/mcp', await signToken());
     expect(res.status).toBe(403);
+  });
+});
+
+describe('forward auth from a dedicated token header', () => {
+  const TOKEN_HEADER = 'Cf-Access-Jwt-Assertion';
+
+  beforeAll(() => {
+    process.env.FORWARD_AUTH_TOKEN_HEADER = TOKEN_HEADER;
+  });
+
+  afterAll(() => {
+    delete process.env.FORWARD_AUTH_TOKEN_HEADER;
+  });
+
+  const initialize = (url: string, headers: Record<string, string>) => {
+    let req = request(app).post(url).set('Accept', 'application/json, text/event-stream');
+    for (const [name, value] of Object.entries(headers)) req = req.set(name, value);
+    return req.send({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: { name: 'forward-auth-header-e2e', version: '1' },
+      },
+    });
+  };
+
+  it('authenticates the dashboard API from a raw JWT in the token header', async () => {
+    const res = await whoami({ [TOKEN_HEADER]: await signToken() });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toEqual({ username: 'gateway.user', isAdmin: false });
+  });
+
+  it('no longer reads the forward-auth JWT from the bearer header', async () => {
+    const res = await whoami({ Authorization: `Bearer ${await signToken()}` });
+    expect(res.status).toBe(401);
+  });
+
+  it('does not fall back when the token header carries an invalid configured-issuer JWT', async () => {
+    const res = await whoami({
+      [TOKEN_HEADER]: await signToken({ key: attackerKey }),
+      'x-auth-token': createUserToken('admin', true),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('lets other-issuer JWTs in the token header fall through to the existing methods', async () => {
+    const res = await whoami({
+      [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      'x-auth-token': createUserToken('admin', true),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.user.username).toBe('admin');
+  });
+
+  it('authenticates an MCP client that sends only the token header', async () => {
+    const client = new Client({ name: 'forward-auth-header-e2e', version: '1' });
+    clients.push(client);
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`${hubUrl}/mcp`), {
+        requestInit: { headers: { [TOKEN_HEADER]: await signToken() } },
+      }),
+    );
+    expect(client.getServerVersion()).toBeDefined();
+  });
+
+  it('rejects an invalid token-header JWT on MCP routes with a bearer challenge', async () => {
+    const res = await initialize('/mcp', { [TOKEN_HEADER]: await signToken({ key: attackerKey }) });
+    expect(res.status).toBe(401);
+    expect(res.headers['www-authenticate']).toContain('invalid_token');
+  });
+
+  it('applies the token header to user-scoped MCP routes', async () => {
+    const own = await initialize('/gateway.user/mcp', { [TOKEN_HEADER]: await signToken() });
+    expect(own.status).toBe(200);
+
+    const other = await initialize('/local.user/mcp', { [TOKEN_HEADER]: await signToken() });
+    expect(other.status).toBe(403);
+  });
+
+  describe('alongside an MCPHub OAuth token', () => {
+    const OAUTH_HEADERS = { Authorization: 'Bearer oauth-token-local-user' };
+
+    const usersSetFor = async (url: string, headers: Record<string, string>) => {
+      const setCurrentUser = jest.spyOn(UserContextService.getInstance(), 'setCurrentUser');
+      try {
+        const res = await initialize(url, headers);
+        return { status: res.status, users: setCurrentUser.mock.calls.map(([u]) => u.username) };
+      } finally {
+        setCurrentUser.mockRestore();
+      }
+    };
+
+    it('runs an OAuth-only request as the OAuth user', async () => {
+      const { status, users } = await usersSetFor('/mcp', OAUTH_HEADERS);
+      expect(status).toBe(200);
+      expect(users).toContain('local.user');
+    });
+
+    it('runs the request as the forward-auth user when both identities are presented', async () => {
+      const { status, users } = await usersSetFor('/mcp', {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken(),
+      });
+      expect(status).toBe(200);
+      expect(users).toContain('gateway.user');
+      expect(users).not.toContain('local.user');
+    });
+
+    it('scopes user routes to the forward-auth user when both identities are presented', async () => {
+      const headers = { ...OAUTH_HEADERS, [TOKEN_HEADER]: await signToken() };
+      expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(200);
+      expect((await usersSetFor('/local.user/mcp', headers)).status).toBe(403);
+    });
+
+    it('scopes stateless client state to the gateway JWT that authenticated the request', async () => {
+      const gatewayJwt = await signToken();
+      const contexts = jest.spyOn(RequestContextService.getInstance(), 'getRequestContext');
+      try {
+        await request(app)
+          .post('/mcp')
+          .set('Accept', 'application/json, text/event-stream')
+          .set('MCP-Protocol-Version', '2026-07-28')
+          .set('Authorization', OAUTH_HEADERS.Authorization)
+          .set(TOKEN_HEADER, gatewayJwt)
+          .send({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/list',
+            params: {
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          });
+        const scopes = contexts.mock.results
+          .map(({ value }) => value?.clientStateScope)
+          .filter(Boolean);
+        expect(scopes).toContain(
+          createHash('sha256')
+            .update(JSON.stringify([gatewayJwt, 'gateway.user', '']))
+            .digest('hex'),
+        );
+      } finally {
+        contexts.mockRestore();
+      }
+    });
+
+    it('falls through to the OAuth user when the token header carries another issuer', async () => {
+      const { status, users } = await usersSetFor('/mcp', {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      });
+      expect(status).toBe(200);
+      expect(users).toContain('local.user');
+      expect(users).not.toContain('gateway.user');
+    });
+
+    it('scopes user routes to the OAuth user when the token header carries another issuer', async () => {
+      const headers = {
+        ...OAUTH_HEADERS,
+        [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+      };
+      expect((await usersSetFor('/local.user/mcp', headers)).status).toBe(200);
+      expect((await usersSetFor('/gateway.user/mcp', headers)).status).toBe(403);
+    });
+  });
+
+  describe('with bearer auth disabled', () => {
+    const setEnableBearerAuth = (enabled: boolean) => {
+      const settingsPath = process.env.MCPHUB_SETTING_PATH as string;
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      settings.systemConfig.routing.enableBearerAuth = enabled;
+      fs.writeFileSync(settingsPath, JSON.stringify(settings));
+      clearSettingsCache();
+      JsonFileDaoFactory.getInstance().resetInstances();
+    };
+
+    beforeAll(() => setEnableBearerAuth(false));
+    afterAll(() => setEnableBearerAuth(true));
+
+    const otherIssuerHeader = async () => ({
+      [TOKEN_HEADER]: await signToken({ issuer: 'https://other.example.test/' }),
+    });
+
+    it('still requires authentication on user routes when the token header carries another issuer', async () => {
+      const res = await initialize('/local.user/mcp', await otherIssuerHeader());
+      expect(res.status).toBe(401);
+    });
+
+    it('still resolves the dashboard session on user routes when the token header carries another issuer', async () => {
+      const own = await initialize('/local.user/mcp', {
+        ...(await otherIssuerHeader()),
+        'x-auth-token': createUserToken('local.user', false),
+      });
+      expect(own.status).toBe(200);
+
+      const other = await initialize('/local.user/mcp', {
+        ...(await otherIssuerHeader()),
+        'x-auth-token': createUserToken('admin', true),
+      });
+      expect(other.status).toBe(403);
+    });
+
+    it('authenticates user routes from a configured-issuer token header', async () => {
+      const headers = { [TOKEN_HEADER]: await signToken() };
+      expect((await initialize('/gateway.user/mcp', headers)).status).toBe(200);
+      expect((await initialize('/local.user/mcp', headers)).status).toBe(403);
+    });
   });
 });

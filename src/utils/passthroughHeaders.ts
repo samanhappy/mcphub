@@ -1,5 +1,5 @@
 import { isHostedModeEnabled } from '../services/hostedMode.js';
-import { resolveBearerAuthHeaderName } from './bearerAuth.js';
+import { resolveBearerAuthHeaderName, resolveForwardAuthTokenHeaderName } from './bearerAuth.js';
 import { getCachedSystemConfig } from './systemConfigCache.js';
 
 const sensitiveHeaders = new Set([
@@ -16,10 +16,11 @@ export const isSafePassthroughHeader = (name: string): boolean => {
   // Hosted mode always accepts Authorization as a platform credential.
   const allowAuthorization =
     systemConfig?.routing?.allowAuthorizationPassthrough === true && !isHostedModeEnabled();
-  // An opt-in must never forward the header used for MCPHub authentication.
+  // An opt-in must never forward the headers used for MCPHub authentication.
   return (
     Boolean(normalized) &&
     (!sensitiveHeaders.has(normalized) || (normalized === 'authorization' && allowAuthorization)) &&
-    normalized !== resolveBearerAuthHeaderName(systemConfig).toLowerCase()
+    normalized !== resolveBearerAuthHeaderName(systemConfig).toLowerCase() &&
+    normalized !== resolveForwardAuthTokenHeaderName(systemConfig)?.toLowerCase()
   );
 };

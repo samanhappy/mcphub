@@ -210,6 +210,23 @@ When MCPHub runs behind an API gateway or identity-aware proxy that already auth
 
 The JWT is read from the configured bearer header (`Authorization: Bearer <jwt>` by default).
 
+Some gateways send the JWT in a header of their own without a `Bearer` prefix; Cloudflare Access, for example, adds `Cf-Access-Jwt-Assertion` to every request it admits. Set `jwks.tokenHeader` to that header name to read the token from it, sent either raw or as `Bearer <jwt>`. Once a token header is set, forward auth reads only that header, while the bearer header keeps working for bearer keys and OAuth tokens. MCPHub never forwards the token header to upstream servers, even when it is listed in `passthroughHeaders`. An invalid header name disables forward auth.
+
+```json
+"forwardAuth": {
+  "enabled": true,
+  "mode": "jwks",
+  "jwks": {
+    "uri": "https://<team>.cloudflareaccess.com/cdn-cgi/access/certs",
+    "issuer": "https://<team>.cloudflareaccess.com",
+    "audience": "<Access application AUD tag>",
+    "tokenHeader": "Cf-Access-Jwt-Assertion"
+  },
+  "usernameClaim": "email",
+  "emailClaim": "email"
+}
+```
+
 **Verification**
 
 - The token is verified against `jwks.uri`. Keys are cached and refetched when a token carries an unknown `kid`, so key rotation at the identity provider needs no restart.
