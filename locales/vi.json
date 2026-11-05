@@ -1572,5 +1572,30 @@
     "noOtherServers": "Không có máy chủ khác có trường xác thực",
     "noSourcesHelp": "Cấu hình thông tin xác thực cá nhân trên máy chủ khác có trường tương ứng trước khi sao chép.",
     "deleteConfirm": "Xóa thông tin xác thực của {{server}}? Các yêu cầu tiếp theo sẽ cần cấu hình lại."
+  },
+  "oauthApprovals": {
+    "title": "Ứng dụng đã cấp quyền",
+    "description": "Quản lý ứng dụng được phép truy cập MCPHub. Khi sự chấp thuận hết hạn, bạn cần xác nhận lại; mã thông báo hiện có vẫn hợp lệ đến khi hết hạn hoặc bị thu hồi.",
+    "refresh": "Làm mới",
+    "loading": "Đang tải quyền truy cập…",
+    "empty": "Chưa có ứng dụng được cấp quyền.",
+    "failed": "Không thể cập nhật quyền truy cập. Vui lòng thử lại.",
+    "revoked": "Đã thu hồi quyền truy cập ứng dụng.",
+    "active": "Chấp thuận còn hiệu lực",
+    "expired": "Chấp thuận đã hết hạn",
+    "scopes": "Quyền",
+    "resource": "Tài nguyên",
+    "redirect": "URL gọi lại",
+    "approvedAt": "Thời điểm cấp quyền",
+    "expiresAt": "Chấp thuận hết hạn",
+    "confirm": "Thu hồi toàn bộ quyền truy cập của {{client}}? Các quyền sẽ bị xóa, mã ủy quyền và mã thông báo sẽ mất hiệu lực.",
+    "confirmRevoke": "Xác nhận thu hồi",
+    "cancel": "Hủy",
+    "revoke": "Thu hồi quyền ứng dụng",
+    "remember": "Ghi nhớ sự chấp thuận",
+    "rememberDescription": "Bỏ qua xác nhận lặp lại khi quyền khớp và chưa hết hạn. Tắt tùy chọn này không thu hồi quyền truy cập hiện có.",
+    "lifetime": "Thời hạn chấp thuận (giây)",
+    "lifetimeDescription": "Thời hạn cố định từ khi chấp thuận: 1–31536000 giây (mặc định 1209600, 14 ngày). Làm mới mã thông báo không kéo dài thời hạn.",
+    "invalidLifetime": "Nhập số giây nguyên từ 1 đến 31536000."
   }
 }

@@ -1570,5 +1570,30 @@
     "noOtherServers": "Aucun autre serveur avec des champs d’identifiants",
     "noSourcesHelp": "Configurez des identifiants personnels sur un autre serveur avec des champs correspondants avant de copier.",
     "deleteConfirm": "Supprimer les identifiants de {{server}} ? Les prochaines requêtes nécessiteront une nouvelle configuration."
+  },
+  "oauthApprovals": {
+    "title": "Applications autorisées",
+    "description": "Gérez les applications autorisées à accéder à MCPHub. Un consentement expiré nécessite une confirmation ; les jetons restent valides jusqu’à expiration ou révocation.",
+    "refresh": "Actualiser",
+    "loading": "Chargement des autorisations…",
+    "empty": "Aucune application autorisée.",
+    "failed": "Impossible de mettre à jour les autorisations. Réessayez.",
+    "revoked": "Accès de l’application révoqué.",
+    "active": "Consentement valide",
+    "expired": "Consentement expiré",
+    "scopes": "Permissions",
+    "resource": "Ressource",
+    "redirect": "URL de retour",
+    "approvedAt": "Autorisé le",
+    "expiresAt": "Expiration du consentement",
+    "confirm": "Révoquer tous les accès de {{client}} ? Ses autorisations seront supprimées et ses codes et jetons invalidés.",
+    "confirmRevoke": "Confirmer la révocation",
+    "cancel": "Annuler",
+    "revoke": "Révoquer l’application",
+    "remember": "Mémoriser le consentement",
+    "rememberDescription": "Ignore la confirmation pour les autorisations correspondantes et valides. Désactiver cette option ne révoque pas les accès existants.",
+    "lifetime": "Durée du consentement (secondes)",
+    "lifetimeDescription": "Durée fixe depuis l’approbation : 1–31536000 secondes (par défaut 1209600, 14 jours). Le renouvellement des jetons ne la prolonge pas.",
+    "invalidLifetime": "Saisissez un entier entre 1 et 31536000 secondes."
   }
 }

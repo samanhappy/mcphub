@@ -1572,5 +1572,30 @@
     "noOtherServers": "No hay otros servidores con campos de credenciales",
     "noSourcesHelp": "Configura credenciales personales en otro servidor con campos coincidentes antes de copiar.",
     "deleteConfirm": "¿Eliminar las credenciales de {{server}}? Las próximas solicitudes requerirán configurarlas de nuevo."
+  },
+  "oauthApprovals": {
+    "title": "Aplicaciones autorizadas",
+    "description": "Administra las aplicaciones autorizadas para acceder a MCPHub. El consentimiento caducado requiere confirmación; los tokens existentes siguen siendo válidos hasta su caducidad o revocación.",
+    "refresh": "Actualizar",
+    "loading": "Cargando autorizaciones…",
+    "empty": "No hay aplicaciones autorizadas.",
+    "failed": "No se pudieron actualizar las autorizaciones. Inténtalo de nuevo.",
+    "revoked": "Acceso de la aplicación revocado.",
+    "active": "Consentimiento vigente",
+    "expired": "Consentimiento caducado",
+    "scopes": "Permisos",
+    "resource": "Recurso",
+    "redirect": "URL de retorno",
+    "approvedAt": "Autorizado",
+    "expiresAt": "El consentimiento caduca",
+    "confirm": "¿Revocar todo el acceso de {{client}}? Se eliminarán sus autorizaciones y se invalidarán sus códigos y tokens.",
+    "confirmRevoke": "Confirmar revocación",
+    "cancel": "Cancelar",
+    "revoke": "Revocar aplicación",
+    "remember": "Recordar el consentimiento",
+    "rememberDescription": "Omite la confirmación para autorizaciones coincidentes y vigentes. Desactivarlo no revoca el acceso existente.",
+    "lifetime": "Duración del consentimiento (segundos)",
+    "lifetimeDescription": "Duración fija desde la aprobación: 1–31536000 segundos (por defecto 1209600, 14 días). Renovar tokens no la amplía.",
+    "invalidLifetime": "Introduce un número entero entre 1 y 31536000 segundos."
   }
 }

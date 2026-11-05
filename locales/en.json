@@ -1572,5 +1572,30 @@
     "noOtherServers": "No other servers with credential slots",
     "noSourcesHelp": "Configure personal credentials on another server with matching fields before copying.",
     "deleteConfirm": "Delete credentials for {{server}}? Future requests will require you to configure credentials again."
+  },
+  "oauthApprovals": {
+    "title": "Authorized applications",
+    "description": "Manage applications you have authorized to access MCPHub. Expired consent requires confirmation again; existing tokens remain valid until expiry or revocation.",
+    "refresh": "Refresh",
+    "loading": "Loading authorizations…",
+    "empty": "No authorized applications.",
+    "failed": "Unable to update authorizations. Please try again.",
+    "revoked": "Application access revoked.",
+    "active": "Consent active",
+    "expired": "Consent expired",
+    "scopes": "Permissions",
+    "resource": "Resource",
+    "redirect": "Callback URL",
+    "approvedAt": "Approved",
+    "expiresAt": "Consent expires",
+    "confirm": "Revoke all access for {{client}}? This removes its authorizations and invalidates its authorization codes and tokens.",
+    "confirmRevoke": "Confirm revocation",
+    "cancel": "Cancel",
+    "revoke": "Revoke application",
+    "remember": "Remember user consent",
+    "rememberDescription": "Skip repeated confirmation for matching, unexpired authorizations. Turning this off does not revoke existing access.",
+    "lifetime": "Consent lifetime (seconds)",
+    "lifetimeDescription": "Fixed duration from approval: 1–31536000 seconds (default 1209600, 14 days). Token refresh does not extend it.",
+    "invalidLifetime": "Enter a whole number between 1 and 31536000 seconds."
   }
 }

@@ -1574,5 +1574,30 @@
     "noOtherServers": "没有其他声明凭据字段的服务器",
     "noSourcesHelp": "请先在其他服务器配置个人凭据，并确保字段匹配，然后再复制。",
     "deleteConfirm": "确定删除 {{server}} 的凭据？后续请求需要重新配置凭据才能使用。"
+  },
+  "oauthApprovals": {
+    "title": "已授权应用",
+    "description": "管理你授权访问 MCPHub 的应用。授权记忆过期后需要重新确认；已有令牌仍有效，直至到期或撤销。",
+    "refresh": "刷新",
+    "loading": "正在加载授权…",
+    "empty": "暂无已授权应用。",
+    "failed": "无法更新授权，请重试。",
+    "revoked": "已撤销应用访问权限。",
+    "active": "授权记忆有效",
+    "expired": "授权记忆已过期",
+    "scopes": "权限",
+    "resource": "资源",
+    "redirect": "回调地址",
+    "approvedAt": "授权时间",
+    "expiresAt": "授权记忆到期时间",
+    "confirm": "撤销 {{client}} 的全部访问权限？这将删除其授权，并使其授权码和令牌失效。",
+    "confirmRevoke": "确认撤销",
+    "cancel": "取消",
+    "revoke": "撤销应用授权",
+    "remember": "记住用户授权",
+    "rememberDescription": "匹配且未过期的授权可跳过重复确认。关闭此项不会撤销已有访问权限。",
+    "lifetime": "授权记忆有效期（秒）",
+    "lifetimeDescription": "从明确授权时起固定计算：1–31536000 秒（默认 1209600，即 14 天）。刷新令牌不会延长期限。",
+    "invalidLifetime": "请输入 1–31536000 之间的整数秒数。"
   }
 }

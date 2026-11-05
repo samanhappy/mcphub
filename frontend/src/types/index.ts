@@ -957,3 +957,13 @@ export interface OpenApiToolStats {
   estimatedTokens: number;
   declaredSecurity?: OpenAPIDeclaredSecurity;
 }
+
+export interface OAuthApproval {
+  id: string;
+  clientId: string;
+  scopes: string[];
+  redirectUri: string;
+  resource?: string;
+  approvedAt: string;
+  expiresAt: string;
+}
