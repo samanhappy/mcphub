@@ -1,3 +1,4 @@
+import { listMyOAuthApprovals, revokeMyOAuthApproval } from '../controllers/oauthApprovalController.js';
 import { handleOAuthRelay } from '../controllers/oauthRelayController.js';
 import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
@@ -299,6 +300,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.get('/credentials', listMyCredentials);
   authenticatedRouter.put('/credentials/:name', updateMyCredential);
   authenticatedRouter.delete('/credentials/:name', updateMyCredential);
+  authenticatedRouter.get('/oauth/approvals', listMyOAuthApprovals);
+  authenticatedRouter.delete('/oauth/approvals/:approvalId', revokeMyOAuthApproval);
   authenticatedRouter.get('/servers', getAllServers);
   authenticatedRouter.get('/servers/:name/share-candidates', getServerShareCandidates);
   authenticatedRouter.get('/servers/:name', getServerConfig);

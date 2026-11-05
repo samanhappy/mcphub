@@ -51,6 +51,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
       clientId: entity.clientId,
       username: entity.username,
       sessionVersion: entity.sessionVersion,
+      approvalId: entity.approvalId,
     });
     return this.mapToOAuthToken(token);
   }
@@ -110,6 +111,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
     clientId: string;
     username: string;
     sessionVersion?: string;
+    approvalId?: string;
   }): IOAuthToken {
     return {
       accessToken: token.accessToken,
@@ -120,6 +122,7 @@ export class OAuthTokenDaoDbImpl implements OAuthTokenDao {
       clientId: token.clientId,
       username: token.username,
       sessionVersion: token.sessionVersion,
+      approvalId: token.approvalId,
     };
   }
 }

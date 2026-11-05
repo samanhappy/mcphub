@@ -1,3 +1,4 @@
+import { OAuthApprovalDao, OAuthApprovalDaoImpl } from './OAuthApprovalDao.js';
 import { CapabilitySnapshotDao, CapabilitySnapshotDaoImpl } from './CapabilitySnapshotDao.js';
 import { CredentialBindingDao, CredentialBindingDaoImpl } from './CredentialBindingDao.js';
 import { UserDao, UserDaoImpl } from './UserDao.js';
@@ -17,6 +18,7 @@ import { logger } from '../utils/logger.js';
  * DAO Factory interface for creating DAO instances
  */
 export interface DaoFactory {
+  getOAuthApprovalDao(): OAuthApprovalDao;
   getCapabilitySnapshotDao(): CapabilitySnapshotDao;
   getCredentialBindingDao(): CredentialBindingDao;
   getUserDao(): UserDao;
@@ -61,6 +63,10 @@ export class JsonFileDaoFactory implements DaoFactory {
 
   private constructor() {
     // Private constructor for singleton
+  }
+
+  getOAuthApprovalDao(): OAuthApprovalDao {
+    return new OAuthApprovalDaoImpl();
   }
 
   getCapabilitySnapshotDao(): CapabilitySnapshotDao {
@@ -256,4 +262,8 @@ export function getCapabilitySnapshotDao(): CapabilitySnapshotDao {
 
 export function getCredentialBindingDao(): CredentialBindingDao {
   return getDaoFactory().getCredentialBindingDao();
+}
+
+export function getOAuthApprovalDao(): OAuthApprovalDao {
+  return getDaoFactory().getOAuthApprovalDao();
 }

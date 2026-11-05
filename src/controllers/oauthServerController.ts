@@ -1,3 +1,4 @@
+import { findReusableApproval, resolveConsentScopes } from '../services/oauthApprovalService.js';
 import { getUserSessionVersion, resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import {
@@ -311,6 +312,49 @@ async function resolveResourceTarget(raw: string | undefined): Promise<ResourceT
  * GET /oauth/authorize
  * Display authorization page or handle authorization
  */
+async function authorizeAndRedirect(
+  req: Request,
+  res: Response,
+  user: AuthenticatedUser & {
+    approvalId?: string;
+    approvalContext?: { redirectUri: string; resource: string };
+  },
+  redirectUri: string,
+  state?: string,
+): Promise<void> {
+  const oauth = getOAuthServer()!;
+  const request = new OAuth2Request(req);
+  // Both shells submit an empty scope for the configured default permissions.
+  request.query = { ...request.query };
+  request.body = { ...request.body };
+  if (request.query.scope === '') delete request.query.scope;
+  if (request.body.scope === '') delete request.body.scope;
+  const response = new OAuth2Response(res);
+  let code;
+  try {
+    code = await oauth.authorize(request, response, {
+      authenticateHandler: { handle: async () => user },
+    });
+  } catch (error) {
+    // Silent GET authorization must return the same OAuth errors as explicit consent.
+    if (error instanceof Error && 'code' in error) {
+      const redirectUrl = new URL(redirectUri);
+      redirectUrl.searchParams.set('error', error.name || 'server_error');
+      redirectUrl.searchParams.set('error_description', error.message);
+      setIssuerParam(redirectUrl, await resolveIssuer(req));
+      if (state) redirectUrl.searchParams.set('state', state);
+      res.redirect(redirectUrl.toString());
+      return;
+    }
+    throw error;
+  }
+  const redirectUrl = new URL(redirectUri);
+  redirectUrl.searchParams.set('code', code.authorizationCode);
+  setIssuerParam(redirectUrl, await resolveIssuer(req));
+  if (state) redirectUrl.searchParams.set('state', state);
+  res.redirect(redirectUrl.toString());
+}
+
 export const getAuthorize = async (req: Request, res: Response): Promise<void> => {
   try {
     const oauth = getOAuthServer();
@@ -406,6 +450,31 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const consentConfig = (await getSystemConfigDao().get())?.oauthServer;
+    const effectiveScopes = resolveConsentScopes(
+      scope,
+      consentConfig?.allowedScopes || ['read', 'write'],
+    );
+    if (consentConfig?.alwaysShowApprovalScreen === false) {
+      const approval = await findReusableApproval(
+        user,
+        client,
+        redirect_uri,
+        resource || '',
+        effectiveScopes,
+      );
+      if (approval) {
+        await authorizeAndRedirect(
+          req,
+          res,
+          { ...user, approvalId: approval.id },
+          redirect_uri,
+          state,
+        );
+        return;
+      }
+    }
+
     const requestToken = typeof req.query.token === 'string' ? req.query.token : '';
     const tokenField = requestToken
       ? `<input type="hidden" name="token" value="${escapeHtml(requestToken)}">`
@@ -414,10 +483,7 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
     // Get translation function from request (set by i18n middleware)
     const t = (req as any).t || ((key: string) => key);
 
-    const scopes = (scope || 'read write')
-      .split(' ')
-      .filter((s) => s)
-      .map((s) => ({ name: s, description: getScopeDescription(s) }));
+    const scopes = effectiveScopes.map((s) => ({ name: s, description: getScopeDescription(s) }));
 
     const formFields = `
       <input type="hidden" name="client_id" value="${escapeHtml(client_id)}" />
@@ -546,26 +612,19 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Create OAuth request/response
-    const request = new OAuth2Request(req);
-    const response = new OAuth2Response(res);
-
-    // Authorize the request
-    const code = await oauth.authorize(request, response, {
-      authenticateHandler: {
-        handle: async () => user,
+    await authorizeAndRedirect(
+      req,
+      res,
+      {
+        ...user,
+        approvalContext: {
+          redirectUri: validatedRedirectUri,
+          resource: typeof req.body.resource === 'string' ? req.body.resource : '',
+        },
       },
-    });
-
-    // Build redirect URL with authorization code
-    const redirectUrl = new URL(validatedRedirectUri);
-    redirectUrl.searchParams.set('code', code.authorizationCode);
-    setIssuerParam(redirectUrl, issuer);
-    if (state) {
-      redirectUrl.searchParams.set('state', state);
-    }
-
-    res.redirect(redirectUrl.toString());
+      validatedRedirectUri,
+      state,
+    );
   } catch (error) {
     logger.error('Authorization error:', error);
 

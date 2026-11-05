@@ -241,3 +241,30 @@ Dashboard 返回连接器专属的 MCPHub `/oauth/relay/<name>?state=…` 地址
 本功能默认关闭，与旧的全局 OAuth 代理、直接使用 Microsoft Graph token 的集成分开。它不代理 HTML、cookie、内部相对跳转、broker callback 页面或任意 URL；需要浏览器再次访问私网地址的 broker 不适用。授权端点不得包含查询参数；请求超时为 10 秒，响应头有大小上限，响应体直接丢弃，只接受跳转到允许 HTTPS origin 的 302/303/307/308。未配置的连接器行为不变。
 
 Mock 集成测试覆盖不同用户、回调恢复、code 兑换、刷新及带认证的 MCP 请求。真实 Microsoft 兼容性尚未验证，上线前应验证应用注册、broker 模式、scope 及刷新生命周期。
+
+
+## 记忆下游应用的授权确认
+
+MCPHub 自身的 OAuth 授权服务器默认在每次授权时显示确认页。管理员可通过 `systemConfig.oauthServer` 启用授权记忆（`PUT /api/system-config` 同样支持这些字段）：
+
+```json
+{
+  "systemConfig": {
+    "oauthServer": {
+      "alwaysShowApprovalScreen": false,
+      "approvalLifetime": 1209600
+    }
+  }
+}
+```
+
+`approvalLifetime` 表示从用户明确批准时起计算的固定有效期，单位为秒，默认 14 天，允许范围为 1–31536000。再次授权与 refresh token 轮换不会延长该期限。批准过期后，下次授权需要重新确认；已有 access token 和 refresh token 仍遵循各自的有效期。将 `alwaysShowApprovalScreen` 设为 `true` 可恢复每次确认，不会撤销已有访问。
+
+批准记录绑定当前用户的凭据版本、客户端 ID 与元数据、精确回调地址，以及精确的 `resource` 值（包括未传入的情况）。只有实际申请的权限属于已批准权限的子集时才能跳过确认。省略 scope 时使用配置的 `allowedScopes`；新增权限需要重新确认。公开客户端仍须使用 S256 PKCE，每次成功授权都会签发新的授权码。若客户端在重连时重新注册了新的 client ID，用户仍需重新批准。
+
+以下管理接口使用控制台身份认证，仅操作当前用户的批准记录：
+
+- `GET /api/oauth/approvals` 返回 `{ "success": true, "data": [...] }`，每项包含 `id`、`clientId`、`scopes`、`resource`、`redirectUri`、`approvedAt` 和 `expiresAt`。
+- `DELETE /api/oauth/approvals/:approvalId` 撤销该记录所属应用在当前用户下的全部批准与已有令牌，包括尚未兑换的授权码。其他用户的记录返回 404。MCP OAuth access token 不能用于认证这些管理接口。
+
+即使启用了每次确认，明确批准也会留下可撤销的记录。当前尚无专用的控制台管理页面，因此跳过确认默认关闭。文件模式将记录保存在 `<settings-path>.approvals.json`，仅文件所有者可读写；数据库模式保存在 `oauth_client_approvals`。备份运行状态时应保留该旁路文件。批准记录不会进入配置导出或声明式同步。从文件模式切换到数据库模式后需要重新确认；关联批准记录缺失的令牌会被拒绝。过期记录会保留，以便撤销仍有效的令牌，并在删除用户、删除客户端或撤销应用时移除。数据库副本直接读取批准记录，撤销会在下次使用令牌时生效，包括与撤销并发保存的令牌。使用 `DB_SYNCHRONIZE=false` 的副本部署应在升级前运行 `pnpm db:setup`。
