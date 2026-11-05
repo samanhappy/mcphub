@@ -74,8 +74,8 @@ const normalizeEmbedding = (embedding: number[]): number[] => {
 };
 
 // Get LLM provider configuration from smartRouting settings or fallback to environment variables
-const getLlmProviderConfig = async () => {
-  const smartRoutingConfig = await getSmartRoutingConfig();
+const getLlmProviderConfig = async (snapshot?: SmartRoutingConfig) => {
+  const smartRoutingConfig = snapshot ?? (await getSmartRoutingConfig());
   return {
     apiKey: smartRoutingConfig.llmProviderApiKey,
     baseURL: smartRoutingConfig.llmProviderBaseUrl,
@@ -714,9 +714,7 @@ const getDimensionsForModel = (model: string, configuredDimensions?: number): nu
  */
 const supportsDimensionsParameter = (model: string): boolean => {
   const normalized = model.toLowerCase();
-  return (
-    normalized.includes('text-embedding-3') || normalized.includes('gemini-embedding')
-  );
+  return normalized.includes('text-embedding-3') || normalized.includes('gemini-embedding');
 };
 
 /**
@@ -740,8 +738,8 @@ const shouldForwardDimensionsToApi = (
 };
 
 // Initialize the OpenAI client with smartRouting configuration
-const getOpenAIClient = async () => {
-  const config = await getLlmProviderConfig();
+const getOpenAIClient = async (snapshot?: SmartRoutingConfig) => {
+  const config = await getLlmProviderConfig(snapshot);
   return new OpenAI({
     apiKey: config.apiKey, // Get API key from smartRouting settings or environment variables
     baseURL: config.baseURL, // Get base URL from smartRouting settings or fallback to default
@@ -796,8 +794,12 @@ const decodeEmbedding = (value: unknown): number[] => {
  *   configured task prefix (embeddingQueryPrefix / embeddingDocumentPrefix)
  * @returns Promise with vector embedding as number array
  */
-async function generateEmbedding(text: string, kind: 'query' | 'document'): Promise<number[]> {
-  const smartRoutingConfig = await getSmartRoutingConfig();
+async function generateEmbedding(
+  text: string,
+  kind: 'query' | 'document',
+  snapshot?: SmartRoutingConfig,
+): Promise<number[]> {
+  const smartRoutingConfig = snapshot ?? (await getSmartRoutingConfig());
   applyConfiguredBasePacingDelay(smartRoutingConfig.basePacingDelayMs);
   const provider = smartRoutingConfig.embeddingProvider || 'openai';
 
@@ -845,8 +847,8 @@ async function generateEmbedding(text: string, kind: 'query' | 'document'): Prom
     }
   }
 
-  const config = await getLlmProviderConfig();
-  const openai = await getOpenAIClient();
+  const config = await getLlmProviderConfig(smartRoutingConfig);
+  const openai = await getOpenAIClient(smartRoutingConfig);
 
   // Check if API key is configured
   if (!openai.apiKey) {
@@ -1225,6 +1227,50 @@ const buildToolSearchableText = (tool: Tool): string =>
     .filter(Boolean)
     .join(' ');
 
+// Only database mutations share this barrier. Provider generation remains outside
+// it so cleanup does not wait for a slow provider or its retries. Dimension resets
+// affect the entire table, so the persistence barrier is global, not per server.
+let embeddingMutationTail: Promise<void> = Promise.resolve();
+const withEmbeddingMutation = <T>(operation: () => Promise<T>): Promise<T> => {
+  const run = embeddingMutationTail.then(operation);
+  embeddingMutationTail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+};
+
+type EmbeddingBatch = { invalidated: boolean };
+const activeEmbeddingBatches = new Map<string, Set<EmbeddingBatch>>();
+
+const invalidateEmbeddingBatches = (serverName: string): void => {
+  for (const batch of activeEmbeddingBatches.get(serverName) ?? []) {
+    batch.invalidated = true;
+  }
+};
+
+// Compare only settings that affect document vectors or their destination. Keep
+// secrets in memory only; neither this identity nor the config is logged.
+const embeddingConfigIdentity = (config: SmartRoutingConfig): string =>
+  JSON.stringify([
+    config.enabled,
+    config.dbUrl,
+    config.embeddingProvider,
+    config.embeddingModel,
+    config.embeddingDimensions,
+    config.embeddingDimensionsApiPassthrough,
+    config.embeddingEncodingFormat,
+    config.embeddingDocumentPrefix,
+    config.embeddingMaxTokens,
+    config.llmProviderBaseUrl,
+    config.llmProviderApiKey,
+    config.azureOpenaiEndpoint,
+    config.azureOpenaiApiKey,
+    config.azureOpenaiApiVersion,
+    config.azureOpenaiEmbeddingDeployment,
+    config.azureOpenaiEmbeddingModel,
+  ]);
+
 export const saveToolsAsVectorEmbeddings = async (
   serverName: string,
   tools: Tool[],
@@ -1254,6 +1300,13 @@ export const saveToolsAsVectorEmbeddings = async (
     });
   };
 
+  const batch: EmbeddingBatch = {
+    invalidated: false,
+  };
+  const batches = activeEmbeddingBatches.get(serverName) ?? new Set<EmbeddingBatch>();
+  batches.add(batch);
+  activeEmbeddingBatches.set(serverName, batches);
+
   try {
     if (tools.length === 0) {
       if (options.partial) return;
@@ -1261,7 +1314,8 @@ export const saveToolsAsVectorEmbeddings = async (
       return;
     }
 
-    const smartRoutingConfig = await getSmartRoutingConfig();
+    const smartRoutingConfig = { ...(await getSmartRoutingConfig()) };
+    const configIdentity = embeddingConfigIdentity(smartRoutingConfig);
     if (!smartRoutingConfig.enabled) {
       return;
     }
@@ -1272,14 +1326,15 @@ export const saveToolsAsVectorEmbeddings = async (
       await initializeDatabase();
     }
 
-    const config = await getLlmProviderConfig();
+    const config = await getLlmProviderConfig(smartRoutingConfig);
     const embeddingProvider = smartRoutingConfig.embeddingProvider || 'openai';
     const persistedEmbeddingModel =
       embeddingProvider === 'azure_openai'
         ? smartRoutingConfig.azureOpenaiEmbeddingModel || 'text-embedding-3-small'
         : config.embeddingModel;
     const serverConfig = await getServerDao().findById(serverName);
-    const serverDescription = serverConfig?.description || '';
+    if (!serverConfig || serverConfig.enabled === false || batch.invalidated) return;
+    const serverDescription = serverConfig.description || '';
     const serverSearchableText = buildServerSearchableText(serverName, serverDescription);
 
     const expectedContentIds = tools
@@ -1414,7 +1469,7 @@ export const saveToolsAsVectorEmbeddings = async (
       );
 
       try {
-        const embedding = await generateEmbedding(searchableText, 'document');
+        const embedding = await generateEmbedding(searchableText, 'document', smartRoutingConfig);
         toolEmbeddings.push({ tool, searchableText, embedding });
         emitProgress(_toolIdx + 1, 'in_progress');
       } catch (error: any) {
@@ -1432,7 +1487,11 @@ export const saveToolsAsVectorEmbeddings = async (
 
     let serverEmbedding: number[];
     try {
-      serverEmbedding = await generateEmbedding(serverSearchableText, 'document');
+      serverEmbedding = await generateEmbedding(
+        serverSearchableText,
+        'document',
+        smartRoutingConfig,
+      );
     } catch (error: any) {
       const status = extractErrorStatus(error);
       logger.warn('[EMBED_SYNC_ERROR] Failed while embedding server metadata', {
@@ -1444,79 +1503,96 @@ export const saveToolsAsVectorEmbeddings = async (
       throw error;
     }
 
-    // ── Phase 2: Persist embeddings to DB ──────────────────────────────────────
-    // Probe the connection before writing; reconnect if it went stale during the
-    // (potentially long) embedding-generation phase above.
-    if (!isDatabaseConnected()) {
-      logger.info('Database connection lost during embedding generation, reinitializing...');
-      await initializeDatabase();
-    } else {
-      try {
-        await getAppDataSource().query('SELECT 1');
-      } catch {
-        logger.warn(
-          'DB connection stale after embedding generation for server %s — reconnecting...',
-          serverName,
-        );
-        await reconnectDatabase();
+    const persisted = await withEmbeddingMutation(async () => {
+      // ── Phase 2: Persist embeddings to DB ──────────────────────────────────────
+      // Probe the connection before writing; reconnect if it went stale during the
+      // (potentially long) embedding-generation phase above.
+      if (!isDatabaseConnected()) {
+        logger.info('Database connection lost during embedding generation, reinitializing...');
+        await initializeDatabase();
+      } else {
+        try {
+          await getAppDataSource().query('SELECT 1');
+        } catch {
+          logger.warn(
+            'DB connection stale after embedding generation for server %s — reconnecting...',
+            serverName,
+          );
+          await reconnectDatabase();
+        }
       }
-    }
 
-    const vectorRepository = getRepositoryFactory(
-      'vectorEmbeddings',
-    )() as VectorEmbeddingRepository;
+      const currentServer = await getServerDao().findById(serverName);
+      if (batch.invalidated || !currentServer || currentServer.enabled === false) {
+        logger.log('[Embedding] Discarding stale server batch', { serverName });
+        emitProgress(toolEmbeddings.length, 'error');
+        return false;
+      }
+      if (configIdentity !== embeddingConfigIdentity(await getSmartRoutingConfig())) {
+        throw new Error(
+          'Embedding configuration changed during generation; discarding stale batch',
+        );
+      }
 
-    // Check DB vector dimensions exactly once for the whole batch (all embeddings
-    // produced by the same model always share the same dimension count).
-    if (toolEmbeddings.length > 0 || serverEmbedding.length > 0) {
-      vectorDimensionsReset = await checkDatabaseVectorDimensions(
-        toolEmbeddings[0]?.embedding.length ?? serverEmbedding.length,
-      );
-    }
+      const vectorRepository = getRepositoryFactory(
+        'vectorEmbeddings',
+      )() as VectorEmbeddingRepository;
 
-    for (const { tool, searchableText, embedding } of toolEmbeddings) {
+      // Check DB vector dimensions exactly once for the whole batch (all embeddings
+      // produced by the same model always share the same dimension count).
+      if (toolEmbeddings.length > 0 || serverEmbedding.length > 0) {
+        vectorDimensionsReset = await checkDatabaseVectorDimensions(
+          toolEmbeddings[0]?.embedding.length ?? serverEmbedding.length,
+        );
+      }
+
+      for (const { tool, searchableText, embedding } of toolEmbeddings) {
+        await vectorRepository.saveEmbedding(
+          'tool',
+          `${serverName}:${tool.name}`,
+          searchableText,
+          embedding,
+          {
+            serverName,
+            toolName: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+            toolSetHash: expectedToolSetHash,
+          },
+          persistedEmbeddingModel,
+        );
+      }
+
+      // Remove stale tool embeddings left over from previously-removed tools.
+      // Without this, count(existing) > count(expected) and the skip check on the
+      // next restart would always fail, forcing a full re-generation every time.
+      if (!options.partial && toolEmbeddings.length > 0) {
+        const currentContentIds = toolEmbeddings.map(({ tool }) => `${serverName}:${tool.name}`);
+        const staleCount = await vectorRepository.deleteStaleToolEmbeddings(
+          serverName,
+          currentContentIds,
+          persistedEmbeddingModel,
+        );
+        if (staleCount > 0) {
+          logger.log(`[Embedding] [${serverName}] Removed ${staleCount} stale tool embedding(s)`);
+        }
+      }
+
       await vectorRepository.saveEmbedding(
-        'tool',
-        `${serverName}:${tool.name}`,
-        searchableText,
-        embedding,
+        'server',
+        serverName,
+        serverSearchableText,
+        serverEmbedding,
         {
           serverName,
-          toolName: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-          toolSetHash: expectedToolSetHash,
+          description: serverDescription,
         },
         persistedEmbeddingModel,
       );
-    }
 
-    // Remove stale tool embeddings left over from previously-removed tools.
-    // Without this, count(existing) > count(expected) and the skip check on the
-    // next restart would always fail, forcing a full re-generation every time.
-    if (!options.partial && toolEmbeddings.length > 0) {
-      const currentContentIds = toolEmbeddings.map(({ tool }) => `${serverName}:${tool.name}`);
-      const staleCount = await vectorRepository.deleteStaleToolEmbeddings(
-        serverName,
-        currentContentIds,
-        persistedEmbeddingModel,
-      );
-      if (staleCount > 0) {
-        logger.log(`[Embedding] [${serverName}] Removed ${staleCount} stale tool embedding(s)`);
-      }
-    }
-
-    await vectorRepository.saveEmbedding(
-      'server',
-      serverName,
-      serverSearchableText,
-      serverEmbedding,
-      {
-        serverName,
-        description: serverDescription,
-      },
-      persistedEmbeddingModel,
-    );
+      return true;
+    });
+    if (!persisted) return;
 
     emitProgress(toolEmbeddings.length, 'completed');
 
@@ -1531,6 +1607,9 @@ export const saveToolsAsVectorEmbeddings = async (
     }
     logger.error('Error saving tool embeddings', safeStringify({ serverName, error }));
     throw error;
+  } finally {
+    batches.delete(batch);
+    if (batches.size === 0) activeEmbeddingBatches.delete(serverName);
   }
 };
 
@@ -1791,30 +1870,33 @@ export const getAllVectorizedTools = async (
  * @param serverName Server name
  */
 export const removeServerToolEmbeddings = async (serverName: string): Promise<void> => {
-  try {
-    const smartRoutingConfig = await getSmartRoutingConfig();
-    if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
-      logger.warn('Skipping embedding cleanup because DB URL is not configured', {
-        serverName,
-      });
-      return;
+  invalidateEmbeddingBatches(serverName);
+  await withEmbeddingMutation(async () => {
+    try {
+      const smartRoutingConfig = await getSmartRoutingConfig();
+      if (!smartRoutingConfig.dbUrl && !process.env.DB_URL) {
+        logger.warn('Skipping embedding cleanup because DB URL is not configured', {
+          serverName,
+        });
+        return;
+      }
+
+      // Ensure database is initialized before using repository
+      if (!isDatabaseConnected()) {
+        logger.info('Database not initialized, initializing...');
+        await initializeDatabase();
+      }
+
+      const vectorRepository = getRepositoryFactory(
+        'vectorEmbeddings',
+      )() as VectorEmbeddingRepository;
+
+      const removedCount = await vectorRepository.deleteByServerName(serverName);
+      logger.log('Removed server embeddings', safeStringify({ serverName, removedCount }));
+    } catch (error) {
+      logger.error('Error removing server embeddings', safeStringify({ serverName, error }));
     }
-
-    // Ensure database is initialized before using repository
-    if (!isDatabaseConnected()) {
-      logger.info('Database not initialized, initializing...');
-      await initializeDatabase();
-    }
-
-    const vectorRepository = getRepositoryFactory(
-      'vectorEmbeddings',
-    )() as VectorEmbeddingRepository;
-
-    const removedCount = await vectorRepository.deleteByServerName(serverName);
-    logger.log('Removed server embeddings', safeStringify({ serverName, removedCount }));
-  } catch (error) {
-    logger.error('Error removing server embeddings', safeStringify({ serverName, error }));
-  }
+  });
 };
 
 /**
