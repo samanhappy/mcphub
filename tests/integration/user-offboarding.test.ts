@@ -1,3 +1,4 @@
+import { rateLimit } from 'express-rate-limit';
 import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
@@ -143,6 +144,7 @@ describe('local user offboarding', () => {
     victimJwt = userToken(users[1]);
     await initOAuthServer();
     app = express();
+    app.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use((req, _res, next) => {

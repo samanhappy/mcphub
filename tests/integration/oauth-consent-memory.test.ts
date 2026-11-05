@@ -1,3 +1,4 @@
+import { rateLimit } from 'express-rate-limit';
 import { resolveOAuthUserFromToken } from '../../src/utils/oauthBearer.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
@@ -124,6 +125,7 @@ describe('OAuth remembered consent', () => {
     );
     await initOAuthServer();
     app = express();
+    app.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     app.use(express.urlencoded({ extended: false }));
     app.use(express.json());
     app.get('/api/oauth/approvals', auth, listMyOAuthApprovals);

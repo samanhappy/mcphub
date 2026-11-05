@@ -28,7 +28,7 @@ export function fingerprintOAuthClient(client: IOAuthClient): string {
         redirects: [...client.redirectUris].sort(),
         grants: [...client.grants].sort(),
         scopes: client.scopes ? [...client.scopes].sort() : null,
-        secret: client.clientSecret ?? null,
+        authentication: client.clientSecret ? 'confidential' : 'public',
         name: client.name ?? null,
         metadata: client.metadata ?? null,
       }),
