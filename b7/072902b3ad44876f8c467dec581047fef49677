@@ -1,0 +1,25 @@
+src/services/vectorSearchService.ts
+  s_082f9f2e1db260::t_953e2660cfa89b 77-78,717,741-742,797-802,850-851,1230-1242,1244-1245,1247,1249-1273,1303-1309,1317-1318,1329,1336-1337,1472,1490-1494,1506-1533,1537-1539,1541-1579,1582-1585,1588,1593-1595,1610-1612,1873-1882,1884-1888,1890-1892,1894-1899
+  s_082f9f2e1db260::t_143d7902cecea5 1243,1246,1248
+tests/services/vectorSearchService.test.ts
+  s_082f9f2e1db260::t_197b592d55e434 454-468,470
+  s_082f9f2e1db260::t_2dd560cf74391a 356-360,378,427-428,430,433-453,471-507,509,515
+  s_082f9f2e1db260::t_953e2660cfa89b 379-425,510-514
+  s_082f9f2e1db260::t_7eebd2c7786b8f 353-355,361-377,426,429,431-432,469,508,516-517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7072902b3ad44876f8c467dec581047fef49677",
+  "prompts": {},
+  "sessions": {
+    "s_082f9f2e1db260": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abab-6240-73a3-85be-ddf1052fdf29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
