@@ -241,3 +241,32 @@ The dashboard returns a connector-specific MCPHub `/oauth/relay/<name>?state=…
 This is an opt-in authorization-entry relay, separate from the legacy global OAuth proxy and direct Microsoft Graph-token integration. It does not proxy HTML, cookies, relative internal redirects, broker callback pages or arbitrary URLs. A broker that requires the browser to revisit its private hostname needs a different deployment. The authorization endpoint must not contain a query; upstream responses have a 10-second timeout and bounded headers, their bodies are discarded, and only 302/303/307/308 redirects to listed HTTPS origins are accepted. Unconfigured connectors retain their existing behavior.
 
 Mocked tests cover independent users, callback recovery, code exchange, refresh and authenticated MCP requests. Live Microsoft compatibility remains unverified; test your application registration, broker mode, scopes and refresh lifecycle before production use.
+
+
+## Remembering Downstream Application Consent
+
+MCPHub's own OAuth authorization server displays a consent screen on every authorization by default. Operators can enable **Remember user consent** and edit **Consent lifetime (seconds)** under **Settings → OAuth Server**. The same settings are available in `systemConfig.oauthServer` (also accepted as an `oauthServer` object by `PUT /api/system-config`):
+
+```json
+{
+  "systemConfig": {
+    "oauthServer": {
+      "alwaysShowApprovalScreen": false,
+      "approvalLifetime": 1209600
+    }
+  }
+}
+```
+
+`approvalLifetime` is a fixed lifetime in seconds from explicit approval (default 14 days; accepted range 1–31536000). Reauthorization and refresh-token rotation do not extend it. Expiry requires confirmation on the next authorization request; existing access and refresh tokens retain their normal lifetimes. Setting `alwaysShowApprovalScreen` to `true` restores every-time confirmation without revoking existing access.
+
+Consent is specific to the current user credential version, client ID and metadata, exact redirect URI, and exact `resource` value (including its absence). Only requests whose effective scopes are a subset of previously approved scopes can skip the screen. Omitted scopes use the configured `allowedScopes`; changes that add permissions require confirmation. Public clients still need S256 PKCE, and every successful authorization issues a fresh authorization code. Clients that register a new client ID on reconnect must be approved again.
+
+The dashboard-authenticated management APIs expose only the current user's approvals:
+
+- `GET /api/oauth/approvals` returns `{ "success": true, "data": [...] }`; each entry includes `id`, `clientId`, `scopes`, `resource`, `redirectUri`, `approvedAt`, and `expiresAt`.
+- `DELETE /api/oauth/approvals/:approvalId` revokes all approvals and existing tokens for that entry's application and current user, including pending authorization codes. Another user's entry returns 404. MCP OAuth access tokens cannot authenticate these management APIs.
+
+Open the user menu at the bottom of the sidebar and choose **Authorized applications** to inspect your permissions, resource, callback URL, and consent dates. Choose **Revoke application** and confirm to remove all of that application's authorizations, pending codes, and tokens for your account. This page is available to every signed-in user; global OAuth settings retain their existing settings permission checks. Explicit consent is recorded even when every-time confirmation is enabled, so these grants can still be revoked. Skipping confirmation remains opt-in.
+
+In file mode, approvals live in `<settings-path>.approvals.json` with owner-only permissions; in database mode they live in `oauth_client_approvals`. Keep the sidecar with runtime backups. Approvals are excluded from configuration exports and declarative reconciliation. Switching from file to database storage requires fresh consent; approval-linked tokens without their grant fail closed. Expired records remain available for revoking still-live tokens and are removed when the user or client is deleted, or the application is revoked. Database replicas read grants directly so revocation applies on their next token use, including to tokens persisted concurrently with revocation. Run `pnpm db:setup` before upgrading replicas with `DB_SYNCHRONIZE=false`.

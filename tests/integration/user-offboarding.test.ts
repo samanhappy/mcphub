@@ -1,10 +1,12 @@
+import { rateLimit } from 'express-rate-limit';
 import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { IUser, IOAuthToken, IGroup, ServerConfig } from '../../src/types/index.js';
+import { IUser, IOAuthToken, IGroup, ServerConfig, OAuthClientApproval } from '../../src/types/index.js';
 
 let users: IUser[];
+let approvals: OAuthClientApproval[];
 let tokens: IOAuthToken[];
 let groups: IGroup[];
 let servers: (ServerConfig & { name: string })[];
@@ -19,6 +21,12 @@ const revokeUserTokensMock = jest.fn(async (username: string) => {
 });
 
 jest.mock('../../src/dao/index.js', () => ({
+  getOAuthApprovalDao: () => ({
+    findById: async (id: string) => approvals.find((row) => row.id === id),
+    findByUsername: async (username: string) => approvals.filter((row) => row.username === username),
+    save: async (row: OAuthClientApproval) => { approvals.push(row); },
+    deleteByUsername: async (username: string) => { approvals = approvals.filter((row) => row.username !== username); },
+  }),
   getUserDao: () => ({
     findAll: async () => users,
     findByUsername: async (username: string) => users.find((user) => user.username === username),
@@ -121,6 +129,7 @@ describe('local user offboarding', () => {
       { username: 'victim', password: await bcrypt.hash('victim-password', 4), isAdmin: false },
     ];
     tokens = [];
+    approvals = [];
     groups = [
       {
         id: 'g1',
@@ -135,6 +144,7 @@ describe('local user offboarding', () => {
     victimJwt = userToken(users[1]);
     await initOAuthServer();
     app = express();
+    app.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use((req, _res, next) => {
@@ -211,6 +221,7 @@ describe('local user offboarding', () => {
       (await request(app).delete('/api/users/victim').set('x-auth-token', adminJwt)).status,
     ).toBe(200);
     expect(tokens).toHaveLength(0);
+    expect(approvals).toHaveLength(0);
     expect(groups[0].sharedWithUsers).toEqual(['other']);
     expect(servers[0].sharedWithUsers).toEqual(['other']);
     expect(await getAuthorizationCode(code)).toBeUndefined();

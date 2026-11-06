@@ -43,3 +43,7 @@ temp-test-config/
 # Last-known upstream capability snapshots (runtime data)
 *.capabilities.json
 *.capabilities.json.*.tmp
+
+# OAuth consent grants (runtime state, excluded from configuration exports)
+*.approvals.json
+*.approvals.json.*.tmp

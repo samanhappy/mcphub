@@ -1,3 +1,4 @@
+import { OAuthApproval } from './OAuthApproval.js';
 import { CapabilitySnapshot } from './CapabilitySnapshot.js';
 import { OAuthState } from './OAuthState.js';
 import { CredentialBindingImport } from './CredentialBindingImport.js';
@@ -17,6 +18,7 @@ import BuiltinResource from './BuiltinResource.js';
 
 // Export all entities
 export default [
+  OAuthApproval,
   OAuthState,
   CapabilitySnapshot,
   CredentialBinding,
@@ -37,6 +39,7 @@ export default [
 
 // Export individual entities for direct use
 export {
+  OAuthApproval,
   OAuthState,
   CapabilitySnapshot,
   CredentialBinding,

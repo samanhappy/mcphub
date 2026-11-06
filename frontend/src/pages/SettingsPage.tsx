@@ -668,6 +668,7 @@ const SettingsPage: React.FC = () => {
   });
 
   const [tempOAuthServerConfig, setTempOAuthServerConfig] = useState<{
+    approvalLifetime: string;
     accessTokenLifetime: string;
     refreshTokenLifetime: string;
     authorizationCodeLifetime: string;
@@ -675,6 +676,7 @@ const SettingsPage: React.FC = () => {
     dynamicRegistrationAllowedGrantTypes: string;
     dynamicRegistrationClientTtl: string;
   }>({
+    approvalLifetime: '1209600',
     accessTokenLifetime: '3600',
     refreshTokenLifetime: '1209600',
     authorizationCodeLifetime: '300',
@@ -885,6 +887,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (oauthServerConfig) {
       setTempOAuthServerConfig({
+        approvalLifetime: String(oauthServerConfig.approvalLifetime),
         accessTokenLifetime:
           oauthServerConfig.accessTokenLifetime !== undefined
             ? String(oauthServerConfig.accessTokenLifetime)
@@ -1132,6 +1135,7 @@ const SettingsPage: React.FC = () => {
   };
 
   type OAuthServerNumberField =
+    | 'approvalLifetime'
     | 'accessTokenLifetime'
     | 'refreshTokenLifetime'
     | 'authorizationCodeLifetime';
@@ -1165,7 +1169,14 @@ const SettingsPage: React.FC = () => {
     }
 
     const parsedValue = Number(rawValue);
-    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+    if (
+      key === 'approvalLifetime' &&
+      (!Number.isSafeInteger(parsedValue) || parsedValue < 1 || parsedValue > 31536000)
+    ) {
+      showToast(t('oauthApprovals.invalidLifetime'), 'error');
+      return;
+    }
+    if (!Number.isFinite(parsedValue) || parsedValue < 0) {
       showToast(t('settings.invalidNumberInput') || 'Please enter a valid number', 'error');
       return;
     }
@@ -3480,6 +3491,55 @@ const SettingsPage: React.FC = () => {
                   checked={oauthServerConfig.requireState}
                   onCheckedChange={(checked) => handleOAuthServerToggle('requireState', checked)}
                 />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <label htmlFor="remember-oauth-consent" className="font-medium">
+                    {t('oauthApprovals.remember')}
+                  </label>
+                  <p className="text-sm text-gray-500">{t('oauthApprovals.rememberDescription')}</p>
+                </div>
+                <Switch
+                  id="remember-oauth-consent"
+                  disabled={loading || !oauthServerConfig.enabled}
+                  checked={!oauthServerConfig.alwaysShowApprovalScreen}
+                  onCheckedChange={(checked) =>
+                    updateOAuthServerConfig('alwaysShowApprovalScreen', !checked)
+                  }
+                />
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <label htmlFor="approval-lifetime" className="font-medium">
+                  {t('oauthApprovals.lifetime')}
+                </label>
+                <p id="approval-lifetime-help" className="text-sm text-gray-500 mb-2">
+                  {t('oauthApprovals.lifetimeDescription')}
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="approval-lifetime"
+                    type="number"
+                    min="1"
+                    max="31536000"
+                    step="1"
+                    aria-describedby="approval-lifetime-help"
+                    value={tempOAuthServerConfig.approvalLifetime}
+                    disabled={loading || !oauthServerConfig.enabled}
+                    onChange={(e) =>
+                      handleOAuthServerNumberChange('approvalLifetime', e.target.value)
+                    }
+                    className="form-input flex-1 min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                  />
+                  <button
+                    type="button"
+                    disabled={loading || !oauthServerConfig.enabled}
+                    onClick={() => saveOAuthServerNumberConfig('approvalLifetime')}
+                    className="hub-btn primary"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
               </div>
 
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">

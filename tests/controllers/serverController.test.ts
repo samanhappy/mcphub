@@ -842,6 +842,21 @@ describe('serverController - updateSystemConfig', () => {
     mockSystemConfigDao.update.mockResolvedValue(true);
   });
 
+  it('updates remembered OAuth consent settings without unrelated config fields', async () => {
+    mockRequest.body = { oauthServer: { alwaysShowApprovalScreen: false, approvalLifetime: 86400 } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(expect.objectContaining({
+      oauthServer: expect.objectContaining({ alwaysShowApprovalScreen: false, approvalLifetime: 86400 }),
+    }));
+  });
+
+  it.each([0, -1, 1.5, Infinity, 31536001, '86400', null])('rejects invalid OAuth approval lifetimes (%s)', async (approvalLifetime) => {
+    mockRequest.body = { oauthServer: { alwaysShowApprovalScreen: false, approvalLifetime } };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it.each([['  Team MCP  ', 'Team MCP'], ['   ', ''], ['x'.repeat(100), 'x'.repeat(100)]])(
     'saves a trimmed dashboard name and allows resetting it', async (dashboardName, expected) => {
       mockRequest.body = { dashboardName };

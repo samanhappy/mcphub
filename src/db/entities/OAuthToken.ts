@@ -41,6 +41,9 @@ export class OAuthToken {
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
+  @Column({ name: 'approval_id', type: 'uuid', nullable: true })
+  approvalId?: string;
+
   @Column({ name: 'session_version', type: 'varchar', length: 64, nullable: true })
   sessionVersion?: string;
 

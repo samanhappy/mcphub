@@ -29,6 +29,7 @@ jest.mock('../../src/dao/index.js', () => {
 
   return {
     ...originalModule,
+    getOAuthApprovalDao: () => ({ deleteByClientId: jest.fn() }),
     getUserDao: () => ({
       findByUsername: async (username: string) => ({ username, password: 'hashed' }),
     }),

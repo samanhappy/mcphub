@@ -40,6 +40,8 @@
     "dashboardName": "",
     "toolPolicies": [],
     "oauthServer": {
+      "alwaysShowApprovalScreen": true,
+      "approvalLifetime": 1209600,
       "enabled": true,
       "accessTokenLifetime": 3600,
       "refreshTokenLifetime": 1209600,

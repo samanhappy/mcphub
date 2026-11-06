@@ -2097,6 +2097,18 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       network,
       toolPolicies,
     } = req.body;
+    if (
+      oauthServer?.approvalLifetime !== undefined &&
+      (!Number.isSafeInteger(oauthServer.approvalLifetime) ||
+        oauthServer.approvalLifetime <= 0 ||
+        oauthServer.approvalLifetime > 31536000)
+    ) {
+      res.status(400).json({
+        success: false,
+        message: 'approvalLifetime must be between 1 and 31536000 seconds',
+      });
+      return;
+    }
     if (toolPolicies !== undefined) {
       try {
         validateToolPolicies(toolPolicies);
@@ -2212,7 +2224,9 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     const hasOAuthServerUpdate =
       oauthServer &&
-      (typeof oauthServer.enabled === 'boolean' ||
+      (typeof oauthServer.alwaysShowApprovalScreen === 'boolean' ||
+        typeof oauthServer.approvalLifetime === 'number' ||
+        typeof oauthServer.enabled === 'boolean' ||
         typeof oauthServer.accessTokenLifetime === 'number' ||
         typeof oauthServer.refreshTokenLifetime === 'number' ||
         typeof oauthServer.authorizationCodeLifetime === 'number' ||
@@ -2748,6 +2762,12 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     if (oauthServer) {
       const target = systemConfig.oauthServer;
+      if (typeof oauthServer.alwaysShowApprovalScreen === 'boolean') {
+        target.alwaysShowApprovalScreen = oauthServer.alwaysShowApprovalScreen;
+      }
+      if (typeof oauthServer.approvalLifetime === 'number') {
+        target.approvalLifetime = oauthServer.approvalLifetime;
+      }
       if (typeof oauthServer.enabled === 'boolean') {
         target.enabled = oauthServer.enabled;
       }

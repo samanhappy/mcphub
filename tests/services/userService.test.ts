@@ -15,6 +15,7 @@ const mockUpdateServerVisibility = jest.fn();
 jest.mock('../../src/services/mcpService.js', () => ({ updateServerInfoVisibility: mockUpdateServerVisibility }));
 
 jest.mock('../../src/dao/index.js', () => ({
+  getOAuthApprovalDao: () => ({ deleteByUsername: jest.fn() }),
   getGroupDao: () => ({ findAll: async () => [] }),
   getServerDao: () => ({ findAll: mockFindServers, update: mockUpdateServer }),
   getUserDao: jest.fn(() => ({

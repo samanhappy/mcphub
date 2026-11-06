@@ -82,6 +82,8 @@ interface MCPRouterConfig {
 }
 
 interface OAuthServerConfig {
+  alwaysShowApprovalScreen: boolean;
+  approvalLifetime: number;
   enabled: boolean;
   accessTokenLifetime: number;
   refreshTokenLifetime: number;
@@ -223,6 +225,8 @@ interface SettingsContextValue {
 }
 
 const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
+  alwaysShowApprovalScreen: true,
+  approvalLifetime: 1209600,
   enabled: true,
   accessTokenLifetime: 3600,
   refreshTokenLifetime: 1209600,
@@ -550,6 +554,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
             : [...defaultDynamic.allowedGrantTypes];
 
           setOAuthServerConfig({
+            alwaysShowApprovalScreen: oauth.alwaysShowApprovalScreen ?? true,
+            approvalLifetime: oauth.approvalLifetime ?? 1209600,
             enabled: oauth.enabled ?? defaultOauthConfig.enabled,
             accessTokenLifetime:
               oauth.accessTokenLifetime ?? defaultOauthConfig.accessTokenLifetime,

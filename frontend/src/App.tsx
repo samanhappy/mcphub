@@ -17,6 +17,7 @@ const CredentialsPage = lazy(() => import('./pages/CredentialsPage'));
 const ServersPage = lazy(() => import('./pages/ServersPage'));
 const GroupsPage = lazy(() => import('./pages/GroupsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
+const OAuthApprovalsPage = lazy(() => import('./pages/OAuthApprovalsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const MarketPage = lazy(() => import('./pages/MarketPage'));
 const LogsPage = lazy(() => import('./pages/LogsPage'));
@@ -72,6 +73,7 @@ function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
                       <Route path="/" element={<DashboardPage />} />
+                      <Route path="/oauth-applications" element={<OAuthApprovalsPage />} />
                       <Route path="/credentials" element={<CredentialsPage />} />
                       <Route path="/servers" element={<ServersPage />} />
                       <Route path="/groups" element={<GroupsPage />} />

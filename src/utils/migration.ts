@@ -336,6 +336,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             clientId: token.clientId,
             username: token.username,
             sessionVersion: token.sessionVersion,
+            approvalId: token.approvalId,
           });
           logger.log(`  - Created OAuth token for client: ${token.clientId}`);
         } else {

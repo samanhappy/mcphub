@@ -17,6 +17,7 @@ jest.mock('../../src/utils/frontendShell.js', () => ({
 }));
 
 jest.mock('../../src/dao/index.js', () => ({
+  getSystemConfigDao: () => ({ get: async () => ({}) }),
   getGroupDao: jest.fn(),
   getServerDao: jest.fn(),
 }));

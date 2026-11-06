@@ -363,6 +363,19 @@ export interface IOAuthClient {
   };
 }
 
+export interface OAuthClientApproval {
+  id: string;
+  username: string;
+  sessionVersion: string;
+  clientId: string;
+  clientFingerprint: string;
+  redirectUri: string;
+  resource: string;
+  scopes: string[];
+  approvedAt: string;
+  expiresAt: string;
+}
+
 // OAuth Authorization Code (for MCPHub's authorization server)
 export interface IOAuthAuthorizationCode {
   code: string; // Authorization code
@@ -370,6 +383,7 @@ export interface IOAuthAuthorizationCode {
   redirectUri: string; // Redirect URI used in the authorization request
   scope?: string; // Granted scopes
   clientId: string; // Client ID
+  approvalId?: string; // Revocable consent grant associated with this authorization
   sessionVersion?: string; // Credential version at authorization
   username: string; // User who authorized
   codeChallenge?: string; // PKCE code challenge
@@ -384,12 +398,15 @@ export interface IOAuthToken {
   refreshTokenExpiresAt?: Date; // Refresh token expiration
   scope?: string; // Granted scopes
   clientId: string; // Client ID
+  approvalId?: string; // Preserved through refresh-token rotation
   sessionVersion?: string; // Credential version at issuance
   username: string; // Username
 }
 
 // OAuth Server Configuration
 export interface OAuthServerConfig {
+  alwaysShowApprovalScreen?: boolean; // Default true; false enables remembered consent
+  approvalLifetime?: number; // Fixed consent lifetime in seconds (default 1209600)
   enabled?: boolean; // Enable/disable OAuth authorization server
   accessTokenLifetime?: number; // Access token lifetime in seconds (default: 3600)
   refreshTokenLifetime?: number; // Refresh token lifetime in seconds (default: 1209600 = 14 days)

@@ -1,6 +1,8 @@
 import { OAuthServerConfig } from '../types/index.js';
 
 export const DEFAULT_OAUTH_SERVER_CONFIG: OAuthServerConfig = {
+  alwaysShowApprovalScreen: true,
+  approvalLifetime: 1209600,
   enabled: true,
   accessTokenLifetime: 3600,
   refreshTokenLifetime: 1209600,

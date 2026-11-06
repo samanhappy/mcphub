@@ -1,6 +1,12 @@
+import { isApprovalGrantValid } from '../services/oauthApprovalService.js';
 import { resolveUserSession } from '../utils/userSession.js';
 import crypto from 'crypto';
-import { getOAuthClientDao, getOAuthTokenDao, getSystemConfigDao } from '../dao/index.js';
+import {
+  getOAuthApprovalDao,
+  getOAuthClientDao,
+  getOAuthTokenDao,
+  getSystemConfigDao,
+} from '../dao/index.js';
 import { IOAuthClient, IOAuthAuthorizationCode, IOAuthToken } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { LessThanOrEqual, MoreThan } from 'typeorm';
@@ -72,6 +78,7 @@ export const updateOAuthClient = async (
  */
 export const deleteOAuthClient = async (clientId: string): Promise<boolean> => {
   const clientDao = getOAuthClientDao();
+  await getOAuthApprovalDao().deleteByClientId(clientId);
   return clientDao.delete(clientId);
 };
 
@@ -267,7 +274,10 @@ export const getToken = async (token: string): Promise<IOAuthToken | undefined> 
     return undefined;
   }
 
-  return (await resolveUserSession(tokenData)) ? tokenData : undefined;
+  return (await resolveUserSession(tokenData)) &&
+    (await isApprovalGrantValid(tokenData, tokenData.clientId))
+    ? tokenData
+    : undefined;
 };
 
 /**
@@ -363,7 +373,7 @@ const cleanupIdleDynamicClients = async (now: Date): Promise<void> => {
     );
 
     for (const client of stale) {
-      await clientDao.delete(client.clientId);
+      await deleteOAuthClient(client.clientId);
     }
     if (stale.length > 0) {
       logger.log(`Reaped ${stale.length} idle dynamically-registered OAuth client(s)`);
@@ -393,5 +403,19 @@ export const stopCleanup = (): void => {
   if (cleanupIntervalId) {
     clearInterval(cleanupIntervalId);
     cleanupIntervalId = null;
+  }
+};
+
+/** Invalidate pending codes when an application is revoked. */
+export const revokeUserClientAuthorizationCodes = async (
+  username: string,
+  clientId: string,
+): Promise<void> => {
+  if (isReplicaMode()) {
+    await stateRepository().delete({ username, clientId, kind: 'authorization_code' });
+    return;
+  }
+  for (const [value, code] of authorizationCodes) {
+    if (code.username === username && code.clientId === clientId) authorizationCodes.delete(value);
   }
 };

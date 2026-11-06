@@ -144,6 +144,16 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
           )}
 
           <button
+            onClick={() => {
+              navigate('/oauth-applications');
+              setIsOpen(false);
+            }}
+            className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            {t('oauthApprovals.title')}
+          </button>
+          <button
             onClick={handleSettingsClick}
             className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
           >

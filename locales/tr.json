@@ -1569,5 +1569,30 @@
     "noOtherServers": "Kimlik bilgisi alanları olan başka sunucu yok",
     "noSourcesHelp": "Kopyalamadan önce eşleşen alanları olan başka bir sunucuda kişisel kimlik bilgilerini yapılandırın.",
     "deleteConfirm": "{{server}} kimlik bilgileri silinsin mi? Sonraki istekler için yeniden yapılandırmanız gerekir."
+  },
+  "oauthApprovals": {
+    "title": "Yetkilendirilmiş uygulamalar",
+    "description": "MCPHub erişimi verdiğiniz uygulamaları yönetin. Süresi dolan onay yeniden doğrulama gerektirir; mevcut belirteçler süreleri dolana veya iptal edilene kadar geçerlidir.",
+    "refresh": "Yenile",
+    "loading": "Yetkilendirmeler yükleniyor…",
+    "empty": "Yetkilendirilmiş uygulama yok.",
+    "failed": "Yetkilendirmeler güncellenemedi. Tekrar deneyin.",
+    "revoked": "Uygulama erişimi iptal edildi.",
+    "active": "Onay geçerli",
+    "expired": "Onayın süresi doldu",
+    "scopes": "İzinler",
+    "resource": "Kaynak",
+    "redirect": "Geri dönüş URL’si",
+    "approvedAt": "Onay zamanı",
+    "expiresAt": "Onay bitişi",
+    "confirm": "{{client}} için tüm erişim iptal edilsin mi? Yetkilendirmeleri silinir, yetkilendirme kodları ve belirteçleri geçersiz olur.",
+    "confirmRevoke": "İptali onayla",
+    "cancel": "Vazgeç",
+    "revoke": "Uygulama yetkisini iptal et",
+    "remember": "Kullanıcı onayını hatırla",
+    "rememberDescription": "Eşleşen ve süresi dolmamış yetkilendirmeler için tekrar onay istemez. Kapatmak mevcut erişimi iptal etmez.",
+    "lifetime": "Onay süresi (saniye)",
+    "lifetimeDescription": "Onaydan itibaren sabit süre: 1–31536000 saniye (varsayılan 1209600, 14 gün). Belirteç yenileme bu süreyi uzatmaz.",
+    "invalidLifetime": "1 ile 31536000 saniye arasında bir tam sayı girin."
   }
 }

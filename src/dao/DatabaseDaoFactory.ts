@@ -1,3 +1,4 @@
+import { OAuthApprovalDaoDbImpl } from './OAuthApprovalDaoDbImpl.js';
 import { CapabilitySnapshotDaoDbImpl } from './CapabilitySnapshotDaoDbImpl.js';
 import { CredentialBindingDaoDbImpl } from './CredentialBindingDaoDbImpl.js';
 import {
@@ -55,6 +56,10 @@ export class DatabaseDaoFactory implements DaoFactory {
 
   private constructor() {
     // Private constructor for singleton
+  }
+
+  getOAuthApprovalDao(): OAuthApprovalDaoDbImpl {
+    return new OAuthApprovalDaoDbImpl();
   }
 
   getCapabilitySnapshotDao(): CapabilitySnapshotDaoDbImpl {
