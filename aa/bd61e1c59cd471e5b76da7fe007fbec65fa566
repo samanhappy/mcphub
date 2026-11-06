@@ -1,0 +1,122 @@
+src/constants/oauthServerDefaults.ts
+  s_c531b7d369418f::t_5a26cdbd061161 4-5
+src/dao/OAuthTokenDaoDbImpl.ts
+  s_c531b7d369418f::t_5a26cdbd061161 54,114,125
+src/dao/DaoFactory.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1,21,68-71,266-268
+  s_c531b7d369418f::t_f06ba7dcfefc36 269
+src/utils/migration.ts
+  s_c531b7d369418f::t_5a26cdbd061161 339
+tests/integration/oauth-consent-memory.test.ts
+  s_c531b7d369418f::t_27d1f9e0163884 3-6,8-9,14-22,34-47,50-56,62-63,69-82,89,95-120,125-141,145-149,163-165,266,271,275,281,341-342
+  s_c531b7d369418f::t_38162e343dac2f 7,23-33,48-49,57-58,60-61,64-65,67-68,83-86,90-94,121-124,142-144,150-162,166-265,294,296-340
+  s_c531b7d369418f::t_3cc07e30aca142 2,288,295
+  s_c531b7d369418f::t_483c4be6928f30 1
+  s_c531b7d369418f::t_9219bc0fb9e499 10-13
+  s_c531b7d369418f::t_a3b3be0be26d9d 59
+  s_c531b7d369418f::t_a6acd1807e6445 66
+  s_c531b7d369418f::t_bb1b102ebb5b8e 87-88
+  s_c531b7d369418f::t_3c3c66038b9e98 267-270
+  s_c531b7d369418f::t_fcbbc34f25dce2 272-274
+  s_c531b7d369418f::t_e5ca6d86d3bb43 276-280
+  s_c531b7d369418f::t_8333b5d618d60a 282-287
+  s_c531b7d369418f::t_a9a6213f3ea7ca 289-293
+src/dao/OAuthApprovalDaoDbImpl.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1-34
+src/db/entities/OAuthToken.ts
+  s_c531b7d369418f::t_5a26cdbd061161 44-46
+src/dao/OAuthApprovalDao.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1-65
+docs/zh/features/oauth.mdx
+  s_c531b7d369418f::t_38162e343dac2f 244-247,249-269
+  s_c531b7d369418f::t_899a39956aa8f0 248
+  s_c531b7d369418f::t_141915ac613058 270
+docs/features/oauth.mdx
+  s_c531b7d369418f::t_38162e343dac2f 244-247,249-269
+  s_c531b7d369418f::t_7b630f24fbc0c6 248
+  s_c531b7d369418f::t_36a8895e3e8431 270
+mcp_settings.json
+  s_c531b7d369418f::t_38162e343dac2f 43-44
+src/db/entities/OAuthApproval.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1-36
+src/dao/DatabaseDaoFactory.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1,61-62
+  s_c531b7d369418f::t_9683e48a342e4a 63-64
+src/models/OAuth.ts
+  s_c531b7d369418f::t_233865eb5ec70d 4
+  s_c531b7d369418f::t_8e591012f6a95b 1,408-412,414
+  s_c531b7d369418f::t_651f327bd16c66 5-9,81,277-280,376,413,415-421
+src/services/oauthApprovalService.ts
+  s_c531b7d369418f::t_38162e343dac2f 15-19,23-36,48-56,68-74,82-89,102-107
+  s_c531b7d369418f::t_8e591012f6a95b 1-14,20-22,37-47,57-67,75-76,80-81,90-101,108
+  s_c531b7d369418f::t_fc2934a551aa5a 77-79
+src/controllers/oauthApprovalController.ts
+  s_c531b7d369418f::t_38162e343dac2f 8-38,48-51,58,63
+  s_c531b7d369418f::t_3cc07e30aca142 40-45
+  s_c531b7d369418f::t_d83097ffb9306a 1-7,39,46-47,52-57,59-62,64
+src/dao/index.ts
+  s_c531b7d369418f::t_5a26cdbd061161 31-32
+src/controllers/oauthServerController.ts
+  s_c531b7d369418f::t_8e591012f6a95b 1,315-317,322-336,351-357,453,458,466,474-477,486
+  s_c531b7d369418f::t_38162e343dac2f 318-321,454-457,459-465,467-473,615-623,625-627
+  s_c531b7d369418f::t_89d3d86320b08a 337-339,348-350
+  s_c531b7d369418f::t_f567673aae9f0b 340-347
+src/services/oauthServerService.ts
+  s_c531b7d369418f::t_38162e343dac2f 1-5,108-111,118-119,158-162,218-221
+  s_c531b7d369418f::t_8e591012f6a95b 23,107,112-113,115-117,120,122-124,132,188,231,282,317,358
+  s_c531b7d369418f::t_a55839359e7812 114
+  s_c531b7d369418f::t_b600bab33a1211 121
+tests/integration/oauth-approval-persistence.test.ts
+  s_c531b7d369418f::t_38162e343dac2f 23-97,99-126
+  s_c531b7d369418f::t_3142cf653d34d6 20-22
+  s_c531b7d369418f::t_a80a361a7ae201 98
+  s_c531b7d369418f::t_5dab7bce752445 127-129
+  s_c531b7d369418f::t_d9a2523337fca5 1-19,130-155
+tests/controllers/serverController.test.ts
+  s_c531b7d369418f::t_756fdd48d288eb 853-854
+  s_c531b7d369418f::t_3cc07e30aca142 845-852,855-859
+src/db/entities/index.ts
+  s_c531b7d369418f::t_5a26cdbd061161 1,21,42
+src/types/index.ts
+  s_c531b7d369418f::t_5a26cdbd061161 366-378,386,401,408-409
+.gitignore
+  s_c531b7d369418f::t_5a26cdbd061161 46-49
+src/controllers/serverController.ts
+  s_c531b7d369418f::t_be2af2769f62bc 2100-2111,2227-2229,2765-2770
+src/routes/index.ts
+  s_c531b7d369418f::t_5f2a664365eeee 1,303-304
+src/services/userService.ts
+  s_c531b7d369418f::t_9f9d53036c0c7d 1,128
+tests/controllers/oauthServerController.shell.test.ts
+  s_c531b7d369418f::t_10928edd978cbd 20
+tests/integration/user-offboarding.test.ts
+  s_c531b7d369418f::t_54b0d3feff6339 5,8,23-28,131,222
+tests/models/oauth.test.ts
+  s_29edad4a255994::t_8495732dfdac5f 32
+tests/services/userService.test.ts
+  s_29edad4a255994::t_8148c714d38479 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aabd61e1c59cd471e5b76da7fe007fbec65fa566",
+  "prompts": {},
+  "sessions": {
+    "s_29edad4a255994": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abb6-5008-7c51-836f-ba6422c9a98f",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    },
+    "s_c531b7d369418f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abb5-f94f-7b62-b626-25b8d0a5a199",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
