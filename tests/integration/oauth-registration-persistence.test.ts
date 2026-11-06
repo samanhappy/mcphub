@@ -37,8 +37,10 @@ describe('OAuth registration persistence', () => {
     mockFindById.mockImplementation(async () => ({ name: serverName, ...makeConfig() }));
     mockUpdate.mockImplementation(async (_name, updates) => ({ name: serverName, ...updates }));
     mockDynamicClientRegistration.mockImplementation(async () => ({
-      client_id: `client-${mockDynamicClientRegistration.mock.calls.length}`,
-      client_secret: 'secret',
+      clientMetadata: () => ({
+        client_id: `client-${mockDynamicClientRegistration.mock.calls.length}`,
+        client_secret: 'secret',
+      }),
       serverMetadata: () => ({ token_endpoint: 'https://issuer.example.com/token' }),
     }));
   });
@@ -46,6 +48,58 @@ describe('OAuth registration persistence', () => {
   afterEach(() => {
     removeRegisteredClient(serverName);
     jest.restoreAllMocks();
+  });
+
+  it.each([0, Math.floor(Date.now() / 1000) + 3600, undefined])(
+    'persists client metadata and honors secret expiry %s',
+    async (expiresAt) => {
+      mockDynamicClientRegistration.mockResolvedValueOnce({
+        clientMetadata: () => ({
+          client_id: 'metadata-client',
+          client_secret: 'metadata-secret',
+          client_secret_expires_at: expiresAt,
+        }),
+        serverMetadata: () => ({}),
+      });
+      const config = makeConfig();
+      const registered = await registerClient(serverName, config);
+      expect(registered.clientId).toBe('metadata-client');
+      expect(registered.clientSecret).toBe('metadata-secret');
+      expect(registered.expiresAt).toBe(expiresAt ? expiresAt * 1000 : undefined);
+      expect(config.oauth).toEqual(
+        expect.objectContaining({
+          clientId: 'metadata-client',
+          clientSecret: 'metadata-secret',
+        }),
+      );
+      expect(getRegisteredClient(serverName)).toBe(registered);
+      expect(await registerClient(serverName, config)).toBe(registered);
+    },
+  );
+
+  it('supports public clients without a secret', async () => {
+    mockDynamicClientRegistration.mockResolvedValueOnce({
+      clientMetadata: () => ({ client_id: 'public-client' }),
+      serverMetadata: () => ({}),
+    });
+    const config = makeConfig();
+    const registered = await registerClient(serverName, config);
+    expect(registered.clientId).toBe('public-client');
+    expect(registered.clientSecret).toBeUndefined();
+    expect(config.oauth?.clientId).toBe('public-client');
+  });
+
+  it('rejects missing client IDs before persistence and allows retry', async () => {
+    mockDynamicClientRegistration.mockResolvedValueOnce({
+      clientMetadata: () => ({}),
+      serverMetadata: () => ({}),
+    });
+    const config = makeConfig();
+    await expect(registerClient(serverName, config)).rejects.toThrow('returned no client_id');
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(getRegisteredClient(serverName)).toBeUndefined();
+    expect(config.oauth?.clientId).toBeUndefined();
+    expect((await registerClient(serverName, config)).clientId).toBe('client-2');
   });
 
   it.each([false, true])(
@@ -64,7 +118,10 @@ describe('OAuth registration persistence', () => {
       ];
       mockDynamicClientRegistration.mockImplementationOnce(async (_issuer, metadata) => {
         expect(metadata.redirect_uris).toEqual(expectedUris);
-        return { client_id: 'https-client', serverMetadata: () => ({}) };
+        return {
+          clientMetadata: () => ({ client_id: 'https-client' }),
+          serverMetadata: () => ({}),
+        };
       });
 
       const registered = await registerClient(serverName, config);

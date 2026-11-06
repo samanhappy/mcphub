@@ -54,8 +54,10 @@ describe('registerClient redirect URI handling', () => {
     mockFindByUsername.mockResolvedValue(undefined);
     mockDiscovery.mockResolvedValue({});
     mockDynamicClientRegistration.mockResolvedValue({
-      client_id: 'registered-client',
-      client_secret: 'registered-secret',
+      clientMetadata: () => ({
+        client_id: 'registered-client',
+        client_secret: 'registered-secret',
+      }),
       serverMetadata: () => ({
         authorization_endpoint: 'https://issuer.example.com/authorize',
         token_endpoint: 'https://issuer.example.com/token',
@@ -220,8 +222,7 @@ describe('scope handling: explicitly-empty vs unset (#1227)', () => {
     });
     removeRegisteredClient('pcloud');
     mockDynamicClientRegistration.mockResolvedValue({
-      client_id: 'registered-client',
-      client_secret: undefined,
+      clientMetadata: () => ({ client_id: 'registered-client' }),
       serverMetadata: () => ({
         authorization_endpoint: 'https://mcp.pcloud.com/authorize',
         token_endpoint: 'https://mcp.pcloud.com/token',

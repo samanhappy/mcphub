@@ -358,18 +358,24 @@ const registerAndPersistClient = async (
     logger.log('Successfully registered OAuth client', { serverName });
 
     // Extract client ID from the configuration
-    const clientId = (config as any).client_id || (config as any).clientId;
+    const registeredMetadata = config.clientMetadata();
+    const { client_id: clientId, client_secret: clientSecret } = registeredMetadata;
+    if (!clientId) {
+      throw new Error(`Registration for ${serverName} returned no client_id`);
+    }
     logger.log('Registered OAuth client identifier', { serverName, clientId });
 
     // Step 4: Store registered client information
     const clientInfo: RegisteredClientInfo = {
       config,
       clientId,
-      clientSecret: (config as any).client_secret, // Access client secret if available
+      clientSecret,
       registrationAccessToken: (config as any).registrationAccessToken,
       registrationClientUri: (config as any).registrationClientUri,
-      expiresAt: (config as any).client_secret_expires_at
-        ? (config as any).client_secret_expires_at * 1000
+      expiresAt:
+        typeof registeredMetadata.client_secret_expires_at === 'number' &&
+        registeredMetadata.client_secret_expires_at
+        ? registeredMetadata.client_secret_expires_at * 1000
         : undefined,
       metadata: config,
     };
