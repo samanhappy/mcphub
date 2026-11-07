@@ -26,6 +26,7 @@ import {
 } from '../services/mcpService.js';
 import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
+import { withOAuthPendingAuthLock } from '../services/replicaLock.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import type { ServerInfo } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -398,7 +399,13 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       try {
         logger.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
         const currentTransport = serverInfo.transport as any;
-        await currentTransport.finishAuth(codeParam, issParam);
+        // Hold the per-server OAuth lock during the token exchange so a
+        // concurrent reconnect cannot overwrite pendingAuthorization between
+        // this callback's state check and the provider's codeVerifier lookup.
+        // Nested provider lock acquisition is reentrant (see replicaLock).
+        await withOAuthPendingAuthLock(serverInfo.name, 'shared', () =>
+          currentTransport.finishAuth(codeParam, issParam),
+        );
 
         // The state has served its purpose: the code was exchanged and the
         // server now holds the resulting tokens. Mark it consumed so a replayed

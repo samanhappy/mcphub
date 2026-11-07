@@ -165,11 +165,23 @@ export const updatePendingAuthorization = async (
   pending: Partial<NonNullable<OAuthConfig['pendingAuthorization']>>,
 ): Promise<ServerConfigWithOAuth | undefined> => {
   return mutateOAuthSettings(serverName, ({ oauth }) => {
-    oauth.pendingAuthorization = {
-      ...(oauth.pendingAuthorization || {}),
+    const existing = oauth.pendingAuthorization;
+    // A codeVerifier is bound to the state it was generated for. When a new
+    // state replaces the previous one without a verifier of its own, drop the
+    // stale verifier instead of keeping a mismatched (state, verifier) pair.
+    const stateChanged =
+      pending.state !== undefined && pending.state !== existing?.state;
+    const next: NonNullable<OAuthConfig['pendingAuthorization']> = {
+      ...(existing || {}),
       ...pending,
-      createdAt: pending.createdAt ?? Date.now(),
+      codeVerifier: pending.codeVerifier ?? (stateChanged ? undefined : existing?.codeVerifier),
     };
+    if (next.codeVerifier === undefined) delete next.codeVerifier;
+    // Anchor the flow TTL to the start of the flow: only refresh createdAt
+    // when the state actually changes, not on verifier-only updates.
+    next.createdAt =
+      pending.createdAt ?? (stateChanged || !existing?.createdAt ? Date.now() : existing.createdAt);
+    oauth.pendingAuthorization = next;
   });
 };
 

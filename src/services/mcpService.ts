@@ -1,7 +1,7 @@
 import { getToolPolicy } from './toolPolicyService.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isReplicaMode } from '../utils/replicaMode.js';
-import { withReplicaLock } from './replicaLock.js';
+import { withKeyedLock, withReplicaLock } from './replicaLock.js';
 import type { ToolPolicyAudit } from '../types/index.js';
 import { projectGroupToolName, assertValidGroupToolNames } from '../utils/groupToolNames.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
@@ -3849,50 +3849,57 @@ export const toggleServerStatus = async (
   name: string,
   enabled: boolean,
 ): Promise<{ success: boolean; message?: string }> => {
-  try {
-    await getServerDao().setEnabled(name, enabled);
-    // If disabling, disconnect the server and remove from active servers
-    if (!enabled) {
-      closeServer(name);
+  // Serialize enable/disable toggles per server: two toggles in quick
+  // succession would otherwise run overlapping `initializeClientsFromSettings`
+  // passes, spawning concurrent transports whose OAuth `state()` /
+  // `saveCodeVerifier()` / `redirectToAuthorization()` calls interleave and
+  // overwrite each other's `pendingAuthorization` (state + PKCE verifier).
+  return withKeyedLock(`server-status:${name}`, async () => {
+    try {
+      await getServerDao().setEnabled(name, enabled);
+      // If disabling, disconnect the server and remove from active servers
+      if (!enabled) {
+        closeServer(name);
 
-      // Update the server info to show as disconnected and disabled
-      const index = serverInfos.findIndex((s) => s.name === name);
-      if (index !== -1) {
-        serverInfos[index] = {
-          ...serverInfos[index],
-          status: 'disconnected',
-          enabled: false,
-        };
+        // Update the server info to show as disconnected and disabled
+        const index = serverInfos.findIndex((s) => s.name === name);
+        if (index !== -1) {
+          serverInfos[index] = {
+            ...serverInfos[index],
+            status: 'disconnected',
+            enabled: false,
+          };
+        }
+
+        // Remove tool embeddings when server is disabled (for smart routing consistency)
+        try {
+          await removeServerToolEmbeddings(name);
+          logger.log(`Removed tool embeddings for disabled server: ${name}`);
+        } catch (embeddingError) {
+          logger.warn('Failed to remove embeddings for server', {
+            serverName: name,
+            error: summarizeErrorForLogging(embeddingError),
+          });
+        }
+      } else {
+        // If enabling, reconnect the server to restore connection and sync tool embeddings
+        try {
+          await initializeClientsFromSettings(false, name);
+          logger.log(`Re-enabled server ${name} and triggered tool embedding sync`);
+        } catch (reconnectError) {
+          logger.warn('Failed to reconnect server during enable', {
+            serverName: name,
+            error: summarizeErrorForLogging(reconnectError),
+          });
+        }
       }
 
-      // Remove tool embeddings when server is disabled (for smart routing consistency)
-      try {
-        await removeServerToolEmbeddings(name);
-        logger.log(`Removed tool embeddings for disabled server: ${name}`);
-      } catch (embeddingError) {
-        logger.warn('Failed to remove embeddings for server', {
-          serverName: name,
-          error: summarizeErrorForLogging(embeddingError),
-        });
-      }
-    } else {
-      // If enabling, reconnect the server to restore connection and sync tool embeddings
-      try {
-        await initializeClientsFromSettings(false, name);
-        logger.log(`Re-enabled server ${name} and triggered tool embedding sync`);
-      } catch (reconnectError) {
-        logger.warn('Failed to reconnect server during enable', {
-          serverName: name,
-          error: summarizeErrorForLogging(reconnectError),
-        });
-      }
+      return { success: true, message: `Server ${enabled ? 'enabled' : 'disabled'} successfully` };
+    } catch (error) {
+      logger.error('Failed to toggle server status', { serverName: name, error });
+      return { success: false, message: 'Failed to toggle server status' };
     }
-
-    return { success: true, message: `Server ${enabled ? 'enabled' : 'disabled'} successfully` };
-  } catch (error) {
-    logger.error('Failed to toggle server status', { serverName: name, error });
-    return { success: false, message: 'Failed to toggle server status' };
-  }
+  });
 };
 
 type McpAppsRouteContext = {

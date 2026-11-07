@@ -25,3 +25,51 @@ export const withReplicaLock = async <T>(scope: string, action: () => Promise<T>
     }
   }
 };
+
+/**
+ * In-process, reentrant, per-key promise-chain lock. `withReplicaLock` above
+ * is a no-op outside replica mode because there is no cross-process lock to
+ * take; this keeps same-key async work serialized within a single process
+ * (e.g. a server's OAuth flows) in both modes.
+ */
+const heldKeyedLocks = new AsyncLocalStorage<Set<string>>();
+const keyedQueues = new Map<string, Promise<unknown>>();
+
+export const withKeyedLock = async <T>(key: string, action: () => Promise<T>): Promise<T> => {
+  if (heldKeyedLocks.getStore()?.has(key)) return action();
+
+  const previous = keyedQueues.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const next = previous.catch(() => undefined).then(() => gate);
+  keyedQueues.set(key, next);
+  await previous.catch(() => undefined);
+
+  const held = new Set(heldKeyedLocks.getStore());
+  held.add(key);
+  try {
+    return await heldKeyedLocks.run(held, action);
+  } finally {
+    release();
+    if (keyedQueues.get(key) === next) keyedQueues.delete(key);
+  }
+};
+
+/**
+ * Serialize one server's pending-OAuth writes (state + PKCE verifier) and the
+ * callback's token exchange within this process, keyed by server name and
+ * credential scope. Concurrent `connect()` calls (e.g. a double
+ * enable/disable toggle) otherwise interleave on `pendingAuthorization`, and
+ * a callback can exchange a code against a verifier stored for the wrong
+ * state (`invalid_grant: Invalid PKCE code_verifier`).
+ */
+export const withOAuthPendingAuthLock = async <T>(
+  serverName: string,
+  username: string,
+  action: () => Promise<T>,
+): Promise<T> =>
+  withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
+    withKeyedLock(JSON.stringify(['oauth-flow', serverName, username]), action),
+  );
