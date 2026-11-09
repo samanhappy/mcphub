@@ -32,6 +32,9 @@ test('persists across DAO instances, atomically replaces one principal, and stay
     principal: 'alice',
   });
   expect(fs.existsSync(mockSettingsPath)).toBe(false);
-  expect(fs.statSync(`${mockSettingsPath}.capabilities.json`).mode & 0o777).toBe(0o600);
+  if (process.platform !== 'win32') {
+    // Windows has no POSIX permission bits; Node reports 0o666 for every regular file.
+    expect(fs.statSync(`${mockSettingsPath}.capabilities.json`).mode & 0o777).toBe(0o600);
+  }
   expect(fs.readdirSync(directory)).toEqual(['settings.json.capabilities.json']);
 });

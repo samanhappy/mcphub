@@ -70,9 +70,12 @@ describe('file OAuth approval persistence', () => {
   it('keeps consent outside configuration and writes owner-only files', async () => {
     await new OAuthApprovalDaoImpl().save(approval());
     expect(fs.existsSync(process.env.MCPHUB_SETTING_PATH!)).toBe(false);
-    expect(fs.statSync(`${process.env.MCPHUB_SETTING_PATH}.approvals.json`).mode & 0o777).toBe(
-      0o600,
-    );
+    if (process.platform !== 'win32') {
+      // Windows has no POSIX permission bits; Node reports 0o666 for every regular file.
+      expect(fs.statSync(`${process.env.MCPHUB_SETTING_PATH}.approvals.json`).mode & 0o777).toBe(
+        0o600,
+      );
+    }
   });
 
   it('fails closed on corrupt storage instead of forgetting revocations or overwriting state', async () => {

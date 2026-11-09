@@ -5,7 +5,10 @@ import { execFileSync } from 'child_process';
 
 const projectRoot = path.resolve(__dirname, '../..');
 
-describe('Docker settings path selection', () => {
+// The entrypoint is a bash script for the Linux image; Windows has no /bin/bash to run it.
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('Docker settings path selection', () => {
   let directory: string;
 
   beforeEach(() => {

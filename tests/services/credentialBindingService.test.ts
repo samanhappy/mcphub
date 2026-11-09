@@ -67,7 +67,10 @@ test('encrypts at rest, isolates email principals, and returns status only', asy
   );
   const file = `${process.env.MCPHUB_SETTING_PATH}.credentials.json`;
   expect(fs.readFileSync(file, 'utf8')).not.toContain('-sentinel');
-  expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+  if (process.platform !== 'win32') {
+    // Windows has no POSIX permission bits; Node reports 0o666 for every regular file.
+    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+  }
   expect(
     (await resolveCredentialBinding('shared', 'alice@example.com', stdio)).config.env?.PERSONAL_KEY,
   ).toBe('alice@example.com-sentinel');
@@ -279,7 +282,9 @@ test('generates one private persistent key and reuses it after loading a fresh s
   const keyFile = `${process.env.MCPHUB_SETTING_PATH}.credentials.key`;
   const key = fs.readFileSync(keyFile, 'utf8').trim();
   expect(Buffer.from(key, 'base64')).toHaveLength(32);
-  expect(fs.statSync(keyFile).mode & 0o777).toBe(0o600);
+  if (process.platform !== 'win32') {
+    expect(fs.statSync(keyFile).mode & 0o777).toBe(0o600);
+  }
   expect(process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY).toBeUndefined();
   await jest.isolateModulesAsync(async () => {
     const fresh = await import('../../src/services/credentialBindingService.js');

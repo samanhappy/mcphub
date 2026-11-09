@@ -54,7 +54,7 @@ describe('isProcessTreeKillAvailable', () => {
     jest
       .spyOn(fs, 'accessSync')
       .mockImplementation(((candidate: fs.PathLike) => {
-        if (String(candidate) === '/usr/bin/ps') return undefined;
+        if (String(candidate) === path.join('/usr/bin', 'ps')) return undefined;
         throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       }) as typeof fs.accessSync);
     expect(isProcessTreeKillAvailable()).toBe(true);
@@ -82,7 +82,7 @@ describe('isProcessTreeKillAvailable', () => {
 
     // ps appears afterwards — cached result must stay false until reset.
     accessSync.mockImplementation(((candidate: fs.PathLike) => {
-      if (String(candidate) === '/bin/ps') return undefined;
+      if (String(candidate) === path.join('/bin', 'ps')) return undefined;
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     }) as typeof fs.accessSync);
     expect(isProcessTreeKillAvailable()).toBe(false);
