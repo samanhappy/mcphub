@@ -37,6 +37,7 @@ import http from 'http';
 import type { Socket } from 'net';
 import { mcpConnectionRateLimiter, spaPageRateLimiter } from './utils/rateLimit.js';
 import { closeHttpServer } from './utils/serverShutdown.js';
+import { formatBoundAddress, listenOnAddress, resolveDisplayHost } from './utils/listenAddress.js';
 import { logger } from './utils/logger.js';
 
 /**
@@ -62,6 +63,7 @@ export class AppServer {
   private server: http.Server | null = null;
   private connections = new Set<Socket>();
   private port: number | string;
+  private host: string | undefined;
   private frontendPath: string | null = null;
   private basePath: string;
   private disableWeb: boolean;
@@ -88,6 +90,7 @@ export class AppServer {
       ),
     );
     this.port = config.port;
+    this.host = config.host;
     this.basePath = config.basePath;
     this.disableWeb = isWebDisabled();
   }
@@ -267,16 +270,33 @@ export class AppServer {
   }
 
   start(): void {
-    this.server = this.app.listen(this.port, () => {
-      logger.log(`Server is running on port ${this.port}`);
-      if (this.frontendPath && !this.disableWeb) {
-        logger.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
-      } else {
+    this.server = listenOnAddress(
+      this.app,
+      this.port,
+      this.host,
+      () => {
+        const displayUrl = `http://${resolveDisplayHost(this.host)}:${this.port}`;
         logger.log(
-          `MCPHub API is running on http://localhost:${this.port}, but the UI is not available`,
+          `Server is running on port ${this.port} (bound to ${formatBoundAddress(this.server?.address())})`,
         );
-      }
-    });
+        if (this.frontendPath && !this.disableWeb) {
+          logger.log(`Open ${displayUrl} in your browser to access MCPHub UI`);
+        } else {
+          logger.log(`MCPHub API is running on ${displayUrl}, but the UI is not available`);
+        }
+      },
+      (error) => {
+        // Without this handler the error reaches the uncaught-exception guard, which logs it
+        // and continues: the process then either keeps running with no HTTP listener or exits
+        // with status 0, depending on what else holds the event loop open.
+        logger.error(
+          `[FATAL] Cannot listen on ${this.host ?? 'all interfaces'}:${this.port} (${error.code ?? error.message}); exiting`,
+        );
+        // Upstream stdio servers may already be starting; stop them rather than orphan them.
+        cleanupAllServers();
+        process.exit(1);
+      },
+    );
     this.server.on('connection', (socket) => {
       this.connections.add(socket);
       socket.once('close', () => this.connections.delete(socket));
