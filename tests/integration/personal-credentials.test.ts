@@ -12,7 +12,7 @@ jest.mock('openid-client', () => ({}));
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { Server as HttpServer } from 'node:http';
 import express from 'express';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
@@ -1262,6 +1262,142 @@ test('upstream tool errors preserve diagnosis, redact personal values, and keep 
   const after = parseIdentity(await client.callTool({ name }));
   expect(after.pid).toBe(before.pid);
 });
+
+test.each(['idle-expiry', 'restart'] as const)(
+  'personal OAuth recovers after %s without replaying calls or replacing another user',
+  async (scenario) => {
+    const name = `sessionRecovery-${scenario}`;
+    const endpoint = `/session-recovery-${scenario}`;
+    const sessions = new Map<
+      string,
+      { transport: NodeStreamableHTTPServerTransport; owner: string }
+    >();
+    const resources: { transport: NodeStreamableHTTPServerTransport; upstream: McpServer }[] = [];
+    const handshakes: string[] = [];
+    const calls: string[] = [];
+    const { PersonalOAuthContext } = await import('../../src/services/personalOAuthService.js');
+    app.all(endpoint, async (req, res) => {
+      const sid = req.headers['mcp-session-id'] as string | undefined;
+      if (sid) {
+        const session = sessions.get(sid);
+        if (!session) {
+          res.status(404).json({
+            jsonrpc: '2.0',
+            id: req.body?.id ?? null,
+            error: {
+              code: -32001,
+              message:
+                'Session not found. Please re-initialize by calling initialize without mcp-session-id header.',
+            },
+          });
+          return;
+        }
+        expect(req.headers.authorization).toBe(session.owner);
+        await session.transport.handleRequest(req, res, req.body);
+        return;
+      }
+      if (req.body?.method !== 'initialize') {
+        res.status(400).end();
+        return;
+      }
+      const owner = req.headers.authorization!;
+      handshakes.push(owner);
+      const upstream = new McpServer({ name, version: '1' }, { capabilities: { tools: {} } });
+      upstream.setRequestHandler('tools/list', async () => ({
+        tools: [
+          {
+            name: 'write',
+            inputSchema: { type: 'object' },
+          },
+        ],
+      }));
+      upstream.setRequestHandler('tools/call', async () => {
+        calls.push(owner);
+        return { content: [{ type: 'text', text: JSON.stringify({ credential: owner }) }] };
+      });
+      const transport = new NodeStreamableHTTPServerTransport({
+        sessionIdGenerator: randomUUID,
+        onsessioninitialized: (sessionId) => {
+          sessions.set(sessionId, { transport, owner });
+        },
+      });
+      resources.push({ transport, upstream });
+      await upstream.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
+    await getServerDao().create({
+      name,
+      type: 'streamable-http',
+      owner: 'admin',
+      visibility: 'public',
+      url: `${baseUrl}${endpoint}`,
+      idleTimeoutMs: 60_000,
+      oauth: { identityMode: 'personal', clientId: 'client' },
+    });
+    const definition = (await getServerDao().findById(name))!;
+    for (const username of [alice, bob]) {
+      const context = await PersonalOAuthContext.load(name, username, definition);
+      await context.persistTokens(name, { accessToken: `session-token-${username}` });
+    }
+    jest.mocked(createOAuthProvider).mockImplementation(async (serverName, config) => {
+      if (config.oauth?.identityMode !== 'personal') return undefined;
+      return jest
+        .requireActual('../../src/services/mcpOAuthProvider.js')
+        .createOAuthProvider(serverName, config);
+    });
+    await initializeClientsFromSettings(true);
+    try {
+      const [a, b] = await Promise.all([connect(alice, name), connect(bob, name)]);
+      const tool = `${name}${getNameSeparator()}write`;
+      const aOwner = `Bearer session-token-${alice}`;
+      const bOwner = `Bearer session-token-${bob}`;
+      expect(parseIdentity(await a.callTool({ name: tool })).credential).toBe(aOwner);
+      expect(parseIdentity(await b.callTool({ name: tool })).credential).toBe(bOwner);
+      const savedBindings = await Promise.all(
+        [alice, bob].map((username) => getCredentialBindingDao().get(name, username)),
+      );
+      // Drop only the server-side session registration: the TCP connection and
+      // OAuth grant are still valid, as with a real upstream session eviction.
+      for (const [sid, session] of sessions) {
+        if (scenario === 'restart' || session.owner === aOwner) sessions.delete(sid);
+      }
+      const before = calls.length;
+      const failures = await Promise.all([a.callTool({ name: tool }), a.callTool({ name: tool })]);
+      expect(failures.every((result) => result.isError)).toBe(true);
+      expect(failures.every((result) => JSON.stringify(result).includes('Session not found'))).toBe(
+        true,
+      );
+      expect(calls).toHaveLength(before); // No automatic write replay.
+      const recovered = await Promise.all([a.callTool({ name: tool }), a.callTool({ name: tool })]);
+      expect(recovered.map(parseIdentity).map((result) => result.credential)).toEqual([
+        aOwner,
+        aOwner,
+      ]);
+      expect(handshakes.filter((owner) => owner === aOwner)).toHaveLength(2);
+      if (scenario === 'restart') {
+        expect((await b.callTool({ name: tool })).isError).toBe(true);
+        expect(parseIdentity(await b.callTool({ name: tool })).credential).toBe(bOwner);
+        expect(handshakes.filter((owner) => owner === bOwner)).toHaveLength(2);
+      } else {
+        expect(parseIdentity(await b.callTool({ name: tool })).credential).toBe(bOwner);
+        expect(handshakes.filter((owner) => owner === bOwner)).toHaveLength(1);
+      }
+      expect(
+        await Promise.all(
+          [alice, bob].map((username) => getCredentialBindingDao().get(name, username)),
+        ),
+      ).toEqual(savedBindings);
+    } finally {
+      jest.mocked(createOAuthProvider).mockReset();
+      await getCredentialBindingDao().delete({ serverName: name });
+      await getServerDao().delete(name);
+      for (const { transport, upstream } of resources) {
+        await transport.close();
+        await upstream.close();
+      }
+    }
+  },
+);
 
 test('HTTP handshake failures survive acquisition wrappers without credential blame or secret logs', async () => {
   app.post('/unavailable-upstream', (_req, res) =>

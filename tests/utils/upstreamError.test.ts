@@ -47,6 +47,34 @@ test('only known connection failures invalidate a runtime', () => {
   expect(isUpstreamConnectionFailure({ code: 'ETIMEDOUT' })).toBe(false);
 });
 
+test.each([
+  { status: 404, code: 'CLIENT_HTTP_NOT_IMPLEMENTED' },
+  { response: { status: 404 } },
+  { code: 404 },
+  { status: '404' },
+])('invalidates an explicitly missing HTTP session: %j', (metadata) => {
+  const error = Object.assign(
+    new Error(
+      'Error POSTing to endpoint: {"error":{"code":-32001,"message":"Session not found. Please re-initialize by calling initialize without mcp-session-id header."}}',
+    ),
+    metadata,
+  );
+  expect(isUpstreamConnectionFailure(error)).toBe(true);
+});
+
+test.each([
+  { status: 404, message: 'Tool not found' },
+  { status: 404, message: 'Endpoint not found' },
+  { status: 401, message: 'Session not found' },
+  { status: 403, message: 'Session not found' },
+  { status: 500, message: 'Session not found' },
+  { message: 'Session not found' },
+  { code: -32001, message: 'Session not found' },
+  { code: 'ETIMEDOUT', message: 'Session not found' },
+])('does not invalidate unrelated or ambiguous failures: %j', (error) => {
+  expect(isUpstreamConnectionFailure(error)).toBe(false);
+});
+
 test('redacts opaque authorization values even when the scheme is omitted by the upstream', () => {
   const failure = createUpstreamRequestError(
     'github',
