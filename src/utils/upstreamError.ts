@@ -92,7 +92,23 @@ export const createUpstreamRequestError = (
 
 export const isUpstreamConnectionFailure = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') return false;
-  const code = (error as { code?: unknown }).code;
+  const record = error as {
+    code?: unknown;
+    status?: unknown;
+    response?: { status?: unknown };
+    message?: unknown;
+  };
+  const code = record.code;
+  const status = record.status ?? record.response?.status ?? code;
+  // A missing HTTP session must be initialized again. Mark the personal runtime
+  // disconnected so its next acquisition rebuilds it without replaying this call.
+  if (
+    (status === 404 || status === '404') &&
+    typeof record.message === 'string' &&
+    /\bsession not found\b/i.test(record.message)
+  ) {
+    return true;
+  }
   return (
     typeof code === 'string' && ['ECONNRESET', 'EPIPE', 'ENOTCONN', 'ECONNREFUSED'].includes(code)
   );
