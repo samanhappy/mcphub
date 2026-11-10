@@ -11,6 +11,7 @@ import {
   PersonalOAuthContext,
   personalOAuthContexts,
   personalAuthorizationRequired,
+  PersonalAuthorizationRequiredError,
 } from './personalOAuthService.js';
 import {
   preserveListFreshness,
@@ -73,7 +74,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPClientTransportOptions,
 } from '../clients/mcpSdkClient.js';
-import { Server, ServerCapabilities } from '@modelcontextprotocol/server';
+import { ProtocolError, Server, ServerCapabilities } from '@modelcontextprotocol/server';
 import type {
   Prompt as McpPrompt,
   Resource as McpResource,
@@ -5980,9 +5981,25 @@ const withPrincipalServers =
               : { ...request, params: { ...request.params, name: `${prefix}${requestedName}` } };
         }
       }
-      return await principalServerScope.run([...scoped.values()], () =>
+      const result = await principalServerScope.run([...scoped.values()], () =>
         handler(resolvedRequest, extra),
       );
+      if (operation === 'tools-list' && result.tools?.length === 0) {
+        const authorizationFailures = [...failures].filter(
+          ([, error]) => error instanceof PersonalAuthorizationRequiredError,
+        );
+        if (authorizationFailures.length) {
+          throw new ProtocolError(
+            -32000,
+            authorizationFailures.map(([, error]) => error.message).join(' '),
+            {
+              code: 'PERSONAL_AUTHORIZATION_REQUIRED',
+              servers: authorizationFailures.map(([name]) => name),
+            },
+          );
+        }
+      }
+      return result;
     } finally {
       for (const release of releases) release();
     }
