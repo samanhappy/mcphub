@@ -331,7 +331,9 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
       if (key.accessType === 'groups') {
         // For group-scoped keys, check if the matched group is in allowedGroups
         const allowedGroups = key.allowedGroups || [];
-        return allowedGroups.includes(matchedGroup.name) || allowedGroups.includes(matchedGroup.id);
+        return key.kind === 'user'
+          ? allowedGroups.includes(matchedGroup.id)
+          : allowedGroups.includes(matchedGroup.name) || allowedGroups.includes(matchedGroup.id);
       }
 
       if (key.accessType === 'servers') {

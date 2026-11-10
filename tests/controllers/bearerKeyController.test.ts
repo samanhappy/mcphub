@@ -195,7 +195,7 @@ describe('bearerKeyController', () => {
   it('accepts and deduplicates group IDs on administrator-created personal keys', async () => {
     const id = '11111111-1111-4111-8111-111111111111';
     mockFindUserByUsername.mockResolvedValue({ username: 'alice' });
-    mockFindGroupByName.mockResolvedValue(null);
+    mockFindGroupByName.mockResolvedValue({ id: 'unrelated-id', name: id });
     mockFindGroupById.mockResolvedValue({ id, name: 'admins' });
     mockCreate.mockImplementation(async (data) => ({ id: 'key-1', ...data }));
     await createBearerKey(

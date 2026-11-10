@@ -9,6 +9,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 import { getBearerKeyDao, getGroupDao, getSystemConfigDao } from '../../src/dao/index.js';
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
+import { mcpConnectionRateLimiter } from '../../src/utils/rateLimit.js';
 import {
   handleMcpOtherRequest,
   handleMcpPostRequest,
@@ -145,11 +146,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   for (const route of ['/mcp', '/mcp/:group(*)', '/:user/mcp/:group(*)']) {
-    app.post(route, sseUserContextMiddleware, handleMcpPostRequest);
-    app.get(route, sseUserContextMiddleware, handleMcpOtherRequest);
-    app.delete(route, sseUserContextMiddleware, handleMcpOtherRequest);
+    app.post(route, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
+    app.get(route, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
+    app.delete(route, mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpOtherRequest);
   }
-  app.post('/messages', sseUserContextMiddleware, handleSseMessage);
+  app.post('/messages', mcpConnectionRateLimiter, sseUserContextMiddleware, handleSseMessage);
   server = await new Promise<HttpServer>((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
   });
@@ -329,6 +330,22 @@ it('fails closed for empty or stale scopes and a deleted/recreated group', async
   settings.groups.push(group);
   fs.writeFileSync(process.env.MCPHUB_SETTING_PATH!, JSON.stringify(settings));
   clearSettingsCache();
+});
+
+it('does not confuse another group name with a persisted group ID', async () => {
+  const collision = await getGroupDao().create({
+    name: teamId,
+    servers: ['outside'],
+    owner: 'admin',
+    visibility: 'public',
+  });
+  try {
+    expect((await initialize(`/mcp/${collision.id}`)).status).toBe(401);
+    expect((await initialize(`/mcp/${teamId}`)).status).toBe(401);
+    expect((await initialize('/mcp/team')).status).toBe(200);
+  } finally {
+    await getGroupDao().delete(collision.id);
+  }
 });
 
 it('keeps personal-key restrictions when bearer authentication is disabled', async () => {

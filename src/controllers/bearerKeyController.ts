@@ -85,10 +85,9 @@ const resolvePersonalScope = async (
     const dao = getGroupDao();
     for (const reference of allowedGroups as string[]) {
       const group =
-        (await dao.findByName(reference)) ||
         (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference)
           ? await dao.findById(reference)
-          : null);
+          : null) || (await dao.findByName(reference));
       if (!group) {
         res.status(400).json({ success: false, message: 'Allowed group not found' });
         return;
