@@ -36,8 +36,10 @@ export const withPersonalOAuthLock = <T>(
 ): Promise<T> => withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
   serialize(JSON.stringify([serverName, username]), action));
 
+export class PersonalAuthorizationRequiredError extends CredentialBindingError {}
+
 export const personalAuthorizationRequired = (name: string) =>
-  new CredentialBindingError(
+  new PersonalAuthorizationRequiredError(
     `Personal authorization required for '${name}'. Connect in Dashboard → Servers.`,
   );
 
