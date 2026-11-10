@@ -2005,10 +2005,10 @@ test('consumer OAuth reports missing personal authorization and recovers after s
   });
   await initOAuthServer();
   app.use(express.urlencoded({ extended: false }));
-  app.post('/oauth/authorize', postAuthorize);
-  app.post('/oauth/token', postToken);
-  app.post('/api/servers/:name/oauth/personal', managePersonalOAuth);
-  app.get('/oauth/callback', handleOAuthCallback);
+  app.post('/oauth/authorize', mcpConnectionRateLimiter, postAuthorize);
+  app.post('/oauth/token', mcpConnectionRateLimiter, postToken);
+  app.post('/api/servers/:name/oauth/personal', authenticatedRouteRateLimiter, managePersonalOAuth);
+  app.get('/oauth/callback', mcpConnectionRateLimiter, handleOAuthCallback);
   let upstreamRequests = 0;
   let upstreamExchanges = 0;
   let challenge: string | null = null;
