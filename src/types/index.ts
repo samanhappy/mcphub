@@ -683,6 +683,7 @@ export interface ServerInfo {
   tools: Tool[]; // List of tools available on the server
   prompts: Prompt[]; // List of prompts available on the server
   resources: Resource[]; // List of resources available on the server
+  resourceTemplates?: UpstreamResourceTemplate[]; // Last listed resource templates; undefined until a listing succeeds
   client?: Client; // Client instance for communication (MCP clients)
   transport?: SSEClientTransport | StdioClientTransport | StreamableHTTPClientTransport; // Transport mechanism used
   openApiClient?: any; // OpenAPI client instance for openapi type servers
@@ -742,6 +743,11 @@ export interface PromptArgument {
   description?: string; // Brief description of the argument
   required?: boolean; // Whether the argument is required
 }
+
+// Resource template listed by a connected MCP server
+export type UpstreamResourceTemplate = Awaited<
+  ReturnType<import('@modelcontextprotocol/client').Client['listResourceTemplates']>
+>['resourceTemplates'][number];
 
 // Resource exposed by a connected MCP server
 export interface Resource {

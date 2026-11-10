@@ -33,6 +33,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
+import { uriMatchesResourceTemplate } from '../utils/resourceTemplateMatch.js';
 import {
   assertToolCallArgumentsSafe,
   isToolCallGuardEnabled,
@@ -97,6 +98,7 @@ import {
   IGroup,
   IGroupServerConfig,
   IUser,
+  UpstreamResourceTemplate,
 } from '../types/index.js';
 import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
@@ -1197,6 +1199,37 @@ const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResour
   serverInfo.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
 };
 
+const updateServerResourceTemplatesCache = (
+  serverInfo: ServerInfo,
+  resourceTemplates: UpstreamResourceTemplate[] | undefined,
+): void => {
+  serverInfo.resourceTemplates = Array.isArray(resourceTemplates) ? resourceTemplates : [];
+};
+
+// Best effort: many servers do not implement resources/templates/list.
+const refreshServerResourceTemplatesCache = async (
+  getTarget: () => ServerInfo | undefined,
+  client: Client,
+  options?: RequestOptions,
+  owner: Client = client,
+): Promise<UpstreamResourceTemplate[] | undefined> => {
+  try {
+    if (!client.getServerCapabilities?.()?.resources) return undefined;
+    const { resourceTemplates } = await client.listResourceTemplates({}, options || {});
+    const target = getTarget();
+    if (target && target.client === owner) {
+      updateServerResourceTemplatesCache(target, resourceTemplates);
+    }
+    return resourceTemplates;
+  } catch (error) {
+    logger.debug('Failed to list resource templates for server', {
+      serverName: getTarget()?.name,
+      error: summarizeErrorForLogging(error),
+    });
+    return undefined;
+  }
+};
+
 // Modern HTTP has no list-changed push stream. Refresh only the lists needed
 // by the current request; TTL and in-flight work are scoped to the live client.
 const refreshModernServerLists = async (
@@ -1335,6 +1368,14 @@ const createUpstreamMcpClient = (
             }
             updateServerResourcesCache(serverInfo, resources);
             broadcastResourceListChanged();
+            // Templates have no list-changed notification of their own.
+            if (serverInfo.client) {
+              void refreshServerResourceTemplatesCache(
+                getServerInfo,
+                serverInfo.client,
+                serverInfo.options,
+              );
+            }
           },
         },
       },
@@ -2688,6 +2729,11 @@ export const initializeClientsFromSettings = async (
           }
 
           if (capabilities?.resources) {
+            void refreshServerResourceTemplatesCache(
+              liveServerInfo,
+              client,
+              initRequestOptions || requestOptions,
+            );
             client
               .listResources({}, initRequestOptions || requestOptions)
               .then((resources) => {
@@ -3637,6 +3683,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
       }
     }
     if (capabilities?.resources) {
+      void refreshServerResourceTemplatesCache(() => serverInfo, client, requestOptions);
       try {
         const resources = await client.listResources({}, requestOptions);
         resourceCount = resources.resources.length;
@@ -3745,6 +3792,7 @@ export const resetServerOAuthConnection = (name: string): boolean => {
   serverInfo.tools = [];
   serverInfo.prompts = [];
   serverInfo.resources = [];
+  serverInfo.resourceTemplates = undefined;
   serverInfo.oauth = undefined;
 
   broadcastToolListChanged();
@@ -5348,8 +5396,12 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
         return [];
       }
 
-      const templates = await serverInfo.client.listResourceTemplates({}, serverInfo.options || {});
+      const client = serverInfo.client;
+      const templates = await client.listResourceTemplates({}, serverInfo.options || {});
       snapshots.push(templates.resourceTemplates);
+      if (serverInfo.client === client) {
+        updateServerResourceTemplatesCache(serverInfo, templates.resourceTemplates);
+      }
       const filteredTemplates = await filterResourceTemplatesByGroup(
         lookupGroup,
         serverInfo.name,
@@ -5372,6 +5424,91 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
     combineListFreshness(snapshots, resourceTemplates);
   }
   return { resourceTemplates };
+};
+
+const TEMPLATE_LIST_RETRY_MS = 60_000;
+const templateListFailedAt = new WeakMap<object, number>();
+
+const getReadableResourceTemplates = async (
+  serverInfo: ServerInfo,
+  uri: string,
+  lookupGroup: string | undefined,
+  groupServerConfig: IGroupServerConfig | undefined,
+): Promise<UpstreamResourceTemplate[]> => {
+  const serverConfig = await getServerDao().findById(serverInfo.name);
+  const groupConfig = await getGroupServerConfig(lookupGroup, serverInfo.name, groupServerConfig);
+  if (
+    serverConfig?.resources?.[uri]?.enabled === false ||
+    (Array.isArray(groupConfig?.resources) && groupConfig.resources.length === 0)
+  ) {
+    return [];
+  }
+  const client = serverInfo.client;
+  // Modern upstreams have no list-changed stream, so honor the templates' own TTL.
+  const modern = client?.getProtocolEra?.() === 'modern';
+  if (
+    (serverInfo.resourceTemplates === undefined || modern) &&
+    serverInfo.status === 'connected' &&
+    client &&
+    (templateListFailedAt.get(client) ?? -Infinity) < Date.now() - TEMPLATE_LIST_RETRY_MS
+  ) {
+    const refresh = async () => {
+      const listed = await refreshServerResourceTemplatesCache(
+        () => serverInfo,
+        client,
+        serverInfo.options,
+      );
+      if (listed === undefined) {
+        templateListFailedAt.set(client, Date.now());
+      }
+    };
+    await (modern ? revalidateUpstreamList(client, 'templates', refresh) : refresh());
+  }
+  const templates = serverInfo.resourceTemplates;
+  if (!templates?.length) {
+    return [];
+  }
+  const enabled = templates.filter(
+    (template) => serverConfig?.resources?.[template.uriTemplate]?.enabled !== false,
+  );
+  if (
+    !groupConfig ||
+    !Array.isArray(groupConfig.resources) ||
+    groupConfig.resources.includes(uri)
+  ) {
+    return enabled;
+  }
+  // Listing shows templates under any selected prefix; reading needs the template itself selected.
+  const selected = new Set(groupConfig.resources);
+  return enabled.filter((template) => selected.has(template.uriTemplate));
+};
+
+const findResourceTemplateServer = async (
+  uri: string,
+  lookupGroup: string | undefined,
+  filteredServerInfos: ServerInfo[],
+  serverConfigsByName: Map<string, IGroupServerConfig>,
+): Promise<ServerInfo | undefined> => {
+  for (const serverInfo of filteredServerInfos) {
+    // Idle on-demand servers keep cached templates; the read wakes them.
+    const idleOnDemand =
+      serverInfo.config?.startOnDemand === true &&
+      serverInfo.status === 'disconnected' &&
+      !serverInfo.client;
+    if (serverInfo.status !== 'connected' && !idleOnDemand) {
+      continue;
+    }
+    const templates = await getReadableResourceTemplates(
+      serverInfo,
+      uri,
+      lookupGroup,
+      serverConfigsByName.get(serverInfo.name),
+    );
+    if (templates.some((template) => uriMatchesResourceTemplate(template.uriTemplate, uri))) {
+      return serverInfo;
+    }
+  }
+  return undefined;
 };
 
 const handleReadResourceRequestImpl = async (request: any, extra: any) => {
@@ -5502,7 +5639,36 @@ const handleReadResourceRequestImpl = async (request: any, extra: any) => {
         throw new Error(`Resource not found: ${uri}`);
       }
     } else {
-      throw new Error(`Resource not found: ${uri}`);
+      const templateServer = await findResourceTemplateServer(
+        uri,
+        lookupGroup,
+        filteredServerInfos,
+        serverConfigsByName,
+      );
+      if (!templateServer) {
+        throw new Error(`Resource not found: ${uri}`);
+      }
+      const releaseOnDemandRead = beginOnDemandToolCall(templateServer);
+      try {
+        if (templateServer.config?.startOnDemand) {
+          if (!templateServer.client) {
+            await ensureServerReady(templateServer);
+          }
+          templateServer.lastUsedAt = Date.now();
+        }
+        const client = templateServer.client;
+        if (!client) {
+          throw new Error(`Resource not found: ${uri}`);
+        }
+        result = readOptions
+          ? await client.readResource({ uri }, readOptions)
+          : await client.readResource({ uri });
+      } finally {
+        releaseOnDemandRead?.();
+      }
+      if (!result || !Array.isArray(result.contents)) {
+        throw new Error(`Failed to read resource: ${uri}`);
+      }
     }
 
     return appsRouteContext.enabled
@@ -5669,6 +5835,13 @@ const createPrincipalRuntime = async (
         );
       }
       if (capabilities?.resources) {
+        // The raw client: the protected one holds the replica credential lock while listing.
+        void refreshServerResourceTemplatesCache(
+          () => info,
+          client,
+          resolvedConfig.options,
+          info.client,
+        );
         const { resources } = await client.listResources({}, resolvedConfig.options);
         info.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
       }
@@ -6530,12 +6703,14 @@ const resourceTemplateMatchesSelection = (uriTemplate: string, allowedResources:
   return false;
 };
 
-export async function filterResourceTemplatesByGroup(
+export async function filterResourceTemplatesByGroup<
+  T extends { uriTemplate?: string; _meta?: Record<string, unknown> },
+>(
   group: string | undefined,
   serverName: string,
-  resourceTemplates: Array<{ uriTemplate?: string; _meta?: Record<string, unknown> }>,
+  resourceTemplates: T[],
   serverConfig?: IGroupServerConfig,
-) {
+): Promise<T[]> {
   if (group) {
     const resolvedServerConfig = await getGroupServerConfig(group, serverName, serverConfig);
     if (
