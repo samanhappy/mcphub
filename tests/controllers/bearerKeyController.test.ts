@@ -7,6 +7,8 @@ const mockCreate = jest.fn();
 const mockUpdate = jest.fn();
 const mockDelete = jest.fn();
 const mockFindUserByUsername = jest.fn();
+const mockFindGroupById = jest.fn();
+const mockFindGroupByName = jest.fn();
 
 jest.mock('../../src/dao/index.js', () => ({
   getBearerKeyDao: jest.fn(() => ({
@@ -17,6 +19,7 @@ jest.mock('../../src/dao/index.js', () => ({
     update: mockUpdate,
     delete: mockDelete,
   })),
+  getGroupDao: jest.fn(() => ({ findById: mockFindGroupById, findByName: mockFindGroupByName })),
   getUserDao: jest.fn(() => ({
     findByUsername: mockFindUserByUsername,
   })),
@@ -48,6 +51,8 @@ const makeRes = () => {
 describe('bearerKeyController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFindGroupById.mockResolvedValue(null);
+    mockFindGroupByName.mockResolvedValue({ id: 'group-id', name: 'admins' });
   });
 
   it('lists only the current user keys and masks tokens', async () => {
@@ -104,8 +109,8 @@ describe('bearerKeyController', () => {
         name: 'cursor',
         kind: 'user',
         owner: 'alice',
-        accessType: 'all',
-        allowedGroups: [],
+        accessType: 'groups',
+        allowedGroups: ['group-id'],
         allowedServers: [],
         token: expect.stringMatching(/^mcphub_[0-9a-f]{64}$/),
       }),
@@ -118,6 +123,116 @@ describe('bearerKeyController', () => {
       }),
     );
     expect(res.json.mock.calls[0][0].data).not.toHaveProperty('tokenHash');
+  });
+
+  it('preserves unrestricted personal keys when scope is omitted', async () => {
+    mockFindUserByUsername.mockResolvedValue({ username: 'alice' });
+    mockCreate.mockImplementation(async (data) => ({ id: 'key-1', ...data }));
+    await createBearerKey(makeReq({ body: { name: 'legacy' } }), makeRes());
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ accessType: 'all', allowedGroups: [] }),
+    );
+  });
+
+  it.each([
+    { accessType: 'servers', allowedServers: ['private'] },
+    { accessType: null },
+    { accessType: 'groups', allowedGroups: null },
+    { accessType: 'groups', allowedGroups: [] },
+    { accessType: 'groups', allowedGroups: [42] },
+    { accessType: 'groups', allowedGroups: 'admins' },
+    { accessType: 'groups', allowedGroups: [''] },
+  ])('rejects invalid personal scope %j', async (scope) => {
+    mockFindUserByUsername.mockResolvedValue({ username: 'alice' });
+    const res = makeRes();
+    await createBearerKey(makeReq({ body: { name: 'agent', ...scope } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown group references', async () => {
+    mockFindUserByUsername.mockResolvedValue({ username: 'alice' });
+    mockFindGroupByName.mockResolvedValue(null);
+    const res = makeRes();
+    await createBearerKey(
+      makeReq({ body: { name: 'agent', accessType: 'groups', allowedGroups: ['missing'] } }),
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('updates the scope of an owned personal key without changing its identity', async () => {
+    mockFindById.mockResolvedValue({
+      id: 'key-1',
+      kind: 'user',
+      owner: 'alice',
+      accessType: 'all',
+    });
+    mockUpdate.mockImplementation(async (id, data) => ({ id, ...data }));
+    await updateBearerKey(
+      makeReq({
+        params: { id: 'key-1' },
+        body: {
+          accessType: 'groups',
+          allowedGroups: ['admins'],
+          kind: 'system',
+          owner: 'bob',
+          allowedServers: ['secret'],
+        },
+      }),
+      makeRes(),
+    );
+    expect(mockUpdate).toHaveBeenCalledWith('key-1', {
+      accessType: 'groups',
+      allowedGroups: ['group-id'],
+      allowedServers: [],
+      excludedGroups: [],
+      excludedServers: [],
+    });
+  });
+
+  it('accepts and deduplicates group IDs on administrator-created personal keys', async () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    mockFindUserByUsername.mockResolvedValue({ username: 'alice' });
+    mockFindGroupByName.mockResolvedValue(null);
+    mockFindGroupById.mockResolvedValue({ id, name: 'admins' });
+    mockCreate.mockImplementation(async (data) => ({ id: 'key-1', ...data }));
+    await createBearerKey(
+      makeReq({
+        user: { username: 'admin', isAdmin: true },
+        body: {
+          name: 'agent',
+          kind: 'user',
+          owner: 'alice',
+          accessType: 'groups',
+          allowedGroups: [id, id],
+        },
+      }),
+      makeRes(),
+    );
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: 'alice', accessType: 'groups', allowedGroups: [id] }),
+    );
+  });
+
+  it('can remove the restriction from an owned key', async () => {
+    mockFindById.mockResolvedValue({
+      id: 'key-1',
+      kind: 'user',
+      owner: 'alice',
+      accessType: 'groups',
+      allowedGroups: ['stale'],
+    });
+    mockUpdate.mockImplementation(async (id, data) => ({ id, ...data }));
+    await updateBearerKey(
+      makeReq({ params: { id: 'key-1' }, body: { accessType: 'all' } }),
+      makeRes(),
+    );
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'key-1',
+      expect.objectContaining({ accessType: 'all', allowedGroups: [] }),
+    );
   });
 
   it('does not allow a user to update another user key', async () => {

@@ -916,6 +916,7 @@
     "bearerKeyKindUser": "Cấp người dùng",
     "bearerKeyOwner": "Chủ sở hữu",
     "bearerKeySelectOwner": "Chọn người dùng...",
+    "bearerKeyPersonalScopeHint": "Khóa cá nhân kế thừa quyền của chủ sở hữu. Khi chọn nhóm cụ thể, khóa chỉ truy cập các điểm cuối của nhóm, gồm định tuyến thông minh; điểm cuối toàn cục và máy chủ trực tiếp bị từ chối.",
     "bearerKeyAccessUserVisibility": "Khả năng hiển thị của người dùng",
     "bearerKeyShownOnce": "Sao chép token này ngay bây giờ. Nó sẽ không được hiển thị lại.",
     "deleteBearerKeyConfirm": "Bạn có chắc chắn muốn xóa khóa này không?",

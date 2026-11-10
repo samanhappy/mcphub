@@ -81,7 +81,7 @@ Bearer keys are long-lived static tokens managed at `/api/auth/keys`. Tokens are
 | `token` | The secret value sent in the `Authorization: Bearer ...` header. |
 | `kind` | `system` for operator-managed scoped keys, or `user` for keys that inherit an owner's visibility. |
 | `owner` | Required for user-level keys. |
-| `accessType` | `all` (dashboard + MCP), or a scoped value enforced inside `sseService.ts` for MCP-only access. Scoped values are `groups`, `servers`, `custom`, and `exclude` (all resources except `excludedGroups` / `excludedServers`). |
+| `accessType` | `all` (dashboard + MCP for system keys; MCP only for personal keys), or a scoped value enforced inside `sseService.ts` for MCP-only access. Scoped values are `groups`, `servers`, `custom`, and `exclude` (all resources except `excludedGroups` / `excludedServers`). |
 | `enabled` | Disabled keys are ignored without being deleted. |
 
 Admins can create and manage all keys. Regular users can create, rename, enable, disable and delete
@@ -90,6 +90,10 @@ they are never accepted by the dashboard / management API. When used on `/mcp`, 
 group/server endpoint, MCPHub resolves the current owner record and applies that user's live server
 visibility. The optional `/:user/mcp/...` routes remain supported, but the URL username must match the
 key owner.
+
+Personal keys support `accessType: 'all'` (the default, retaining the owner's permissions) or `accessType: 'groups'` with a non-empty `allowedGroups` array. Select the scope when creating or editing a key in Settings. The API accepts existing group names or IDs and saves group IDs. A restricted key can use only `/mcp/{allowed-group}` and `/mcp/$smart/{allowed-group}` (and equivalent SSE/user-scoped routes). Global `/mcp`, global `$smart`, direct-server routes, and other groups are denied, even when the target server belongs to an allowed group. This preserves group capability selections. Multiple allowed groups are accessed through their individual endpoints, without an aggregate global catalog.
+
+The key scope always intersects with the owner's current group/server visibility and group capability selections; it never grants additional permissions. An administrator-owned personal key still obeys its group scope. Group deletion or an empty persisted allow list denies access rather than restoring unrestricted access. Existing keys without a group restriction retain their behavior. Recognized personal keys still enforce their identity and scope when `enableBearerAuth` is `false`; anonymous requests remain governed by that deployment setting.
 
 System-level keys preserve the original scoped-key behavior. Only system-level keys with
 `accessType === 'all'` are accepted by the dashboard / management API middleware. Restricted

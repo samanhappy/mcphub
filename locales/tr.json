@@ -914,6 +914,7 @@
     "bearerKeyKindUser": "Kullanıcı düzeyi",
     "bearerKeyOwner": "Sahip",
     "bearerKeySelectOwner": "Kullanıcı seçin...",
+    "bearerKeyPersonalScopeHint": "Kişisel anahtarlar sahibinin izinlerini devralır. Belirli gruplar seçildiğinde yalnızca bu grupların uç noktalarına ve akıllı yönlendirmesine erişilir; genel ve doğrudan sunucu erişimi reddedilir.",
     "bearerKeyAccessUserVisibility": "Kullanıcı görünürlüğü",
     "bearerKeyShownOnce": "Bu tokenı şimdi kopyalayın. Tekrar gösterilmeyecek.",
     "deleteBearerKeyConfirm": "Bu anahtarı silmek istediğinizden emin misiniz?",
