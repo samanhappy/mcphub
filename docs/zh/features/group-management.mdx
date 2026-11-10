@@ -609,9 +609,7 @@ curl -X POST http://localhost:3000/api/groups/from-template \
 共享组不会赋予用户原本无权访问的服务器的访问权。SSE 和 `$smart/<group>` 路由也遵循
 这些检查，已有会话的后续请求会重新检查组权限。
 
-用户密钥（`kind: 'user'`）继承所属用户的实时权限，不支持独立的密钥范围。
-API 创建用户密钥时固定使用 `accessType: 'all'`，并清空 `allowedGroups`/`allowedServers`；
-运行时这些范围字段不会限制用户密钥。这里的 `all` 指用户有权访问的资源，不代表系统级无限制访问。
+用户密钥（`kind: 'user'`）继承所属用户的实时权限。默认的 `accessType: 'all'` 指用户有权访问的资源，不代表系统级无限制访问。用户可通过 `accessType: 'groups'` 和 `allowedGroups` 缩小密钥范围，API 会保存分组 ID。此类密钥只能访问所选分组的端点（包括 `$smart/<group>`），不能访问全局或直接服务器端点。分组范围与用户可见性及分组中的能力选择取交集。详见 [Bearer 密钥](/zh/features/authentication#bearer-密钥)。
 
 系统密钥（`kind: 'system'`）按配置的操作员权限范围访问，不应用基于用户的组或服务器可见性限制。
 因此，`accessType: 'all'` 的系统密钥可以访问私有组和私有服务器；限定范围的系统密钥仍受其
