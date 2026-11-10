@@ -90,7 +90,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const isSystemKey = (keyData.kind ?? 'system') === 'system';
 
   const handleSave = async () => {
-    if (isSystemKey && accessType === 'groups' && selectedGroups.length === 0) {
+    if (accessType === 'groups' && selectedGroups.length === 0) {
       showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
       return;
     }
@@ -146,20 +146,20 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
     }
   };
 
-  const isGroupsMode = accessType === 'groups';
+  const isGroupsMode = accessType === 'groups' || !isSystemKey;
   const isCustomMode = accessType === 'custom';
   const isExcludeMode = accessType === 'exclude';
 
   // Helper function to format access type display text
   const formatAccessTypeDisplay = (key: BearerKey): string => {
-    if ((key.kind ?? 'system') === 'user') {
+    if ((key.kind ?? 'system') === 'user' && key.accessType === 'all') {
       return `${t('settings.bearerKeyAccessUserVisibility') || 'User visibility'}${key.owner ? ` · ${key.owner}` : ''}`;
     }
     if (key.accessType === 'all') {
       return t('settings.bearerKeyAccessAll') || 'All Resources';
     }
     if (key.accessType === 'groups') {
-      return `${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${key.allowedGroups}`;
+      return `${t('settings.bearerKeyAccessGroups') || 'Groups'}: ${(key.allowedGroups ?? []).map((id) => availableGroups.find((group) => group.value === id)?.label ?? id).join(', ')}`;
     }
     if (key.accessType === 'servers') {
       return `${t('settings.bearerKeyAccessServers') || 'Servers'}: ${key.allowedServers}`;
@@ -235,7 +235,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                 </div>
               </div>
 
-              {isAdmin && isSystemKey && <div className="w-48">
+              <div className="w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('settings.bearerKeyAccessType') || 'Access scope'}
                 </label>
@@ -249,24 +249,30 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                   }
                   disabled={loading}
                 >
-                  <option value="all">{t('settings.bearerKeyAccessAll') || 'All Resources'}</option>
+                  <option value="all">{t(isSystemKey ? 'settings.bearerKeyAccessAll' : 'settings.bearerKeyAccessUserVisibility')}</option>
                   <option value="groups">
                     {t('settings.bearerKeyAccessGroups') || 'Specific Groups'}
                   </option>
-                  <option value="servers">
-                    {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
-                  </option>
-                  <option value="custom">
-                    {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
-                  </option>
-                  <option value="exclude">
-                    {t('settings.bearerKeyAccessExclude') || 'All except selected groups/servers'}
-                  </option>
+                  {isSystemKey && (
+                    <>
+                      <option value="servers">
+                        {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
+                      </option>
+                      <option value="custom">
+                        {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
+                      </option>
+                      <option value="exclude">
+                        {t('settings.bearerKeyAccessExclude') || 'All except selected groups/servers'}
+                      </option>
+                    </>
+                  )}
                 </select>
-              </div>}
+              </div>
+
+              {!isSystemKey && <p className="w-full text-sm text-gray-500">{t('settings.bearerKeyPersonalScopeHint')}</p>}
 
               {/* Show single selector for groups or servers mode */}
-              {isAdmin && isSystemKey && !isCustomMode && !isExcludeMode && (
+              {!isCustomMode && !isExcludeMode && (
                 <div className="flex-1 min-w-[200px]">
                   <label
                     className={`block text-sm font-medium mb-1 ${accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
@@ -1732,10 +1738,14 @@ const SettingsPage: React.FC = () => {
     label: server.name,
   }));
 
-  const availableGroups = groups.map((group) => ({
-    value: group.name,
+  const personalGroupOptions = groups.map((group) => ({
+    value: group.id,
     label: group.name,
   }));
+
+  const availableGroups = groups.map((group) => ({ value: group.name, label: group.name }));
+
+  const newUsesGroupSelector = newBearerKey.accessType === 'groups' || !isAdmin || newBearerKey.kind === 'user';
 
   // Reset selected arrays when accessType changes
   useEffect(() => {
@@ -1834,7 +1844,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    if (newBearerKey.kind === 'system' && newBearerKey.accessType === 'groups' && newSelectedGroups.length === 0) {
+    if (newBearerKey.accessType === 'groups' && newSelectedGroups.length === 0) {
       showToast(t('settings.selectAtLeastOneGroup') || 'Please select at least one group', 'error');
       return;
     }
@@ -2194,7 +2204,7 @@ const SettingsPage: React.FC = () => {
                           keyData={key}
                           loading={loading}
                           availableServers={availableServers}
-                          availableGroups={availableGroups}
+                          availableGroups={(key.kind ?? 'system') === 'system' ? availableGroups : personalGroupOptions}
                           isAdmin={isAdmin}
                           onSave={handleSaveExistingBearerKey}
                           onDelete={handleDeleteExistingBearerKey}
@@ -2251,7 +2261,7 @@ const SettingsPage: React.FC = () => {
                         <select
                           className="block w-full py-2 px-3 border border-gray-300 bg-white dark:bg-gray-800 rounded-md sm:text-sm form-select"
                           value={newBearerKey.kind}
-                          onChange={(e) => setNewBearerKey((prev) => ({ ...prev, kind: e.target.value as 'system' | 'user' }))}
+                          onChange={(e) => setNewBearerKey((prev) => ({ ...prev, kind: e.target.value as 'system' | 'user', accessType: 'all' }))}
                         >
                           <option value="system">{t('settings.bearerKeyKindSystem') || 'System-level'}</option>
                           <option value="user">{t('settings.bearerKeyKindUser') || 'User-level'}</option>
@@ -2293,7 +2303,7 @@ const SettingsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {isAdmin && newBearerKey.kind === 'system' && <div className="w-48">
+                      <div className="w-48">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {t('settings.bearerKeyAccessType') || 'Access scope'}
                         </label>
@@ -2314,51 +2324,57 @@ const SettingsPage: React.FC = () => {
                           disabled={loading}
                         >
                           <option value="all">
-                            {t('settings.bearerKeyAccessAll') || 'All Resources'}
+                            {t(isAdmin && newBearerKey.kind === 'system' ? 'settings.bearerKeyAccessAll' : 'settings.bearerKeyAccessUserVisibility')}
                           </option>
                           <option value="groups">
                             {t('settings.bearerKeyAccessGroups') || 'Specific Groups'}
                           </option>
-                          <option value="servers">
-                            {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
-                          </option>
-                          <option value="custom">
-                            {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
-                          </option>
-                          <option value="exclude">
-                            {t('settings.bearerKeyAccessExclude') ||
-                              'All except selected groups/servers'}
-                          </option>
+                          {isAdmin && newBearerKey.kind === 'system' && (
+                            <>
+                              <option value="servers">
+                                {t('settings.bearerKeyAccessServers') || 'Specific Servers'}
+                              </option>
+                              <option value="custom">
+                                {t('settings.bearerKeyAccessCustom') || 'Custom (Groups & Servers)'}
+                              </option>
+                              <option value="exclude">
+                                {t('settings.bearerKeyAccessExclude') ||
+                                  'All except selected groups/servers'}
+                              </option>
+                            </>
+                          )}
                         </select>
-                      </div>}
+                      </div>
 
-                      {isAdmin && newBearerKey.kind === 'system' && newBearerKey.accessType !== 'custom' && newBearerKey.accessType !== 'exclude' && (
+                      {(!isAdmin || newBearerKey.kind === 'user') && <p className="w-full text-sm text-gray-500">{t('settings.bearerKeyPersonalScopeHint')}</p>}
+
+                      {newBearerKey.accessType !== 'custom' && newBearerKey.accessType !== 'exclude' && (
                         <div className="flex-1 min-w-[200px]">
                           <label
                             className={`block text-sm font-medium mb-1 ${newBearerKey.accessType === 'all' ? 'text-gray-400' : 'text-gray-700'}`}
                           >
-                            {newBearerKey.accessType === 'groups'
+                            {newUsesGroupSelector
                               ? t('settings.bearerKeyAllowedGroups') || 'Allowed groups'
                               : t('settings.bearerKeyAllowedServers') || 'Allowed servers'}
                           </label>
                           <MultiSelect
                             options={
-                              newBearerKey.accessType === 'groups'
-                                ? availableGroups
+                              newUsesGroupSelector
+                                ? (isAdmin && newBearerKey.kind === 'system' ? availableGroups : personalGroupOptions)
                                 : availableServers
                             }
                             selected={
-                              newBearerKey.accessType === 'groups'
+                              newUsesGroupSelector
                                 ? newSelectedGroups
                                 : newSelectedServers
                             }
                             onChange={
-                              newBearerKey.accessType === 'groups'
+                              newUsesGroupSelector
                                 ? setNewSelectedGroups
                                 : setNewSelectedServers
                             }
                             placeholder={
-                              newBearerKey.accessType === 'groups'
+                              newUsesGroupSelector
                                 ? t('settings.selectGroups') || 'Select groups...'
                                 : t('settings.selectServers') || 'Select servers...'
                             }

@@ -443,7 +443,7 @@ export interface BearerKey {
   kind?: BearerKeyKind; // Defaults to 'system' for keys created before user-level keys existed
   owner?: string; // Required for user-level keys
   accessType: BearerKeyAccessType; // Access scope type
-  allowedGroups?: string[]; // Allowed group names when accessType === 'groups' or 'custom'
+  allowedGroups?: string[]; // Allowed group names or IDs when accessType === 'groups' or 'custom'
   allowedServers?: string[]; // Allowed server names when accessType === 'servers' or 'custom'
   excludedGroups?: string[]; // Excluded group names when accessType === 'exclude' (system keys only)
   excludedServers?: string[]; // Excluded server names when accessType === 'exclude' (system keys only)

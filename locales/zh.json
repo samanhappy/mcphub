@@ -918,6 +918,7 @@
     "bearerKeyKindUser": "用户级",
     "bearerKeyOwner": "所属用户",
     "bearerKeySelectOwner": "请选择用户...",
+    "bearerKeyPersonalScopeHint": "个人密钥继承所属用户的权限。选择特定分组后，仅可访问这些分组的端点（含分组智能路由），全局及服务器直连端点将被拒绝。",
     "bearerKeyAccessUserVisibility": "继承用户可见性",
     "bearerKeyShownOnce": "请立即复制此密钥，之后将不再显示。",
     "deleteBearerKeyConfirm": "确定要删除这条密钥吗？",

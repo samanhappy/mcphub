@@ -100,7 +100,7 @@ There are three classes of HTTP route, all defined in `src/routes/index.ts` and 
    - A Better Auth session cookie (when enabled).
    - An `x-auth-token` JWT issued by `/api/auth/login`, or the same value as a `?token=` query.
    - If `systemConfig.routing.skipAuth` is `true`, unauthenticated dashboard API calls receive a synthetic `guest` user with admin privileges.
-3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. Forward-auth JWTs are checked first, with the same no-fallback rule as the dashboard API. System-level key scopes are enforced inside `sseService.ts`; user-level keys restore their owner's live user context so server visibility filtering applies.
+3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. Forward-auth JWTs are checked first, with the same no-fallback rule as the dashboard API. Key scopes are enforced inside `sseService.ts`; user-level keys support unrestricted or allowed-group scopes and restore their owner's live user context so group/server visibility filtering also applies.
 
 ## Observability
 

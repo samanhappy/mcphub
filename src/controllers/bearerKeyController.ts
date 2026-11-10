@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Request, Response } from 'express';
 import { ApiResponse, BearerKey, BearerKeyAccessType, BearerKeyKind } from '../types/index.js';
-import { getBearerKeyDao, getUserDao } from '../dao/index.js';
+import { getBearerKeyDao, getGroupDao, getUserDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
 import { maskBearerKey, toStoredToken } from '../utils/bearerKeyToken.js';
 
@@ -59,6 +59,50 @@ const validateSystemScope = (
     return false;
   }
   return true;
+};
+
+const resolvePersonalScope = async (
+  accessType: BearerKeyAccessType | undefined,
+  allowedGroups: unknown,
+  res: Response,
+): Promise<Partial<BearerKey> | undefined> => {
+  if (accessType !== 'all' && accessType !== 'groups') {
+    res
+      .status(400)
+      .json({ success: false, message: 'Personal keys support only all or groups scope' });
+    return;
+  }
+  const groupIds = new Set<string>();
+  if (accessType === 'groups') {
+    if (
+      !Array.isArray(allowedGroups) ||
+      allowedGroups.length === 0 ||
+      !allowedGroups.every((value) => typeof value === 'string' && value.trim().length > 0)
+    ) {
+      res.status(400).json({ success: false, message: 'Select at least one allowed group' });
+      return;
+    }
+    const dao = getGroupDao();
+    for (const reference of allowedGroups as string[]) {
+      const group =
+        (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference)
+          ? await dao.findById(reference)
+          : null) || (await dao.findByName(reference));
+      if (!group) {
+        res.status(400).json({ success: false, message: 'Allowed group not found' });
+        return;
+      }
+      // Persist IDs so renaming or recreating a group cannot redirect the grant.
+      groupIds.add(group.id);
+    }
+  }
+  return {
+    accessType,
+    allowedGroups: [...groupIds],
+    allowedServers: [],
+    excludedGroups: [],
+    excludedServers: [],
+  };
 };
 
 export const getBearerKeys = async (req: Request, res: Response): Promise<void> => {
@@ -125,7 +169,12 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       }
     }
 
-    const resolvedAccessType = kind === 'user' ? 'all' : accessType;
+    const resolvedAccessType = kind === 'user' && accessType === undefined ? 'all' : accessType;
+    const personalScope =
+      kind === 'user'
+        ? await resolvePersonalScope(resolvedAccessType, allowedGroups, res)
+        : undefined;
+    if (kind === 'user' && !personalScope) return;
     if (kind === 'system' && !validateSystemScope(resolvedAccessType, res)) {
       return;
     }
@@ -156,6 +205,7 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       allowedServers: kind === 'system' && Array.isArray(allowedServers) ? allowedServers : [],
       excludedGroups: resolvedExcludedGroups,
       excludedServers: resolvedExcludedServers,
+      ...personalScope,
     });
 
     const { tokenHash: _hash, ...created } = key;
@@ -196,6 +246,16 @@ export const updateBearerKey = async (req: Request, res: Response): Promise<void
     const updates: Partial<BearerKey> = {};
     if (name !== undefined) updates.name = name;
     if (enabled !== undefined) updates.enabled = enabled;
+
+    if (existing.kind === 'user' && (accessType !== undefined || allowedGroups !== undefined)) {
+      const scope = await resolvePersonalScope(
+        accessType === undefined ? existing.accessType : accessType,
+        allowedGroups === undefined ? existing.allowedGroups : allowedGroups,
+        res,
+      );
+      if (!scope) return;
+      Object.assign(updates, scope);
+    }
 
     if (existing.kind !== 'user' && user?.isAdmin) {
       if (accessType !== undefined) {

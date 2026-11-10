@@ -916,6 +916,7 @@
     "bearerKeyKindUser": "A nivel de usuario",
     "bearerKeyOwner": "Propietario",
     "bearerKeySelectOwner": "Seleccionar usuario...",
+    "bearerKeyPersonalScopeHint": "Las claves personales heredan tus permisos. Los grupos específicos limitan la clave a sus endpoints, incluido el enrutamiento inteligente; se deniegan los endpoints globales y directos de servidor.",
     "bearerKeyAccessUserVisibility": "Visibilidad de usuario",
     "bearerKeyShownOnce": "Copia este token ahora. No se volverá a mostrar.",
     "deleteBearerKeyConfirm": "¿Seguro que quieres eliminar esta clave?",

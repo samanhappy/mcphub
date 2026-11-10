@@ -623,10 +623,7 @@ subject to the legacy group behavior described below. Sharing a group never gran
 to a server the user cannot otherwise access. These checks also apply to SSE and
 `$smart/<group>` routes, and group access is checked again for existing sessions.
 
-User bearer keys (`kind: 'user'`) inherit their owner's live permissions and do not support
-an independent key scope. The API creates them with `accessType: 'all'` and empty
-`allowedGroups`/`allowedServers`; these scope fields do not restrict user keys at runtime.
-Here, `all` means the owner's permitted resources, not unrestricted system access.
+User bearer keys (`kind: 'user'`) inherit their owner's live permissions. By default, `accessType: 'all'` means the owner's permitted resources, not unrestricted system access. Users can narrow a key to `accessType: 'groups'` with `allowedGroups`; the API saves group IDs. Such keys can use only the selected group endpoints (including `$smart/<group>`), never global or direct-server endpoints. Group scope intersects with user visibility and group capability selections. See [Bearer keys](/features/authentication#bearer-keys).
 
 System bearer keys (`kind: 'system'`) use their configured operator scope without applying
 user-based group or server visibility. A system key with `accessType: 'all'` can therefore

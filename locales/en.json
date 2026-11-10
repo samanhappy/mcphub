@@ -916,6 +916,7 @@
     "bearerKeyKindUser": "User-level",
     "bearerKeyOwner": "Owner",
     "bearerKeySelectOwner": "Select user...",
+    "bearerKeyPersonalScopeHint": "Personal keys inherit your permissions. Specific groups also restrict the key to group endpoints, including group smart routing; global and direct-server endpoints are denied.",
     "bearerKeyAccessUserVisibility": "User visibility",
     "bearerKeyShownOnce": "Copy this token now. It will not be shown again.",
     "deleteBearerKeyConfirm": "Are you sure you want to delete this key?",

@@ -915,6 +915,7 @@
     "bearerKeyKindUser": "Utilisateur",
     "bearerKeyOwner": "Propriétaire",
     "bearerKeySelectOwner": "Sélectionner un utilisateur...",
+    "bearerKeyPersonalScopeHint": "Les clés personnelles héritent de vos permissions. Les groupes sélectionnés limitent la clé à leurs points d’accès, routage intelligent compris ; les accès globaux et directs aux serveurs sont refusés.",
     "bearerKeyAccessUserVisibility": "Visibilité de l’utilisateur",
     "bearerKeyShownOnce": "Copiez ce jeton maintenant. Il ne sera plus affiché.",
     "deleteBearerKeyConfirm": "Voulez-vous vraiment supprimer cette clé ?",

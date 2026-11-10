@@ -32,7 +32,7 @@ Personal credential import is independent of user seeding. Validate source and d
 
 ## Bearer-key invariant
 
-Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'system'`; user-level keys use `kind: 'user'` and must have an `owner`. Do not infer the kind from whether `owner` is empty. User-level keys restore the owner's live user context on MCP transport requests and are not dashboard API credentials.
+Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'system'`; user-level keys use `kind: 'user'` and must have an `owner`. Do not infer the kind from whether `owner` is empty. Personal keys support `all` or `groups` scope; allowed-group scope must intersect with the owner's permissions and must not allow global or direct-server routes. User-level keys restore the owner's live user context on MCP transport requests and are not dashboard API credentials.
 
 ## Routing surface
 
