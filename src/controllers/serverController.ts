@@ -53,7 +53,7 @@ import {
   syncAllServerToolsEmbeddings,
 } from '../services/vectorSearchService.js';
 import { createSafeJSON } from '../utils/serialization.js';
-import { getNameSeparator } from '../config/index.js';
+import appConfig, { getNameSeparator } from '../config/index.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
 import {
   getBearerKeyDao,
@@ -85,7 +85,7 @@ import {
 } from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
-import { DEFAULT_INSTALL_BASE_URL, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { getDefaultInstallBaseUrl, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
 import {
   getSmartRoutingConfig,
   parseBooleanEnvVar,
@@ -455,7 +455,10 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
             }
           : {}),
       },
-      DEFAULT_INSTALL_BASE_URL,
+      getDefaultInstallBaseUrl({
+        requestOrigin: req.get?.('host') ? `${req.protocol}://${req.get('host')}` : undefined,
+        basePath: appConfig.basePath,
+      }),
     );
 
     const settings: McpSettings = {
@@ -2485,7 +2488,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         install: {
           pythonIndexUrl: '',
           npmRegistry: '',
-          baseUrl: 'http://localhost:3000',
+          baseUrl: '', // blank = unset, resolved when read
         },
         smartRouting: {
           enabled: false,
@@ -2536,7 +2539,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       systemConfig.install = {
         pythonIndexUrl: '',
         npmRegistry: '',
-        baseUrl: 'http://localhost:3000',
+        baseUrl: '', // blank = unset, resolved when read
       };
     }
 
