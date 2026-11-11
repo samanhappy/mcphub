@@ -53,7 +53,7 @@ The PR1 adapter validates the pinned SSH profile:
 
 The adapter is a named contract (`validateServerConfig`, `validateResolvedArgs`, `prepareRuntime`, `getStagingRoot`), not a generic checkbox. The SSH server's `validateLocalPath` resolves and `realpath`s local paths and rejects paths outside the per-user root, including `..`, outside absolute paths, and symlinks that escape the root.
 
-The reserved `mcphub_file_*` namespace fails closed: if no eligible staging target or MCP caller is found, the call is rejected **before** the tool-policy/principal/modern-list wrappers, without acquiring an upstream runtime. The rewrite/lease/finalize helper lives in `callToolWithReconnect` (after hidden-argument removal), so regular calls and `$smart call_tool` to a real staging tool share one interception point; virtual tools remain direct-only.
+The reserved `mcphub_file_*` namespace fails closed: if no eligible staging target or MCP caller is found, the call is rejected **before** the tool-policy/principal/modern-list wrappers, without acquiring an upstream runtime. Upstream tools may not claim the namespace: a known static collision is rejected at config/import, and a dynamic collision disables staging and the reserved name is rejected, never forwarded. The rewrite/lease/finalize helper lives in `callToolWithReconnect` (after hidden-argument removal), so regular calls and `$smart call_tool` to a real staging tool share one interception point; virtual tools remain direct-only.
 
 Any SSH staging (shared or owner-only) changes the child `cwd` for **every** tool on that server, so relative local paths resolve under the per-principal root. There is no hub-cwd staging mode. The maintainer accepted the shared-server cwd change as an explicit admin opt-in on 2026-11-10; the owner-only owner is the only user on that server. Any staging, visibility, type, credential, package, version, or args change must invalidate the principal runtime and revalidate before rewrite/finalize; a downgrade fails closed.
 
@@ -102,14 +102,16 @@ interface ToolFileStagingConfig {
 - Output refs use an exclusive lease acquired **before** argument rewrite and upstream call, held through finalization; only the lease holder may finalize. On startup every leased `reserved` row becomes `failed` and its UUID is never reused; read pins protect ready inputs/downloads from cleanup. File mode uses a lockfile/instance id and refuses staging if a second process holds it.
 - Download uses `application/octet-stream` + `Content-Disposition: attachment`, `nosniff`, CSP sandbox, no-store, no-referrer; configured base URL only (no `Host` fallback); `O_NOFOLLOW`/parent checks/hash check (streaming verify or capped prehash); `HEAD` does not consume the token; no range/inline.
 - No heuristic response rewriting. Activity logs for virtual/rewritten calls are metadata-only (`suppressPayload`), including owner-only rewritten paths.
+- Template export intentionally excludes `staging` trust; import revalidates it. This prevents a template/duplicate from silently granting shared staging.
 
 ### 6. Tests
 
 Acceptance blockers, run against a disposable instance and the pinned SSH artifact:
 
-- SSH server root: `upload('/app')`, `upload('/app/data')`, outside `<stagingBase>`, `..`, symlinked outside, another user's root → rejected by the SSH server; owner-only A cannot read `/app/mcp_settings.json` or `<userB-hash>/...`; own root/directory behavior documented.
+- SSH server root: `upload('/app')`, `upload('/app/data')`, outside `<stagingBase>`, `..`, symlinked outside, another user's root → rejected by the SSH server; owner-only A cannot read `/app/mcp_settings.json` or `/app/data/uploads/staging/<userB-hash>/...`; own root/directory behavior documented.
 - Credential-slot injection: a whole-arg slot resolving to `--allowed-local-paths=/` or `--config-file=/tmp/x` → spawn refused / staging disabled (owner-only too); connected version ≠ 1.11.0 → staging disabled.
-- Input/output: ready ref in input succeeds; reserved ref in output succeeds and finalizes; reserved in input, ready in output, same ref in both, undeclared ref, missing/overlapping/nonexistent params → rejected.
+- Input/output: ready ref in input succeeds; reserved ref in output succeeds and finalizes; reserved in input, ready in output, same ref in both, undeclared ref, missing/overlapping/nonexistent params → rejected; `upload(server=<non-staging>)`, master-switch-off, and hidden-param overlap are rejected.
+- Reserved namespace: a static upstream `mcphub_file_*` collision is rejected at config/import; a dynamic collision disables staging; the reserved call is never forwarded to the upstream tool.
 - **Two concurrent calls using the same reserved output ref (deterministic):** block call1 in the mock upstream with a latch; call2 must get a lease-conflict error (not the ready-state error), its upstream invocation count must be 0, and the ledger must show call1's lease; exactly one finalize/version. A negative control that moves lease acquisition after upstream must fail. Run in DB and file modes.
 - Multi-ref lease (opposite order, partial-acquire release, finalize failure); read pin during a slow input/download; quota reservation at lease; system key rejection before username fallback; file-mode two-process lock.
 - Cross-principal ref; foreign ref; reserved/partial download; hash mismatch; hardlink; quota; TTL/lease; crash/restart.
