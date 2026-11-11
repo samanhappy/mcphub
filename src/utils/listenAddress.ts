@@ -37,8 +37,33 @@ export const listenOnAddress = (
 ): Server => {
   const server = host ? app.listen(Number(port), host, onListening) : app.listen(port, onListening);
   server.once('error', onError);
-  server.once('listening', () => server.off('error', onError));
+  server.once('listening', () => {
+    server.off('error', onError);
+    const address = server.address();
+    if (address && typeof address === 'object') {
+      boundAddress = address;
+      server.once('close', () => {
+        if (boundAddress === address) {
+          boundAddress = undefined;
+        }
+      });
+    }
+  });
   return server;
+};
+
+/** True for an address that listens on every interface, such as `0.0.0.0` or `::`. */
+export const isWildcardHost = (host: string | undefined): boolean =>
+  !!host && WILDCARD_HOSTS.has(host);
+
+let boundAddress: AddressInfo | undefined;
+
+/** Address and port the HTTP listener actually bound, while it is listening. */
+export const getBoundAddress = (): AddressInfo | undefined => boundAddress;
+
+/** Test hook: forget the recorded listener address. */
+export const resetBoundAddress = (): void => {
+  boundAddress = undefined;
 };
 
 /** Renders the address the listener actually bound, for example `127.0.0.1:3000` or `[::]:3000`. */

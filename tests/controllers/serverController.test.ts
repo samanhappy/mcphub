@@ -147,6 +147,7 @@ import {
   updateServer,
   updateSystemConfig,
 } from '../../src/controllers/serverController.js';
+import appConfig from '../../src/config/index.js';
 
 describe('serverController - server share candidates', () => {
   beforeEach(() => {
@@ -654,6 +655,77 @@ describe('serverController - getAllSettings', () => {
     });
   });
 
+  describe('install base URL when none is configured', () => {
+    const originalPort = process.env.PORT;
+    const originalHost = process.env.MCPHUB_HOST;
+    const originalInstallBaseUrl = process.env.INSTALL_BASE_URL;
+
+    const restore = (name: string, value: string | undefined) => {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    };
+
+    beforeEach(() => {
+      mockSystemConfigDao.get.mockResolvedValue({});
+      delete process.env.INSTALL_BASE_URL;
+    });
+
+    afterEach(() => {
+      restore('PORT', originalPort);
+      restore('MCPHUB_HOST', originalHost);
+      restore('INSTALL_BASE_URL', originalInstallBaseUrl);
+    });
+
+    const baseUrlFor = async (req: Partial<Request>): Promise<string | undefined> => {
+      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
+      await getAllSettings(
+        { user: { username: 'admin', isAdmin: true }, ...req } as unknown as Request,
+        res,
+      );
+      return (res.json as jest.Mock).mock.calls[0][0].data.systemConfig.install.baseUrl;
+    };
+
+    it('uses the origin the client reached', async () => {
+      const req: Partial<Request> = {
+        protocol: 'http',
+        get: jest.fn((name: string) =>
+          name.toLowerCase() === 'host' ? '192.168.1.10:3300' : undefined,
+        ) as unknown as Request['get'],
+      };
+      expect(await baseUrlFor(req)).toBe('http://192.168.1.10:3300');
+    });
+
+    it('keeps the scheme of the request and appends BASE_PATH', async () => {
+      const originalBasePath = appConfig.basePath;
+      appConfig.basePath = '/hub';
+      try {
+        const req: Partial<Request> = {
+          protocol: 'https',
+          get: jest.fn((name: string) =>
+            name.toLowerCase() === 'host' ? 'hub.example.com' : undefined,
+          ) as unknown as Request['get'],
+        };
+        expect(await baseUrlFor(req)).toBe('https://hub.example.com/hub');
+      } finally {
+        appConfig.basePath = originalBasePath;
+      }
+    });
+
+    it('falls back to PORT and MCPHUB_HOST without a Host header', async () => {
+      process.env.PORT = '3300';
+      process.env.MCPHUB_HOST = '127.0.0.1';
+      expect(await baseUrlFor({})).toBe('http://127.0.0.1:3300');
+    });
+
+    it('still prefers INSTALL_BASE_URL', async () => {
+      process.env.INSTALL_BASE_URL = 'https://hub.example.com';
+      expect(await baseUrlFor({})).toBe('https://hub.example.com');
+    });
+  });
+
   describe('smart routing dashboard reflects SMART_ROUTING_ENABLED', () => {
     const originalEnv = process.env.SMART_ROUTING_ENABLED;
     const originalLegacyEnv = process.env.ENABLE_SMART_ROUTING;
@@ -872,6 +944,17 @@ describe('serverController - updateSystemConfig', () => {
     await updateSystemConfig(mockRequest as Request, mockResponse as Response);
     expect(mockStatus).toHaveBeenCalledWith(400);
     expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['without an install section', { routing: {} }],
+    ['without any stored system config', null],
+  ])('stores an unset base URL when it creates the install section (%s)', async (_label, stored) => {
+    mockSystemConfigDao.get.mockResolvedValue(stored);
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(
+      expect.objectContaining({ install: expect.objectContaining({ baseUrl: '' }) }),
+    );
   });
 
   it('does not let non-admin users rename the dashboard', async () => {

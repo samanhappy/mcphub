@@ -3,7 +3,10 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import {
   formatBoundAddress,
+  getBoundAddress,
+  isWildcardHost,
   listenOnAddress,
+  resetBoundAddress,
   resolveDisplayHost,
   resolveListenHost,
 } from '../../src/utils/listenAddress.js';
@@ -19,6 +22,60 @@ const close = (server: Server): Promise<void> =>
   });
 
 describe('listenAddress utilities', () => {
+  describe('getBoundAddress', () => {
+    afterEach(() => resetBoundAddress());
+
+    it('is unset before any listener is up', () => {
+      expect(getBoundAddress()).toBeUndefined();
+    });
+
+    it('records the address and the real port once listening', async () => {
+      const server = await listen('127.0.0.1', 0);
+      try {
+        const actual = server.address() as AddressInfo;
+        expect(actual.port).toBeGreaterThan(0);
+        expect(getBoundAddress()).toEqual(actual);
+        expect(getBoundAddress()?.address).toBe('127.0.0.1');
+      } finally {
+        await close(server);
+      }
+    });
+
+    it('is cleared when the listener closes', async () => {
+      const server = await listen('127.0.0.1', 0);
+      expect(getBoundAddress()).toBeDefined();
+      await close(server);
+      expect(getBoundAddress()).toBeUndefined();
+    });
+
+    it('keeps a newer listener when an older one closes', async () => {
+      const older = await listen('127.0.0.1', 0);
+      const newer = await listen('127.0.0.1', 0);
+      try {
+        const newerAddress = newer.address() as AddressInfo;
+        await close(older);
+        expect(getBoundAddress()).toEqual(newerAddress);
+      } finally {
+        await close(newer);
+      }
+    });
+
+    it('stays unset when the bind fails', async () => {
+      await expect(listen('192.0.2.1', 0)).rejects.toMatchObject({ code: 'EADDRNOTAVAIL' });
+      expect(getBoundAddress()).toBeUndefined();
+    });
+  });
+
+  describe('isWildcardHost', () => {
+    it.each(['0.0.0.0', '::', '[::]'])('recognises %p', (host) => {
+      expect(isWildcardHost(host)).toBe(true);
+    });
+
+    it.each([undefined, '', '127.0.0.1', '::1', 'localhost'])('rejects %p', (host) => {
+      expect(isWildcardHost(host)).toBe(false);
+    });
+  });
+
   describe('resolveListenHost', () => {
     it.each([[undefined], [''], ['   ']])('treats %p as unset', (value) => {
       expect(resolveListenHost(value)).toBeUndefined();
