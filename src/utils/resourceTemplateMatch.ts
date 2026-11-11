@@ -14,6 +14,16 @@ const OPERATORS = ['+', '#', '.', '/', '?', '&'];
 const segmentChar: CharTest = (char) => char !== '/' && char !== ',';
 const anyChar: CharTest = (char) => !'\n\r\u2028\u2029'.includes(char);
 const queryValueChar: CharTest = (char) => char !== '&';
+// SDK expansion percent-encodes `?` in values, except in reserved (`{+a}`, `{#a}`)
+// and multi-variable (`{a,b}`) expressions.
+const carriesQuestion = (part: Exclude<Part, string>): boolean =>
+  part.operator === '+' ||
+  part.operator === '#' ||
+  (part.names.length > 1 && part.operator !== '?' && part.operator !== '&');
+const withoutQuestion =
+  (test: CharTest): CharTest =>
+  (char) =>
+    char !== '?' && test(char);
 
 // Same parts as the SDK's UriTemplate parser.
 const parseTemplate = (template: string): Part[] => {
@@ -45,28 +55,28 @@ const literalElements = (text: string): Element[] =>
   text.split('').map((char) => ({ kind: 'literal', char }));
 
 // Mirrors the SDK's partToRegExp patterns, which match() joins into one regex.
-const toElements = (parts: Part[]): Element[] =>
+const toElements = (parts: Part[], encoded = false): Element[] =>
   parts.flatMap((part): Element[] => {
     if (typeof part === 'string') return literalElements(part);
+    const raw = !encoded || carriesQuestion(part);
+    const segment = raw ? segmentChar : withoutQuestion(segmentChar);
+    const queryValue = raw ? queryValueChar : withoutQuestion(queryValueChar);
     switch (part.operator) {
       case '?':
       case '&':
         return part.names.flatMap((name, index) => [
           ...literalElements(`${index === 0 ? part.operator : '&'}${name}=`),
-          { kind: 'plus', test: queryValueChar },
+          { kind: 'plus', test: queryValue },
         ]);
       case '+':
       case '#':
         return [{ kind: 'plus', test: anyChar }];
       case '.':
-        return [...literalElements('.'), { kind: 'plus', test: segmentChar }];
+        return [...literalElements('.'), { kind: 'plus', test: segment }];
       case '/':
-        return [
-          ...literalElements('/'),
-          { kind: part.exploded ? 'list' : 'plus', test: segmentChar },
-        ];
+        return [...literalElements('/'), { kind: part.exploded ? 'list' : 'plus', test: segment }];
       default:
-        return [{ kind: part.exploded ? 'list' : 'plus', test: segmentChar }];
+        return [{ kind: part.exploded ? 'list' : 'plus', test: segment }];
     }
   });
 
@@ -140,10 +150,13 @@ const compileTemplate = (template: string): CompiledTemplate | null => {
       const baseParts = parts.slice(0, start);
       const queryParts = parts.slice(start) as Exclude<Part, string>[];
       compiled.base = {
-        elements: toElements(baseParts),
-        // Reserved expansions (`{+path}`) can carry a `?` in their value.
+        // Only literals, `{?..}` and expressions whose values keep `?` can put one
+        // into the base.
+        elements: toElements(baseParts, true),
         hasQuery: baseParts.some((part) =>
-          typeof part === 'string' ? part.includes('?') : ['?', '+', '#'].includes(part.operator),
+          typeof part === 'string'
+            ? part.includes('?')
+            : part.operator === '?' || carriesQuestion(part),
         ),
         // The SDK expands `{?a:3}` as `a:3=...`, so accept both spellings.
         names: new Set(
@@ -164,22 +177,10 @@ const compileTemplate = (template: string): CompiledTemplate | null => {
   return compiled;
 };
 
-// Expansions never produce empty pairs. The leading `&` stops URLSearchParams
-// from stripping a leading `?` off the key.
-const queryPairAllowed = (pair: string, base: NonNullable<CompiledTemplate['base']>): boolean => {
-  if (!pair) {
-    return false;
-  }
-  if (base.exploded) {
-    return true;
-  }
-  for (const key of new URLSearchParams(`&${pair}`).keys()) {
-    if (!base.names.has(key)) {
-      return false;
-    }
-  }
-  return true;
-};
+// Keys are decoded the way URLSearchParams decodes them (`+`, `%XX`).
+const queryKeyAllowed = (key: string, base: NonNullable<CompiledTemplate['base']>): boolean =>
+  key !== '' &&
+  (base.exploded || base.names.has(new URLSearchParams(`${key}=`).keys().next().value ?? ''));
 
 // The SDK matcher requires every query variable, in order, so `x{?a}` would not
 // match `x`. Match the part before trailing query expansions separately.
@@ -206,28 +207,50 @@ export const uriMatchesResourceTemplate = (uriTemplate: string, uri: string): bo
 
   // Without its own query, the base ends at the URI's first `?`. With one
   // (`x?fixed=1{&limit}`), the omitted pairs leave it ending at the URI's end or
-  // before any later `?` or `&`. Pairs after that end must use declared names.
+  // before a later `&` or `?`. Pairs after that end must use declared names.
   const queryStart = uri.indexOf('?');
   const splitAtQuery = !base.hasQuery && queryStart !== -1;
   const prefixes = matchPrefixes(base.elements, splitAtQuery ? uri.slice(0, queryStart) : uri);
   if (!splitAtQuery && prefixes[uri.length]) {
     return true;
   }
+  // Right to left over `&`-separated pairs. A `?` can end the base (`x?a=1{?b}`
+  // expands to `x?a=1?b=1`) but does not split pairs, and keys never contain one.
   let end = uri.length;
+  let equals = -1;
+  let question = -1;
   for (let i = uri.length - 1; i >= 0; i--) {
-    const atQuery = i === queryStart;
-    const boundary = uri[i] === '&' || (uri[i] === '?' && (!splitAtQuery || atQuery));
-    if (!boundary) continue;
-    if (!queryPairAllowed(uri.slice(i + 1, end), base)) {
-      return false;
+    const char = uri[i];
+    if (char === '=') {
+      equals = i;
+      continue;
     }
-    if ((!splitAtQuery || atQuery) && prefixes[i]) {
-      return true;
+    if (char !== '&' && char !== '?') continue;
+    const keyEnd = equals === -1 ? end : equals;
+    const baseMayEnd = !splitAtQuery || i === queryStart;
+    // Expansions never produce empty pairs; an empty query (`x?`) is fine.
+    const pairAllowed =
+      i + 1 < end
+        ? (question === -1 || question > keyEnd) && queryKeyAllowed(uri.slice(i + 1, keyEnd), base)
+        : i === queryStart && end === uri.length;
+    if (baseMayEnd) {
+      if (pairAllowed && prefixes[i]) {
+        return true;
+      }
+      if (splitAtQuery) {
+        return false;
+      }
     }
-    if (splitAtQuery && atQuery) {
+    if (char === '?') {
+      question = i;
+      continue;
+    }
+    if (!pairAllowed) {
       return false;
     }
     end = i;
+    equals = -1;
+    question = -1;
   }
   return false;
 };

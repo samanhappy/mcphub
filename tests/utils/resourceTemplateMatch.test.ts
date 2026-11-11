@@ -43,6 +43,25 @@ describe('uriMatchesResourceTemplate', () => {
     ['x://search{?a,b}', 'x://search?a=1&?b=2', false],
     ['x://search{?a,b}', 'x://search??a=1', false],
     ['x://search?fixed=1{&a}', 'x://search?fixed=1&?a=2', false],
+    ['x://search?fixed=1{&a,b}', 'x://search?fixed=1&a?b=2', false],
+    ['x://search?fixed=1{&a,b}', 'x://search?fixed=1&b=foo?bar', true],
+    ['x://search?fixed=1{&a,b}', 'x://search?fixed=1&a=foo?bar=1', true],
+    ['x://search?fixed=1{&a,b}', 'x://search?fixed=1&=1', false],
+    ['x://search?fixed=1{?b}', 'x://search?fixed=1?b=2', true],
+    ['x://search{?a,b}', 'x://search?a?b=1', false],
+    ['x://items/{id}{?q}', 'x://items/1?', true],
+    ['x://{+h}/items/{id}{?q}', 'x://h/items/5?', true],
+    ['x://search?fixed=1{&rest*}', 'x://search?fixed=1&=1', false],
+    ['x://search{?filters*}', 'x://search?=1', false],
+    ['x://items/{id}{?q}', 'x://items/1?q=1&', false],
+    ['x://{+h}/items/{id}{?q}', 'x://h/items/5?zzz=1', false],
+    ['x://s/{a}{+p}{?q,r}', 'x://s/?x?q=1', false],
+    ['x://{+h}/items/{id}{?q}', 'x://h/items/5?q=1', true],
+    ['x://s?a={m}/p/{id}{&k}', 'x://s?a=1/p/5?zz=1', false],
+    ['x://s?a={m}/p/{id}{&k}', 'x://s?a=1/p/5', true],
+    ['x://s?fixed={a,b}{&q,r}', 'x://s?fixed=foo?bar&q=1', true],
+    ['x://{a,b}{?q}', 'x://f?x', true],
+    ['x://s?f=1/{a,g}{&k}', 'x://s?f=1/p?q', true],
     ['x://search?fixed=1{&a}', 'x://search?fixed=1&', false],
     ['x://search{?a,b}', 'x://search?a=1&&b=2', false],
     ['x://{+path}{?a,b}', 'x://search?fixed=1', true],
@@ -161,6 +180,7 @@ describe('uriMatchesResourceTemplate', () => {
       '{.d}',
       '{/e}',
       '{?h}',
+      '{s,t}',
     ];
     const queryPieces = ['{?j}', '{&k}', '{?l,m}', '{&n,o}'];
     const queryNames = new Set(['j', 'k', 'l', 'm', 'n', 'o']);
@@ -175,7 +195,10 @@ describe('uriMatchesResourceTemplate', () => {
         base + Array.from({ length: 1 + random(3) }, () => pick(queryPieces)).join('');
       const sdk = new UriTemplate(template);
       const values = Object.fromEntries(
-        sdk.variableNames.map((name) => [name, 'bc'.includes(name) ? pick(reservedValues) : 'v']),
+        // The SDK's own regex cannot match both values of `{s,t}` (joined by `,`).
+        sdk.variableNames
+          .filter((name) => name !== 't')
+          .map((name) => [name, 'bcs'.includes(name) ? pick(reservedValues) : 'v']),
       );
       // Only the base must round-trip; trailing query expansions are what is under test.
       const baseSdk = new UriTemplate(base);
@@ -194,13 +217,47 @@ describe('uriMatchesResourceTemplate', () => {
         compared++;
         if (Object.keys(subset).length < Object.keys(values).length) {
           omitted++;
-          if (/[?+#]/.test(base)) queryInBase++;
+          if (/[?+#]|\{s,t\}/.test(base)) queryInBase++;
         }
       }
     }
     expect(templates.size).toBeGreaterThan(1000);
     expect(omitted).toBeGreaterThan(5000);
     expect(queryInBase).toBeGreaterThan(1000);
+  });
+
+  it('rejects undeclared query keys after a literal base', () => {
+    const random = seededRandom(11);
+    const pick = <T>(items: T[]) => items[random(items.length)];
+    const basePieces = ['x', '-', '/', '.', '?', '&', 'x=1'];
+    const queryPieces = ['{?j}', '{&k}', '{?l,m}', '{&n,o}'];
+    let compared = 0;
+    for (let t = 0; t < 2000; t++) {
+      const template =
+        Array.from({ length: 1 + random(4) }, () => pick(basePieces)).join('') +
+        Array.from({ length: 1 + random(3) }, () => pick(queryPieces)).join('');
+      const sdk = new UriTemplate(template);
+      const values = Object.fromEntries(
+        sdk.variableNames.filter(() => random(2) === 0).map((name) => [name, 'v']),
+      );
+      const uri = sdk.expand(values);
+      const renamed = uri.replace(/([?&])[j-o]=/, '$1zz=');
+      const declared = sdk.variableNames.filter((name) => /^[j-o]$/.test(name));
+      const joined = `${declared[0]}?${declared[declared.length - 1]}`;
+      for (const bad of [
+        `${uri}&zz=1`,
+        `${uri}&${joined}=1`,
+        renamed === uri ? `${uri}&=1` : renamed,
+      ]) {
+        expect({ template, bad, actual: uriMatchesResourceTemplate(template, bad) }).toEqual({
+          template,
+          bad,
+          actual: false,
+        });
+        compared++;
+      }
+    }
+    expect(compared).toBe(6000);
   });
 
   it('rejects non-string input', () => {
