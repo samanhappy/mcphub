@@ -107,7 +107,7 @@ interface ToolFileStagingConfig {
 
 Acceptance blockers, run against a disposable instance and the pinned SSH artifact:
 
-- SSH server root: `upload('/app')`, `upload('/app/data')`, outside `<stagingBase>`, `..`, symlinked outside, another user's root → rejected by the SSH server; owner-only A cannot read `mcp_settings.json` or `<userB-hash>/...`; own root/directory behavior documented.
+- SSH server root: `upload('/app')`, `upload('/app/data')`, outside `<stagingBase>`, `..`, symlinked outside, another user's root → rejected by the SSH server; owner-only A cannot read `/app/mcp_settings.json` or `<userB-hash>/...`; own root/directory behavior documented.
 - Credential-slot injection: a whole-arg slot resolving to `--allowed-local-paths=/` or `--config-file=/tmp/x` → spawn refused / staging disabled (owner-only too); connected version ≠ 1.11.0 → staging disabled.
 - Input/output: ready ref in input succeeds; reserved ref in output succeeds and finalizes; reserved in input, ready in output, same ref in both, undeclared ref, missing/overlapping/nonexistent params → rejected.
 - **Two concurrent calls using the same reserved output ref (deterministic):** block call1 in the mock upstream with a latch; call2 must get a lease-conflict error (not the ready-state error), its upstream invocation count must be 0, and the ledger must show call1's lease; exactly one finalize/version. A negative control that moves lease acquisition after upstream must fail. Run in DB and file modes.
