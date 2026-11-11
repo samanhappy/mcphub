@@ -74,7 +74,8 @@ const toElements = (parts: Part[]): Element[] =>
 // polynomially when expressions share a segment (`{year}-{month}-{day}`), which
 // would let one resources/read request block the event loop.
 // States: 3 * element index + 0 (before), 1 (inside), 2 (after a list comma).
-const matchElements = (elements: Element[], input: string): boolean => {
+// Returns, for each prefix length of the input, whether the elements match it.
+const matchPrefixes = (elements: Element[], input: string): boolean[] => {
   const accept = 3 * elements.length;
   const close = (states: Set<number>): Set<number> => {
     for (const state of states) {
@@ -82,9 +83,13 @@ const matchElements = (elements: Element[], input: string): boolean => {
     }
     return states;
   };
+  const matched = new Array<boolean>(input.length + 1).fill(false);
   let states = close(new Set([0]));
+  matched[0] = states.has(accept);
   // UTF-16 code units, like the SDK's non-unicode regex.
-  for (const char of input.split('')) {
+  const chars = input.split('');
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
     const next = new Set<number>();
     for (const state of states) {
       if (state === accept) continue;
@@ -99,16 +104,17 @@ const matchElements = (elements: Element[], input: string): boolean => {
         next.add(3 * index + 2);
       }
     }
-    if (next.size === 0) return false;
+    if (next.size === 0) return matched;
     states = close(next);
+    matched[i + 1] = states.has(accept);
   }
-  return states.has(accept);
+  return matched;
 };
 
 type CompiledTemplate = {
   elements: Element[];
-  // Elements before trailing `{?...}`/`{&...}` expansions, and the names they declare.
-  base?: { elements: Element[]; names: string[]; exploded: boolean };
+  // The template before its trailing `{?...}`/`{&...}` expansions, and what those declare.
+  base?: { elements: Element[]; hasQuery: boolean; names: Set<string>; exploded: boolean };
 };
 
 const compiledTemplates = new Map<string, CompiledTemplate | null>();
@@ -130,15 +136,21 @@ const compileTemplate = (template: string): CompiledTemplate | null => {
       if (typeof part === 'string' || (part.operator !== '?' && part.operator !== '&')) break;
       start--;
     }
-    const baseParts = parts.slice(0, start);
-    if (
-      start < parts.length &&
-      !baseParts.some((part) => typeof part === 'string' && part.includes('?'))
-    ) {
+    if (start < parts.length) {
+      const baseParts = parts.slice(0, start);
       const queryParts = parts.slice(start) as Exclude<Part, string>[];
       compiled.base = {
         elements: toElements(baseParts),
-        names: queryParts.flatMap((part) => part.names),
+        // Reserved expansions (`{+path}`) can carry a `?` in their value.
+        hasQuery: baseParts.some((part) =>
+          typeof part === 'string' ? part.includes('?') : ['?', '+', '#'].includes(part.operator),
+        ),
+        // The SDK expands `{?a:3}` as `a:3=...`, so accept both spellings.
+        names: new Set(
+          queryParts.flatMap((part) =>
+            part.names.flatMap((name) => [name, name.replace(/:\d+$/, '')]),
+          ),
+        ),
         exploded: queryParts.some((part) => part.exploded),
       };
     }
@@ -150,6 +162,23 @@ const compileTemplate = (template: string): CompiledTemplate | null => {
   }
   compiledTemplates.set(template, compiled);
   return compiled;
+};
+
+// Expansions never produce empty pairs. The leading `&` stops URLSearchParams
+// from stripping a leading `?` off the key.
+const queryPairAllowed = (pair: string, base: NonNullable<CompiledTemplate['base']>): boolean => {
+  if (!pair) {
+    return false;
+  }
+  if (base.exploded) {
+    return true;
+  }
+  for (const key of new URLSearchParams(`&${pair}`).keys()) {
+    if (!base.names.has(key)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 // The SDK matcher requires every query variable, in order, so `x{?a}` would not
@@ -167,25 +196,38 @@ export const uriMatchesResourceTemplate = (uriTemplate: string, uri: string): bo
   if (!compiled) {
     return false;
   }
-  if (matchElements(compiled.elements, uri)) {
+  if (matchPrefixes(compiled.elements, uri)[uri.length]) {
     return true;
   }
-  if (!compiled.base) {
+  const base = compiled.base;
+  if (!base) {
     return false;
   }
 
+  // Without its own query, the base ends at the URI's first `?`. With one
+  // (`x?fixed=1{&limit}`), the omitted pairs leave it ending at the URI's end or
+  // before any later `?` or `&`. Pairs after that end must use declared names.
   const queryStart = uri.indexOf('?');
-  if (!matchElements(compiled.base.elements, queryStart === -1 ? uri : uri.slice(0, queryStart))) {
-    return false;
-  }
-  if (queryStart === -1 || compiled.base.exploded) {
+  const splitAtQuery = !base.hasQuery && queryStart !== -1;
+  const prefixes = matchPrefixes(base.elements, splitAtQuery ? uri.slice(0, queryStart) : uri);
+  if (!splitAtQuery && prefixes[uri.length]) {
     return true;
   }
-  const allowed = new Set(compiled.base.names.map((name) => name.replace(/:\d+$/, '')));
-  for (const key of new URLSearchParams(uri.slice(queryStart + 1)).keys()) {
-    if (!allowed.has(key)) {
+  let end = uri.length;
+  for (let i = uri.length - 1; i >= 0; i--) {
+    const atQuery = i === queryStart;
+    const boundary = uri[i] === '&' || (uri[i] === '?' && (!splitAtQuery || atQuery));
+    if (!boundary) continue;
+    if (!queryPairAllowed(uri.slice(i + 1, end), base)) {
       return false;
     }
+    if ((!splitAtQuery || atQuery) && prefixes[i]) {
+      return true;
+    }
+    if (splitAtQuery && atQuery) {
+      return false;
+    }
+    end = i;
   }
-  return true;
+  return false;
 };

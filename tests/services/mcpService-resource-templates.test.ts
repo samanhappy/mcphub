@@ -213,6 +213,19 @@ describe('resources/read through upstream resource templates', () => {
     },
   );
 
+  it.each(['x://search?fixed=1', 'x://search?fixed=1&limit=5'])(
+    'routes %s through a template whose literal part has a query',
+    async (uri) => {
+      const alpha = addUpstream('alpha', ['x://search?fixed=1{&limit}']);
+      await start('alpha');
+
+      const result = await read(uri, 'alpha-session');
+
+      expect(alpha.readResource).toHaveBeenCalledWith({ uri });
+      expect(result.contents[0].text).toBe(`alpha:${uri}`);
+    },
+  );
+
   it('keeps Resource not found when no template matches', async () => {
     const alpha = addUpstream('alpha', ['x://docs/{id}/download{?original}']);
     await start('alpha');
