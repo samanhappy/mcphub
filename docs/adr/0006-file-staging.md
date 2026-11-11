@@ -1,6 +1,6 @@
 # File staging for stdio servers: trusted shared profile and explicit file parameters
 
-Status: proposed. The scope, trusted-profile direction, PR split, no-global-path-guard decision, and per-tool permission split were agreed with the maintainer in [#1056](https://github.com/samanhappy/mcphub/issues/1056) on 2026-11-10. The per-tool input/output parameter model below is the proposal that settles the remaining question. Implementation follows after this design is settled.
+Status: proposed. The scope, trusted-profile direction, PR split, no-global-path-guard decision, and per-tool permission split were agreed with the maintainer in [#1056](https://github.com/samanhappy/mcphub/issues/1056) on 2026-11-10. The per-tool input/output parameter model below is the proposal that settles the remaining question. Revised 2026-11-11 with the pre-call exclusive output lease requested in the PR review. Implementation follows after this design is settled.
 
 ## Context
 
@@ -82,7 +82,8 @@ interface ToolFileStagingConfig {
 - A tool with `enabled: true` but no file params is rejected at config validation.
 - A `ready` ref is allowed only in `inputParams`; a `reserved` ref is allowed only in `outputParams`. A `reserved` ref in an input, a `ready` ref in an output, or the same ref in both is rejected before the upstream call.
 - A `mcpfile://` value in an undeclared parameter is rejected, not rewritten.
-- After the call, finalize exactly the reserved refs passed in `outputParams`, in a `try/finally`; a thrown/cancelled call marks them failed. Zero-byte outputs require `allow_zero_byte: true`.
+- **Before rewriting output arguments and calling upstream, acquire an exclusive lease on every reserved output ref in the call, atomically.** If any ref is already leased, reject the whole call before upstream; the competing call must not reach the tool. Hold all output leases through finalization and release them on success, failure, or cancellation. A finalizer-only CAS is insufficient: without a pre-call lease, two calls can both write the same reserved destination and only discover the conflict after upstream.
+- After the call, finalize exactly the reserved refs passed in `outputParams`, in a `try/finally`; only the lease holder may finalize; a thrown/cancelled call marks them failed and releases their leases. Zero-byte outputs require `allow_zero_byte: true`.
 - Examples: `ssh upload` declares `inputParams: ['localPath']` (the local source is read); `ssh download` declares `outputParams: ['localPath']` (the local destination is reserved). `remotePath` is not a staging parameter.
 
 `mcphub_file_upload` with small inline content creates a `ready` ref; without content it creates a zero-byte `reserved` output destination. `mcphub_file_status` reports state/size/hash/expiry; `mcphub_file_download` returns a short-lived one-time URL only for a `ready` registered ref. `mcphub_file_request_upload` ships with the PR2 browser page.
@@ -92,7 +93,7 @@ interface ToolFileStagingConfig {
 - Storage root: `<process.cwd()>/data/uploads/staging/<principalHash>/<uuid>/{content,meta.json}`; UUID refs; fixed `content`; original filename display-only; `0700`/`0600`; `O_NOFOLLOW`; parent components checked; no symlinked parents; `nlink === 1` for tool-produced files.
 - Principal hash requires a stable user id or a per-user salt. Do not derive it from the username alone; a deleted/recreated/renamed user must not inherit the old root. System keys are rejected for staging in PR1.
 - Refs are owner/server-bound; toolName is recorded for audit but not enforced as a binding. Foreign/expired refs return the same 404.
-- Authoritative ref state is hub-side (DB `file_staging_refs`/`file_staging_tokens` tables in DB mode; a locked atomic state store in file mode). `meta.json` is a cache. Per-ref lease/CAS; one finalizer; one-time download token consumed atomically; no serving without a ledger row.
+- Authoritative ref state is hub-side (DB `file_staging_refs`/`file_staging_tokens` tables in DB mode; a locked atomic state store in file mode). `meta.json` is a cache. Output refs use an exclusive lease acquired **before** argument rewrite and upstream call, held through finalization; only the lease holder may finalize. One-time download token consumed atomically; no serving without a ledger row.
 - Download uses `application/octet-stream` + `Content-Disposition: attachment`, `nosniff`, CSP sandbox, no-store, no-referrer; configured base URL only (no `Host` fallback); `O_NOFOLLOW`/parent checks/hash check; no range/inline.
 - No heuristic response rewriting. Activity logs for virtual/rewritten calls are metadata-only (`suppressPayload`), including owner-only rewritten paths.
 
@@ -103,6 +104,7 @@ Acceptance blockers, run against a disposable instance and the pinned SSH artifa
 - SSH server root: `upload('/app')`, `upload('/app/data')`, outside `<stagingBase>`, `..`, symlinked outside, another user's root → rejected by the SSH server; own root/directory behavior documented.
 - Credential-slot injection: a whole-arg slot resolving to `--allowed-local-paths=/` or `--config-file=/tmp/x` → spawn refused/shared disabled; connected version ≠ 1.11.0 → shared disabled.
 - Input/output: ready ref in input succeeds; reserved ref in output succeeds and finalizes; reserved in input, ready in output, same ref in both, undeclared ref, missing/overlapping/nonexistent params → rejected.
+- **Two concurrent calls using the same reserved output ref: exactly one acquires the pre-call lease and reaches upstream; the other is rejected before upstream; no double write; finalize only by the lease holder.**
 - Cross-principal ref; foreign ref; reserved/partial download; hash mismatch; hardlink; quota; TTL/lease; crash/restart.
 - Owner-only/shared/group/public visibility; system keys rejected; deleted/recreated/renamed user; config round-trip and invalidations.
 - **Documented, not blocked:** another local-file/shell tool reading `/app/data/uploads/staging`; this is the accepted PR1 residual.
