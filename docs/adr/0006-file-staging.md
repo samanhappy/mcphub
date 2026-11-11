@@ -102,7 +102,7 @@ interface ToolFileStagingConfig {
 - Output refs use an exclusive lease acquired **before** argument rewrite and upstream call, held through finalization; only the lease holder may finalize. On startup every leased `reserved` row becomes `failed` and its UUID is never reused; read pins protect ready inputs/downloads from cleanup. File mode uses a lockfile/instance id and refuses staging if a second process holds it.
 - Download uses `application/octet-stream` + `Content-Disposition: attachment`, `nosniff`, CSP sandbox, no-store, no-referrer; configured base URL only (no `Host` fallback); `O_NOFOLLOW`/parent checks/hash check (streaming verify or capped prehash); `HEAD` does not consume the token; no range/inline.
 - No heuristic response rewriting. Activity logs for virtual/rewritten calls are metadata-only (`suppressPayload`), including owner-only rewritten paths.
-- Template export intentionally excludes `staging` trust; import revalidates it. This prevents a template/duplicate from silently granting shared staging.
+- Template export intentionally excludes `staging` trust; import revalidates it. This prevents a template/duplicate from silently granting staging trust.
 
 ### 6. Tests
 
