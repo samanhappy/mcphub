@@ -9,7 +9,14 @@ import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
 import fs from 'fs';
-import { initUpstreamServers, connected, cleanupAllServers, reconcileReplicaServers } from './services/mcpService.js';
+import {
+  initUpstreamServers,
+  connected,
+  cleanupAllServers,
+  drainStdioTerminations,
+  reconcileReplicaServers,
+  STDIO_TERMINATION_DRAIN_BUDGET_MS,
+} from './services/mcpService.js';
 import { startReplicaSync, stopReplicaSync } from './services/replicaService.js';
 import { replicaRequestContext } from './middlewares/replicaConfig.js';
 import { isReplicaMode } from './utils/replicaMode.js';
@@ -38,6 +45,7 @@ import type { Socket } from 'net';
 import { mcpConnectionRateLimiter, spaPageRateLimiter } from './utils/rateLimit.js';
 import { closeHttpServer } from './utils/serverShutdown.js';
 import { formatBoundAddress, listenOnAddress, resolveDisplayHost } from './utils/listenAddress.js';
+import { exitAfterBindFailure } from './utils/bindFailureExit.js';
 import { logger } from './utils/logger.js';
 
 /**
@@ -289,12 +297,17 @@ export class AppServer {
         // Without this handler the error reaches the uncaught-exception guard, which logs it
         // and continues: the process then either keeps running with no HTTP listener or exits
         // with status 0, depending on what else holds the event loop open.
-        logger.error(
-          `[FATAL] Cannot listen on ${this.host ?? 'all interfaces'}:${this.port} (${error.code ?? error.message}); exiting`,
-        );
-        // Upstream stdio servers may already be starting; stop them rather than orphan them.
-        cleanupAllServers();
-        process.exit(1);
+        //
+        // Upstream stdio servers may already be starting; stop them rather than orphan them,
+        // and wait for those terminations before exiting: process.exit() would cancel them.
+        void exitAfterBindFailure({
+          error,
+          host: this.host,
+          port: this.port,
+          cleanupUpstreamServers: cleanupAllServers,
+          drainUpstreamTerminations: drainStdioTerminations,
+          budgetMs: STDIO_TERMINATION_DRAIN_BUDGET_MS,
+        });
       },
     );
     this.server.on('connection', (socket) => {
