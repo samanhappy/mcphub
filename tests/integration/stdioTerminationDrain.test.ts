@@ -32,9 +32,17 @@ import { exitAfterBindFailure } from '../../src/utils/bindFailureExit.js';
 import type { ServerInfo } from '../../src/types/index.js';
 
 // Ignores SIGTERM and stays alive, so only SIGKILL can end it. On Windows
-// tree-kill uses `taskkill /F`, which ends it at the first signal instead -
+// tree-kill uses `taskkill /F`, which ends it at the first signal instead, and
 // either way the process must be gone once the drain resolves.
-const STUBBORN_CHILD = "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);";
+//
+// It prints "ready" once the handler is installed, and the helper below waits
+// for that line. The spawn event alone is not enough: a signal can arrive
+// before Node has evaluated the script, and the child then dies on SIGTERM
+// like any other, quietly skipping the escalation these cases exist to
+// exercise. Seen in CI, where they finished in about 100 ms rather than the two
+// seconds the escalation takes.
+const STUBBORN_CHILD =
+  "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000); console.log('ready');";
 
 // Exits on SIGTERM like a well-behaved server, so the wait should end as soon
 // as it is gone rather than sitting out the grace period.
@@ -48,11 +56,20 @@ const GENEROUS_BUDGET_MS = 60_000;
 const children: ChildProcess[] = [];
 
 const startStubbornChild = async (): Promise<ChildProcess> => {
-  const child = spawn(process.execPath, ['-e', STUBBORN_CHILD], { stdio: 'ignore' });
+  const child = spawn(process.execPath, ['-e', STUBBORN_CHILD], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
   children.push(child);
   await new Promise<void>((resolve, reject) => {
-    child.once('spawn', resolve);
+    const onData = (chunk: Buffer): void => {
+      if (chunk.toString().includes('ready')) {
+        child.stdout?.off('data', onData);
+        resolve();
+      }
+    };
+    child.stdout?.on('data', onData);
     child.once('error', reject);
+    child.once('exit', () => reject(new Error('the stubborn child exited before it was ready')));
   });
   return child;
 };
