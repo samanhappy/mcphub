@@ -1,9 +1,75 @@
 import Ajv from 'ajv';
-import { collectDefinitions, toOpenApiSchema } from '../../src/utils/openApiSchema.js';
+import {
+  collectDefinitions,
+  fromOpenApiSchema,
+  toOpenApiSchema,
+} from '../../src/utils/openApiSchema.js';
 
 // Ajv implements the OpenAPI 3.0 `nullable` keyword, so it shows what a converted schema accepts
 const accepts = (schema: unknown, value: unknown): boolean =>
   new Ajv({ strict: false }).compile(schema as object)(value) as boolean;
+
+describe('OpenAPI input schema conversion', () => {
+  it.each([
+    { type: 'string', nullable: true },
+    { type: 'integer', nullable: false },
+    { type: 'string', nullable: true, enum: ['a'] },
+    { type: 'string', nullable: true, enum: ['a', null] },
+    { allOf: [{ type: 'string', nullable: true }, { enum: ['a'] }] },
+    { anyOf: [{ type: 'string', nullable: true }, { type: 'integer' }] },
+    { oneOf: [{ type: 'string', nullable: true }, { type: 'integer' }] },
+    { not: { type: 'string', nullable: true } },
+    { type: 'array', nullable: true, items: { type: 'string', nullable: true } },
+    {
+      type: 'object',
+      properties: { value: { type: 'integer', nullable: true } },
+      required: ['value'],
+      additionalProperties: false,
+    },
+    { type: 'object', additionalProperties: { type: 'string', nullable: true } },
+  ])('preserves allowed values for %j', (schema) => {
+    const converted = fromOpenApiSchema(schema);
+    expect(JSON.stringify(converted)).not.toContain('"nullable"');
+    for (const value of [
+      'a',
+      'b',
+      1,
+      1.5,
+      null,
+      true,
+      [],
+      [null],
+      ['a'],
+      [1],
+      {},
+      { value: null },
+      { value: 'a' },
+    ]) {
+      expect(accepts(converted, value)).toBe(accepts(schema, value));
+    }
+  });
+
+  it('does not infer a type or rewrite schema-shaped data and property names', () => {
+    const data = { type: 'string', nullable: true };
+    expect(fromOpenApiSchema({ nullable: true, enum: ['a'] })).toEqual({ enum: ['a'] });
+    expect(
+      fromOpenApiSchema({
+        type: 'object',
+        properties: { nullable: data },
+        example: data,
+        default: data,
+        enum: [data],
+      }),
+    ).toEqual({
+      type: 'object',
+      properties: { nullable: { type: ['string', 'null'] } },
+      example: data,
+      default: data,
+      enum: [data],
+    });
+    expect(fromOpenApiSchema({ type: ['string', 'null'] })).toEqual({ type: ['string', 'null'] });
+  });
+});
 
 describe('OpenAPI schema conversion', () => {
   describe('accepts the same values as the JSON Schema it replaces', () => {

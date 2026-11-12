@@ -21,6 +21,7 @@ import {
 } from '../utils/ssrf.js';
 import { getUserDao } from '../dao/index.js';
 import { sanitizeStringForLogging, createSafeJSON } from '../utils/serialization.js';
+import { fromOpenApiSchema } from '../utils/openApiSchema.js';
 import {
   buildMultipartParts,
   encodeFormUrlEncoded,
@@ -735,8 +736,10 @@ export class OpenAPIClient {
           // references those objects directly, so without sanitization every
           // downstream serializer (tokenCost, getServerConfig, MCP ListTools,
           // embeddings) throws "Converting circular structure to JSON". See #959.
-          inputSchema: createSafeJSON(
-            this.generateInputSchema(operation, path, method as string, requestBodySelection),
+          inputSchema: fromOpenApiSchema(
+            createSafeJSON(
+              this.generateInputSchema(operation, path, method as string, requestBodySelection),
+            ),
           ),
           operationId: operation.operationId || operationName,
           method: method as string,

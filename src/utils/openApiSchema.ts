@@ -1,9 +1,33 @@
 /**
- * Convert JSON Schema fragments from MCP tool input schemas into schemas that are valid
- * under OpenAPI 3.0.x (which the generated documents declare).
+ * Convert schema fragments between MCP JSON Schema and OpenAPI 3.0.x.
  */
 
 type Schema = Record<string, any>;
+
+/** Convert a JSON-safe OpenAPI input schema without rewriting example/default data. */
+export function fromOpenApiSchema(schema: unknown): any {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+    return schema;
+  }
+
+  const { nullable, ...result } = schema as Schema;
+  // OpenAPI 3.0 nullable only extends an explicit type; other constraints still apply.
+  if (nullable === true && typeof result.type === 'string') {
+    result.type = result.type === 'null' ? ['null'] : [result.type, 'null'];
+  }
+  for (const [key, value] of Object.entries(result)) {
+    if (key === 'properties' && value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = Object.fromEntries(
+        Object.entries(value).map(([name, property]) => [name, fromOpenApiSchema(property)]),
+      );
+    } else if (['items', 'additionalProperties', 'not'].includes(key)) {
+      result[key] = fromOpenApiSchema(value);
+    } else if (['allOf', 'anyOf', 'oneOf'].includes(key) && Array.isArray(value)) {
+      result[key] = value.map(fromOpenApiSchema);
+    }
+  }
+  return result;
+}
 
 const DEFINITION_PREFIXES = ['#/$defs/', '#/definitions/'];
 
