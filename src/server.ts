@@ -335,6 +335,15 @@ export class AppServer {
     try {
       cleanupAllServers();
       await closeModernMcpHandler?.();
+      // Every caller of shutdown() calls process.exit() right afterwards. That
+      // cancels the asynchronous half of an upstream termination, the tree-kill
+      // spawn and the SIGKILL escalation, and leaves the descendants of an
+      // `npx` wrapper running. This is the exit path that runs on every Ctrl-C
+      // and service stop, so it is also the one that collects orphans.
+      const settled = await drainStdioTerminations(STDIO_TERMINATION_DRAIN_BUDGET_MS);
+      if (!settled) {
+        logger.warn('[SHUTDOWN] Upstream stdio cleanup did not settle; possible orphans');
+      }
       logger.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
       logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));
