@@ -1305,6 +1305,12 @@ const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): v
   logger.warn(`Failed to refresh ${listType} list after upstream notification`);
 };
 
+const hasNormalizedListChanged = <T extends object, U extends object>(
+  current: readonly U[],
+  next: readonly T[],
+  normalize: (item: T) => U,
+): boolean => !isDeepStrictEqual(current, next.map(normalize));
+
 const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
@@ -1336,6 +1342,13 @@ const createUpstreamMcpClient = (
             if (!serverInfo || !tools) {
               return;
             }
+            if (
+              !hasNormalizedListChanged(serverInfo.tools, tools, (tool) =>
+                normalizeToolForCache(serverInfo.name, tool),
+              )
+            ) {
+              return;
+            }
             updateServerToolsCache(serverInfo, tools);
             broadcastToolListChanged();
           },
@@ -1349,6 +1362,13 @@ const createUpstreamMcpClient = (
               return;
             }
             if (!serverInfo || !prompts) {
+              return;
+            }
+            if (
+              !hasNormalizedListChanged(serverInfo.prompts, prompts, (prompt) =>
+                normalizePromptForCache(serverInfo.name, prompt),
+              )
+            ) {
               return;
             }
             updateServerPromptsCache(serverInfo, prompts);
@@ -1366,8 +1386,12 @@ const createUpstreamMcpClient = (
             if (!serverInfo || !resources) {
               return;
             }
-            updateServerResourcesCache(serverInfo, resources);
-            broadcastResourceListChanged();
+            if (
+              hasNormalizedListChanged(serverInfo.resources, resources, normalizeResourceForCache)
+            ) {
+              updateServerResourcesCache(serverInfo, resources);
+              broadcastResourceListChanged();
+            }
             // Templates have no list-changed notification of their own.
             if (serverInfo.client) {
               void refreshServerResourceTemplatesCache(

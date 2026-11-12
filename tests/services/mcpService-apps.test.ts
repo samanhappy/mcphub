@@ -1370,6 +1370,49 @@ describe('mcpService MCP Apps transparent proxy', () => {
     ]);
   });
 
+  it.each([
+    [
+      'tools',
+      'listTools',
+      'sendToolListChanged',
+      [{ name: 'new-tool', description: 'New tool', inputSchema: { type: 'object' } }],
+    ],
+    [
+      'prompts',
+      'listPrompts',
+      'sendPromptListChanged',
+      [{ name: 'new-prompt', description: 'New prompt' }],
+    ],
+    [
+      'resources',
+      'listResources',
+      'sendResourceListChanged',
+      [{ uri: 'test://new-resource', name: 'New resource' }],
+    ],
+  ] as const)(
+    'does not rebroadcast unchanged %s lists and broadcasts real changes',
+    async (kind, listMethod, sendMethod, changedList) => {
+      await initUpstreamServers();
+      await flushPromises();
+
+      const [, clientOptions] = (Client as jest.Mock).mock.calls.find(
+        ([info]) => info.name === 'mcp-client-apps-server',
+      )!;
+      const server = await getMcpServer('ordinary-session', 'apps-server');
+      const send = jest.spyOn(server, sendMethod).mockResolvedValue(undefined);
+      const onChanged = (clientOptions.listChanged as any)[kind].onChanged;
+      const currentList = (await (mockClient as any)[listMethod]())[kind];
+
+      onChanged(null, currentList);
+      await flushPromises();
+      expect(send).not.toHaveBeenCalled();
+
+      onChanged(null, changedList);
+      await flushPromises();
+      expect(send).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('does not report a successful list-change notification after delivery fails', async () => {
     const downstreamServer = await getMcpServer('ordinary-session', 'apps-server');
     jest
