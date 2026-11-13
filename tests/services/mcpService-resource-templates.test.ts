@@ -426,10 +426,15 @@ describe('resources/read through upstream resource templates', () => {
     const [, clientOptions] = (Client as unknown as jest.Mock).mock.calls.find(
       ([info]) => info.name === 'mcp-client-alpha',
     );
+    const server = await getMcpServer('alpha-session');
+    const sendResourceListChanged = jest
+      .spyOn(server, 'sendResourceListChanged')
+      .mockResolvedValue(undefined);
 
     clientOptions.listChanged.resources.onChanged(null, []);
     await flushPromises();
 
+    expect(sendResourceListChanged).toHaveBeenCalledTimes(1);
     expect((await read('x://new/1', 'alpha-session')).contents[0].text).toBe('alpha:x://new/1');
     expect((await read('x://old/1', 'alpha-session')).contents[0].text).toBe(
       'Error: Error | Resource not found: x://old/1',

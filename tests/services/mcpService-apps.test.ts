@@ -172,6 +172,8 @@ jest.mock('../../src/config/index.js', () => ({
   expandEnvVars: jest.fn((value: string) => value),
   replaceEnvVars: jest.fn((value: any) => value),
   getNameSeparator: jest.fn(() => '::'),
+  mcpHubName: 'test-hub',
+  mcpHubVersion: '1.0.0',
   default: {
     mcpHubName: 'test-hub',
     mcpHubVersion: '1.0.0',
@@ -1412,6 +1414,45 @@ describe('mcpService MCP Apps transparent proxy', () => {
       expect(send).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('ignores list changes from a self-connection so prefixed tools cannot accumulate', async () => {
+    const selfClient = createMockClient();
+    selfClient.getServerVersion.mockReturnValue({ name: 'test-hub', version: '1.0.0' });
+    selfClient.listTools.mockResolvedValue({
+      tools: [{ name: 'only-tool', description: 'Only tool', inputSchema: { type: 'object' } }],
+    });
+    selfClient.listPrompts.mockResolvedValue({ prompts: [] });
+    selfClient.listResources.mockResolvedValue({ resources: [] });
+    selfClient.listResourceTemplates.mockResolvedValue({ resourceTemplates: [] });
+    mockClientsByServer.set('self-loop', selfClient);
+    mockFindAll.mockResolvedValue([makeServerConfig('self-loop')]);
+    await initUpstreamServers();
+    await flushPromises();
+
+    const [, clientOptions] = (Client as jest.Mock).mock.calls.find(
+      ([info]) => info.name === 'mcp-client-self-loop',
+    )!;
+    const server = await getMcpServer('ordinary-session', 'self-loop');
+    const send = jest.spyOn(server, 'sendToolListChanged').mockResolvedValue(undefined);
+    const initialNames = getServerByName('self-loop')!.tools.map((tool) => tool.name);
+
+    // Each round deliberately echoes the already-normalized name a self-connection
+    // would receive from MCPHub itself. Without the guard every pass adds another
+    // `self-loop::` prefix.
+    for (let round = 1; round <= 5; round += 1) {
+      clientOptions.listChanged.tools.onChanged(null, [
+        {
+          name: `${'self-loop::'.repeat(round)}only-tool`,
+          description: 'Only tool',
+          inputSchema: { type: 'object' },
+        },
+      ]);
+    }
+    await flushPromises();
+
+    expect(getServerByName('self-loop')!.tools.map((tool) => tool.name)).toEqual(initialNames);
+    expect(send).not.toHaveBeenCalled();
+  });
 
   it('does not report a successful list-change notification after delivery fails', async () => {
     const downstreamServer = await getMcpServer('ordinary-session', 'apps-server');

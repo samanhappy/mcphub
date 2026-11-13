@@ -1311,6 +1311,65 @@ const hasNormalizedListChanged = <T extends object, U extends object>(
   normalize: (item: T) => U,
 ): boolean => !isDeepStrictEqual(current, next.map(normalize));
 
+// A server that points back at this MCPHub instance is a client of our own
+// server descriptor. Its advertised identity is stable across hostnames,
+// reverse proxies and Docker service names, so compare that instead of the
+// configured URL. A self-connection's list notifications echo our own cached
+// (already prefixed) names; processing them would add another prefix on every
+// round and grow the cache without bound.
+const isHubSelfConnection = (client: Client): boolean => {
+  const serverVersion = client.getServerVersion?.();
+  return Boolean(
+    serverVersion &&
+      serverVersion.name === config.mcpHubName &&
+      serverVersion.version === config.mcpHubVersion,
+  );
+};
+
+const warnedSelfConnectionChanges = new Set<string>();
+const ignoreSelfConnectionListChange = (
+  client: Client,
+  serverInfo: ServerInfo,
+  listType: 'tool' | 'prompt' | 'resource',
+  incomingNames: readonly (string | undefined)[],
+  cachedNames: readonly (string | undefined)[],
+): boolean => {
+  if (!isHubSelfConnection(client)) {
+    return false;
+  }
+  // Require the echo signature as well: a different MCPHub instance with the
+  // same name/version is a valid upstream, but it does not send back names we
+  // already prefixed for this server.
+  const prefix = `${serverInfo.name}${getNameSeparator()}`;
+  const withoutServerPrefix = (name: string): string => {
+    let base = name;
+    while (base.startsWith(prefix)) {
+      base = base.slice(prefix.length);
+    }
+    return base;
+  };
+  // An echo may already have accumulated any number of prefixes since the
+  // previous notification, so compare the prefix-stripped names.
+  const cachedBases = new Set(
+    cachedNames.filter((name): name is string => Boolean(name)).map(withoutServerPrefix),
+  );
+  if (
+    !incomingNames.some((name) =>
+      Boolean(name && name.startsWith(prefix) && cachedBases.has(withoutServerPrefix(name))),
+    )
+  ) {
+    return false;
+  }
+  const key = `${serverInfo.name}:${listType}`;
+  if (!warnedSelfConnectionChanges.has(key)) {
+    warnedSelfConnectionChanges.add(key);
+    logger.warn(
+      `Ignoring ${listType} list change from self-connection '${serverInfo.name}' to prevent a recursive notification loop`,
+    );
+  }
+  return true;
+};
+
 const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
@@ -1343,6 +1402,17 @@ const createUpstreamMcpClient = (
               return;
             }
             if (
+              ignoreSelfConnectionListChange(
+                client,
+                serverInfo,
+                'tool',
+                tools.map((tool) => tool.name),
+                serverInfo.tools.map((tool) => tool.name),
+              )
+            ) {
+              return;
+            }
+            if (
               !hasNormalizedListChanged(serverInfo.tools, tools, (tool) =>
                 normalizeToolForCache(serverInfo.name, tool),
               )
@@ -1362,6 +1432,17 @@ const createUpstreamMcpClient = (
               return;
             }
             if (!serverInfo || !prompts) {
+              return;
+            }
+            if (
+              ignoreSelfConnectionListChange(
+                client,
+                serverInfo,
+                'prompt',
+                prompts.map((prompt) => prompt.name),
+                serverInfo.prompts.map((prompt) => prompt.name),
+              )
+            ) {
               return;
             }
             if (
@@ -1387,18 +1468,45 @@ const createUpstreamMcpClient = (
               return;
             }
             if (
-              hasNormalizedListChanged(serverInfo.resources, resources, normalizeResourceForCache)
+              ignoreSelfConnectionListChange(
+                client,
+                serverInfo,
+                'resource',
+                resources.map((resource) => resource.name),
+                serverInfo.resources.map((resource) => resource.name),
+              )
             ) {
+              return;
+            }
+            const resourcesChanged = hasNormalizedListChanged(
+              serverInfo.resources,
+              resources,
+              normalizeResourceForCache,
+            );
+            if (resourcesChanged) {
               updateServerResourcesCache(serverInfo, resources);
               broadcastResourceListChanged();
             }
-            // Templates have no list-changed notification of their own.
+            // Templates have no list-changed notification of their own, so a
+            // template-only change is surfaced through the resource list
+            // notification once the refreshed cache actually differs.
             if (serverInfo.client) {
+              const previousTemplates = serverInfo.resourceTemplates;
               void refreshServerResourceTemplatesCache(
                 getServerInfo,
                 serverInfo.client,
                 serverInfo.options,
-              );
+              ).then(() => {
+                const current = getServerInfo();
+                if (
+                  !resourcesChanged &&
+                  current &&
+                  current.client === serverInfo.client &&
+                  !isDeepStrictEqual(previousTemplates ?? [], current.resourceTemplates ?? [])
+                ) {
+                  broadcastResourceListChanged();
+                }
+              });
             }
           },
         },
