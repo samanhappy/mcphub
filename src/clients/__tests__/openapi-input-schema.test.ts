@@ -4,6 +4,67 @@ import { OpenAPIV3 } from 'openapi-types';
 import { itemCostForTool } from '../../utils/tokenCost.js';
 
 describe('OpenAPIClient - Input Schema Generation', () => {
+  test.each(['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'])(
+    'normalizes nullable parameters and nested %s body schemas without changing the source',
+    async (contentType) => {
+      const nullableInteger = { type: 'integer', format: 'int64', nullable: true };
+      const bodySchema = {
+        type: 'object',
+        required: ['parent_story_id'],
+        properties: {
+          parent_story_id: nullableInteger,
+          labels: { type: 'array', nullable: true, items: { type: 'string', nullable: true } },
+        },
+        additionalProperties: { type: 'string', nullable: true },
+      };
+      const client = new OpenAPIClient({
+        type: 'openapi',
+        openapi: {
+          schema: {
+            openapi: '3.0.0',
+            info: { title: 'Nullable API', version: '1.0.0' },
+            paths: {
+              '/stories': {
+                patch: {
+                  operationId: 'updateStory',
+                  parameters: ['query', 'header'].map((location) => ({
+                    name: location,
+                    in: location,
+                    schema: nullableInteger,
+                  })),
+                  requestBody: {
+                    required: true,
+                    content: { [contentType]: { schema: bodySchema } },
+                  },
+                  responses: { '200': { description: 'Success' } },
+                },
+              },
+            },
+          } as OpenAPIV3.Document,
+        },
+      });
+      await client.initialize();
+
+      expect(client.getTools()[0].inputSchema).toMatchObject({
+        required: ['body'],
+        properties: {
+          query: { type: ['integer', 'null'], format: 'int64' },
+          header: { type: ['integer', 'null'], format: 'int64' },
+          body: {
+            required: ['parent_story_id'],
+            properties: {
+              parent_story_id: { type: ['integer', 'null'] },
+              labels: { type: ['array', 'null'], items: { type: ['string', 'null'] } },
+            },
+            additionalProperties: { type: ['string', 'null'] },
+          },
+        },
+      });
+      expect(nullableInteger).toEqual({ type: 'integer', format: 'int64', nullable: true });
+      expect(client.getTools()[0].requestBody?.content[contentType].schema).toEqual(bodySchema);
+    },
+  );
+
   test('should preserve query parameter description and example when schema is present', async () => {
     const config: ServerConfig = {
       type: 'openapi',
