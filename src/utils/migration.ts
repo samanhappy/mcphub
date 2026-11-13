@@ -164,6 +164,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             protocolNegotiation: config.protocolNegotiation,
             keepAliveInterval: config.keepAliveInterval,
             tools: config.tools,
+            staging: config.staging,
             prompts: config.prompts,
             resources: config.resources,
             options: Object.keys(options).length > 0 ? options : config.options,
@@ -222,6 +223,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
         auth: settings.systemConfig.auth || {},
         enableSessionRebuild: settings.systemConfig.enableSessionRebuild,
         discovery: settings.systemConfig.discovery || {},
+        activityLog: settings.systemConfig.activityLog || {},
+        fileStaging: settings.systemConfig.fileStaging,
       };
       await systemConfigRepo.update(systemConfig);
       logger.log('  - System configuration updated');

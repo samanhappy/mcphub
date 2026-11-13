@@ -278,6 +278,22 @@ export interface ToolPolicyAudit extends PolicyDecision {
   groupId?: string;
 }
 
+/**
+ * Global file staging settings (#1056). Disabled by default; PR1 exposes them
+ * through the API only, the dashboard UI ships in PR2.
+ */
+export interface FileStagingSettings {
+  enabled: boolean;
+  maxFileBytes: number;
+  inlineMaxBytes: number;
+  perUserQuotaBytes: number;
+  globalQuotaBytes: number;
+  ttlHours: number;
+  downloadTtlSeconds: number;
+  maxFilesPerUser: number;
+  cleanupIntervalMinutes: number;
+}
+
 export interface SystemConfig {
   dashboardName?: string;
   toolPolicies?: ToolPolicyRule[];
@@ -331,6 +347,7 @@ export interface SystemConfig {
     // Defaults to true.
     storeToolPayload?: boolean;
   };
+  fileStaging?: FileStagingSettings;
 }
 
 export interface UserConfig {
@@ -481,6 +498,33 @@ export interface ProxychainsConfig {
 // can extend the same scope in a future change.
 export type ServerVisibility = 'private' | 'group' | 'public';
 
+/**
+ * Per-tool file staging opt-in (#1056). A tool becomes a staging target only
+ * when the server is eligible and `enabled` is true. `inputParams` accept a
+ * ready `mcpfile://` ref (read-only tool input); `outputParams` accept a
+ * reserved ref that the tool writes to. Params are JSON Schema property names
+ * or dot paths for nested objects; they must not overlap.
+ */
+export interface ToolFileStagingConfig {
+  enabled: boolean;
+  inputParams?: string[];
+  outputParams?: string[];
+}
+
+/** Staging adapter a server trusts to enforce a per-principal local root. */
+export type StagingAdapterId = 'ssh';
+
+/**
+ * Server-level staging trust (#1056). `shared` is admin-only and lets a
+ * shared/group/public route use staging; `adapter` is required for any staging
+ * (owner-only included). An owner may declare the adapter on their own private
+ * server; only an admin may enable `shared`.
+ */
+export interface ServerStagingConfig {
+  shared?: boolean;
+  adapter?: StagingAdapterId;
+}
+
 export interface CredentialSlot {
   target: 'env' | 'headers' | 'args' | 'url';
   allowed?: string[];
@@ -499,6 +543,7 @@ export interface StoredCredentialBinding {
 export interface ServerConfig {
   id?: string; // Stable policy identity; runtime routing remains name-based.
   credentialTemplate?: CredentialSlot[]; // Metadata only; every slot requires a personal binding.
+  staging?: ServerStagingConfig; // Server-level file staging trust (#1056); adapter required, shared is admin-only.
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   description?: string; // Optional server note/description for management UI
   url?: string; // URL for SSE or streamable HTTP servers
@@ -520,7 +565,10 @@ export interface ServerConfig {
   protocolNegotiation?: 'auto' | 'legacy'; // Streamable HTTP defaults to auto; other transports remain legacy.
   enableKeepAlive?: boolean; // Enable remote health checks; disconnected remote servers always retry
   keepAliveInterval?: number; // Health check interval in milliseconds (default: 60000ms for SSE servers)
-  tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>; // Tool-specific configurations: enable/disable state, custom description, top-level input parameters hidden from models
+  tools?: Record<
+    string,
+    { enabled: boolean; description?: string; hiddenParams?: string[]; fileStaging?: ToolFileStagingConfig }
+  >; // Tool-specific configurations: enable/disable state, custom description, top-level input parameters hidden from models, optional file staging (#1056)
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
   options?: Partial<

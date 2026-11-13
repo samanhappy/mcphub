@@ -121,6 +121,7 @@ export interface Tool {
   defaultDescription?: string;
   hasDescriptionOverride?: boolean;
   hiddenParams?: string[];
+  fileStaging?: { enabled: boolean; inputParams?: string[]; outputParams?: string[] };
   inputSchema: ToolInputSchema;
   annotations?: Record<string, unknown>;
   _meta?: Record<string, unknown>;
@@ -234,7 +235,8 @@ export interface ServerConfig {
   // and shut it down automatically after a period of inactivity (stdio only).
   startOnDemand?: boolean;
   idleTimeoutMs?: number; // Milliseconds of inactivity before shutting down (default: 300_000)
-  tools?: Record<string, { enabled: boolean; description?: string }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[]; fileStaging?: { enabled: boolean; inputParams?: string[]; outputParams?: string[] } }>; // Tool-specific configurations with enable/disable state and custom descriptions
+  staging?: { shared?: boolean; adapter?: 'ssh' }; // File staging trust (#1056)
   prompts?: Record<string, { enabled: boolean; description?: string }>; // Prompt-specific configurations with enable/disable state and custom descriptions
   resources?: Record<string, { enabled: boolean; description?: string }>; // Resource-specific configurations with enable/disable state and custom descriptions
   options?: {

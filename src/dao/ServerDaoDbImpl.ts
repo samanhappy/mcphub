@@ -108,6 +108,7 @@ export class ServerDaoDbImpl implements ServerDao {
       keepAliveInterval: entity.keepAliveInterval,
       protocolNegotiation: entity.protocolNegotiation,
       tools: entity.tools,
+      staging: entity.staging,
       prompts: entity.prompts,
       resources: entity.resources,
       options,
@@ -164,6 +165,7 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('keepAliveInterval');
     assignNullable('protocolNegotiation');
     assignNullable('tools');
+    assignNullable('staging');
     assignNullable('prompts');
     assignNullable('resources');
     assignNullable('oauth');
@@ -255,7 +257,7 @@ export class ServerDaoDbImpl implements ServerDao {
 
   async updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
+    tools: NonNullable<ServerConfig['tools']>,
   ): Promise<boolean> {
     const result = await this.update(name, { tools });
     return result !== null;
@@ -303,7 +305,8 @@ export class ServerDaoDbImpl implements ServerDao {
     sharedWithUsers?: string[];
     enableKeepAlive?: boolean;
     keepAliveInterval?: number;
-    tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>;
+    tools?: ServerConfig['tools'];
+    staging?: ServerConfig['staging'];
     prompts?: Record<string, { enabled: boolean; description?: string }>;
     resources?: Record<string, { enabled: boolean; description?: string }>;
     options?: Record<string, any>;
@@ -344,6 +347,7 @@ export class ServerDaoDbImpl implements ServerDao {
       keepAliveInterval: server.keepAliveInterval,
       protocolNegotiation: server.protocolNegotiation ?? undefined,
       tools: server.tools,
+      staging: server.staging,
       prompts: server.prompts,
       resources: server.resources,
       options,

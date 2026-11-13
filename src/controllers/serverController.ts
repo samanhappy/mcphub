@@ -1,4 +1,5 @@
 import { validateToolPolicies } from '../utils/toolPolicy.js';
+import { normalizeFileStagingSettings, resolveFileStagingSettings } from '../utils/fileStagingConfig.js';
 import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { matchesNamePattern } from '../utils/namePattern.js';
 import { validateAllowedCidrs, validateFakeIpExceptions } from '../utils/ssrf.js';
@@ -2094,6 +2095,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       oauthServer,
       auth,
       activityLog,
+      fileStaging: requestFileStaging,
       network,
       toolPolicies,
     } = req.body;
@@ -2155,6 +2157,15 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       return;
     }
     const { smartRouting } = migrateLegacySmartRoutingConfig(requestSmartRouting);
+
+    let fileStagingUpdate: ReturnType<typeof normalizeFileStagingSettings>;
+    try {
+      fileStagingUpdate = normalizeFileStagingSettings(requestFileStaging);
+    } catch (error) {
+      res.status(400).json({ success: false, message: (error as Error).message });
+      return;
+    }
+    const hasFileStagingUpdate = fileStagingUpdate !== undefined;
 
     const hasRoutingUpdate =
       routing &&
@@ -2271,6 +2282,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasBetterAuthUpdate &&
       typeof auth?.allowRegistration !== 'boolean' &&
       !hasActivityLogUpdate &&
+      !hasFileStagingUpdate &&
       !hasNetworkUpdate &&
       toolPolicies === undefined
     ) {
@@ -2932,6 +2944,13 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       systemConfig.activityLog = {
         ...systemConfig.activityLog,
         storeToolPayload: activityLog.storeToolPayload,
+      };
+    }
+
+    if (fileStagingUpdate) {
+      systemConfig.fileStaging = {
+        ...resolveFileStagingSettings(systemConfig.fileStaging),
+        ...fileStagingUpdate,
       };
     }
 

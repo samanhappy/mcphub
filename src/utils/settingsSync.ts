@@ -65,8 +65,21 @@ const declarationSchema = z.object({
                 enabled: z.boolean(),
                 description: z.string().optional(),
                 hiddenParams: z.array(z.string()).optional(),
+                fileStaging: z
+                  .object({
+                    enabled: z.boolean(),
+                    inputParams: z.array(z.string()).optional(),
+                    outputParams: z.array(z.string()).optional(),
+                  })
+                  .optional(),
               }),
             )
+            .optional(),
+          staging: z
+            .object({
+              shared: z.boolean().optional(),
+              adapter: z.enum(['ssh']).optional(),
+            })
             .optional(),
           prompts: z
             .record(
