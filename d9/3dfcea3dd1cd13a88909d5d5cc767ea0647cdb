@@ -1,0 +1,33 @@
+src/middlewares/index.test.ts
+  s_0ed3e823621e2c::t_4b36ba6393c3fd 220
+  s_0ed3e823621e2c::t_e50900ee03cb8f 222-231
+  s_0ed3e823621e2c::t_81697eb6c55e97 221,232-234
+docs/configuration/environment-variables.mdx
+  s_0ed3e823621e2c::t_4b36ba6393c3fd 147
+  s_0ed3e823621e2c::t_98dda5b69a469b 134,137
+src/middlewares/index.ts
+  s_0ed3e823621e2c::t_0275909421c6b9 37-39
+src/db/connection.ts
+  s_0ed3e823621e2c::t_0275909421c6b9 443,535,568-570,580-585,597-615
+src/db/connection.test.ts
+  s_0ed3e823621e2c::t_4b36ba6393c3fd 236,296
+  s_0ed3e823621e2c::t_f8689436b16fd9 244-246,267-270
+  s_0ed3e823621e2c::t_e50900ee03cb8f 1,59,134-137,237-238,247-250,273-280,282-289,297-319
+  s_0ed3e823621e2c::t_50dd8d66947561 239-243,251-266,271-272,281,290-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d93dfcea3dd1cd13a88909d5d5cc767ea0647cdb",
+  "prompts": {},
+  "sessions": {
+    "s_0ed3e823621e2c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d44f-85b5-7d10-b1b2-7e15c8bd4ee2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
