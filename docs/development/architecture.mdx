@@ -57,6 +57,8 @@ The services in `src/services/` are the core domain layer. Notable members:
 | `marketService.ts` / `cloudService.ts` / `registry.ts` | Read-mostly catalogs surfaced by the dashboard. |
 | `keepAliveService.ts` | Optional periodic ping for `sse` upstream servers. |
 
+Upstream discovery follows `nextCursor` for tools, prompts, resources, and resource templates before publishing a combined list. Repeated cursors, more than 100 additional pages, or a failed page reject discovery rather than publish a truncated list. Combined multi-page lists do not advertise a cache TTL.
+
 ## Data layer
 
 MCPHub supports two storage backends. The choice is decided once at startup:
