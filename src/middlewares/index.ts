@@ -34,6 +34,9 @@ export const initMiddlewares = (app: express.Application): void => {
   // Note: Static files will be handled by the server directly, not here
 
   app.use(async (req, res, next) => {
+    // Probes must reach their handlers even when configuration storage is unavailable.
+    if (['/health', '/livez', '/readyz'].includes(req.path)) return next();
+
     // Only apply JSON parsing for API and auth routes, not for SSE or message endpoints
     // TODO exclude sse responses by mcp endpoint
     try {

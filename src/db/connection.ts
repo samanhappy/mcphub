@@ -440,6 +440,7 @@ export const getDatabaseHealth = (): {
 
 // Perform a health check on the database connection
 export const checkDatabaseHealth = async (): Promise<boolean> => {
+  if (reconnectionInProgress) return false;
   if (!appDataSource) {
     isHealthy = false;
     lastHealthCheckError = new Error('Database not initialized');
@@ -531,6 +532,7 @@ const attemptReconnection = (): Promise<DataSource> => {
 
   const promise = (async () => {
     reconnectionInProgress = true;
+    isHealthy = false;
     logger.log('[DB Reconnect] Starting reconnection attempt...');
 
     try {
@@ -563,6 +565,9 @@ const attemptReconnection = (): Promise<DataSource> => {
 
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= CONNECTION_CONFIG.maxConnectionRetries; attempt++) {
+        const attemptSource = dataSource;
+        const attemptOptions = { ...dataSource.options };
+        let initialization: Promise<void> = Promise.resolve();
         try {
           logger.log(
             `[DB Reconnect] Connection attempt ${attempt}/${CONNECTION_CONFIG.maxConnectionRetries}...`,
@@ -572,7 +577,12 @@ const attemptReconnection = (): Promise<DataSource> => {
           // transaction and can block on locks held by live traffic, leaving a
           // connection stuck in `idle in transaction` and blocking pool
           // teardown. The schema is already synchronized from startup (#1205).
-          await initializeWithGroupNameCheck(dataSource, { skipSynchronize: true });
+          initialization = initializeWithGroupNameCheck(attemptSource, { skipSynchronize: true });
+          await withTimeout(
+            initialization,
+            CONNECTION_CONFIG.connectionTimeout,
+            `[DB Reconnect] initialization timed out after ${CONNECTION_CONFIG.connectionTimeout}ms`,
+          );
           registerPostgresVectorType(dataSource);
           appDataSource = dataSource;
 
@@ -584,21 +594,25 @@ const attemptReconnection = (): Promise<DataSource> => {
           lastError = error instanceof Error ? error : new Error(String(error));
           logger.warn(`[DB Reconnect] Attempt ${attempt} failed: ${lastError.message}`);
 
-          if (dataSource.isInitialized) {
-            try {
-              await withTimeout(
-                dataSource.destroy(),
-                CONNECTION_CONFIG.destroyTimeout,
-                `[DB Reconnect] Cleanup destroy() timed out after ${CONNECTION_CONFIG.destroyTimeout}ms`,
-              );
-            } catch (destroyError: any) {
-              logger.warn(
-                '[DB Reconnect] Error cleaning up partially initialized connection:',
-                destroyError.message,
-              );
-              dataSource = new DataSource({ ...dataSource.options });
-              appDataSource = dataSource;
-            }
+          // A timed-out initialization still runs. Isolate it, preserve the original
+          // options, and dispose it even if it only finishes after the next retry.
+          dataSource = new DataSource(attemptOptions);
+          appDataSource = dataSource;
+          try {
+            await withTimeout(
+              initialization
+                .catch(() => {})
+                .then(async () => {
+                  if (attemptSource.isInitialized) await attemptSource.destroy();
+                }),
+              CONNECTION_CONFIG.destroyTimeout,
+              `[DB Reconnect] Cleanup timed out after ${CONNECTION_CONFIG.destroyTimeout}ms`,
+            );
+          } catch (destroyError: any) {
+            logger.warn(
+              '[DB Reconnect] Error cleaning up partially initialized connection:',
+              destroyError.message,
+            );
           }
 
           if (attempt < CONNECTION_CONFIG.maxConnectionRetries) {
