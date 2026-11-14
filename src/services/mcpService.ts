@@ -1,14 +1,14 @@
 import { getToolPolicy } from './toolPolicyService.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
-import { legacyServerId } from '../utils/serverIdentity.js';
+import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
 import {
   hasStagedTools,
   resolveStagingCwd,
   serverVersionMatchesPinnedProfile,
   validateSshServerConfig,
 } from './fileStaging/adapter.js';
+import { dispatchStagedToolCall as dispatchStagingCall } from './fileStaging/dispatch.js';
 import { resolveStagingPrincipal } from './fileStaging/identity.js';
-import { applyRewrite, planRewrite } from './fileStaging/rewrite.js';
 import { getFileStagingSettings, getStagingStateStore } from './fileStaging/settings.js';
 import {
   STAGING_TOOL_DEFINITIONS,
@@ -16,7 +16,6 @@ import {
   isReservedStagingName,
   isStagingToolName,
 } from './fileStaging/tools.js';
-import { contentPath } from './fileStaging/paths.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isReplicaMode } from '../utils/replicaMode.js';
 import { withReplicaLock } from './replicaLock.js';
@@ -795,6 +794,7 @@ const buildToolWithDescriptionMetadata = (tool: Tool, toolConfig?: ToolConfig): 
     defaultDescription: upstreamDescription,
     hasDescriptionOverride: hasDescriptionOverride(toolConfig),
     ...(toolConfig?.hiddenParams?.length ? { hiddenParams: toolConfig.hiddenParams } : {}),
+    ...(toolConfig?.fileStaging ? { fileStaging: toolConfig.fileStaging } : {}),
     enabled: toolConfig?.enabled !== false,
   };
 };
@@ -2269,8 +2269,11 @@ const callToolWithReconnect = async (
   isolated?: IsolatedClientContext,
   extra?: Pick<ServerContext, 'mcpReq'>,
 ): Promise<any> =>
-  dispatchStagedToolCall(serverInfo, toolParams, extra, (params) =>
-    callToolWithReconnectInner(serverInfo, params, options, maxRetries, isolated, extra),
+  dispatchStagingCall(
+    serverInfo,
+    toolParams,
+    (params) => callToolWithReconnectInner(serverInfo, params, options, maxRetries, isolated, extra),
+    stagingAskUsername(extra),
   );
 
 const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig): void => {
@@ -4483,34 +4486,11 @@ interface StagingTarget {
   tools: StagingToolTarget[];
 }
 
-interface StagedCall {
-  serverName: string;
-  serverId: string;
-  toolName: string;
-  inputParams: string[];
-  outputParams: string[];
-}
-
 const stagingAskUsername = (extra: any): string | undefined =>
   RequestContextService.getInstance().getUsernameContext() ||
   extra?.username ||
   UserContextService.getInstance().getCurrentUser()?.username ||
   undefined;
-
-/** True when args contain a hub staging reference anywhere. */
-const containsStagingRef = (value: unknown): boolean => {
-  if (typeof value === 'string') return value.trim().startsWith('mcpfile://');
-  if (Array.isArray(value)) return value.some(containsStagingRef);
-  if (value && typeof value === 'object') return Object.values(value).some(containsStagingRef);
-  return false;
-};
-
-const stagingErrorText = (error: unknown): string => {
-  const code = (error as { code?: string } | undefined)?.code;
-  const message = error instanceof Error ? error.message : String(error);
-  // StagingError messages are already user-safe; other errors stay generic.
-  return code ? message : 'File staging request failed';
-};
 
 /**
  * Servers that can be staged on this route. A target needs an enabled tool
@@ -4531,6 +4511,12 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
     const validation = validateSshServerConfig(config);
     if (!validation.ok) {
       logger.warn(`[staging] ${serverInfo.name} is not a staging target: ${validation.reason}`);
+      continue;
+    }
+    if (isLegacyServerId(config.id, serverInfo.name)) {
+      logger.warn(
+        `[staging] ${serverInfo.name} still uses a name-derived id; save the server once to assign a stable UUID before enabling staging`,
+      );
       continue;
     }
     if (
@@ -4591,123 +4577,11 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
   return targets;
 };
 
-/** The staging target for one concrete tool call, or undefined for a normal call. */
-const resolveStagedCall = async (
-  serverInfo: ServerInfo,
-  toolName: string,
-): Promise<StagedCall | undefined> => {
-  const config = serverInfo.config;
-  if (!config?.staging || !hasStagedTools(config)) return undefined;
-  const settings = await getFileStagingSettings();
-  if (!settings.enabled) throw new Error('File staging is disabled on this hub');
-  // Trust decisions are re-read at call time: a group/visibility change must not
-  // be bypassed by a stale in-memory config.
-  const fresh = (await getServerDao().findById(serverInfo.name)) ?? config;
-  const validation = validateSshServerConfig(fresh);
-  if (!validation.ok) throw new Error(`File staging is not available for ${serverInfo.name}`);
-  if (serverInfo.version !== undefined && !serverVersionMatchesPinnedProfile(serverInfo.version)) {
-    throw new Error(`File staging is not available for ${serverInfo.name}`);
-  }
-  const runtimeNames = serverInfo.tools.map((tool) => tool.name);
-  const toolConfig = findToolConfig(fresh.tools, serverInfo.name, toolName, runtimeNames);
-  if (!toolConfig?.fileStaging?.enabled) return undefined;
-  return {
-    serverName: serverInfo.name,
-    serverId: fresh.id ?? legacyServerId(serverInfo.name),
-    toolName,
-    inputParams: [...(toolConfig.fileStaging.inputParams ?? [])],
-    outputParams: [...(toolConfig.fileStaging.outputParams ?? [])],
-  };
-};
-
-const dispatchStagedToolCall = async (
-  serverInfo: ServerInfo,
-  toolParams: any,
-  extra: any,
-  invoke: (params: any) => Promise<any>,
-): Promise<any> => {
-  const staged = await resolveStagedCall(serverInfo, toolParams?.name);
-  const args = toolParams?.arguments && typeof toolParams.arguments === 'object'
-    ? toolParams.arguments
-    : {};
-  if (!staged) {
-    // A staging reference is only honored in a declared parameter of a staging
-    // tool; never forward an unrewritten ref to the child.
-    if (containsStagingRef(args)) {
-      return {
-        isError: true,
-        content: [{ type: 'text', text: 'File staging reference is not allowed for this tool' }],
-      };
-    }
-    return invoke(toolParams);
-  }
-
-  const plan = planRewrite(args, staged.inputParams, staged.outputParams);
-  if (plan.inputRefs.length === 0 && plan.outputRefs.length === 0) return invoke(toolParams);
-
-  const username = stagingAskUsername(extra);
-  const settings = await getFileStagingSettings();
-  const store = await getStagingStateStore();
-  const principal = await resolveStagingPrincipal(username);
-  const leaseId = randomUUID();
-  const paths = new Map<string, string>();
-  const pinned: string[] = [];
-
-  try {
-    for (const ref of plan.inputRefs) {
-      const record = await store.getOwnedRef(ref, principal.ownerHash);
-      // A ref created for another server is not a capability for this one.
-      if (record.serverId !== staged.serverId) throw new Error('Staging reference not found');
-      if (record.state !== 'ready') throw new Error('The staged input is not ready');
-      await store.pinReadyRef(ref, principal.ownerHash);
-      pinned.push(ref);
-      paths.set(ref, await store.contentPathFor(ref, principal.ownerHash));
-    }
-    if (plan.outputRefs.length > 0) {
-      for (const ref of plan.outputRefs) {
-        const record = await store.getOwnedRef(ref, principal.ownerHash);
-        if (record.serverId !== staged.serverId) throw new Error('Staging reference not found');
-      }
-      const grants = await store.acquireOutputLeases(
-        principal.ownerHash,
-        plan.outputRefs.map((ref) => ({ ref, leaseId })),
-        settings,
-      );
-      for (const grant of grants) paths.set(grant.ref, grant.contentPath);
-    }
-
-    let result: any;
-    try {
-      result = await invoke({ ...toolParams, arguments: applyRewrite(args, paths) });
-    } catch (error) {
-      await store.failOutputs(leaseId, plan.outputRefs).catch(() => undefined);
-      throw error;
-    }
-    if (result?.isError) {
-      await store.failOutputs(leaseId, plan.outputRefs).catch(() => undefined);
-      return result;
-    }
-    if (plan.outputRefs.length > 0) {
-      try {
-        await store.finalizeOutputs(leaseId, plan.outputRefs, settings);
-      } catch (error) {
-        return {
-          isError: true,
-          content: [{ type: 'text', text: stagingErrorText(error) }],
-        };
-      }
-    }
-    return result;
-  } catch (error) {
-    if (plan.outputRefs.length > 0) {
-      await store.releaseLeases(leaseId, plan.outputRefs).catch(() => undefined);
-    }
-    return { isError: true, content: [{ type: 'text', text: stagingErrorText(error) }] };
-  } finally {
-    for (const ref of pinned) {
-      await store.unpinRef(ref).catch(() => undefined);
-    }
-  }
+const stagingErrorText = (error: unknown): string => {
+  const code = (error as { code?: string } | undefined)?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  // StagingError messages are already user-safe; other errors stay generic.
+  return code ? message : 'File staging request failed';
 };
 
 /** Prepend the hub's virtual tools when the route has a staging target. */

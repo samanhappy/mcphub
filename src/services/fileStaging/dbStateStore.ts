@@ -7,6 +7,7 @@ import { FileStagingRepository } from '../../db/repositories/FileStagingReposito
 import type { FileStagingRefEntity } from '../../db/entities/FileStagingRef.js';
 import type { FileStagingTokenEntity } from '../../db/entities/FileStagingToken.js';
 import {
+  assertDiskCapacity,
   contentPath,
   digestFile,
   ensureDirectory,
@@ -220,6 +221,7 @@ export class DbStagingStateStore implements StagingStateStore {
     if (data.length > input.settings.inlineMaxBytes) {
       throw new StagingError('quota-exceeded', 'Inline upload exceeds the configured limit');
     }
+    await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
     const record = await this.createRecord(input, 'ready');
     const dir = refDir(this.rootDir, record.ownerHash, record.id);
     await ensureDirectory(dir);
@@ -258,6 +260,7 @@ export class DbStagingStateStore implements StagingStateStore {
   }
 
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
+    await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
     const record = await this.createRecord(input, 'reserved');
     const dir = refDir(this.rootDir, record.ownerHash, record.id);
     await ensureDirectory(dir);
@@ -309,6 +312,7 @@ export class DbStagingStateStore implements StagingStateStore {
       );
       const records = rows.map(toRecord);
       assertRefsLeasable(records, items, ownerHash, this.nowIso());
+      await assertDiskCapacity(this.rootDir, settings.maxFileBytes * records.length);
       assertLeaseQuota(
         await this.usage(manager, ownerHash),
         await this.usage(manager),
@@ -318,8 +322,12 @@ export class DbStagingStateStore implements StagingStateStore {
       const reserve = settings.maxFileBytes;
       const leaseUntil = new Date(this.now() + settings.ttlHours * 3600_000);
       const leaseByRef = new Map(items.map((item) => [item.ref, item.leaseId] as const));
+      const toolByRef = new Map(
+        items.filter((item) => item.toolName).map((item) => [item.ref, item.toolName!] as const),
+      );
       for (const row of rows) {
         row.leaseId = leaseByRef.get(row.ref) ?? null;
+        row.toolName = toolByRef.get(row.ref) ?? row.toolName;
         row.leaseUntil = leaseUntil;
         row.reservedBytes = reserve;
         await this.repository.saveRef(manager, row);

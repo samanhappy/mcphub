@@ -3,6 +3,8 @@ import { constants as fsConstants } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { StagingError } from './types.js';
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const OWNER_HASH_RE = /^[a-f0-9]{64}$/;
 
@@ -115,6 +117,19 @@ export const digestFile = async (file: string): Promise<FileDigest> => {
     return { size: stat.size, sha256: hash.digest('hex') };
   } finally {
     await handle.close();
+  }
+};
+
+/** Refuse to start a write/reservation when the staging volume is nearly full. */
+export const assertDiskCapacity = async (dir: string, requiredBytes: number): Promise<void> => {
+  try {
+    const stats = await fs.statfs(dir);
+    if (stats.bavail * stats.bsize < requiredBytes) {
+      throw new StagingError('quota-exceeded', 'Staging volume is full');
+    }
+  } catch (error) {
+    if (error instanceof StagingError) throw error;
+    // statfs is unavailable on some platforms; quota accounting still applies.
   }
 };
 

@@ -777,6 +777,7 @@ export interface Tool {
   defaultDescription?: string; // Upstream tool description before any MCPHub override is applied
   hasDescriptionOverride?: boolean; // Whether MCPHub is currently overriding the upstream description
   hiddenParams?: string[]; // Configured top-level input parameters hidden from models (dashboard/API projection)
+  fileStaging?: ToolFileStagingConfig; // Configured staging direction for this tool (#1056)
   inputSchema: Record<string, unknown>; // Input schema for the tool
   outputSchema?: Record<string, unknown>; // Optional schema for structured output
   annotations?: Record<string, unknown>; // Standard MCP tool annotations

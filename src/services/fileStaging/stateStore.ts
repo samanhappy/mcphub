@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import type { FileStagingSettings } from '../../types/index.js';
 import {
+  assertDiskCapacity,
   isValidOwnerHash,
   contentPath,
   digestFile,
@@ -359,6 +360,7 @@ export class FileStagingStateStore implements StagingStateStore {
         throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
       }
       this.assertFileCount(input.principal.ownerHash, 1, input.settings);
+      await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
       const record = await this.createRecord(input, 'ready');
       const dir = refDir(this.rootDir, record.ownerHash, record.id);
       await ensureDirectory(dir);
@@ -385,6 +387,7 @@ export class FileStagingStateStore implements StagingStateStore {
     this.assertInit();
     return this.exclusive(async () => {
       this.assertFileCount(input.principal.ownerHash, 1, input.settings);
+      await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
       const record = await this.createRecord(input, 'reserved');
       const dir = refDir(this.rootDir, record.ownerHash, record.id);
       await ensureDirectory(dir);
@@ -429,13 +432,18 @@ export class FileStagingStateStore implements StagingStateStore {
       const records = items.map((item) => this.requireRef(item.ref));
       assertRefsLeasable(records, items, ownerHash, nowIso);
       assertLeaseQuota(this.quotaUsage(ownerHash), this.quotaUsage(), records.length, settings);
+      await assertDiskCapacity(this.rootDir, settings.maxFileBytes * records.length);
       const reserve = settings.maxFileBytes;
 
       const leaseUntil = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
       const leaseByRef = new Map(items.map((item) => [item.ref, item.leaseId] as const));
+      const toolByRef = new Map(
+        items.filter((item) => item.toolName).map((item) => [item.ref, item.toolName!] as const),
+      );
       for (const record of records) {
         record.leaseId = leaseByRef.get(record.ref);
         record.leaseUntil = leaseUntil;
+        record.toolName = toolByRef.get(record.ref) ?? record.toolName;
         record.reservedBytes = reserve;
       }
       await this.persist();

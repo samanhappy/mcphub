@@ -1,4 +1,5 @@
 import { legacyServerId } from './serverIdentity.js';
+import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { isReplicaMode } from './replicaMode.js';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -145,6 +146,12 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
               : {}),
           };
 
+          // Validate trust on the way into the DB: a hand-edited JSON file must
+          // not persist an adapter-less shared declaration or a staged tool.
+          const normalized = normalizeServerConfigForPersistence({
+            ...config,
+            type: config.type ?? (config.url ? 'sse' : 'stdio'),
+          });
           await serverRepo.create({
             id: config.id ?? legacyServerId(name),
             name,
@@ -163,8 +170,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             enableKeepAlive: config.enableKeepAlive,
             protocolNegotiation: config.protocolNegotiation,
             keepAliveInterval: config.keepAliveInterval,
-            tools: config.tools,
-            staging: config.staging,
+            tools: normalized.tools,
+            staging: normalized.staging,
             prompts: config.prompts,
             resources: config.resources,
             options: Object.keys(options).length > 0 ? options : config.options,

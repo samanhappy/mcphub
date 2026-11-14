@@ -73,6 +73,8 @@ export interface CreateRefInput {
 export interface LeaseRequestItem {
   ref: string;
   leaseId: string;
+  /** Recorded on first rewrite so the ledger shows which tool owns the ref. */
+  toolName?: string;
 }
 
 export interface LeaseGrant {

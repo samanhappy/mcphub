@@ -262,6 +262,7 @@ const CONNECTION_RELEVANT_CONFIG_FIELDS = [
   'openapi',
   'perSessionClient',
   'credentialTemplate',
+  'staging',
   'startOnDemand',
   'idleTimeoutMs',
   'enableKeepAlive',
