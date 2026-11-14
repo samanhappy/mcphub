@@ -115,7 +115,11 @@ const messageFor = (error: unknown): string => {
 
 const sanitizeFilename = (value: unknown): string => {
   if (typeof value !== 'string') throw new StagingError('invalid-ref', 'filename is required');
-  const cleaned = value.replace(/[\u0000\r\n]/g, '').trim();
+  const cleaned = value
+    .split('')
+    .filter((char) => char !== '\u0000' && char !== '\r' && char !== '\n')
+    .join('')
+    .trim();
   if (!cleaned) throw new StagingError('invalid-ref', 'filename is required');
   return Buffer.byteLength(cleaned, 'utf8') > 255
     ? Buffer.from(cleaned, 'utf8').subarray(0, 255).toString('utf8')
