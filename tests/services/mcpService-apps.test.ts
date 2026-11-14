@@ -194,6 +194,7 @@ import {
   initUpstreamServers,
 } from '../../src/services/mcpService.js';
 import { MCP_APPS_CAPABILITIES } from '../../src/utils/mcpApps.js';
+import { MCPHUB_INSTANCE_CAPABILITIES } from '../../src/utils/mcpHubIdentity.js';
 import { RequestContextService } from '../../src/services/requestContextService.js';
 
 const appsTools = [
@@ -1418,6 +1419,12 @@ describe('mcpService MCP Apps transparent proxy', () => {
   it('ignores list changes from a self-connection so prefixed tools cannot accumulate', async () => {
     const selfClient = createMockClient();
     selfClient.getServerVersion.mockReturnValue({ name: 'test-hub', version: '1.0.0' });
+    selfClient.getServerCapabilities.mockReturnValue({
+      tools: {},
+      resources: {},
+      prompts: {},
+      ...MCPHUB_INSTANCE_CAPABILITIES,
+    } as any);
     selfClient.listTools.mockResolvedValue({
       tools: [{ name: 'only-tool', description: 'Only tool', inputSchema: { type: 'object' } }],
     });
@@ -1435,6 +1442,7 @@ describe('mcpService MCP Apps transparent proxy', () => {
     const server = await getMcpServer('ordinary-session', 'self-loop');
     const send = jest.spyOn(server, 'sendToolListChanged').mockResolvedValue(undefined);
     const initialNames = getServerByName('self-loop')!.tools.map((tool) => tool.name);
+    expect(initialNames).toEqual([]);
 
     // Each round deliberately echoes the already-normalized name a self-connection
     // would receive from MCPHub itself. Without the guard every pass adds another
@@ -1452,6 +1460,107 @@ describe('mcpService MCP Apps transparent proxy', () => {
 
     expect(getServerByName('self-loop')!.tools.map((tool) => tool.name)).toEqual(initialNames);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('accepts list changes from a different MCPHub instance with the same product identity', async () => {
+    const peerClient = createMockClient();
+    peerClient.getServerVersion.mockReturnValue({ name: 'test-hub', version: '1.0.0' });
+    peerClient.getServerCapabilities.mockReturnValue({
+      tools: {},
+      prompts: {},
+      resources: {},
+      experimental: {
+        'io.mcphub/instance': { id: 'peer-hub-instance' },
+      },
+    } as any);
+    peerClient.listTools.mockResolvedValue({
+      tools: [{ name: 'bridge::search', description: 'Search', inputSchema: { type: 'object' } }],
+    });
+    peerClient.listPrompts.mockResolvedValue({ prompts: [] });
+    peerClient.listResources.mockResolvedValue({ resources: [] });
+    peerClient.listResourceTemplates.mockResolvedValue({ resourceTemplates: [] });
+    mockClientsByServer.set('bridge', peerClient);
+    mockFindAll.mockResolvedValue([makeServerConfig('bridge')]);
+    await initUpstreamServers();
+    await flushPromises();
+
+    const [, clientOptions] = (Client as jest.Mock).mock.calls.find(
+      ([info]) => info.name === 'mcp-client-bridge',
+    )!;
+    const server = await getMcpServer('ordinary-session', 'bridge');
+    const send = jest.spyOn(server, 'sendToolListChanged').mockResolvedValue(undefined);
+    expect(getServerByName('bridge')!.tools.map((tool) => tool.name)).toEqual([
+      'bridge::bridge::search',
+    ]);
+
+    clientOptions.listChanged.tools.onChanged(null, [
+      { name: 'bridge::search', description: 'Search', inputSchema: { type: 'object' } },
+      { name: 'bridge::new', description: 'New', inputSchema: { type: 'object' } },
+    ]);
+    await flushPromises();
+
+    expect(getServerByName('bridge')!.tools.map((tool) => tool.name)).toEqual([
+      'bridge::bridge::search',
+      'bridge::bridge::new',
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('suppresses resource and template echoes from a self-connection', async () => {
+    const selfClient = createMockClient();
+    selfClient.getServerCapabilities.mockReturnValue({
+      tools: {},
+      prompts: {},
+      resources: {},
+      ...MCPHUB_INSTANCE_CAPABILITIES,
+    } as any);
+    selfClient.listTools.mockResolvedValue({ tools: [] });
+    selfClient.listPrompts.mockResolvedValue({ prompts: [] });
+    selfClient.listResources.mockResolvedValue({
+      resources: [{ uri: 'test://Report', name: 'Report' }],
+    });
+    selfClient.listResourceTemplates.mockResolvedValue({
+      resourceTemplates: [{ uriTemplate: 'test://{id}', name: 'Template' }],
+    });
+    mockClientsByServer.set('self-loop', selfClient);
+    mockFindAll.mockResolvedValue([makeServerConfig('self-loop')]);
+    await initUpstreamServers();
+    await flushPromises();
+
+    const [, clientOptions] = (Client as jest.Mock).mock.calls.find(
+      ([info]) => info.name === 'mcp-client-self-loop',
+    )!;
+    const server = await getMcpServer('ordinary-session', 'self-loop');
+    const sendResources = jest
+      .spyOn(server, 'sendResourceListChanged')
+      .mockResolvedValue(undefined);
+
+    for (let round = 1; round <= 5; round += 1) {
+      clientOptions.listChanged.resources.onChanged(
+        null,
+        Array.from({ length: round }, () => ({ uri: 'test://Report', name: 'Report' })),
+      );
+    }
+    await flushPromises();
+
+    expect(getServerByName('self-loop')!.resources).toEqual([]);
+    expect(getServerByName('self-loop')!.resourceTemplates).toEqual([]);
+    expect(sendResources).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates repeated resource URIs in one upstream cache', async () => {
+    mockClient.listResources.mockResolvedValue({
+      resources: [
+        { uri: 'test://Report', name: 'Report' },
+        { uri: 'test://Report', name: 'Report copy' },
+      ],
+    });
+    await initUpstreamServers();
+    await flushPromises();
+
+    expect(getServerByName('apps-server')!.resources).toEqual([
+      expect.objectContaining({ uri: 'test://Report', name: 'Report' }),
+    ]);
   });
 
   it('does not report a successful list-change notification after delivery fails', async () => {
