@@ -10,6 +10,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port. |
+| `MCPHUB_HOST` | unset (all interfaces) | HTTP listen address, for example `127.0.0.1` to accept local connections only. The startup log shows the bound address. If the address cannot be bound, startup fails instead of falling back to all interfaces. |
 | `MCPHUB_REPLICA_MODE` | `false` | Opt in to [multi-replica deployment](/configuration/replicas). Requires PostgreSQL, persistent shared keys, and `DB_SYNCHRONIZE=false`. |
 | `MCPHUB_NODE_ID` | hostname | Node identity in replica diagnostics, response headers, logs and metrics. |
 | `DB_SYNCHRONIZE` | `true` | Set to `false` on serving replicas; run `pnpm db:setup` separately with this set to `true`. |

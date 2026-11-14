@@ -164,8 +164,11 @@ const installProcessKillMock = (): void => {
 // Import after mocks
 import {
   addServer,
+  drainStdioTerminations,
   removeServer,
+  resetStdioTerminationsForTest,
   setServerInfosForTest,
+  STDIO_TERMINATION_DRAIN_BUDGET_MS,
   toggleServerStatus,
 } from '../../src/services/mcpService.js';
 import type { ServerInfo } from '../../src/types/index.js';
@@ -189,6 +192,7 @@ describe('orphan stdio process cleanup (issue #920)', () => {
     currentTestPid = 12345;
     mockProcessTreeKillAvailability.value = true;
     setServerInfosForTest([]);
+    resetStdioTerminationsForTest();
     installProcessKillMock();
   });
 
@@ -334,6 +338,126 @@ describe('orphan stdio process cleanup (issue #920)', () => {
         jest.clearAllTimers();
         jest.useRealTimers();
       }
+    });
+  });
+
+  // The drain is what a caller about to call process.exit() relies on. These
+  // cases are driven with fake timers, so they measure the logic rather than
+  // how fast the host happens to be.
+  describe('drainStdioTerminations', () => {
+    const reportProcessAlive = (alive: boolean): void => {
+      (process.kill as jest.Mock).mockImplementation(((_pid: number, signal?: string | number) => {
+        if (signal === 0 || signal === undefined) {
+          if (alive) {
+            return true;
+          }
+          throw Object.assign(new Error('ESRCH'), { code: 'ESRCH' });
+        }
+        return true;
+      }) as any);
+    };
+
+    it('ends as soon as the process is gone, without waiting out the grace period', async () => {
+      jest.useFakeTimers();
+      try {
+        reportProcessAlive(false);
+        currentTestPid = 3131;
+        setServerInfosForTest([makeStdioServerInfo('already-gone')]);
+
+        await removeServer('already-gone');
+
+        const drain = drainStdioTerminations(10_000);
+        // One probe interval is enough; the 2000 ms escalation never runs.
+        await jest.advanceTimersByTimeAsync(100);
+
+        await expect(drain).resolves.toBe(true);
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('keeps waiting while the process is still there, then reports it gone', async () => {
+      jest.useFakeTimers();
+      try {
+        reportProcessAlive(true);
+        currentTestPid = 3232;
+        setServerInfosForTest([makeStdioServerInfo('stubborn-drain')]);
+
+        await removeServer('stubborn-drain');
+
+        let outcome: boolean | undefined;
+        const drain = drainStdioTerminations(60_000).then((value) => {
+          outcome = value;
+          return value;
+        });
+
+        // Past SIGTERM, past the SIGKILL escalation: still not finished,
+        // because the pid is still answering.
+        await jest.advanceTimersByTimeAsync(5000);
+        expect(outcome).toBeUndefined();
+
+        reportProcessAlive(false);
+        await jest.advanceTimersByTimeAsync(100);
+
+        await expect(drain).resolves.toBe(true);
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('reports the pid as not gone when the budget runs out', async () => {
+      jest.useFakeTimers();
+      try {
+        reportProcessAlive(true);
+        currentTestPid = 3333;
+        setServerInfosForTest([makeStdioServerInfo('never-dies')]);
+
+        await removeServer('never-dies');
+
+        const drain = drainStdioTerminations(4000);
+        await jest.advanceTimersByTimeAsync(4100);
+
+        await expect(drain).resolves.toBe(false);
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('falls back to the default budget instead of giving up at once on a bad one', async () => {
+      jest.useFakeTimers();
+      try {
+        reportProcessAlive(true);
+        currentTestPid = 3434;
+        setServerInfosForTest([makeStdioServerInfo('bad-budget')]);
+
+        await removeServer('bad-budget');
+
+        let outcome: boolean | undefined;
+        const drain = drainStdioTerminations(Number.NaN).then((value) => {
+          outcome = value;
+          return value;
+        });
+
+        // A NaN budget reaches setTimeout as 1 ms, so an unvalidated budget
+        // would already have reported failure here.
+        await jest.advanceTimersByTimeAsync(100);
+        expect(outcome).toBeUndefined();
+
+        await jest.advanceTimersByTimeAsync(STDIO_TERMINATION_DRAIN_BUDGET_MS);
+
+        await expect(drain).resolves.toBe(false);
+      } finally {
+        jest.clearAllTimers();
+        jest.useRealTimers();
+      }
+    });
+
+    it('reports true, and says so, when nothing is pending', async () => {
+      setServerInfosForTest([]);
+      await expect(drainStdioTerminations(0)).resolves.toBe(true);
     });
   });
 

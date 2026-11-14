@@ -1166,9 +1166,132 @@ const pendingReinstalls = new Set<string>();
 // enough that a hung child does not block the container indefinitely.
 const STDIO_KILL_GRACE_PERIOD_MS = 2000;
 
+// Default bound a caller should allow when waiting for stdio terminations
+// before it exits the process. It is a bound, not a pause: the wait ends as
+// soon as the processes are gone, and this only decides how long a caller is
+// willing to hang on for a server that will not die.
+export const STDIO_TERMINATION_DRAIN_BUDGET_MS = STDIO_KILL_GRACE_PERIOD_MS + 3000;
+
+// Interval between liveness probes while waiting for a signalled process tree
+// to exit. The probe is what ends the wait, so a server that honours SIGTERM
+// does not cost a caller the whole grace period, and a slow host only costs
+// what it actually needs.
+const STDIO_KILL_POLL_INTERVAL_MS = 50;
+
+// How long a single termination may stay on the pending list. Nothing should
+// reach it: it exists so a tree-kill callback that never fires, or a process
+// that cannot be signalled at all, eventually leaves the list instead of
+// pinning it for the lifetime of the hub.
+const STDIO_TERMINATION_CAP_MS = STDIO_KILL_GRACE_PERIOD_MS + 60_000;
+
+// Terminations started by killStdioProcessTree that are not finished yet. Both
+// halves of a termination are asynchronous: tree-kill signals the tree from its
+// own child process, and the SIGKILL fallback runs on a timer. process.exit()
+// cancels both, so a caller that is about to exit drains this set first (see
+// drainStdioTerminations) rather than orphaning an `npx` wrapper's descendants.
+//
+// An outcome of 'gone' means the pid was observed to disappear. 'unconfirmed'
+// means it was not, and the caller is told which pids those were, because a
+// kill that was merely sent is not a process that has stopped.
+type StdioTerminationOutcome = 'gone' | 'unconfirmed';
+
+interface PendingStdioTermination {
+  serverName: string;
+  pid: number;
+  outcome: Promise<StdioTerminationOutcome>;
+}
+
+const pendingStdioTerminations = new Set<PendingStdioTermination>();
+
+// Resolves with `value` after `ms`, without holding the event loop open.
+const afterDelay = <T>(ms: number, value: T): Promise<T> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(value), ms);
+    timer.unref?.();
+  });
+
+const trackStdioTermination = (
+  serverName: string,
+  pid: number,
+  work: Promise<StdioTerminationOutcome>,
+): void => {
+  const outcome = Promise.race([
+    work.catch(() => 'unconfirmed' as const),
+    afterDelay(STDIO_TERMINATION_CAP_MS, 'unconfirmed' as const),
+  ]);
+  const entry: PendingStdioTermination = { serverName, pid, outcome };
+  pendingStdioTerminations.add(entry);
+  void outcome.then(() => {
+    pendingStdioTerminations.delete(entry);
+  });
+};
+
+/**
+ * Waits until every pending stdio process tree has been observed to go away,
+ * giving up after `timeoutMs`. Resolves true only when all of them were seen to
+ * disappear, so a caller about to exit knows the difference between "they are
+ * gone" and "the signals were sent". Terminations started after the call are
+ * not awaited.
+ *
+ * The timeout is a ceiling, not a delay: on an idle host this returns in
+ * milliseconds, and a slow or loaded host only pays for what it needs.
+ */
+export const drainStdioTerminations = async (
+  timeoutMs: number = STDIO_TERMINATION_DRAIN_BUDGET_MS,
+): Promise<boolean> => {
+  // A non-finite or negative budget would otherwise become "give up at once",
+  // reported as if the wait had been honoured.
+  const budgetMs =
+    Number.isFinite(timeoutMs) && timeoutMs >= 0 ? timeoutMs : STDIO_TERMINATION_DRAIN_BUDGET_MS;
+  const pending = [...pendingStdioTerminations];
+  if (pending.length === 0) {
+    // Said out loud: "nothing was pending" and "everything is gone" are both
+    // reported as true, and an operator has to be able to tell them apart.
+    logger.log('No upstream stdio terminations were pending');
+    return true;
+  }
+
+  let timer: NodeJS.Timeout | undefined;
+  const expiry = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), budgetMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.all(pending.map((entry) => entry.outcome)),
+      expiry,
+    ]);
+
+    if (result !== 'timeout' && result.every((outcome) => outcome === 'gone')) {
+      logger.log('Upstream stdio process trees are gone', { count: pending.length });
+      return true;
+    }
+
+    // Name the survivors: this line is how anyone finds the orphans later.
+    logger.warn('Upstream stdio process trees were not confirmed gone', {
+      budgetMs,
+      timedOut: result === 'timeout',
+      pending: pending
+        .filter((entry) => result === 'timeout' || pendingStdioTerminations.has(entry))
+        .map((entry) => ({ serverName: entry.serverName, pid: entry.pid })),
+    });
+    return false;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
+
 // Test-only helper to set serverInfos directly. Not for production use.
 export const setServerInfosForTest = (infos: ServerInfo[]): void => {
   serverInfos = infos;
+};
+
+// Test-only helper to forget pending terminations, so one test's unconfirmed
+// pid cannot change the answer a later test gets. Not for production use.
+export const resetStdioTerminationsForTest = (): void => {
+  pendingStdioTerminations.clear();
 };
 
 export const updateServerToolsCache = (
@@ -3830,55 +3953,97 @@ function killStdioProcessTree(name: string, pid: number): void {
     }
   };
 
-  const safeTreeKill = (signal: 'SIGTERM' | 'SIGKILL'): void => {
-    try {
-      treeKill(pid, signal, (err) => {
-        if (err) {
-          // ESRCH (no such process) is expected when the process already exited
-          // — treat as success. Anything else is worth a warning.
-          const code = (err as NodeJS.ErrnoException).code;
-          if (code !== 'ESRCH') {
-            // Pass the user-controlled `name` as a separate argument so a
-            // server named e.g. "%s" cannot inject format specifiers into the
-            // log line (CodeQL: use-of-externally-controlled-format-string).
-            logger.warn('Failed to send signal to process tree', {
-              serverName: name,
-              pid,
-              signal,
-              err,
-            });
+  // Resolves once tree-kill's own child process has finished signalling the
+  // tree. Callers that exit the process must wait for that, or the kill never
+  // reaches the descendants.
+  const safeTreeKill = (signal: 'SIGTERM' | 'SIGKILL'): Promise<void> =>
+    new Promise((resolve) => {
+      try {
+        treeKill(pid, signal, (err) => {
+          if (err) {
+            // ESRCH (no such process) is expected when the process already exited
+            //: treat as success. Anything else is worth a warning.
+            const code = (err as NodeJS.ErrnoException).code;
+            if (code !== 'ESRCH') {
+              // Pass the user-controlled `name` as a separate argument so a
+              // server named e.g. "%s" cannot inject format specifiers into the
+              // log line (CodeQL: use-of-externally-controlled-format-string).
+              logger.warn('Failed to send signal to process tree', {
+                serverName: name,
+                pid,
+                signal,
+                err,
+              });
+            }
           }
-        }
-      });
-    } catch (err) {
-      logger.warn('Failed to send signal to process tree', {
-        serverName: name,
-        pid,
-        signal,
-        err,
-      });
-    }
-  };
+          resolve();
+        });
+      } catch (err) {
+        logger.warn('Failed to send signal to process tree', {
+          serverName: name,
+          pid,
+          signal,
+          err,
+        });
+        resolve();
+      }
+    });
 
   const safeKill = isProcessTreeKillAvailable()
     ? safeTreeKill
-    : (signal: 'SIGTERM' | 'SIGKILL'): void => {
+    : (signal: 'SIGTERM' | 'SIGKILL'): Promise<void> => {
         logger.warn('Process lister unavailable, killing only the direct child process', {
           serverName: name,
           pid,
           signal,
         });
         safeDirectKill(signal);
+        return Promise.resolve();
       };
 
-  safeKill('SIGTERM');
+  const termination = safeKill('SIGTERM');
 
-  setTimeout(() => {
-    if (!isProcessAlive(pid)) {
-      return;
-    }
-    safeKill('SIGKILL');
-  }, STDIO_KILL_GRACE_PERIOD_MS);
+  // Two invariants for whoever edits this next. Every branch must resolve, or
+  // the entry stays on pendingStdioTerminations until its cap and spoils the
+  // answer every later drain gives. And SIGKILL is issued inside the timer
+  // callback, synchronously, so the escalation keeps the instant it fired at
+  // before it became observable.
+  const gone = new Promise<StdioTerminationOutcome>((resolve) => {
+    let pollTimer: NodeJS.Timeout | undefined;
+
+    // The probe decides when this is over, not a timer: it watches until the
+    // pid is actually gone. That is what makes the wait as short as the host
+    // allows rather than a fixed pause, and it is the only thing that can tell
+    // a delivered signal from a stopped process.
+    const pollUntilGone = (): void => {
+      if (!isProcessAlive(pid)) {
+        clearTimeout(escalationTimer);
+        resolve('gone');
+        return;
+      }
+      pollTimer = setTimeout(pollUntilGone, STDIO_KILL_POLL_INTERVAL_MS);
+      pollTimer.unref?.();
+    };
+
+    const escalationTimer = setTimeout(() => {
+      if (!isProcessAlive(pid)) {
+        resolve('gone');
+        return;
+      }
+      void safeKill('SIGKILL');
+    }, STDIO_KILL_GRACE_PERIOD_MS);
+
+    pollTimer = setTimeout(pollUntilGone, STDIO_KILL_POLL_INTERVAL_MS);
+    pollTimer.unref?.();
+  });
+
+  // The SIGTERM spawn has to finish as well: on Windows tree-kill shells out to
+  // taskkill, and a caller that exits before that spawn has run kills the kill.
+  trackStdioTermination(
+    name,
+    pid,
+    Promise.all([termination.then(() => 'gone' as const), gone]).then(([, outcome]) => outcome),
+  );
 }
 
 function isProcessAlive(pid: number): boolean {

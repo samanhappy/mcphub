@@ -19,7 +19,7 @@ Use the commands defined in `package.json`; the following are the repository's c
 | Validate docs | `pnpm docs:validate` |
 | Start production build | `pnpm start` |
 
-The backend listens on `:3000` unless `PORT` is set. The frontend dev server listens on `:5173` and proxies API and MCP requests to the backend.
+The backend listens on `:3000` on all interfaces unless `PORT` or `MCPHUB_HOST` is set. The frontend dev server listens on `:5173` and proxies API and MCP requests to the backend.
 
 ## Validation by change
 
