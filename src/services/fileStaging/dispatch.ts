@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ServerConfig, ServerInfo } from '../../types/index.js';
 import { getServerDao } from '../../dao/index.js';
+import { getNameSeparator } from '../../config/index.js';
 import { findToolConfig } from '../../utils/toolConfig.js';
 import { isLegacyServerId } from '../../utils/serverIdentity.js';
 import {
@@ -68,6 +69,29 @@ export const resolveStagedCall = async (
   const runtimeNames = serverInfo.tools.map((tool) => tool.name);
   const toolConfig = findToolConfig(fresh.tools, serverInfo.name, toolName, runtimeNames);
   if (!toolConfig?.fileStaging?.enabled) return undefined;
+  const declared = [
+    ...(toolConfig.fileStaging.inputParams ?? []),
+    ...(toolConfig.fileStaging.outputParams ?? []),
+  ];
+  // When the connected tool schema is known, a declared parameter must exist:
+  // a typo would otherwise silently stage nothing until the child rejects it.
+  const prefix = `${serverInfo.name}${getNameSeparator()}`;
+  const bareName = toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
+  const toolDefinition = serverInfo.tools.find(
+    (tool) => tool.name === toolName || tool.name === bareName,
+  );
+  const properties = toolDefinition?.inputSchema?.properties;
+  if (properties && typeof properties === 'object') {
+    for (const param of declared) {
+      const root = param.split('.')[0];
+      if (!(root in (properties as Record<string, unknown>))) {
+        throw new StagingError(
+          'invalid-ref',
+          `Staged parameter "${param}" is not part of the tool input schema`,
+        );
+      }
+    }
+  }
   return {
     serverName: serverInfo.name,
     serverId: fresh.id ?? serverInfo.name,
