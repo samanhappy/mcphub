@@ -134,7 +134,7 @@ export const normalizeToolFileStaging = (
   input: unknown,
   toolKey: string,
 ): ToolFileStagingConfig | undefined => {
-  if (input === undefined) return undefined;
+  if (input === undefined || input === null) return undefined;
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     throw new ServerConfigValidationError(`tools.${toolKey}.fileStaging must be an object`);
   }
@@ -169,7 +169,9 @@ export const normalizeToolFileStaging = (
 
 /** Validate and normalize a server's staging trust declaration. */
 export const normalizeServerStaging = (input: unknown): ServerStagingConfig | undefined => {
-  if (input === undefined) return undefined;
+  // TypeORM's simple-json columns read back SQL NULL as null; treat it exactly
+  // like an absent key so DB round-trips do not fail validation.
+  if (input === undefined || input === null) return undefined;
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     throw new ServerConfigValidationError('staging must be an object');
   }
@@ -204,6 +206,9 @@ export const assertStagingConfigConsistent = (config: ServerConfig): void => {
     ([, tool]) => tool?.fileStaging?.enabled === true,
   );
   if (enabledTools.length === 0) return;
+  if (config.url || config.type === 'sse' || config.type === 'streamable-http' || config.type === 'openapi') {
+    throw new ServerConfigValidationError('File staging is only available for stdio servers');
+  }
   if (!config.staging?.adapter) {
     throw new ServerConfigValidationError(
       `File staging requires staging.adapter on this server (staged tools: ${enabledTools

@@ -165,6 +165,49 @@ describe('file staging configuration', () => {
       expect(Object.prototype.hasOwnProperty.call(config, 'staging')).toBe(false);
     });
 
+
+    it('treats DB NULL columns as absent instead of failing the round-trip', () => {
+      const config = normalizeServerConfigForPersistence({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', 'pkg'],
+        tools: null,
+        staging: null,
+      } as unknown as Parameters<typeof normalizeServerConfigForPersistence>[0]);
+      expect(Object.prototype.hasOwnProperty.call(config, 'tools')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(config, 'staging')).toBe(false);
+    });
+
+    it('rejects a staged parameter that is also hidden', () => {
+      expect(() =>
+        normalizeServerConfigForPersistence({
+          command: 'npx',
+          args: ['-y', 'pkg'],
+          staging: { adapter: 'ssh' },
+          tools: {
+            upload: {
+              enabled: true,
+              hiddenParams: ['localPath'],
+              fileStaging: { enabled: true, inputParams: ['localPath'] },
+            },
+          },
+        }),
+      ).toThrow(ServerConfigValidationError);
+    });
+
+    it('rejects staging on a non-stdio server', () => {
+      expect(() =>
+        normalizeServerConfigForPersistence({
+          type: 'streamable-http',
+          url: 'https://example.com/mcp',
+          staging: { adapter: 'ssh' },
+          tools: {
+            upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['p'] } },
+          },
+        }),
+      ).toThrow(ServerConfigValidationError);
+    });
+
     it('rejects staged tools without a server adapter, including through round-trips', () => {
       expect(() =>
         normalizeServerConfigForPersistence({

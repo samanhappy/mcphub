@@ -31,6 +31,10 @@ export interface IUser {
   isAdmin?: boolean;
   email?: string | null;
   ssoUserId?: string | null;
+  /** Stable identity for per-principal paths (DB users); never rendered. */
+  id?: string;
+  /** File-mode stable salt for per-principal paths; generated on first use. */
+  stagingSalt?: string;
 }
 
 // Group interface for server grouping
@@ -711,6 +715,10 @@ export interface ServerInfo {
   capabilityCache?: CapabilityCacheStatus;
   name: string; // Unique name of the server
   protocolVersion?: string; // Negotiated MCP protocol version for the current connection
+  // Principal whose per-user runtime this is (#1056); set only on personal
+  // runtimes, never persisted, and used to give staged stdio children the
+  // matching per-principal cwd on reconnect.
+  principalUsername?: string;
   version?: string; // Upstream server version reported during MCP initialization
   // Resolved package version for stdio servers launched via npx/uvx (see #1166).
   // Read from the runner's install cache (npm _npx / uv tool environments),

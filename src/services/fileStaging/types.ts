@@ -92,7 +92,8 @@ export type StagingErrorCode =
   | 'owner-mismatch'
   | 'server-mismatch'
   | 'expired'
-  | 'locked';
+  | 'locked'
+  | 'unauthenticated';
 
 /** Expected failures; the tool/HTTP layer maps these to generic public errors. */
 export class StagingError extends Error {

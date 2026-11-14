@@ -12,6 +12,7 @@ export class ServerConfigValidationError extends Error {}
 export const isPrivilegedServerConfig = (config: ServerConfig): boolean => {
   return Boolean(
     config.type === 'stdio' ||
+      Boolean(config.staging) ||
       Boolean(config.passthroughHeaders?.length || config.openapi?.passthroughHeaders?.length) ||
       config.oauth?.allowInsecureTokenEndpoint === true ||
       Boolean(config.oauth?.authorizationRelay) ||

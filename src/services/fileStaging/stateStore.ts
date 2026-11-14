@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import type { FileStagingSettings } from '../../types/index.js';
 import {
+  isValidOwnerHash,
   contentPath,
   digestFile,
   ensureDirectory,
@@ -19,6 +20,7 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
+import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
 import {
   type CreateRefInput,
   type LeaseGrant,
@@ -42,6 +44,9 @@ export interface StagingStateStore {
   createReadyRef(input: CreateRefInput, data: Buffer): Promise<StagingRefRecord>;
   createReservedRef(input: CreateRefInput): Promise<StagingRefRecord>;
   getOwnedRef(ref: string, ownerHash: string): Promise<StagingRefRecord>;
+  /** Absolute content path for an owned ref; the caller has already checked it. */
+  contentPathFor(ref: string, ownerHash: string): Promise<string>;
+
   acquireOutputLeases(
     ownerHash: string,
     items: readonly LeaseRequestItem[],
@@ -82,6 +87,48 @@ export interface FileStagingStateStoreOptions {
   now?: () => number;
   disableLock?: boolean;
 }
+
+const REF_STATES = new Set(['reserved', 'ready', 'failed', 'expired']);
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+/** Reject a tampered/corrupt ledger record before it can drive a file path. */
+const isValidRefRecord = (key: string, value: unknown): value is StagingRefRecord => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as StagingRefRecord;
+  const id = parseRef(key);
+  return (
+    id !== undefined &&
+    record.ref === key &&
+    record.id === id &&
+    isValidOwnerHash(record.ownerHash) &&
+    typeof record.serverName === 'string' &&
+    typeof record.serverId === 'string' &&
+    REF_STATES.has(record.state) &&
+    isFiniteNumber(record.size) &&
+    isFiniteNumber(record.version) &&
+    isFiniteNumber(record.pinCount) &&
+    typeof record.createdAt === 'string' &&
+    typeof record.expiresAt === 'string'
+  );
+};
+
+const isValidTokenRecord = (key: string, value: unknown): value is StagingTokenRecord => {
+  if (!value || typeof value !== 'object') return false;
+  const token = value as StagingTokenRecord;
+  return (
+    token.tokenHash === key &&
+    /^[a-f0-9]{64}$/.test(key) &&
+    parseRef(token.ref) !== undefined &&
+    isValidOwnerHash(token.ownerHash) &&
+    typeof token.contentHash === 'string' &&
+    typeof token.expiresAt === 'string'
+  );
+};
+
+/** State dirs locked by this process (see acquireProcessLock). */
+const acquiredStateDirs = new Set<string>();
 
 /**
  * Single-process JSON backend. A lockfile refuses to start when another hub
@@ -124,20 +171,40 @@ export class FileStagingStateStore implements StagingStateStore {
 
   private async acquireProcessLock(): Promise<void> {
     if (this.disableLock) return;
+    // One writer per process even when two stores are constructed: a second
+    // store would otherwise share the pid and silently take the lock over.
+    if (acquiredStateDirs.has(this.stateDir)) {
+      throw new StagingError(
+        'locked',
+        'File staging is already initialized in this process for the same state directory',
+      );
+    }
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const handle = await fs.open(this.lockPath, 'wx', 0o600);
-        await handle.writeFile(String(process.pid));
-        this.lockHandle = handle;
+        // One syscall creates and writes the pid; a concurrent reader never
+        // sees an empty lockfile.
+        await fs.writeFile(this.lockPath, String(process.pid), {
+          flag: 'wx',
+          mode: 0o600,
+        });
+        acquiredStateDirs.add(this.stateDir);
         return;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         const raw = await fs.readFile(this.lockPath, 'utf8').catch(() => '');
         const owner = Number.parseInt(raw.trim(), 10);
-        if (isLivePid(owner) && owner !== process.pid) {
+        if (Number.isFinite(owner) && isLivePid(owner)) {
           throw new StagingError(
             'locked',
             `File staging is already owned by hub process ${owner}; only one process may run staging`,
+          );
+        }
+        if (!Number.isFinite(owner)) {
+          // A truncated/empty lockfile is treated as held: deleting it could
+          // hand the ledger to a second live writer.
+          throw new StagingError(
+            'locked',
+            'The file staging lockfile is unreadable; remove it only after confirming no hub process is running',
           );
         }
         await fs.rm(this.lockPath, { force: true });
@@ -150,11 +217,15 @@ export class FileStagingStateStore implements StagingStateStore {
     try {
       const raw = await fs.readFile(this.refsPath, 'utf8');
       const parsed = JSON.parse(raw) as Partial<StagingStateDocument>;
-      this.state = {
-        version: 1,
-        refs: parsed.refs && typeof parsed.refs === 'object' ? parsed.refs : {},
-        tokens: parsed.tokens && typeof parsed.tokens === 'object' ? parsed.tokens : {},
-      };
+      const refs: Record<string, StagingRefRecord> = {};
+      for (const [key, value] of Object.entries(parsed.refs ?? {})) {
+        if (isValidRefRecord(key, value)) refs[key] = value;
+      }
+      const tokens: Record<string, StagingTokenRecord> = {};
+      for (const [key, value] of Object.entries(parsed.tokens ?? {})) {
+        if (isValidTokenRecord(key, value)) tokens[key] = value;
+      }
+      this.state = { version: 1, refs, tokens };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       this.state = emptyDocument();
@@ -175,6 +246,10 @@ export class FileStagingStateStore implements StagingStateStore {
       if (record.state === 'expired' || (record.state !== 'ready' && record.expiresAt <= now)) {
         record.state = 'expired';
       }
+      // No reader survives a restart; a stale pin would otherwise exempt the
+      // ref from cleanup forever.
+      record.pinCount = 0;
+      record.pinUntil = undefined;
     }
     for (const [hash, token] of Object.entries(this.state.tokens)) {
       if (token.usedAt || token.expiresAt <= now) delete this.state.tokens[hash];
@@ -255,6 +330,22 @@ export class FileStagingStateStore implements StagingStateStore {
     return total;
   }
 
+  private assertFileCount(
+    ownerHash: string,
+    additional: number,
+    settings: FileStagingSettings,
+  ): void {
+    let count = 0;
+    for (const record of Object.values(this.state.refs)) {
+      if (record.ownerHash !== ownerHash) continue;
+      if (record.state === 'failed' || record.state === 'expired') continue;
+      count += 1;
+    }
+    if (count + additional > settings.maxFilesPerUser) {
+      throw new StagingError('quota-exceeded', 'Per-user staged file limit exceeded');
+    }
+  }
+
   async createReadyRef(input: CreateRefInput, data: Buffer): Promise<StagingRefRecord> {
     this.assertInit();
     return this.exclusive(async () => {
@@ -267,6 +358,7 @@ export class FileStagingStateStore implements StagingStateStore {
       if (this.quotaUsage() + data.length > input.settings.globalQuotaBytes) {
         throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
       }
+      this.assertFileCount(input.principal.ownerHash, 1, input.settings);
       const record = await this.createRecord(input, 'ready');
       const dir = refDir(this.rootDir, record.ownerHash, record.id);
       await ensureDirectory(dir);
@@ -292,6 +384,7 @@ export class FileStagingStateStore implements StagingStateStore {
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
     this.assertInit();
     return this.exclusive(async () => {
+      this.assertFileCount(input.principal.ownerHash, 1, input.settings);
       const record = await this.createRecord(input, 'reserved');
       const dir = refDir(this.rootDir, record.ownerHash, record.id);
       await ensureDirectory(dir);
@@ -314,6 +407,16 @@ export class FileStagingStateStore implements StagingStateStore {
     return record;
   }
 
+  async contentPathFor(ref: string, ownerHash: string): Promise<string> {
+    return this.exclusive(async () => {
+      const record = this.requireRef(ref);
+      if (record.ownerHash !== ownerHash) {
+        throw new StagingError('not-found', 'Staging reference not found');
+      }
+      return contentPath(this.rootDir, record.ownerHash, record.id);
+    });
+  }
+
   async acquireOutputLeases(
     ownerHash: string,
     items: readonly LeaseRequestItem[],
@@ -323,39 +426,10 @@ export class FileStagingStateStore implements StagingStateStore {
     if (items.length === 0) return [];
     return this.exclusive(async () => {
       const nowIso = new Date(this.now()).toISOString();
-      const seen = new Set<string>();
-      const records: StagingRefRecord[] = [];
-      for (const item of items) {
-        const record = this.requireRef(item.ref);
-        if (record.ownerHash !== ownerHash) throw new StagingError('not-found', 'Staging reference not found');
-        if (seen.has(record.ref)) {
-          throw new StagingError('invalid-ref', 'The same staging reference was used twice');
-        }
-        seen.add(record.ref);
-        if (record.state !== 'reserved') {
-          throw new StagingError('not-reserved', 'Output destination is not writable');
-        }
-        if (record.leaseId) {
-          throw new StagingError('lease-conflict', 'Output destination is busy');
-        }
-        if (record.expiresAt <= nowIso) {
-          throw new StagingError('expired', 'Staging reference has expired');
-        }
-        records.push(record);
-      }
-
-      // Reserve the worst case before the child writes; finalize adjusts to the
-      // real size. Quota checked under the same lock so two calls cannot both
-      // pass the check.
+      const records = items.map((item) => this.requireRef(item.ref));
+      assertRefsLeasable(records, items, ownerHash, nowIso);
+      assertLeaseQuota(this.quotaUsage(ownerHash), this.quotaUsage(), records.length, settings);
       const reserve = settings.maxFileBytes;
-      const ownerUsed = this.quotaUsage(ownerHash);
-      const globalUsed = this.quotaUsage();
-      if (ownerUsed + reserve * records.length > settings.perUserQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
-      }
-      if (globalUsed + reserve * records.length > settings.globalQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
-      }
 
       const leaseUntil = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
       const leaseByRef = new Map(items.map((item) => [item.ref, item.leaseId] as const));
@@ -395,35 +469,38 @@ export class FileStagingStateStore implements StagingStateStore {
   ): Promise<StagingRefRecord[]> {
     this.assertInit();
     return this.exclusive(async () => {
-      const finalized: StagingRefRecord[] = [];
+      // Validate every output before mutating any of them: a failure on the
+      // second ref must not leave the first one ready with its lease cleared.
+      const decisions: Array<{ record: StagingRefRecord; size: number; sha256: string }> = [];
       for (const ref of refs) {
         const record = this.requireRef(ref);
-        if (record.leaseId !== leaseId) {
-          throw new StagingError('lease-conflict', 'This call no longer holds the output lease');
-        }
-        if (record.state !== 'reserved') {
-          throw new StagingError('not-reserved', 'Output destination is not writable');
-        }
         const file = contentPath(this.rootDir, record.ownerHash, record.id);
         const digest = await digestFile(file);
-        if (digest.size > settings.maxFileBytes) {
-          throw new StagingError('quota-exceeded', 'Output file exceeds the configured limit');
-        }
-        if (digest.size === 0 && !record.allowZeroByte) {
-          throw new StagingError('not-ready', 'Tool produced an empty output');
-        }
-        record.size = digest.size;
-        record.sha256 = digest.sha256;
-        record.version += 1;
-        record.state = 'ready';
-        record.leaseId = undefined;
-        record.leaseUntil = undefined;
-        record.reservedBytes = undefined;
-        record.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
-        finalized.push(record);
+        const decision = decideFinalize(record, leaseId, digest, settings);
+        decisions.push({ record, size: decision.size, sha256: decision.sha256 });
       }
-      await Promise.all(finalized.map((record) => this.writeMeta(record)));
-      await this.persist();
+      const snapshot = decisions.map(({ record }) => structuredClone(record));
+      const finalized: StagingRefRecord[] = [];
+      try {
+        for (const { record, size, sha256 } of decisions) {
+          record.size = size;
+          record.sha256 = sha256;
+          record.version += 1;
+          record.state = 'ready';
+          record.leaseId = undefined;
+          record.leaseUntil = undefined;
+          record.reservedBytes = undefined;
+          record.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
+          finalized.push(record);
+        }
+        await Promise.all(finalized.map((record) => this.writeMeta(record)));
+        await this.persist();
+      } catch (error) {
+        decisions.forEach(({ record }, index) => {
+          Object.assign(record, snapshot[index]);
+        });
+        throw error;
+      }
       return finalized;
     });
   }
@@ -456,6 +533,9 @@ export class FileStagingStateStore implements StagingStateStore {
         throw new StagingError('not-found', 'Staging reference not found');
       }
       if (record.state !== 'ready') throw new StagingError('not-ready', 'Staging reference is not ready');
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
       record.pinCount += 1;
       record.pinUntil = new Date(this.now() + 3600_000).toISOString();
       await this.persist();
@@ -484,6 +564,9 @@ export class FileStagingStateStore implements StagingStateStore {
       }
       if (record.state !== 'ready' || !record.sha256) {
         throw new StagingError('not-ready', 'Staging reference is not ready');
+      }
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Staging reference has expired');
       }
       const token = randomBytes(32).toString('base64url');
       const tokenHash = sha256(token);
@@ -526,7 +609,10 @@ export class FileStagingStateStore implements StagingStateStore {
       const nowIso = new Date(this.now()).toISOString();
       let removed = 0;
       for (const [key, record] of Object.entries(this.state.refs)) {
-        if (record.pinCount > 0 || record.leaseId) continue;
+        // A stale pin (past pinUntil) is treated as released: a crashed
+        // download must not protect content forever.
+        const pinned = record.pinCount > 0 && (!record.pinUntil || record.pinUntil > nowIso);
+        if (pinned || record.leaseId) continue;
         const expired = record.expiresAt <= nowIso;
         // Ready content survives until TTL; failed/expired records are swept
         // immediately once nothing pins or leases them.
