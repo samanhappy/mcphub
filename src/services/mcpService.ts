@@ -4506,6 +4506,9 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
   const targets: StagingTarget[] = [];
 
   for (const serverInfo of filteredServerInfos) {
+    // Cheap pre-check: most routes have no staging server and must not pay a
+    // config read per server on every tools/list.
+    if (!serverInfo.config?.staging && !hasStagedTools(serverInfo.config ?? {})) continue;
     const config = serverInfo.config ?? (await getServerDao().findById(serverInfo.name)) ?? undefined;
     if (!config || !hasStagedTools(config)) continue;
     const validation = validateSshServerConfig(config);
@@ -4623,8 +4626,9 @@ const handleHubStagingCall = async (request: any, extra: any) => {
     return { isError: true, content: [{ type: 'text', text: 'File staging is not enabled' }] };
   }
   const group = getMcpRequestGroup(extra);
+  const username = stagingAskUsername(extra);
   try {
-    const principal = await resolveStagingPrincipal(stagingAskUsername(extra));
+    const principal = await resolveStagingPrincipal(username);
     const targets = await resolveStagingTargets(group);
     if (name === 'mcphub_file_upload' && targets.length === 0) {
       return {
@@ -4633,6 +4637,14 @@ const handleHubStagingCall = async (request: any, extra: any) => {
       };
     }
     const store = await getStagingStateStore();
+    // Activity logging is deliberately bypassed (no base64/ref payloads); this
+    // line is the audit trail for the hub's own tools.
+    logger.log('[staging] hub tool call', {
+      tool: name,
+      username: principal.username,
+      group,
+      ref: request?.params?.arguments?.ref,
+    });
     return await executeStagingTool(name, request?.params?.arguments ?? {}, {
       targets: targets.map((target) => ({
         serverName: target.serverName,

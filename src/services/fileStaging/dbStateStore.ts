@@ -479,6 +479,7 @@ export class DbStagingStateStore implements StagingStateStore {
       if (
         !refRow ||
         refRow.state !== 'ready' ||
+        new Date(refRow.expiresAt).toISOString() <= this.nowIso() ||
         refRow.version !== row.version ||
         refRow.sha256 !== row.contentHash
       ) {
