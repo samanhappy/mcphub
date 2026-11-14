@@ -1563,6 +1563,33 @@ describe('mcpService MCP Apps transparent proxy', () => {
     ]);
   });
 
+  it('does not rebroadcast an unchanged resource list containing duplicate URIs', async () => {
+    const duplicateResources = [
+      { uri: 'test://Report', name: 'Report' },
+      { uri: 'test://Report', name: 'Report copy' },
+    ];
+    mockClient.listResources.mockResolvedValue({ resources: duplicateResources });
+    await initUpstreamServers();
+    await flushPromises();
+
+    const [, clientOptions] = (Client as jest.Mock).mock.calls.find(
+      ([info]) => info.name === 'mcp-client-apps-server',
+    )!;
+    const server = await getMcpServer('ordinary-session', 'apps-server');
+    const send = jest.spyOn(server, 'sendResourceListChanged').mockResolvedValue(undefined);
+
+    // The cache keeps one entry per URI. Replaying the same two-entry upstream
+    // list must normalize through that same deduplicating pipeline; otherwise
+    // one cached row is compared with two raw rows and looks like a change.
+    clientOptions.listChanged.resources.onChanged(null, duplicateResources);
+    await flushPromises();
+
+    expect(getServerByName('apps-server')!.resources).toEqual([
+      expect.objectContaining({ uri: 'test://Report', name: 'Report' }),
+    ]);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('does not report a successful list-change notification after delivery fails', async () => {
     const downstreamServer = await getMcpServer('ordinary-session', 'apps-server');
     jest

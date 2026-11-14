@@ -1328,6 +1328,15 @@ const hasNormalizedListChanged = <T extends object, U extends object>(
   normalize: (item: T) => U,
 ): boolean => !isDeepStrictEqual(current, next.map(normalize));
 
+// Resource cache writes deduplicate by URI before normalizing, so change
+// detection has to compare through the same pipeline. Comparing the cache
+// against a raw one-item-per-upstream-entry normalization makes a duplicate
+// list look different on every notification and rebroadcasts an unchanged list.
+const hasNormalizedResourceListChanged = (
+  current: readonly Resource[],
+  next: readonly McpResource[],
+): boolean => !isDeepStrictEqual(current, normalizeResourcesForCache([...next]));
+
 // A server that points back at this MCPHub instance is a client of our own
 // server descriptor. Product name/version is shared by every MCPHub process,
 // so it cannot distinguish a loop from a legitimate hub-to-hub upstream. The
@@ -1440,10 +1449,9 @@ const createUpstreamMcpClient = (
             if (ignoreSelfConnectionListChange(client, serverInfo, 'resource')) {
               return;
             }
-            const resourcesChanged = hasNormalizedListChanged(
+            const resourcesChanged = hasNormalizedResourceListChanged(
               serverInfo.resources,
               resources,
-              normalizeResourceForCache,
             );
             if (resourcesChanged) {
               updateServerResourcesCache(serverInfo, resources);
@@ -5521,9 +5529,18 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
     },
   );
 
+  // A self-connection mirrors this hub's aggregate resource list back into
+  // itself. Its capability cache is intentionally empty, but asking it for
+  // resource templates would still route the request through this same server
+  // and recurse until the request budget runs out. Skip the connection itself
+  // and only query real upstreams.
+  const templateServerInfos = filteredServerInfos.filter(
+    (serverInfo) => !serverInfo.client || !isHubSelfConnection(serverInfo.client),
+  );
+
   const snapshots: object[] = [];
   const results = await Promise.allSettled(
-    filteredServerInfos.map(async (serverInfo) => {
+    templateServerInfos.map(async (serverInfo) => {
       if (!serverInfo.client?.listResourceTemplates) {
         return [];
       }
@@ -5551,7 +5568,7 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
   );
   if (
     results.every((result) => result.status === 'fulfilled') &&
-    snapshots.length === filteredServerInfos.length
+    snapshots.length === templateServerInfos.length
   ) {
     combineListFreshness(snapshots, resourceTemplates);
   }

@@ -250,5 +250,26 @@ describe('real MCPHub SSE chaining', () => {
     }
     expect(hub.logs()).not.toMatch(/Too Many Requests|status(?:Code)?[^\n]{0,30}429/i);
     expect(hub.logs()).not.toContain('Failed to send resource list changed notification');
+
+    // resources/templates/list used to be the remaining live path back into
+    // the self-connection: the cached resource lists were empty, but this
+    // handler still asked the self-loop client, which routed the request back
+    // through the same hub until the request budget was exhausted (472 handled
+    // requests in the maintainer's reproduction). One downstream request must
+    // be handled exactly once and return immediately.
+    const templateRequestCount = () =>
+      hub
+        .logs()
+        .split('\n')
+        .filter((line) => line.includes('Handling ListResourceTemplatesRequest')).length;
+    const beforeTemplateList = templateRequestCount();
+    const startedAt = Date.now();
+    const templates = await client.listResourceTemplates();
+    const elapsed = Date.now() - startedAt;
+    const handled = templateRequestCount() - beforeTemplateList;
+
+    expect(templates.resourceTemplates).toEqual([]);
+    expect(handled).toBe(1);
+    expect(elapsed).toBeLessThan(5000);
   }, 60000);
 });
