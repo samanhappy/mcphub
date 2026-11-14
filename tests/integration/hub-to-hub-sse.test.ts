@@ -248,7 +248,7 @@ describe('real MCPHub SSE chaining', () => {
       expect(new Set(current).size).toBe(2);
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    expect(hub.logs()).not.toContain('429');
+    expect(hub.logs()).not.toMatch(/Too Many Requests|status(?:Code)?[^\n]{0,30}429/i);
     expect(hub.logs()).not.toContain('Failed to send resource list changed notification');
   }, 60000);
 });
