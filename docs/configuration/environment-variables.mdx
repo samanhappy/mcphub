@@ -10,6 +10,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port. |
+| `MCPHUB_HOST` | unset (all interfaces) | HTTP listen address, for example `127.0.0.1` to accept local connections only. The startup log shows the bound address. If the address cannot be bound, startup fails instead of falling back to all interfaces. |
 | `MCPHUB_REPLICA_MODE` | `false` | Opt in to [multi-replica deployment](/configuration/replicas). Requires PostgreSQL, persistent shared keys, and `DB_SYNCHRONIZE=false`. |
 | `MCPHUB_NODE_ID` | hostname | Node identity in replica diagnostics, response headers, logs and metrics. |
 | `DB_SYNCHRONIZE` | `true` | Set to `false` on serving replicas; run `pnpm db:setup` separately with this set to `true`. |
@@ -22,7 +23,7 @@ MCPHub reads the following environment variables at startup. The authoritative l
 | `DISABLE_WEB` | `false` | Skip serving the bundled dashboard. The API and MCP transport routes still run. |
 | `TRUST_PROXY` | auto | Express `trust proxy` setting. Accepts `true`, `false`, a hop count (`1`, `2`, …), or names like `loopback,linklocal,uniquelocal`. Defaults to `1` inside Docker/Kubernetes, `false` otherwise. |
 | `MCPHUB_SETTING_PATH` | `mcp_settings.json` | Override the path of the settings file used by file-mode storage. |
-| `INSTALL_BASE_URL` | `http://localhost:3000` | Public installation base URL used when `systemConfig.install.baseUrl` is unset. The dashboard/API setting still takes precedence; this env var is useful for declarative Docker/Kubernetes deployments and OAuth callback URLs. |
+| `INSTALL_BASE_URL` | - | Public installation base URL used when `systemConfig.install.baseUrl` is unset. The dashboard/API setting still takes precedence; this env var is useful for declarative Docker/Kubernetes deployments and OAuth callback URLs. When neither is set, the endpoint URLs shown in the dashboard follow the running server: the address and port it is bound to when `MCPHUB_HOST` names one address (for example `http://127.0.0.1:3300`), or the address the browser used to open the dashboard when it listens on all interfaces, plus `BASE_PATH`. Behind a reverse proxy, set `INSTALL_BASE_URL` to the public URL. |
 | `NODE_ENV` | `development` | `development` / `production` / `test`. |
 | `ENABLE_METRICS` | `false` | Enable the root `/metrics` Prometheus endpoint. |
 | `METRICS_TOKEN` | unset | Dedicated bearer token for metrics scraping. Without it, an enabled endpoint is public; restrict network access. |

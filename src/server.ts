@@ -9,7 +9,14 @@ import cors, { type CorsOptions } from 'cors';
 import config, { isWebDisabled } from './config/index.js';
 import path from 'path';
 import fs from 'fs';
-import { initUpstreamServers, connected, cleanupAllServers, reconcileReplicaServers } from './services/mcpService.js';
+import {
+  initUpstreamServers,
+  connected,
+  cleanupAllServers,
+  drainStdioTerminations,
+  reconcileReplicaServers,
+  STDIO_TERMINATION_DRAIN_BUDGET_MS,
+} from './services/mcpService.js';
 import { startReplicaSync, stopReplicaSync } from './services/replicaService.js';
 import { replicaRequestContext } from './middlewares/replicaConfig.js';
 import { isReplicaMode } from './utils/replicaMode.js';
@@ -37,6 +44,8 @@ import http from 'http';
 import type { Socket } from 'net';
 import { mcpConnectionRateLimiter, spaPageRateLimiter } from './utils/rateLimit.js';
 import { closeHttpServer } from './utils/serverShutdown.js';
+import { formatBoundAddress, listenOnAddress, resolveDisplayHost } from './utils/listenAddress.js';
+import { exitAfterBindFailure } from './utils/bindFailureExit.js';
 import { logger } from './utils/logger.js';
 
 /**
@@ -62,6 +71,7 @@ export class AppServer {
   private server: http.Server | null = null;
   private connections = new Set<Socket>();
   private port: number | string;
+  private host: string | undefined;
   private frontendPath: string | null = null;
   private basePath: string;
   private disableWeb: boolean;
@@ -88,6 +98,7 @@ export class AppServer {
       ),
     );
     this.port = config.port;
+    this.host = config.host;
     this.basePath = config.basePath;
     this.disableWeb = isWebDisabled();
   }
@@ -267,16 +278,38 @@ export class AppServer {
   }
 
   start(): void {
-    this.server = this.app.listen(this.port, () => {
-      logger.log(`Server is running on port ${this.port}`);
-      if (this.frontendPath && !this.disableWeb) {
-        logger.log(`Open http://localhost:${this.port} in your browser to access MCPHub UI`);
-      } else {
+    this.server = listenOnAddress(
+      this.app,
+      this.port,
+      this.host,
+      () => {
+        const displayUrl = `http://${resolveDisplayHost(this.host)}:${this.port}`;
         logger.log(
-          `MCPHub API is running on http://localhost:${this.port}, but the UI is not available`,
+          `Server is running on port ${this.port} (bound to ${formatBoundAddress(this.server?.address())})`,
         );
-      }
-    });
+        if (this.frontendPath && !this.disableWeb) {
+          logger.log(`Open ${displayUrl} in your browser to access MCPHub UI`);
+        } else {
+          logger.log(`MCPHub API is running on ${displayUrl}, but the UI is not available`);
+        }
+      },
+      (error) => {
+        // Without this handler the error reaches the uncaught-exception guard, which logs it
+        // and continues: the process then either keeps running with no HTTP listener or exits
+        // with status 0, depending on what else holds the event loop open.
+        //
+        // Upstream stdio servers may already be starting; stop them rather than orphan them,
+        // and wait for those terminations before exiting: process.exit() would cancel them.
+        void exitAfterBindFailure({
+          error,
+          host: this.host,
+          port: this.port,
+          cleanupUpstreamServers: cleanupAllServers,
+          drainUpstreamTerminations: drainStdioTerminations,
+          budgetMs: STDIO_TERMINATION_DRAIN_BUDGET_MS,
+        });
+      },
+    );
     this.server.on('connection', (socket) => {
       this.connections.add(socket);
       socket.once('close', () => this.connections.delete(socket));
@@ -302,6 +335,15 @@ export class AppServer {
     try {
       cleanupAllServers();
       await closeModernMcpHandler?.();
+      // Every caller of shutdown() calls process.exit() right afterwards. That
+      // cancels the asynchronous half of an upstream termination, the tree-kill
+      // spawn and the SIGKILL escalation, and leaves the descendants of an
+      // `npx` wrapper running. This is the exit path that runs on every Ctrl-C
+      // and service stop, so it is also the one that collects orphans.
+      const settled = await drainStdioTerminations(STDIO_TERMINATION_DRAIN_BUDGET_MS);
+      if (!settled) {
+        logger.warn('[SHUTDOWN] Upstream stdio cleanup did not settle; possible orphans');
+      }
       logger.log('[SHUTDOWN] MCP clients closed');
     } catch (error) {
       logger.error('[SHUTDOWN] Error closing MCP clients', safeStringify({ error }));

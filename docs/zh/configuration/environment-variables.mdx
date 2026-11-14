@@ -14,6 +14,7 @@ MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量�
 | 变量 | 默认值 | 描述 |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP 服务器的端口号 |
+| `MCPHUB_HOST` | 未设置（所有网络接口） | HTTP 监听地址，例如设为 `127.0.0.1` 时仅接受本机连接。启动日志会显示实际绑定的地址。如果无法绑定该地址，启动将失败，而不会回退到监听所有网络接口。 |
 | `DEFAULT_REQUEST_TIMEOUT` | `60000` | 当服务器未设置 `options.timeout` 时，上游 MCP 服务器请求使用的默认超时时间（毫秒） |
 | `INIT_TIMEOUT` | `300000` | 应用程序的初始超时时间 |
 | `STARTUP_CONNECT_CONCURRENCY` | `0` | 启动时最多允许多少个上游服务器同时连接。`0`（或不设置）表示全部并行连接。当部署了大量 `stdio` 服务器时，设置上限可以避免它们争抢 CPU、网络和磁盘，进而耗尽 `INIT_TIMEOUT`。排队等待的时间不计入服务器自身的超时预算。 |
@@ -24,7 +25,7 @@ MCPHub 使用环境变量进行配置。本指南涵盖了所有可用的变量�
 | `SMART_ROUTING_PATH` | `$smart` | 智能路由路径段，例如 `my_smart` 对应 `/mcp/my_smart`。允许 1–64 位英文字母、数字、连字符和下划线；修改后重启生效。旧 `$smart` 地址继续可用，服务器名、分组名及分组 ID 不得与配置值冲突。 |
 | `READONLY` | `false` | 设置为 `true` 以启用只读模式 |
 | `MCPHUB_SETTING_PATH` | | MCPHub 设置文件的路径 |
-| `INSTALL_BASE_URL` | `http://localhost:3000` | 当 `systemConfig.install.baseUrl` 未设置时使用的公网安装地址。Dashboard/API 中显式保存的 Base URL 优先于该环境变量，适合 Docker/Kubernetes 等声明式部署和 OAuth 回调地址。 |
+| `INSTALL_BASE_URL` | - | 当 `systemConfig.install.baseUrl` 未设置时使用的公网安装地址。Dashboard/API 中显式保存的 Base URL 优先于该环境变量，适合 Docker/Kubernetes 等声明式部署和 OAuth 回调地址。两者均未设置时，Dashboard 中显示的端点地址跟随正在运行的服务：若 `MCPHUB_HOST` 指定了单一地址，则使用实际绑定的地址和端口（例如 `http://127.0.0.1:3300`）；若监听所有接口，则使用浏览器打开 Dashboard 时所用的地址；两种情况都会加上 `BASE_PATH`。使用反向代理时，请将 `INSTALL_BASE_URL` 设为对外地址。 |
 | `NODE_ENV` | `development` | 应用程序环境 (`development`, `production`, `test`) |
 
 ```env
