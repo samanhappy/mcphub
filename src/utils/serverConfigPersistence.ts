@@ -3,6 +3,11 @@ import { resolveUpstreamProtocolMode } from './mcpProtocol.js';
 import { validateCredentialTemplate } from './credentialTemplate.js';
 import { validateMaxBufferSize } from './stdioOptions.js';
 import { ServerConfigValidationError } from './serverConfigValidation.js';
+import {
+  assertStagingConfigConsistent,
+  normalizeServerStaging,
+  normalizeToolFileStaging,
+} from './fileStagingConfig.js';
 import { ServerConfig } from '../types/index.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
@@ -316,6 +321,41 @@ const inferServerType = (config: ServerConfig): NonNullable<ServerConfig['type']
   return undefined;
 };
 
+/**
+ * Normalize per-tool config, validating the optional `fileStaging` object
+ * (#1056) and preserving every other tool field verbatim. Returns undefined
+ * when there is nothing to store so an explicit `tools: undefined` is dropped
+ * rather than persisted as null.
+ */
+const normalizeToolsConfig = (
+  tools: ServerConfig['tools'],
+): ServerConfig['tools'] | undefined => {
+  // A nullable simple-json column surfaces as null in DB mode; treat it as absent.
+  if (tools === undefined || tools === null) return undefined;
+  if (typeof tools !== 'object' || Array.isArray(tools)) {
+    throw new ServerConfigValidationError('tools must be an object');
+  }
+  const normalized: NonNullable<ServerConfig['tools']> = {};
+  for (const [key, tool] of Object.entries(tools)) {
+    if (tool === null || typeof tool !== 'object' || Array.isArray(tool)) {
+      throw new ServerConfigValidationError(`tools.${key} must be an object`);
+    }
+    const fileStaging = normalizeToolFileStaging(tool.fileStaging, key);
+    if (fileStaging?.enabled) {
+      const declared = [...(fileStaging.inputParams ?? []), ...(fileStaging.outputParams ?? [])];
+      const hidden = tool.hiddenParams ?? [];
+      const clash = declared.find((param) => hidden.includes(param));
+      if (clash) {
+        throw new ServerConfigValidationError(
+          `tools.${key}: file staging parameter "${clash}" cannot also be hidden`,
+        );
+      }
+    }
+    normalized[key] = fileStaging ? { ...tool, fileStaging } : { ...tool };
+  }
+  return normalized;
+};
+
 export const normalizeServerConfigForPersistence = (config: ServerConfig): ServerConfig => {
   const normalizedType = inferServerType(config);
   resolveUpstreamProtocolMode({ ...config, type: normalizedType });
@@ -346,6 +386,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     );
   }
   const openapi = normalizeOpenApi(config.openapi);
+  const tools = normalizeToolsConfig(config.tools);
+  const staging = normalizeServerStaging(config.staging);
 
   // Default visibility to 'private' so file-defined and freshly-created servers behave
   // identically to the pre-#817 implicit admin-only behaviour. Operators opt servers in
@@ -367,6 +409,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
 
   const normalized: ServerConfig = {
     ...config,
+    ...(tools !== undefined ? { tools } : {}),
+    ...(staging !== undefined ? { staging } : {}),
     type: normalizedType,
     protocolNegotiation: config.protocolNegotiation ?? undefined,
     credentialTemplate: validateCredentialTemplate({ ...config, type: normalizedType }),
@@ -403,6 +447,17 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   delete (normalized as unknown as Record<string, unknown>).packageVersion;
   delete (normalized as unknown as Record<string, unknown>).latestVersion;
   delete (normalized as unknown as Record<string, unknown>).updateAvailable;
+  // A DB simple-json NULL and an explicit `undefined` both mean "absent"; keep
+  // the key out of the object so a DAO update cannot null the column.
+  if (tools === undefined) delete (normalized as unknown as Record<string, unknown>).tools;
+  if (staging === undefined) delete (normalized as unknown as Record<string, unknown>).staging;
+
+  // An explicit `tools: undefined` / `staging: undefined` must normalize to an
+  // absent key: the DAO updates only properties the caller owns, and writing
+  // null would erase stored config instead of preserving it.
+  if (normalized.tools === undefined) delete normalized.tools;
+  if (normalized.staging === undefined) delete normalized.staging;
+  assertStagingConfigConsistent(normalized);
 
   if (normalizedType === 'openapi') {
     normalized.url = undefined;

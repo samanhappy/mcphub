@@ -384,7 +384,17 @@ function serverConfigToTemplate(config: ServerConfig): {
     envVars.push(...placeholders);
   }
 
-  if (config.tools) templateConfig.tools = { ...config.tools };
+  if (config.tools) {
+    // Templates deliberately exclude staging trust and per-tool staging params
+    // (#1056): a recipient must opt in on their own deployment, and an imported
+    // `fileStaging` without `staging.adapter` would be rejected as inconsistent.
+    templateConfig.tools = Object.fromEntries(
+      Object.entries(config.tools).map(([name, tool]) => {
+        const { fileStaging: _fileStaging, ...rest } = tool;
+        return [name, rest];
+      }),
+    );
+  }
   if (config.prompts) templateConfig.prompts = { ...config.prompts };
   if (config.resources) templateConfig.resources = { ...config.resources };
   if (config.options) templateConfig.options = { ...config.options };

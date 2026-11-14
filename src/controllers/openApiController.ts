@@ -12,6 +12,7 @@ import { getGroupByIdOrName } from '../services/groupService.js';
 import { getNameSeparator } from '../config/index.js';
 import { convertParametersToTypes } from '../utils/parameterConversion.js';
 import { logger } from '../utils/logger.js';
+import { isReservedStagingName } from '../services/fileStaging/tools.js';
 
 /**
  * Controller for OpenAPI generation endpoints
@@ -142,6 +143,13 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
           inputSchema = tool.inputSchema as Record<string, any>;
         }
       }
+    }
+
+    // Hub built-ins are MCP-only in PR1; the OpenAPI surface is a dashboard
+    // integration and must not mint staging capabilities.
+    if (isReservedStagingName(toolName)) {
+      res.status(400).json({ success: false, message: 'Unknown tool' });
+      return;
     }
 
     // Prepare arguments from query params (GET) or body (POST)

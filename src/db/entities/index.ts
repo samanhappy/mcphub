@@ -15,6 +15,8 @@ import BearerKey from './BearerKey.js';
 import Activity from './Activity.js';
 import BuiltinPrompt from './BuiltinPrompt.js';
 import BuiltinResource from './BuiltinResource.js';
+import { FileStagingRefEntity } from './FileStagingRef.js';
+import { FileStagingTokenEntity } from './FileStagingToken.js';
 
 // Export all entities
 export default [
@@ -35,6 +37,8 @@ export default [
   Activity,
   BuiltinPrompt,
   BuiltinResource,
+  FileStagingRefEntity,
+  FileStagingTokenEntity,
 ];
 
 // Export individual entities for direct use
@@ -56,4 +60,6 @@ export {
   Activity,
   BuiltinPrompt,
   BuiltinResource,
+  FileStagingRefEntity,
+  FileStagingTokenEntity,
 };

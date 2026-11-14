@@ -132,6 +132,7 @@ import {
   readResource,
 } from '../controllers/builtinResourceController.js';
 import { uploadMcpbFile, uploadMiddleware } from '../controllers/mcpbController.js';
+import { downloadStagedFile } from '../controllers/fileStagingController.js';
 import { healthCheck, livenessCheck, readinessCheck } from '../controllers/healthController.js';
 import { replicaConfiguration } from '../middlewares/replicaConfig.js';
 import { replicaStatus } from '../services/replicaService.js';
@@ -227,6 +228,15 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     app.all(`${betterAuthPath}/*`, toNodeHandler(betterAuth));
     setMountedSsoProviders(registeredSsoProviders);
   }
+
+  // One-time staged file download (#1056). The single-use token in the URL is
+  // the capability; mounted outside /api so an MCP client can fetch without a
+  // dashboard session while every other staging route stays authenticated.
+  app.get(
+    `${config.basePath}/staging/download/:token`,
+    mcpConnectionRateLimiter,
+    downloadStagedFile,
+  );
 
   // Health check endpoint (no auth required, accessible at /health)
   app.get('/health', healthCheck);
@@ -521,6 +531,8 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   );
 
   router.get('/auth/user', authenticatedRouteRateLimiter, auth, getCurrentUser);
+
+
 
   // Add change password route
   router.post(
