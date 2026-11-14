@@ -156,6 +156,7 @@ import {
   isAppOnlyTool,
   stripMcpAppsMetadata,
 } from '../utils/mcpApps.js';
+import { MCPHUB_INSTANCE_CAPABILITIES, isThisMcpHubInstance } from '../utils/mcpHubIdentity.js';
 import {
   supportsCacheRefresh,
   injectRefreshFlag,
@@ -932,6 +933,21 @@ const normalizeResourceForCache = (resource: McpResource): Resource => {
   return normalizeResourceForList(resource);
 };
 
+// Resource URIs are the identity of a resource within one upstream. A hub that
+// points back at itself can re-list the same URI several times while its list
+// notification is in flight; keeping only the first occurrence prevents that
+// echo from growing the cache even before instance-level self detection runs.
+const normalizeResourcesForCache = (resources: McpResource[]): Resource[] => {
+  const seen = new Set<string>();
+  return resources
+    .filter((resource) => {
+      if (seen.has(resource.uri)) return false;
+      seen.add(resource.uri);
+      return true;
+    })
+    .map(normalizeResourceForCache);
+};
+
 // Store all server information
 let serverInfos: ServerInfo[] = [];
 
@@ -1196,7 +1212,7 @@ const updateServerPromptsCache = (serverInfo: ServerInfo, prompts: McpPrompt[]):
 };
 
 const updateServerResourcesCache = (serverInfo: ServerInfo, resources: McpResource[]): void => {
-  serverInfo.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
+  serverInfo.resources = preserveListFreshness(resources, normalizeResourcesForCache(resources));
 };
 
 const updateServerResourceTemplatesCache = (
@@ -1244,6 +1260,7 @@ const refreshModernServerLists = async (
     info.status !== 'connected'
   )
     return;
+  if (isHubSelfConnection(client)) return;
   const capabilities = client.getServerCapabilities();
   const current = () =>
     info.client === client && info.enabled !== false && info.status === 'connected';
@@ -1305,6 +1322,49 @@ const logListChangedRefreshError = (listType: 'tool' | 'prompt' | 'resource'): v
   logger.warn(`Failed to refresh ${listType} list after upstream notification`);
 };
 
+const hasNormalizedListChanged = <T extends object, U extends object>(
+  current: readonly U[],
+  next: readonly T[],
+  normalize: (item: T) => U,
+): boolean => !isDeepStrictEqual(current, next.map(normalize));
+
+// Resource cache writes deduplicate by URI before normalizing, so change
+// detection has to compare through the same pipeline. Comparing the cache
+// against a raw one-item-per-upstream-entry normalization makes a duplicate
+// list look different on every notification and rebroadcasts an unchanged list.
+const hasNormalizedResourceListChanged = (
+  current: readonly Resource[],
+  next: readonly McpResource[],
+): boolean => !isDeepStrictEqual(current, normalizeResourcesForCache([...next]));
+
+// A server that points back at this MCPHub instance is a client of our own
+// server descriptor. Product name/version is shared by every MCPHub process,
+// so it cannot distinguish a loop from a legitimate hub-to-hub upstream. The
+// per-process capability survives reverse proxies and Docker service names and
+// is unique for this exact instance.
+const isHubSelfConnection = (client: Client): boolean => {
+  return isThisMcpHubInstance(client.getServerCapabilities?.());
+};
+
+const warnedSelfConnectionChanges = new Set<string>();
+const ignoreSelfConnectionListChange = (
+  client: Client,
+  serverInfo: ServerInfo,
+  listType: 'tool' | 'prompt' | 'resource',
+): boolean => {
+  if (!isHubSelfConnection(client)) {
+    return false;
+  }
+  const key = `${serverInfo.name}:${listType}`;
+  if (!warnedSelfConnectionChanges.has(key)) {
+    warnedSelfConnectionChanges.add(key);
+    logger.warn(
+      `Ignoring ${listType} list change from self-connection '${serverInfo.name}' to prevent a recursive notification loop`,
+    );
+  }
+  return true;
+};
+
 const createUpstreamMcpClient = (
   name: string,
   getServerInfo: () => ServerInfo | undefined,
@@ -1336,6 +1396,16 @@ const createUpstreamMcpClient = (
             if (!serverInfo || !tools) {
               return;
             }
+            if (ignoreSelfConnectionListChange(client, serverInfo, 'tool')) {
+              return;
+            }
+            if (
+              !hasNormalizedListChanged(serverInfo.tools, tools, (tool) =>
+                normalizeToolForCache(serverInfo.name, tool),
+              )
+            ) {
+              return;
+            }
             updateServerToolsCache(serverInfo, tools);
             broadcastToolListChanged();
           },
@@ -1349,6 +1419,16 @@ const createUpstreamMcpClient = (
               return;
             }
             if (!serverInfo || !prompts) {
+              return;
+            }
+            if (ignoreSelfConnectionListChange(client, serverInfo, 'prompt')) {
+              return;
+            }
+            if (
+              !hasNormalizedListChanged(serverInfo.prompts, prompts, (prompt) =>
+                normalizePromptForCache(serverInfo.name, prompt),
+              )
+            ) {
               return;
             }
             updateServerPromptsCache(serverInfo, prompts);
@@ -1366,15 +1446,37 @@ const createUpstreamMcpClient = (
             if (!serverInfo || !resources) {
               return;
             }
-            updateServerResourcesCache(serverInfo, resources);
-            broadcastResourceListChanged();
-            // Templates have no list-changed notification of their own.
+            if (ignoreSelfConnectionListChange(client, serverInfo, 'resource')) {
+              return;
+            }
+            const resourcesChanged = hasNormalizedResourceListChanged(
+              serverInfo.resources,
+              resources,
+            );
+            if (resourcesChanged) {
+              updateServerResourcesCache(serverInfo, resources);
+              broadcastResourceListChanged();
+            }
+            // Templates have no list-changed notification of their own, so a
+            // template-only change is surfaced through the resource list
+            // notification once the refreshed cache actually differs.
             if (serverInfo.client) {
+              const previousTemplates = serverInfo.resourceTemplates;
               void refreshServerResourceTemplatesCache(
                 getServerInfo,
                 serverInfo.client,
                 serverInfo.options,
-              );
+              ).then(() => {
+                const current = getServerInfo();
+                if (
+                  !resourcesChanged &&
+                  current &&
+                  current.client === serverInfo.client &&
+                  !isDeepStrictEqual(previousTemplates ?? [], current.resourceTemplates ?? [])
+                ) {
+                  broadcastResourceListChanged();
+                }
+              });
             }
           },
         },
@@ -2256,9 +2358,14 @@ const setupServerKeepAlive = (serverInfo: ServerInfo, serverConfig: ServerConfig
 export const initializeClientsFromSettings = async (
   isInit: boolean,
   serverName?: string,
-  options?: { reportEmbeddingProgress?: boolean; declarations?: ServerConfigWithName[]; preserveExisting?: boolean },
+  options?: {
+    reportEmbeddingProgress?: boolean;
+    declarations?: ServerConfigWithName[];
+    preserveExisting?: boolean;
+  },
 ): Promise<ServerInfo[]> => {
-  const allServers: ServerConfigWithName[] = options?.declarations ?? await getServerDao().findAll();
+  const allServers: ServerConfigWithName[] =
+    options?.declarations ?? (await getServerDao().findAll());
   const existingServerInfos = serverInfos;
   const nextServerInfos: ServerInfo[] = [];
   const generation = ++initGeneration;
@@ -2680,6 +2787,24 @@ export const initializeClientsFromSettings = async (
           const capabilities: ServerCapabilities | undefined = client.getServerCapabilities();
           logger.log('Server capabilities', JSON.stringify(capabilities));
 
+          // A self-connection only mirrors this hub's aggregate lists. Loading
+          // them would duplicate every capability back into the aggregate and
+          // leave resource echoes untraceable because resources have no server
+          // name prefix. Treat the connection as connected but empty.
+          if (isHubSelfConnection(client)) {
+            info.tools = [];
+            info.prompts = [];
+            info.resources = [];
+            info.resourceTemplates = [];
+            info.status = 'connected';
+            info.error = null;
+            setupServerKeepAlive(info, expandedConf);
+            logger.warn(
+              `Ignoring capabilities from self-connection '${name}' to prevent a recursive list loop`,
+            );
+            return;
+          }
+
           let dataError: Error | null = null;
           if (capabilities?.tools) {
             client
@@ -2837,7 +2962,9 @@ export const initializeClientsFromSettings = async (
   return serverInfos;
 };
 
-export const reconcileReplicaServers = async (declarations: ServerConfigWithName[]): Promise<void> => {
+export const reconcileReplicaServers = async (
+  declarations: ServerConfigWithName[],
+): Promise<void> => {
   const expanded = new Map<string, ServerConfig>();
   for (const declaration of declarations) {
     const resolved = await expandServerConfig(declaration);
@@ -2845,9 +2972,11 @@ export const reconcileReplicaServers = async (declarations: ServerConfigWithName
     validateMaxBufferSize(resolved.options?.maxBufferSize);
     expanded.set(declaration.name, resolved);
   }
-  const changed = serverInfos.filter((info) =>
-    !isDeepStrictEqual(info.config, expanded.get(info.name)) ||
-    (info.enabled !== false) !== (expanded.get(info.name)?.enabled !== false));
+  const changed = serverInfos.filter(
+    (info) =>
+      !isDeepStrictEqual(info.config, expanded.get(info.name)) ||
+      (info.enabled !== false) !== (expanded.get(info.name)?.enabled !== false),
+  );
   for (const info of changed) closeServer(info.name);
   serverInfos = serverInfos.filter((info) => !changed.includes(info));
   await initializeClientsFromSettings(false, undefined, { declarations, preserveExisting: true });
@@ -3655,6 +3784,17 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     let promptCount = 0;
     let resourceCount = 0;
     const capabilities = client.getServerCapabilities?.();
+    if (isHubSelfConnection(client)) {
+      serverInfo.tools = [];
+      serverInfo.prompts = [];
+      serverInfo.resources = [];
+      serverInfo.resourceTemplates = [];
+      setupServerKeepAlive(serverInfo, expandedConf);
+      logger.warn(
+        `Ignoring capabilities from self-connection '${name}' to prevent a recursive list loop`,
+      );
+      return;
+    }
     if (capabilities?.tools) {
       try {
         const tools = await client.listTools({}, requestOptions);
@@ -5389,9 +5529,18 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
     },
   );
 
+  // A self-connection mirrors this hub's aggregate resource list back into
+  // itself. Its capability cache is intentionally empty, but asking it for
+  // resource templates would still route the request through this same server
+  // and recurse until the request budget runs out. Skip the connection itself
+  // and only query real upstreams.
+  const templateServerInfos = filteredServerInfos.filter(
+    (serverInfo) => !serverInfo.client || !isHubSelfConnection(serverInfo.client),
+  );
+
   const snapshots: object[] = [];
   const results = await Promise.allSettled(
-    filteredServerInfos.map(async (serverInfo) => {
+    templateServerInfos.map(async (serverInfo) => {
       if (!serverInfo.client?.listResourceTemplates) {
         return [];
       }
@@ -5419,7 +5568,7 @@ const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
   );
   if (
     results.every((result) => result.status === 'fulfilled') &&
-    snapshots.length === filteredServerInfos.length
+    snapshots.length === templateServerInfos.length
   ) {
     combineListFreshness(snapshots, resourceTemplates);
   }
@@ -5706,7 +5855,11 @@ const personalClientMethods = new Set([
   'listResourceTemplates',
 ]);
 
-const protectReplicaOAuthClient = <T extends object>(client: T, name: string, definition: ServerConfig): T => {
+const protectReplicaOAuthClient = <T extends object>(
+  client: T,
+  name: string,
+  definition: ServerConfig,
+): T => {
   if (!isReplicaMode() || !definition.url || !definition.oauth) return client;
   return new Proxy(client, {
     get(target, property) {
@@ -5843,7 +5996,7 @@ const createPrincipalRuntime = async (
           info.client,
         );
         const { resources } = await client.listResources({}, resolvedConfig.options);
-        info.resources = preserveListFreshness(resources, resources.map(normalizeResourceForCache));
+        info.resources = preserveListFreshness(resources, normalizeResourcesForCache(resources));
       }
       info.version = client.getServerVersion()?.version;
       // Record the resolved npx/uvx package version backing this server.
@@ -6417,12 +6570,22 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   if (!isReplicaMode()) return action();
   const context = UserContextService.getInstance();
   const current = context.getCurrentUser() as (IUser & RequestPrincipal) | null;
-  const externalPrincipal = current?.credentialEligible === false ||
+  const externalPrincipal =
+    current?.credentialEligible === false ||
     RequestContextService.getInstance().getHostedAuthContext();
-  const user = current ? externalPrincipal ? current : await getUserDao().findByUsername(current.username) : null;
+  const user = current
+    ? externalPrincipal
+      ? current
+      : await getUserDao().findByUsername(current.username)
+    : null;
   if (current && !user) throw new Error('User no longer exists');
-  const definitions = getDataService().filterData(await getServerDao().findAll(), user ?? undefined);
-  const byName = new Map<string, ServerConfigWithName>(definitions.map((server) => [server.name, server]));
+  const definitions = getDataService().filterData(
+    await getServerDao().findAll(),
+    user ?? undefined,
+  );
+  const byName = new Map<string, ServerConfigWithName>(
+    definitions.map((server) => [server.name, server]),
+  );
   const visible = (principalServerScope.getStore() ?? serverInfos).flatMap((info) => {
     const live = byName.get(info.name);
     if (!live || live.enabled === false) return [];
@@ -6454,7 +6617,9 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   return context.runWithContext(() => principalServerScope.run(visible, action), user ?? null);
 };
 export const handleCallToolRequest = (request: any, extra: any) =>
-  observeToolCall(() => withReplicaServerScope(() => withToolPolicy(callToolWithPrincipal, request, extra, true)));
+  observeToolCall(() =>
+    withReplicaServerScope(() => withToolPolicy(callToolWithPrincipal, request, extra, true)),
+  );
 export const handleGetPromptRequest = withPrincipalServers(
   withModernLists(handleGetPromptRequestImpl, ['prompts']),
   'prompt',
@@ -6510,6 +6675,10 @@ export const createMcpServer = (
         prompts: { listChanged: true },
         resources: { listChanged: true },
         ...MCP_APPS_CAPABILITIES,
+        experimental: {
+          ...MCP_APPS_CAPABILITIES.experimental,
+          ...MCPHUB_INSTANCE_CAPABILITIES.experimental,
+        },
       },
       ...(normalizedOptions.instructions !== undefined
         ? { instructions: normalizedOptions.instructions }
