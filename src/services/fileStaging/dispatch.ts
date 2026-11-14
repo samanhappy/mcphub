@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { ServerConfig, ServerInfo } from '../../types/index.js';
 import { getServerDao } from '../../dao/index.js';
 import { isReplicaMode } from '../../utils/replicaMode.js';
+import { logger } from '../../utils/logger.js';
 import { getNameSeparator } from '../../config/index.js';
 import { findToolConfig } from '../../utils/toolConfig.js';
 import { isLegacyServerId } from '../../utils/serverIdentity.js';
@@ -55,8 +56,9 @@ export const resolveStagedCall = async (
 ): Promise<StagedCall | undefined> => {
   const config: ServerConfig | undefined = serverInfo.config;
   if (!config?.staging || !hasStagedTools(config)) return undefined;
-  // The ledger is process-local; a replica cannot own a lease or a file.
-  if (isReplicaMode()) throw new Error('File staging is not available on a replica');
+  // Replica mode cannot own a lease or a file. Disable staging, not the
+  // server: non-staging tools keep working and a ref is rejected below.
+  if (isReplicaMode()) return undefined;
   const settings = await getFileStagingSettings();
   // Master switch off: normal calls pass through, but a staging ref is still
   // rejected by the containsStagingRef guard below rather than forwarded.
@@ -66,12 +68,22 @@ export const resolveStagedCall = async (
   const fresh = (await getServerDao().findById(serverInfo.name)) ?? config;
   const validation = validateSshServerConfig(fresh);
   if (!validation.ok || isLegacyServerId(fresh.id, serverInfo.name)) {
-    throw new Error(`File staging is not available for ${serverInfo.name}`);
+    // Disable staging for this server, not the server itself: other tools and
+    // non-ref calls must keep working. A ref is refused by the guard below.
+    logger.warn(
+      `[staging] ${serverInfo.name} is not a staging target: ${
+        validation.ok ? 'legacy server id' : validation.reason
+      }`,
+    );
+    return undefined;
   }
   // Unknown version is as unsafe as a mismatch: the boundary behavior was
   // verified for one pinned release only.
   if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
-    throw new Error(`File staging is not available for ${serverInfo.name}`);
+    logger.warn(
+      `[staging] ${serverInfo.name} reports version ${serverInfo.version ?? 'unknown'}; staging stays disabled`,
+    );
+    return undefined;
   }
   const runtimeNames = serverInfo.tools.map((tool) => tool.name);
   const toolConfig = findToolConfig(fresh.tools, serverInfo.name, toolName, runtimeNames);

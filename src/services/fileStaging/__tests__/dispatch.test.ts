@@ -24,6 +24,10 @@ const settings: FileStagingSettings = {
   cleanupIntervalMinutes: 15,
 };
 
+jest.mock('../../../utils/replicaMode.js', () => ({
+  isReplicaMode: jest.fn(() => false),
+}));
+
 jest.mock('../../../dao/index.js', () => ({
   getServerDao: () => ({ findById: async () => currentConfig }),
 }));
@@ -209,6 +213,46 @@ describe('staging dispatch seam', () => {
     );
     expect(wrongServer.isError).toBe(true);
     expect(wrongServer.content[0].text).toBe('Staging reference not found');
+  });
+
+  it('keeps normal calls working when the upstream version is not the pinned profile', async () => {
+    const invoke = jest.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] }));
+    const result = await dispatchStagedToolCall(
+      { ...serverInfo(), version: '1.11.1' } as ServerInfo,
+      { name: 'ssh-upload', arguments: { localPath: '/tmp/plain' } },
+      invoke,
+      'alice',
+    );
+    expect(result.isError).toBeUndefined();
+    expect(invoke).toHaveBeenCalledWith({
+      name: 'ssh-upload',
+      arguments: { localPath: '/tmp/plain' },
+    });
+
+    const ready = await store.createReadyRef(input(), Buffer.from('x'));
+    const rejected = await dispatchStagedToolCall(
+      { ...serverInfo(), version: '1.11.1' } as ServerInfo,
+      { name: 'ssh-upload', arguments: { localPath: ready.ref } },
+      invoke,
+      'alice',
+    );
+    expect(rejected.isError).toBe(true);
+    expect(rejected.content[0].text).toMatch(/not allowed/i);
+  });
+
+  it('disables staging on a replica without blocking normal calls', async () => {
+    const replica = await import('../../../utils/replicaMode.js');
+    (replica.isReplicaMode as unknown as jest.Mock).mockReturnValue(true);
+    const invoke = jest.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] }));
+    const result = await dispatchStagedToolCall(
+      serverInfo(),
+      { name: 'ssh-upload', arguments: { localPath: '/tmp/plain' } },
+      invoke,
+      'alice',
+    );
+    expect(result.isError).toBeUndefined();
+    expect(invoke).toHaveBeenCalledTimes(1);
+    (replica.isReplicaMode as unknown as jest.Mock).mockReturnValue(false);
   });
 
   it('refuses a staging reference when staging is globally disabled', async () => {

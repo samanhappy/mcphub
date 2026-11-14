@@ -328,4 +328,16 @@ describe('FileStagingStateStore', () => {
     await fs.writeFile(path.join(stateDir, 'staging.lock'), '1');
     await expect(createStore({ disableLock: false })).rejects.toMatchObject({ code: 'locked' });
   });
+
+  it('takes over a lock left by a previous instance that had the same pid', async () => {
+    await fs.mkdir(stateDir, { recursive: true });
+    // The container runs node as PID 1, so a restart reuses the pid with a new
+    // instance id. That lock must not survive the restart.
+    await fs.writeFile(path.join(stateDir, 'staging.lock'), `${process.pid}:previous-boot`);
+    const store = await createStore({ disableLock: false });
+    expect(await fs.readFile(path.join(stateDir, 'staging.lock'), 'utf8')).toContain(
+      `${process.pid}:`,
+    );
+    expect(await store.usageBytes('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe(0);
+  });
 });

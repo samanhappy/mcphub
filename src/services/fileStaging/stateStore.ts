@@ -147,6 +147,7 @@ export class FileStagingStateStore implements StagingStateStore {
   private queue: Promise<unknown> = Promise.resolve();
   private loaded = false;
   private lockHandle?: fs.FileHandle;
+  private readonly instanceId = randomUUID();
 
   constructor(options: FileStagingStateStoreOptions = {}) {
     this.rootDir = options.rootDir ?? getStagingRoot();
@@ -184,7 +185,7 @@ export class FileStagingStateStore implements StagingStateStore {
       try {
         // One syscall creates and writes the pid; a concurrent reader never
         // sees an empty lockfile.
-        await fs.writeFile(this.lockPath, String(process.pid), {
+        await fs.writeFile(this.lockPath, `${process.pid}:${this.instanceId}`, {
           flag: 'wx',
           mode: 0o600,
         });
@@ -193,7 +194,15 @@ export class FileStagingStateStore implements StagingStateStore {
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         const raw = await fs.readFile(this.lockPath, 'utf8').catch(() => '');
-        const owner = Number.parseInt(raw.trim(), 10);
+        const [pidRaw] = raw.trim().split(':');
+        const owner = Number.parseInt(pidRaw, 10);
+        // The default container runs node as PID 1, so a restart reuses the pid.
+        // A same-pid lock can only belong to a previous instance of this process:
+        // our own store is blocked earlier by acquiredStateDirs.
+        if (Number.isFinite(owner) && owner === process.pid) {
+          await fs.rm(this.lockPath, { force: true });
+          continue;
+        }
         if (Number.isFinite(owner) && isLivePid(owner)) {
           throw new StagingError(
             'locked',
