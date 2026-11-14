@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ServerConfig, ServerInfo } from '../../types/index.js';
 import { getServerDao } from '../../dao/index.js';
+import { isReplicaMode } from '../../utils/replicaMode.js';
 import { getNameSeparator } from '../../config/index.js';
 import { findToolConfig } from '../../utils/toolConfig.js';
 import { isLegacyServerId } from '../../utils/serverIdentity.js';
@@ -54,8 +55,12 @@ export const resolveStagedCall = async (
 ): Promise<StagedCall | undefined> => {
   const config: ServerConfig | undefined = serverInfo.config;
   if (!config?.staging || !hasStagedTools(config)) return undefined;
+  // The ledger is process-local; a replica cannot own a lease or a file.
+  if (isReplicaMode()) throw new Error('File staging is not available on a replica');
   const settings = await getFileStagingSettings();
-  if (!settings.enabled) throw new Error('File staging is disabled on this hub');
+  // Master switch off: normal calls pass through, but a staging ref is still
+  // rejected by the containsStagingRef guard below rather than forwarded.
+  if (!settings.enabled) return undefined;
   // Trust decisions are re-read at call time: a group/visibility change must not
   // be bypassed by a stale in-memory config.
   const fresh = (await getServerDao().findById(serverInfo.name)) ?? config;
@@ -63,7 +68,9 @@ export const resolveStagedCall = async (
   if (!validation.ok || isLegacyServerId(fresh.id, serverInfo.name)) {
     throw new Error(`File staging is not available for ${serverInfo.name}`);
   }
-  if (serverInfo.version !== undefined && !serverVersionMatchesPinnedProfile(serverInfo.version)) {
+  // Unknown version is as unsafe as a mismatch: the boundary behavior was
+  // verified for one pinned release only.
+  if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
     throw new Error(`File staging is not available for ${serverInfo.name}`);
   }
   const runtimeNames = serverInfo.tools.map((tool) => tool.name);
@@ -178,6 +185,9 @@ export const dispatchStagedToolCall = async (
       try {
         await store.finalizeOutputs(leaseId, plan.outputRefs, settings);
       } catch (error) {
+        // A finalize failure means the tool ran but produced an unusable
+        // output; fail the ref so the lease and its reserved quota are freed.
+        await store.failOutputs(leaseId, plan.outputRefs).catch(() => undefined);
         return { isError: true, content: [{ type: 'text', text: errorText(error) }] };
       }
     }

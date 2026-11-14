@@ -218,13 +218,13 @@ describe('staging dispatch seam', () => {
       ...settings,
       enabled: false,
     });
-    await expect(
-      dispatchStagedToolCall(
-        serverInfo(),
-        { name: 'ssh-upload', arguments: { localPath: ready.ref } },
-        async () => ({ content: [] }),
-        'alice',
-      ),
-    ).rejects.toThrow(/disabled/i);
+    const result = await dispatchStagedToolCall(
+      serverInfo(),
+      { name: 'ssh-upload', arguments: { localPath: ready.ref } },
+      async () => ({ content: [] }),
+      'alice',
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/not allowed/i);
   });
 });

@@ -5,11 +5,13 @@ import {
   hasStagedTools,
   resolveStagingCwd,
   serverVersionMatchesPinnedProfile,
+  validateResolvedSshArgs,
   validateSshServerConfig,
 } from './fileStaging/adapter.js';
 import { dispatchStagedToolCall as dispatchStagingCall } from './fileStaging/dispatch.js';
 import { resolveStagingPrincipal } from './fileStaging/identity.js';
 import { getFileStagingSettings, getStagingStateStore } from './fileStaging/settings.js';
+import { StagingError } from './fileStaging/types.js';
 import {
   STAGING_TOOL_DEFINITIONS,
   executeStagingTool,
@@ -1975,12 +1977,23 @@ export const createTransportFromConfig = async (
       conf.proxy,
     );
 
+    // Substitute after expansion and proxy argument cleaning so secrets stay literal.
+    const resolvedStagingArgs = resolveCredentialArguments(conf, finalArgs);
+    if (hasStagedTools(conf)) {
+      // A credential-template args slot must not be able to inject an ssh CLI
+      // option (e.g. --allowed-local-paths=/); validate the argv the child will
+      // actually receive, not just the template.
+      const argsValidation = validateResolvedSshArgs(resolvedStagingArgs);
+      if (!argsValidation.ok) {
+        throw new Error(`File staging argument rejected: ${argsValidation.reason}`);
+      }
+    }
+
     // Create STDIO transport with potentially wrapped command
     transport = new StdioClientTransport({
       cwd: stagingCwd ?? process.cwd(),
       command: finalCommand,
-      // Substitute after expansion and proxy argument cleaning so secrets stay literal.
-      args: resolveCredentialArguments(conf, finalArgs),
+      args: resolvedStagingArgs,
       env: env,
       stderr: 'pipe',
       maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
@@ -4486,11 +4499,16 @@ interface StagingTarget {
   tools: StagingToolTarget[];
 }
 
-const stagingAskUsername = (extra: any): string | undefined =>
-  RequestContextService.getInstance().getUsernameContext() ||
-  extra?.username ||
-  UserContextService.getInstance().getCurrentUser()?.username ||
-  undefined;
+const stagingAskUsername = (extra: any): string | undefined => {
+  const requestContext = RequestContextService.getInstance();
+  // System/bearer-key callers have no per-user identity to own staged files.
+  if (requestContext.getKeyKindContext() === 'system') return undefined;
+  const current = UserContextService.getInstance().getCurrentUser() as
+    | (IUser & { credentialEligible?: boolean })
+    | null;
+  if (current?.credentialEligible === false) return undefined;
+  return requestContext.getUsernameContext() || current?.username || undefined;
+};
 
 /**
  * Servers that can be staged on this route. A target needs an enabled tool
@@ -4531,10 +4549,24 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
       );
       continue;
     }
-    if (serverInfo.config?.startOnDemand && serverInfo.tools.length === 0) {
-      // Config-only catalog: keep the configured parameter names, never guess.
+    if (
+      serverInfo.tools.length === 0 &&
+      (serverInfo.config?.startOnDemand || hasCredentialTemplate(config))
+    ) {
+      // Config-only catalog (on-demand or per-user credential server): keep the
+      // configured parameter names, never guess. A credential server is never
+      // connected globally, so this is the only way its route lists the hub
+      // tools before the first per-user call.
+      const groupConfig = serverConfigsByName.get(serverInfo.name);
+      const selectedTools = Array.isArray(groupConfig?.tools)
+        ? new Set(groupConfig.tools)
+        : undefined;
       const staged: StagingToolTarget[] = Object.entries(config.tools ?? {})
-        .filter(([, toolConfig]) => toolConfig?.enabled !== false && toolConfig.fileStaging?.enabled)
+        .filter(([toolName, toolConfig]) =>
+          (!selectedTools || selectedTools.has(toolName)) &&
+          toolConfig?.enabled !== false &&
+          toolConfig.fileStaging?.enabled,
+        )
         .map(([toolName, toolConfig]) => ({
           toolName,
           inputParams: [...(toolConfig.fileStaging?.inputParams ?? [])],
@@ -4580,18 +4612,14 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
   return targets;
 };
 
-const stagingErrorText = (error: unknown): string => {
-  const code = (error as { code?: string } | undefined)?.code;
-  const message = error instanceof Error ? error.message : String(error);
-  // StagingError messages are already user-safe; other errors stay generic.
-  return code ? message : 'File staging request failed';
-};
+const stagingErrorText = (error: unknown): string =>
+  // Only ledger errors are user-safe; an fs/DB message can carry absolute paths.
+  error instanceof StagingError ? error.message : 'File staging request failed';
 
 /** Prepend the hub's virtual tools when the route has a staging target. */
 const withStagingTools = async (group: string | undefined, tools: Tool[]): Promise<Tool[]> => {
   const targets = await resolveStagingTargets(group);
   if (targets.length === 0) return tools;
-  const existing = new Set(tools.map((tool) => tool.name));
   const shadowed = tools.filter((tool) => isReservedStagingName(tool.name));
   if (shadowed.length > 0) {
     // The hub name wins and fails closed, so the upstream tool is unreachable;
@@ -4602,15 +4630,16 @@ const withStagingTools = async (group: string | undefined, tools: Tool[]): Promi
         .join(', ')}`,
     );
   }
-  const injected = STAGING_TOOL_DEFINITIONS.filter((tool) => !existing.has(tool.name)).map(
-    (tool) => ({
-      name: tool.name,
-      title: tool.title,
-      description: tool.description,
-      inputSchema: tool.inputSchema as Tool['inputSchema'],
-    }),
-  );
-  return [...injected, ...tools];
+  // The reserved namespace always resolves to the hub definition: an upstream
+  // tool of the same name is dropped, never listed with a schema that would
+  // route somewhere else.
+  const injected = STAGING_TOOL_DEFINITIONS.map((tool) => ({
+    name: tool.name,
+    title: tool.title,
+    description: tool.description,
+    inputSchema: tool.inputSchema as Tool['inputSchema'],
+  }));
+  return [...injected, ...tools.filter((tool) => !isReservedStagingName(tool.name))];
 };
 
 const handleHubStagingCall = async (request: any, extra: any) => {
@@ -4664,7 +4693,7 @@ const handleHubStagingCall = async (request: any, extra: any) => {
         const baseUrl =
           resolveInstallBaseUrl(systemConfig) ?? `http://localhost:${config.port}`;
         return {
-          downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/api/staging/download/${token}`,
+          downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(
             Date.now() + settings.downloadTtlSeconds * 1000,
           ).toISOString(),
@@ -6728,17 +6757,29 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   });
   return context.runWithContext(() => principalServerScope.run(visible, action), user ?? null);
 };
-export const handleCallToolRequest = (request: any, extra: any) =>
+export const handleCallToolRequest = (request: any, extra: any) => {
+  // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
+  // past the outer dispatch, and the hub namespace is never reachable from a
+  // non-MCP caller (the OpenAPI controller rejects it as well).
+  if (isReservedStagingName(request?.params?.arguments?.toolName)) {
+    return Promise.resolve({
+      isError: true,
+      content: [
+        { type: 'text', text: 'Hub built-in tools cannot be called through call_tool' },
+      ],
+    });
+  }
   // The reserved hub namespace is dispatched before replica/policy/principal
   // wrappers: a virtual tool must never acquire a per-user runtime, refresh an
   // unrelated upstream list, or be filtered as an upstream tool.
-  isReservedStagingName(request?.params?.name)
+  return isReservedStagingName(request?.params?.name)
     ? handleHubStagingCall(request, extra)
     : observeToolCall(() =>
         withReplicaServerScope(() =>
           withToolPolicy(callToolWithPrincipal, request, extra, true),
         ),
       );
+};
 export const handleGetPromptRequest = withPrincipalServers(
   withModernLists(handleGetPromptRequestImpl, ['prompts']),
   'prompt',

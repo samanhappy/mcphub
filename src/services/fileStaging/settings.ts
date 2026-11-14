@@ -16,6 +16,28 @@ import { DbStagingStateStore } from './dbStateStore.js';
 import { FileStagingStateStore, type StagingStateStore } from './stateStore.js';
 
 let storePromise: Promise<StagingStateStore> | undefined;
+let cleanupTimer: NodeJS.Timeout | undefined;
+
+/** Sweep expired refs/tokens on the configured cadence (best-effort). */
+const ensureCleanupTimer = (store: StagingStateStore): void => {
+  if (cleanupTimer) return;
+  let lastRun = 0;
+  cleanupTimer = setInterval(() => {
+    void (async () => {
+      try {
+        const settings = await getFileStagingSettings();
+        if (!settings.enabled) return;
+        const intervalMs = Math.max(60_000, settings.cleanupIntervalMinutes * 60_000);
+        if (Date.now() - lastRun < intervalMs) return;
+        lastRun = Date.now();
+        await store.cleanup(settings);
+      } catch {
+        // Cleanup is best-effort; the startup sweep also reconciles.
+      }
+    })();
+  }, 60_000);
+  cleanupTimer.unref?.();
+};
 
 /** Resolve the effective global settings, disabled by default. */
 export const getFileStagingSettings = async (): Promise<FileStagingSettings> => {
@@ -49,6 +71,7 @@ export const getStagingStateStore = (): Promise<StagingStateStore> => {
         ? new DbStagingStateStore()
         : new FileStagingStateStore();
       await store.init();
+      ensureCleanupTimer(store);
       return store;
     })().catch((error) => {
       // Let the next call retry (e.g. DB not ready yet) instead of caching a

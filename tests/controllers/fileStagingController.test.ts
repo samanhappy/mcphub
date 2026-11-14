@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import express from 'express';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -34,9 +35,14 @@ describe('staged file download endpoint', () => {
   });
 
   it('serves a ready file as an attachment with nosniff and no-store', async () => {
+    const body = Buffer.from('download body');
     mockGetStagingStateStore.mockResolvedValue({
-      consumeDownloadToken: jest.fn(async () => ({ ref: 'mcpfile://x', ownerHash: OWNER })),
-      getOwnedRef: jest.fn(async () => ({ filename: 'report "final".csv' })),
+      consumeDownloadToken: jest.fn(async () => ({
+        ref: 'mcpfile://x',
+        ownerHash: OWNER,
+        contentHash: createHash('sha256').update(body).digest('hex'),
+      })),
+      getOwnedRef: jest.fn(async () => ({ filename: 'report "final".csv', size: body.length })),
       contentPathFor: jest.fn(async () => file),
     });
 

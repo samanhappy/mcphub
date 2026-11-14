@@ -229,6 +229,15 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     setMountedSsoProviders(registeredSsoProviders);
   }
 
+  // One-time staged file download (#1056). The single-use token in the URL is
+  // the capability; mounted outside /api so an MCP client can fetch without a
+  // dashboard session while every other staging route stays authenticated.
+  app.get(
+    `${config.basePath}/staging/download/:token`,
+    mcpConnectionRateLimiter,
+    downloadStagedFile,
+  );
+
   // Health check endpoint (no auth required, accessible at /health)
   app.get('/health', healthCheck);
   app.get('/livez', livenessCheck);
@@ -523,10 +532,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   router.get('/auth/user', authenticatedRouteRateLimiter, auth, getCurrentUser);
 
-  // One-time staged file download (#1056). The single-use token in the URL is
-  // the capability, so an MCP client can fetch without a dashboard session;
-  // every other staging route stays authenticated.
-  router.get('/staging/download/:token', mcpConnectionRateLimiter, downloadStagedFile);
+
 
   // Add change password route
   router.post(
