@@ -28,6 +28,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "jest",
     "test:replicas": "sh scripts/test-replicas.sh",
+    "test:staging:ssh": "node scripts/verify-staging-ssh-boundary.mjs",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",

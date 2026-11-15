@@ -1,5 +1,11 @@
 import { validateToolPolicies } from '../utils/toolPolicy.js';
-import { normalizeFileStagingSettings, resolveFileStagingSettings } from '../utils/fileStagingConfig.js';
+import {
+  assertStagingConfigConsistent,
+  normalizeFileStagingSettings,
+  normalizeServerStaging,
+  normalizeToolFileStaging,
+  resolveFileStagingSettings,
+} from '../utils/fileStagingConfig.js';
 import { hasPersonalAuthentication } from '../utils/credentialTemplate.js';
 import { matchesNamePattern } from '../utils/namePattern.js';
 import { validateAllowedCidrs, validateFakeIpExceptions } from '../utils/ssrf.js';
@@ -67,7 +73,10 @@ import {
 } from '../services/serverConfigPresenter.js';
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
-import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
+import {
+  normalizeServerConfigForPersistence,
+  normalizeToolConfig,
+} from '../utils/serverConfigPersistence.js';
 import { hasConnectionRelevantChange, type ServerRecord } from '../utils/connectionRelevantConfig.js';
 import {
   isPrivilegedServerConfig,
@@ -1752,6 +1761,176 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
       success: false,
       message: 'Internal server error',
     });
+  }
+};
+
+/**
+ * Per-tool file staging opt-in (#1056, design §9.5, R13).
+ *
+ * PATCH /api/servers/:name/file-staging with
+ * `{ tool, enabled, inputParams?, outputParams? }`.
+ *
+ * Owner-or-admin, the same permission `toggleTool` uses. Omitted parameter
+ * lists keep their stored value, so disabling a tool (or re-enabling it) never
+ * loses the declaration. The updated config is validated as a whole so an
+ * enabled tool still requires `staging.adapter` (and a stdio server).
+ */
+export const updateToolFileStaging = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const serverName = decodeURIComponent(req.params.name);
+    const {
+      tool,
+      enabled,
+      inputParams,
+      outputParams,
+    } = (req.body ?? {}) as {
+      tool?: unknown;
+      enabled?: unknown;
+      inputParams?: unknown;
+      outputParams?: unknown;
+    };
+
+    if (typeof tool !== 'string' || tool.trim().length === 0) {
+      res.status(400).json({ success: false, message: 'Tool name is required' });
+      return;
+    }
+    if (['__proto__', 'constructor', 'prototype'].includes(tool)) {
+      res.status(400).json({ success: false, message: 'Invalid tool name' });
+      return;
+    }
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({ success: false, message: 'Enabled status must be a boolean' });
+      return;
+    }
+    if (inputParams !== undefined && !Array.isArray(inputParams)) {
+      res
+        .status(400)
+        .json({ success: false, message: 'inputParams must be an array of parameter names' });
+      return;
+    }
+    if (outputParams !== undefined && !Array.isArray(outputParams)) {
+      res
+        .status(400)
+        .json({ success: false, message: 'outputParams must be an array of parameter names' });
+      return;
+    }
+
+    const server = await loadAuthorizedServer(req, res, serverName);
+    if (!server) return;
+
+    const tools = { ...(server.tools ?? {}) };
+    const configKey = findToolConfigKey(tools, serverName, tool, liveToolNames(serverName));
+    const existing = tools[configKey];
+    const existingFileStaging = existing?.fileStaging;
+    // Only the supplied lists change; a bare enable/disable keeps the stored
+    // declaration (R33: disabling must not drop params).
+    const fileStaging = normalizeToolFileStaging(
+      {
+        enabled,
+        inputParams: inputParams !== undefined ? inputParams : existingFileStaging?.inputParams,
+        outputParams: outputParams !== undefined ? outputParams : existingFileStaging?.outputParams,
+      },
+      configKey,
+    );
+    const nextTools = {
+      ...tools,
+      [configKey]: normalizeToolConfig(configKey, {
+        ...existing,
+        enabled: existing?.enabled ?? true,
+        fileStaging,
+      }),
+    };
+    assertStagingConfigConsistent({ ...server, tools: nextTools });
+
+    if (!(await getServerDao().updateTools(serverName, nextTools))) {
+      res.status(500).json({ success: false, message: 'Failed to save settings' });
+      return;
+    }
+
+    // Same stale-config gap as toggleTool: the live serverInfo is only rebuilt
+    // on reconnect, so patch it now to make the change effective immediately.
+    const liveServer = getServerByName(serverName);
+    if (liveServer?.config) {
+      liveServer.config = { ...liveServer.config, tools: nextTools };
+    }
+
+    broadcastToolListChanged();
+
+    res.json({ success: true, data: nextTools[configKey] });
+  } catch (error) {
+    if (error instanceof ServerConfigValidationError) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/**
+ * Server staging declaration (#1056, design §9.5, R13).
+ *
+ * PATCH /api/servers/:name/staging with `{ shared?, adapter? }`. An owner may
+ * declare the adapter on their own private server; changing the `shared` trust
+ * flag is admin-only. Omitted fields keep their stored value.
+ */
+export const updateServerStaging = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const serverName = decodeURIComponent(req.params.name);
+    const body = req.body as unknown;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+      res.status(400).json({ success: false, message: 'Request body must be an object' });
+      return;
+    }
+    const { shared, adapter } = body as Record<string, unknown>;
+    if (shared === undefined && adapter === undefined) {
+      res
+        .status(400)
+        .json({ success: false, message: 'Provide at least one of shared or adapter' });
+      return;
+    }
+    if (shared !== undefined && typeof shared !== 'boolean') {
+      res.status(400).json({ success: false, message: 'shared must be a boolean' });
+      return;
+    }
+
+    const server = await loadAuthorizedServer(req, res, serverName);
+    if (!server) return;
+
+    // `shared` is a trust grant: only an admin may add or remove it. An owner
+    // keeps control of the adapter for their own private server.
+    if (shared !== undefined && getRequestUser(req)?.isAdmin !== true) {
+      res
+        .status(403)
+        .json({ success: false, message: 'Only admins can change shared file staging' });
+      return;
+    }
+
+    const existing = server.staging ?? {};
+    const staging = normalizeServerStaging({
+      shared: shared !== undefined ? shared : existing.shared,
+      adapter: adapter !== undefined ? adapter : existing.adapter,
+    });
+    assertStagingConfigConsistent({ ...server, staging });
+
+    if (!(await getServerDao().update(serverName, { staging }))) {
+      res.status(500).json({ success: false, message: 'Failed to save settings' });
+      return;
+    }
+
+    const liveServer = getServerByName(serverName);
+    if (liveServer?.config) {
+      liveServer.config = { ...liveServer.config, staging };
+    }
+
+    broadcastToolListChanged();
+
+    res.json({ success: true, data: staging ?? null });
+  } catch (error) {
+    if (error instanceof ServerConfigValidationError) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 

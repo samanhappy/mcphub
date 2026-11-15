@@ -128,10 +128,11 @@ export class DbStagingStateStore implements StagingStateStore {
   async init(): Promise<void> {
     await ensureDirectory(this.rootDir);
     await ensureDirectory(this.stateDir);
-    if (!this.disableLock) await acquireStagingProcessLock(this.stateDir);
-    // A child process can outlive the hub. Never re-lease a destination whose
-    // lease was still held at restart; the UUID is never reused.
-    await this.repository.transaction(async (manager) => {
+    const release = this.disableLock ? undefined : await acquireStagingProcessLock(this.stateDir);
+    try {
+      // A child process can outlive the hub. Never re-lease a destination whose
+      // lease was still held at restart; the UUID is never reused.
+      await this.repository.transaction(async (manager) => {
       const rows = await this.repository.listRefs(manager);
       for (const row of rows) {
         if (!row.leaseId && row.pinCount === 0) continue;
@@ -148,7 +149,12 @@ export class DbStagingStateStore implements StagingStateStore {
         record.pinUntil = undefined;
         await this.repository.saveRef(manager, toRow(record));
       }
-    });
+      });
+    } catch (error) {
+      // A repaired database must be retryable without a hub restart.
+      await release?.();
+      throw error;
+    }
   }
 
   private nowIso(): string {
@@ -392,7 +398,11 @@ export class DbStagingStateStore implements StagingStateStore {
         const row = byRef.get(ref);
         if (!row) throw new StagingError('not-found', 'Staging reference not found');
         const record = toRecord(row);
-        const digest = await digestFile(contentPath(this.rootDir, record.ownerHash, record.id));
+        const file = contentPath(this.rootDir, record.ownerHash, record.id);
+        // The tool may have replaced its ref directory with a symlink since the
+        // lease; digestFile only guards the leaf.
+        await assertNoSymlinkComponents(this.rootDir, file);
+        const digest = await digestFile(file);
         const decision = decideFinalize(record, leaseId, digest, settings);
         decisions.push({ row, record, size: decision.size, sha256: decision.sha256 });
       }

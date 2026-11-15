@@ -496,3 +496,28 @@ describe('authorization relay configuration', () => {
     ).toThrow('Invalid oauth.authorizationRelay');
   });
 });
+
+describe('file staging (#1056)', () => {
+  it('rejects a tool name in the hub reserved staging namespace (R12)', () => {
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', 'pkg'],
+        tools: { mcphub_file_upload: { enabled: true } },
+      }),
+    ).toThrow(
+      "tool name `mcphub_file_upload` is reserved by the hub's built-in staging tools",
+    );
+  });
+
+  it('still accepts ordinary tool names', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', 'pkg'],
+      tools: { upload: { enabled: true } },
+    });
+    expect(normalized.tools?.upload).toEqual({ enabled: true });
+  });
+});

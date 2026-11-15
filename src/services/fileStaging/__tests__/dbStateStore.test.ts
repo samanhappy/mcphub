@@ -200,6 +200,35 @@ describe('DbStagingStateStore', () => {
     });
   });
 
+  it('fails finalize when the principal directory was replaced by a symlink', async () => {
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef(input(rootDir));
+    await store.acquireOutputLeases(owner, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'mcphub-outside-'));
+    const refDirectory = path.join(rootDir, owner, reserved.id);
+    await fs.rename(refDirectory, path.join(outside, 'moved'));
+    await fs.writeFile(path.join(outside, 'elsewhere'), 'foreign content');
+    await fs.symlink(outside, refDirectory);
+    try {
+      await expect(
+        store.finalizeOutputs('call-1', [reserved.ref], settings()),
+      ).rejects.toThrow(/symlink/i);
+      // The transaction rolled back: the row still holds its lease.
+      expect(repository.refs.get(reserved.ref)).toMatchObject({
+        state: 'reserved',
+        leaseId: 'call-1',
+      });
+
+      await store.failOutputs('call-1', [reserved.ref]);
+      await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+        state: 'failed',
+        leaseId: undefined,
+      });
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it('rejects empty output unless allow_zero_byte is set', async () => {
     const reserved = await store.createReservedRef(input(rootDir));
     await store.acquireOutputLeases('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', [{ ref: reserved.ref, leaseId: 'call-1' }], settings());

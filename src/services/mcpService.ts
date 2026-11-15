@@ -1,5 +1,5 @@
 import { getToolPolicy } from './toolPolicyService.js';
-import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { DEFAULT_INSTALL_BASE_URL, resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
 import {
   hasStagedTools,
@@ -8,7 +8,10 @@ import {
   validateResolvedSshArgs,
   validateSshServerConfig,
 } from './fileStaging/adapter.js';
-import { dispatchStagedToolCall as dispatchStagingCall } from './fileStaging/dispatch.js';
+import {
+  dispatchStagedToolCall as dispatchStagingCall,
+  resolveStagingServerId,
+} from './fileStaging/dispatch.js';
 import { resolveStagingPrincipal } from './fileStaging/identity.js';
 import { getFileStagingSettings, getStagingStateStore } from './fileStaging/settings.js';
 import { StagingError } from './fileStaging/types.js';
@@ -1928,8 +1931,15 @@ export const createTransportFromConfig = async (
   principalUsername?: string,
 ): Promise<any> => {
   // Resolved before any transport branch: a staging-enabled stdio child gets a
-  // per-principal cwd, and an unresolvable staging identity fails closed.
-  const stagingCwd = await resolveStagingCwd(conf, principalUsername);
+  // per-principal cwd. A failure disables staging for this server (dispatch
+  // re-checks the same conditions) instead of taking the whole server down.
+  const stagingCwd = await resolveStagingCwd(conf, principalUsername).catch((error) => {
+    logger.error(
+      `[staging] ${name}: staging cwd unavailable, staging stays disabled for this server`,
+      error,
+    );
+    return undefined;
+  });
   let transport;
   const env = await getServerEnvironment(conf);
 
@@ -4680,10 +4690,7 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
       );
       continue;
     }
-    if (
-      serverInfo.version !== undefined &&
-      !serverVersionMatchesPinnedProfile(serverInfo.version)
-    ) {
+    if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
       logger.warn(
         `[staging] ${serverInfo.name} reports version ${serverInfo.version}; expected the pinned staging profile`,
       );
@@ -4715,7 +4722,7 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
       if (staged.length > 0) {
         targets.push({
           serverName: serverInfo.name,
-          serverId: config.id ?? legacyServerId(serverInfo.name),
+          serverId: resolveStagingServerId(config, serverInfo.name),
           shared: config.staging?.shared === true,
           tools: staged,
         });
@@ -4744,7 +4751,7 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
     if (staged.length === 0) continue;
     targets.push({
       serverName: serverInfo.name,
-      serverId: config.id ?? legacyServerId(serverInfo.name),
+      serverId: resolveStagingServerId(config, serverInfo.name),
       shared: config.staging?.shared === true,
       tools: staged,
     });
@@ -4757,7 +4764,14 @@ const stagingErrorText = (error: unknown): string =>
   error instanceof StagingError ? error.message : 'File staging request failed';
 
 /** Prepend the hub's virtual tools when the route has a staging target. */
-const withStagingTools = async (group: string | undefined, tools: Tool[]): Promise<Tool[]> => {
+const withStagingTools = async (
+  group: string | undefined,
+  tools: Tool[],
+  extra: any,
+): Promise<Tool[]> => {
+  // A route with no resolvable principal (system key, anonymous, hosted
+  // identity the hub cannot map) must not advertise tools it would refuse.
+  if (!stagingAskUsername(extra)) return tools;
   const targets = await resolveStagingTargets(group);
   if (targets.length === 0) return tools;
   const shadowed = tools.filter((tool) => isReservedStagingName(tool.name));
@@ -4834,10 +4848,12 @@ const handleHubStagingCall = async (request: any, extra: any) => {
         // A remote client cannot resolve the hub's localhost: staging links
         // require the configured install base URL (design §8.1).
         const baseUrl = resolveInstallBaseUrl(systemConfig);
-        if (!baseUrl) {
+        // The dashboard default is localhost:3000, which no remote MCP client
+        // can resolve; minting a link on it fails later and silently.
+        if (!baseUrl || baseUrl.replace(/\/$/, '') === DEFAULT_INSTALL_BASE_URL) {
           throw new StagingError(
             'invalid-ref',
-            'Downloads require a configured install.baseUrl in the hub settings',
+            'Downloads require a configured install.baseUrl (the localhost default is not reachable by clients)',
           );
         }
         return {
@@ -4889,7 +4905,12 @@ const handleListToolsRequestImpl = async (_: any, extra: any) => {
     serverConfigsByName,
     appsRouteContext,
   );
-  return { tools: await withStagingTools(group, listed) };
+  const tools = await withStagingTools(group, listed, extra);
+  // Hub tools are generated per route, not part of the upstream snapshot, so
+  // the list must not be cached across calls.
+  return tools.some((tool) => isReservedStagingName(tool.name))
+    ? { tools, stagingTools: true }
+    : { tools };
 };
 
 const handleCallToolRequestImpl = async (request: any, extra: any) => {
@@ -6722,7 +6743,9 @@ const withCacheHints =
             (listField === 'resourceTemplates' || info[listField] === snapshots[index]),
         );
       const generated =
-        (listField === 'tools' && isSmartRoutingGroup(group)) ||
+        (listField === 'tools' &&
+          (isSmartRoutingGroup(group) ||
+            (result as { stagingTools?: boolean }).stagingTools === true)) ||
         (listField === 'prompts' && (await getBuiltinPromptDao().findEnabled()).length > 0) ||
         (listField === 'resources' && (await getBuiltinResourceDao().findEnabled()).length > 0);
       const unknownPermissions = RequestContextService.getInstance().getHostedAuthContext();

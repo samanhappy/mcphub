@@ -284,6 +284,11 @@ export const buildServerPayload = ({
     // Round-trip the stored proxychains config (no in-form editor) so an edit
     // of any other field does not drop it and force an avoidable reload.
     proxy: formData.proxy,
+    // Per-tool file staging and the server staging declaration (#1056) have no
+    // in-form editors in PR1 either; dropping them here would silently disable
+    // staging for every server edited in the dashboard.
+    tools: formData.tools,
+    staging: formData.staging,
   };
 
   if (serverType === 'openapi') {

@@ -8,6 +8,10 @@ import {
   normalizeServerStaging,
   normalizeToolFileStaging,
 } from './fileStagingConfig.js';
+// The hub's virtual staging tools own this namespace; an upstream tool with the
+// same name would be silently shadowed at list time and the staging tool
+// disabled (#1056, R12).
+import { STAGING_TOOL_PREFIX } from '../services/fileStaging/tools.js';
 import { ServerConfig } from '../types/index.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
@@ -321,6 +325,44 @@ const inferServerType = (config: ServerConfig): NonNullable<ServerConfig['type']
   return undefined;
 };
 
+type ToolConfig = NonNullable<ServerConfig['tools']>[string];
+
+/**
+ * Normalize one tool config entry, preserving every field other than
+ * `fileStaging` verbatim. Throws a ServerConfigValidationError when the entry
+ * is malformed, when its key claims the hub's reserved staging namespace
+ * (#1056, R12), or when its staging params collide with hidden params.
+ *
+ * Exported so the per-tool staging PATCH applies exactly the same rules as a
+ * whole-config save.
+ */
+export const normalizeToolConfig = (key: string, tool: unknown): ToolConfig => {
+  // A tool named like a built-in staging tool would be shadowed at list time,
+  // and the staging tool would be disabled: reject the collision instead of
+  // silently losing either tool.
+  if (key.startsWith(STAGING_TOOL_PREFIX)) {
+    throw new ServerConfigValidationError(
+      `tool name \`${key}\` is reserved by the hub's built-in staging tools`,
+    );
+  }
+  if (tool === null || typeof tool !== 'object' || Array.isArray(tool)) {
+    throw new ServerConfigValidationError(`tools.${key} must be an object`);
+  }
+  const entry = tool as ToolConfig;
+  const fileStaging = normalizeToolFileStaging(entry.fileStaging, key);
+  if (fileStaging?.enabled) {
+    const declared = [...(fileStaging.inputParams ?? []), ...(fileStaging.outputParams ?? [])];
+    const hidden = entry.hiddenParams ?? [];
+    const clash = declared.find((param) => hidden.includes(param));
+    if (clash) {
+      throw new ServerConfigValidationError(
+        `tools.${key}: file staging parameter "${clash}" cannot also be hidden`,
+      );
+    }
+  }
+  return fileStaging ? { ...entry, fileStaging } : { ...entry };
+};
+
 /**
  * Normalize per-tool config, validating the optional `fileStaging` object
  * (#1056) and preserving every other tool field verbatim. Returns undefined
@@ -337,21 +379,7 @@ const normalizeToolsConfig = (
   }
   const normalized: NonNullable<ServerConfig['tools']> = {};
   for (const [key, tool] of Object.entries(tools)) {
-    if (tool === null || typeof tool !== 'object' || Array.isArray(tool)) {
-      throw new ServerConfigValidationError(`tools.${key} must be an object`);
-    }
-    const fileStaging = normalizeToolFileStaging(tool.fileStaging, key);
-    if (fileStaging?.enabled) {
-      const declared = [...(fileStaging.inputParams ?? []), ...(fileStaging.outputParams ?? [])];
-      const hidden = tool.hiddenParams ?? [];
-      const clash = declared.find((param) => hidden.includes(param));
-      if (clash) {
-        throw new ServerConfigValidationError(
-          `tools.${key}: file staging parameter "${clash}" cannot also be hidden`,
-        );
-      }
-    }
-    normalized[key] = fileStaging ? { ...tool, fileStaging } : { ...tool };
+    normalized[key] = normalizeToolConfig(key, tool);
   }
   return normalized;
 };

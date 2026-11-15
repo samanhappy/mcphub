@@ -3,9 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { ServerConfig } from '../../../types/index.js';
+import type { StagingAdapter } from '../adapter.js';
 import {
   resolveStagingCwd,
   serverVersionMatchesPinnedProfile,
+  sshStagingAdapter,
   validateResolvedSshArgs,
   validateSshServerConfig,
 } from '../adapter.js';
@@ -90,6 +92,106 @@ describe('ssh staging adapter', () => {
     });
     expect(validateResolvedSshArgs(['--config-file=/tmp/x'])).toMatchObject({ ok: false });
     expect(validateResolvedSshArgs(['--exec', 'rm -rf /'])).toMatchObject({ ok: false });
+  });
+
+  it('accepts --opt value and --opt=value', () => {
+    expect(validateResolvedSshArgs(['--host=h', '--port=22', '--username=u', '--password=p'])).toEqual({
+      ok: true,
+    });
+    expect(validateResolvedSshArgs(['--host', 'h', '--try-keyboard', '--pre-connect'])).toEqual({
+      ok: true,
+    });
+    expect(validateResolvedSshArgs(['--allowed-local-paths=/'])).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['--help'])).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['--version'])).toMatchObject({ ok: false });
+  });
+
+  it('does not mistake a value that starts with -- for an option', () => {
+    // A password or username may legitimately start with dashes.
+    expect(validateResolvedSshArgs(['--username', '--host', '--password', '--config-file=x'])).toEqual({
+      ok: true,
+    });
+    expect(validateResolvedSshArgs(['--host', '--allowed-local-paths=/'])).toEqual({ ok: true });
+    // The same token in option position is still rejected.
+    expect(validateResolvedSshArgs(['--host', 'h', '--allowed-local-paths=/'])).toMatchObject({
+      ok: false,
+    });
+    expect(validateResolvedSshArgs(['--', '--allowed-local-paths=/'])).toEqual({ ok: true });
+  });
+
+  it('inspects and rejects unknown single-dash options', () => {
+    expect(validateResolvedSshArgs(['-x'])).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['-x', 'value'])).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['--host', 'h', '-h'])).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['--http-port=3000'])).toEqual({ ok: true });
+  });
+
+  it('exposes the ssh adapter through the StagingAdapter seam', () => {
+    const adapter: StagingAdapter = sshStagingAdapter;
+    expect(adapter.id).toBe('ssh');
+    expect(adapter.validateConfig(baseConfig())).toMatchObject({ ok: true });
+    expect(adapter.validateResolvedArgs(['--host', 'h'])).toEqual({ ok: true });
+    expect(typeof adapter.prepareRuntime).toBe('function');
+  });
+
+  it('binds the pin to the launcher and its first positional', () => {
+    expect(validateSshServerConfig(baseConfig()).ok).toBe(true);
+    // npx switches may precede the spec.
+    expect(
+      validateSshServerConfig(baseConfig({ args: ['--yes', '@fangjunjie/ssh-mcp-server@1.11.0'] })).ok,
+    ).toBe(true);
+    // node runs the CLI itself; no script may precede it.
+    expect(
+      validateSshServerConfig(
+        baseConfig({ command: 'node', args: ['@fangjunjie/ssh-mcp-server@1.11.0', '--host', 'h'] }),
+      ).ok,
+    ).toBe(true);
+    expect(
+      validateSshServerConfig(
+        baseConfig({ command: '/usr/local/bin/npx', args: ['@fangjunjie/ssh-mcp-server@1.11.0'] }),
+      ).ok,
+    ).toBe(true);
+    // A script argument before the pin is what actually runs.
+    expect(
+      validateSshServerConfig(
+        baseConfig({ command: 'node', args: [`/tmp/mcp-staging-1.11.0/index.js`, '@fangjunjie/ssh-mcp-server@1.11.0'] }),
+      ),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateSshServerConfig(
+        baseConfig({ command: 'npx', args: ['/tmp/other.js', '@fangjunjie/ssh-mcp-server@1.11.0'] }),
+      ),
+    ).toMatchObject({ ok: false });
+    // Another command name after the package runs different code.
+    expect(
+      validateSshServerConfig(
+        baseConfig({ args: ['-p', '@fangjunjie/ssh-mcp-server@1.11.0', 'other-cli'] }),
+      ),
+    ).toMatchObject({ ok: false });
+    // Only npx and node may launch the pin.
+    expect(
+      validateSshServerConfig(
+        baseConfig({ command: 'node_modules/.bin/ssh-mcp-server', args: ['@fangjunjie/ssh-mcp-server@1.11.0'] }),
+      ),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateSshServerConfig(baseConfig({ command: 'bash', args: ['@fangjunjie/ssh-mcp-server@1.11.0'] })),
+    ).toMatchObject({ ok: false });
+    // The two flags that terminate the child are rejected in the config too.
+    expect(
+      validateSshServerConfig(baseConfig({ args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '--help'] })),
+    ).toMatchObject({ ok: false });
+    expect(
+      validateSshServerConfig(baseConfig({ args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '--version'] })),
+    ).toMatchObject({ ok: false });
+  });
+
+  it('accepts both --opt value and --opt=value in the server config', () => {
+    expect(
+      validateSshServerConfig(
+        baseConfig({ args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '--allowed-local-paths=/'] }),
+      ),
+    ).toMatchObject({ ok: false });
   });
 
   it('accepts only the verified upstream version', () => {

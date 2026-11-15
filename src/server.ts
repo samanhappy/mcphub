@@ -15,6 +15,7 @@ import { replicaRequestContext } from './middlewares/replicaConfig.js';
 import { isReplicaMode } from './utils/replicaMode.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
+import { getFileStagingSettings, getStagingStateStore } from './services/fileStaging/settings.js';
 import { initI18n } from './utils/i18n.js';
 import {
   handleSseConnection,
@@ -135,6 +136,12 @@ export class AppServer {
 
       initMiddlewares(this.app);
       await initRoutes(this.app);
+
+      // Bring up the file-staging ledger before serving tool calls (#1056,
+      // R4b): the process/DB lock must fail at startup, not on the first tool
+      // call that needs staging. Failure is logged, never fatal.
+      await this.initializeFileStaging();
+
       logger.log('Server initialized successfully');
 
       const upstreamInitialization = initUpstreamServers()
@@ -226,6 +233,23 @@ export class AppServer {
     } catch (error) {
       logger.error('Error initializing server', safeStringify({ error }));
       throw error;
+    }
+  }
+
+  /**
+   * Initialize the file-staging ledger when the feature is enabled (#1056).
+   * A second instance sharing the staging state directory fails here on the
+   * lock instead of on the first staging tool call. A failure (including a
+   * disabled feature whose config read fails) must never prevent startup.
+   */
+  private async initializeFileStaging(): Promise<void> {
+    try {
+      const settings = await getFileStagingSettings();
+      if (!settings.enabled) return;
+      await getStagingStateStore();
+      logger.log('File staging ledger initialized');
+    } catch (error) {
+      logger.error('Failed to initialize the file staging ledger:', error);
     }
   }
 

@@ -31,6 +31,8 @@ import {
   toggleTool,
   batchToggleTools,
   updateToolDescription,
+  updateToolFileStaging,
+  updateServerStaging,
   resetToolDescription,
   updateToolHiddenParams,
   togglePrompt,
@@ -204,6 +206,7 @@ import {
   authenticatedRouteRateLimiter,
   hostedInternalEventRateLimiter,
   mcpConnectionRateLimiter,
+  stagingDownloadRateLimiter,
   templateRateLimiter,
 } from '../utils/rateLimit.js';
 
@@ -234,7 +237,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // dashboard session while every other staging route stays authenticated.
   app.get(
     `${config.basePath}/staging/download/:token`,
-    mcpConnectionRateLimiter,
+    stagingDownloadRateLimiter,
     downloadStagedFile,
   );
 
@@ -330,6 +333,9 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/servers/:name/oauth/disconnect', disconnectServerOAuth);
   authenticatedRouter.post('/servers/:serverName/tools/toggle', batchToggleTools);
   authenticatedRouter.post('/servers/:serverName/tools/:toolName/toggle', toggleTool);
+  // File staging (#1056, design §9.5): per-tool opt-in and per-server trust.
+  authenticatedRouter.patch('/servers/:name/file-staging', updateToolFileStaging);
+  authenticatedRouter.patch('/servers/:name/staging', updateServerStaging);
   authenticatedRouter.put(
     '/servers/:serverName/tools/:toolName/description',
     updateToolDescription,

@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { StagingError } from './types.js';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const OWNER_HASH_RE = /^[a-f0-9]{64}$/;
 
 export const isValidOwnerHash = (hash: unknown): hash is string =>
@@ -30,9 +30,9 @@ const assertWithinRoot = (root: string, target: string): string => {
 export const isValidRefId = (id: string): boolean =>
   typeof id === 'string' && UUID_RE.test(id);
 
-// Exact only: no trimming, no case folding. Callers normalize user input
-// before building a plan; a loose parser here would let two spellings of one
-// ref slip past duplicate detection.
+// Exact only: no trimming, no case folding, v4 only (refs are randomUUID()).
+// Callers normalize user input before building a plan; a loose parser here
+// would let two spellings of one ref slip past duplicate detection.
 export const parseRef = (ref: unknown): string | undefined => {
   if (typeof ref !== 'string') return undefined;
   const match = /^mcpfile:\/\/([0-9a-f-]{36})$/.exec(ref);
@@ -66,34 +66,101 @@ export const metaPath = (root: string, ownerHash: string, id: string): string =>
   path.join(refDir(root, ownerHash, id), 'meta.json');
 
 /**
- * Create a directory (0700) after checking that no existing component is a
- * symlink. `mkdir` itself never follows a symlink for the final component, but
- * a symlinked ancestor would silently relocate the whole tree.
+ * Deepest existing ancestor of `resolved` plus the components this call still
+ * has to create below it. A symlinked component is refused unless
+ * `trustAncestor` accepts it as deployment configuration.
  */
-export const ensureDirectory = async (dir: string, mode = 0o700): Promise<void> => {
+const walkToExistingAncestor = async (
+  resolved: string,
+  trustAncestor: (candidate: string) => boolean,
+): Promise<{ missing: string[]; existing: string }> => {
+  const missing: string[] = [];
+  let existing = resolved;
+  for (;;) {
+    const stat = await fs.lstat(existing).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (stat) {
+      const link = stat.isSymbolicLink();
+      if (link && !trustAncestor(existing)) {
+        throw new Error(`Refusing to use symlinked directory component: ${existing}`);
+      }
+      if (!link && !stat.isDirectory()) {
+        throw new Error(`Path component is not a directory: ${existing}`);
+      }
+      return { missing, existing };
+    }
+    missing.unshift(path.basename(existing));
+    existing = path.dirname(existing);
+  }
+};
+
+/**
+ * Create a directory (0700) below the deepest existing ancestor of the staging
+ * root.
+ *
+ * Components above the staging root are deployment configuration, not staging
+ * data: the root may sit under a symlink (macOS `/tmp` -> `/private/tmp`, or
+ * any deployment whose staging root is reached through one), and walking from
+ * `/` would refuse every call there. The staging root and everything below it
+ * must be real directories: a same-UID tool could otherwise relocate the tree.
+ */
+export const ensureDirectory = async (
+  dir: string,
+  mode = 0o700,
+  root = getStagingRoot(),
+): Promise<void> => {
   const resolved = path.resolve(dir);
-  const parts = resolved.split(path.sep);
-  let current = parts[0] === '' ? path.sep : parts[0];
-  for (let i = 1; i < parts.length; i++) {
-    current = path.join(current, parts[i]);
+  const boundary = path.resolve(root);
+  const staging = `${boundary}${path.sep}`;
+  // The staging root and everything below it must be real directories; above
+  // the root a symlink is deployment configuration (macOS `/tmp` ->
+  // `/private/tmp`, or a staging root reached through a link).
+  const trustAncestor = (candidate: string): boolean =>
+    candidate !== boundary && !candidate.startsWith(staging);
+  const { missing, existing } = await walkToExistingAncestor(resolved, trustAncestor);
+  let base = await fs.realpath(existing);
+  // The staging root itself is missing: recreate it under its parent, whose
+  // path above the root is trusted as deployment configuration.
+  if (existing === boundary && missing[0] === path.basename(boundary)) {
+    missing.shift();
+    base = path.dirname(boundary);
+  }
+  let current = base;
+  for (const part of missing) {
+    current = path.join(current, part);
     try {
+      await fs.mkdir(current, { mode });
+    } catch (mkdirError) {
+      // A competing request may create the same principal directory between
+      // the lstat above and this mkdir. Accept the winner only after
+      // re-validating the result, so the symlink check is not weakened.
+      if ((mkdirError as NodeJS.ErrnoException).code !== 'EEXIST') throw mkdirError;
       const stat = await fs.lstat(current);
       if (stat.isSymbolicLink()) {
-        throw new Error(`Refusing to use symlinked directory component: ${current}`);
+        throw new Error(`Refusing to use symlinked directory component: ${current}`, {
+          cause: mkdirError,
+        });
       }
       if (!stat.isDirectory()) {
-        throw new Error(`Path component is not a directory: ${current}`);
+        throw new Error(`Path component is not a directory: ${current}`, { cause: mkdirError });
       }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      await fs.mkdir(current, { mode });
     }
   }
 };
 
-/** Open a staged file without following a symlink at the leaf. */
-export const openNoFollow = async (file: string, flags: number): Promise<fs.FileHandle> =>
-  fs.open(file, flags | fsConstants.O_NOFOLLOW);
+/**
+ * Open a staged file without following a symlink at the leaf. Platforms
+ * without O_NOFOLLOW fail closed: a silent plain open would follow the link.
+ */
+export const openNoFollow = async (file: string, flags: number): Promise<fs.FileHandle> => {
+  const noFollow = fsConstants.O_NOFOLLOW;
+  if (typeof noFollow !== 'number') {
+    throw new StagingError('unsupported', 'This platform cannot open staged files without following symlinks');
+  }
+  return fs.open(file, flags | noFollow);
+};
 
 export interface FileDigest {
   size: number;

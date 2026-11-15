@@ -38,6 +38,21 @@ const OUTSIDE = path.join(path.dirname(ROOT), `${path.basename(ROOT)}-outside.tx
 fs.writeFileSync(OUTSIDE, 'outside\n');
 const INSIDE = path.join(ROOT, 'allowed.txt');
 fs.writeFileSync(INSIDE, 'inside-root\n');
+// A second principal's root: same container, same uid, different cwd.
+const OTHER_ROOT = path.join(path.dirname(ROOT), `${path.basename(ROOT)}-other`);
+fs.mkdirSync(OTHER_ROOT, { recursive: true });
+fs.writeFileSync(path.join(OTHER_ROOT, 'secret.txt'), 'other-principal\n');
+// A symlink inside the root that points outside it.
+const SYMLINK = path.join(ROOT, 'escape.txt');
+try {
+  fs.unlinkSync(SYMLINK);
+} catch {
+  // absent
+}
+fs.symlinkSync(OUTSIDE, SYMLINK);
+const STATE_DIR = path.join(path.dirname(ROOT), 'staging-state');
+fs.mkdirSync(STATE_DIR, { recursive: true });
+fs.writeFileSync(path.join(STATE_DIR, 'refs.json'), '{}\n');
 
 const entry = process.env.STAGING_CHECK_SERVER_ENTRY;
 const command = entry ? process.execPath : 'npx';
@@ -88,7 +103,7 @@ const notify = (method) =>
 const text = (result) => result?.content?.map((part) => part.text).join('\n') ?? '';
 
 const main = async () => {
-  await request(1, 'initialize', {
+  const initialized = await request(1, 'initialize', {
     protocolVersion: '2024-11-05',
     capabilities: {},
     clientInfo: { name: 'staging-boundary-check', version: '1.0.0' },
@@ -96,8 +111,9 @@ const main = async () => {
   notify('notifications/initialized');
   const listed = await request(2, 'tools/list', {});
   const tools = listed.result.tools.map((tool) => tool.name);
+  const serverVersion = initialized.result?.serverInfo?.version;
   const byName = (needle) => tools.find((name) => name.includes(needle));
-  const results = { tools, checks: [] };
+  const results = { tools, serverVersion, checks: [] };
   const upload = byName('upload');
   const download = byName('download');
   const exec = byName('execute') ?? byName('exec') ?? byName('command');
@@ -158,6 +174,91 @@ const main = async () => {
       (output.match(/No such file or directory/g) ?? []).length >= 2 &&
       output.includes('inside-root'),
     detail: output.slice(0, 300),
+  });
+
+  // The boundary was verified for one pinned release only; a silent upgrade
+  // would invalidate every check above.
+  results.checks.push({
+    name: 'the pinned server version is the one the profile was verified against',
+    pass: serverVersion === '1.11.0',
+    detail: String(serverVersion),
+  });
+
+  // Traversal and symlink forms of the same escape.
+  const traversal = await request(8, 'tools/call', {
+    name: upload,
+    arguments: {
+      localPath: path.join(ROOT, '..', path.basename(OUTSIDE)),
+      remotePath: '/tmp/staging-traversal.txt',
+    },
+  });
+  results.checks.push({
+    name: 'upload through .. is denied',
+    pass: traversal.result?.isError === true,
+    detail: text(traversal.result).slice(0, 200),
+  });
+
+  const symlinked = await request(9, 'tools/call', {
+    name: upload,
+    arguments: { localPath: SYMLINK, remotePath: '/tmp/staging-symlink.txt' },
+  });
+  results.checks.push({
+    name: 'upload through a symlink that leaves the root is denied',
+    pass: symlinked.result?.isError === true,
+    detail: text(symlinked.result).slice(0, 200),
+  });
+
+  const otherPrincipal = await request(10, 'tools/call', {
+    name: upload,
+    arguments: {
+      localPath: path.join(OTHER_ROOT, 'secret.txt'),
+      remotePath: '/tmp/staging-other.txt',
+    },
+  });
+  results.checks.push({
+    name: "another principal's root is outside this child's cwd",
+    pass: otherPrincipal.result?.isError === true,
+    detail: text(otherPrincipal.result).slice(0, 200),
+  });
+
+  // Positive output direction: a download into the root must work.
+  const insideDownload = await request(11, 'tools/call', {
+    name: download,
+    arguments: { remotePath: '/etc/hostname', localPath: path.join(ROOT, 'downloaded.txt') },
+  });
+  results.checks.push({
+    name: 'download into the per-principal root succeeds',
+    pass:
+      insideDownload.result?.isError !== true &&
+      fs.existsSync(path.join(ROOT, 'downloaded.txt')),
+    detail: text(insideDownload.result).slice(0, 200),
+  });
+
+  const traversalDownload = await request(12, 'tools/call', {
+    name: download,
+    arguments: {
+      remotePath: '/etc/hostname',
+      localPath: path.join(ROOT, '..', 'staging-escape.txt'),
+    },
+  });
+  results.checks.push({
+    name: 'download through .. is denied',
+    pass:
+      traversalDownload.result?.isError === true &&
+      !fs.existsSync(path.join(path.dirname(ROOT), 'staging-escape.txt')),
+    detail: text(traversalDownload.result).slice(0, 200),
+  });
+
+  const ledgerDownload = await request(13, 'tools/call', {
+    name: download,
+    arguments: { remotePath: '/etc/hostname', localPath: path.join(STATE_DIR, 'refs.json') },
+  });
+  results.checks.push({
+    name: 'download over the hub ledger is denied and leaves it intact',
+    pass:
+      ledgerDownload.result?.isError === true &&
+      fs.readFileSync(path.join(STATE_DIR, 'refs.json'), 'utf8') === '{}\n',
+    detail: text(ledgerDownload.result).slice(0, 200),
   });
 
   results.pass = results.checks.every((check) => check.pass);

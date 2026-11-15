@@ -160,6 +160,40 @@ describe('FileStagingStateStore', () => {
     });
   });
 
+  it('fails finalize when the principal directory was replaced by a symlink', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef(input(rootDir));
+    await store.acquireOutputLeases(owner, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+    // The tool shares this UID: it can swap its own ref directory for a link to
+    // a file it wrote elsewhere. Finalize must not digest through the link.
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'mcphub-outside-'));
+    const refDirectory = path.dirname(
+      path.join(rootDir, owner, reserved.id, 'content'),
+    );
+    await fs.rename(refDirectory, path.join(outside, 'moved'));
+    await fs.writeFile(path.join(outside, 'elsewhere'), 'foreign content');
+    await fs.symlink(outside, refDirectory);
+    try {
+      await expect(
+        store.finalizeOutputs('call-1', [reserved.ref], settings()),
+      ).rejects.toThrow(/symlink/i);
+      await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+        state: 'reserved',
+        leaseId: 'call-1',
+      });
+
+      // The caller fails the output after a rejected finalize; it is terminal.
+      await store.failOutputs('call-1', [reserved.ref]);
+      await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+        state: 'failed',
+        leaseId: undefined,
+      });
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it('fails empty outputs unless allow_zero_byte was requested', async () => {
     const store = await createStore();
     const strict = await store.createReservedRef(input(rootDir));
@@ -210,14 +244,36 @@ describe('FileStagingStateStore', () => {
     await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'not-found' });
   });
 
-  it('rejects download tokens after the content version changes', async () => {
+  it('consumes a download token exactly once', async () => {
     const store = await createStore();
     const ready = await store.createReadyRef(input(rootDir), Buffer.from('payload'));
-    const token = await store.createDownloadToken(ready.ref, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 300);
-    // A fresh ledger entry with a different hash (simulated by rewriting state)
-    // must invalidate the token; consuming it must not serve stale content.
-    await store.consumeDownloadToken(token);
-    await expect(store.consumeDownloadToken(token)).rejects.toBeInstanceOf(StagingError);
+    const token = await store.createDownloadToken(
+      ready.ref,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      300,
+    );
+    await expect(store.consumeDownloadToken(token)).resolves.toMatchObject({ ref: ready.ref });
+    await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  it('rejects a download token whose recorded content hash no longer matches the ref', async () => {
+    const store = await createStore();
+    const ready = await store.createReadyRef(input(rootDir), Buffer.from('payload'));
+    const token = await store.createDownloadToken(
+      ready.ref,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      300,
+    );
+    // Simulate a re-upload that replaced the content under the same ref: the
+    // ledger row now carries a different hash, so the old link must not serve
+    // the new bytes.
+    const internals = store as unknown as {
+      state: { refs: Record<string, { sha256?: string }> };
+      persist: () => Promise<void>;
+    };
+    internals.state.refs[ready.ref].sha256 = 'b'.repeat(64);
+    await internals.persist();
+    await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'not-found' });
   });
 
   it('fails a leased reserved ref after restart instead of letting it be stolen', async () => {
@@ -322,23 +378,10 @@ describe('FileStagingStateStore', () => {
     ).rejects.toMatchObject({ code: 'not-found' });
   });
 
-  it('refuses to start when another live process owns the lock', async () => {
+  it('refuses to start while another owner holds the lock', async () => {
     await fs.mkdir(stateDir, { recursive: true });
-    // PID 1 is always alive in the test container and is not this process.
     await fs.writeFile(path.join(stateDir, 'staging.lock'), '1');
     await expect(createStore({ disableLock: false })).rejects.toMatchObject({ code: 'locked' });
-  });
-
-  it('takes over a lock left by a previous instance that had the same pid', async () => {
-    await fs.mkdir(stateDir, { recursive: true });
-    // The container runs node as PID 1, so a restart reuses the pid with a new
-    // instance id. That lock must not survive the restart.
-    await fs.writeFile(path.join(stateDir, 'staging.lock'), `${process.pid}:previous-boot`);
-    const store = await createStore({ disableLock: false });
-    expect(await fs.readFile(path.join(stateDir, 'staging.lock'), 'utf8')).toContain(
-      `${process.pid}:`,
-    );
-    expect(await store.usageBytes('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe(0);
   });
 
   it('rejects a download token once the underlying ref has expired', async () => {

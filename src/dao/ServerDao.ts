@@ -5,6 +5,8 @@ import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
 import { randomUUID } from 'node:crypto';
+
+import { remapServerIdReferences } from '../utils/serverIdReferences.js';
 import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
 
 /**
@@ -222,10 +224,24 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     }
 
     assertSmartRoutingNameAvailable(updates.name);
+    const previousId = servers[index].id;
     const updatedServer = this.updateEntity(servers[index], updates);
+    const idChanged = Boolean(previousId) && updatedServer.id !== previousId;
+    if (idChanged && previousId && updatedServer.id) {
+      // Rewrite policy bindings before persisting: if the rewrite fails the
+      // server keeps its legacy id and the next save retries the migration.
+      await remapServerIdReferences(previousId, updatedServer.id);
+    }
     servers[index] = updatedServer;
 
-    await this.saveAll(servers);
+    try {
+      await this.saveAll(servers);
+    } catch (error) {
+      if (idChanged && previousId && updatedServer.id) {
+        await remapServerIdReferences(updatedServer.id, previousId).catch(() => undefined);
+      }
+      throw error;
+    }
     return updatedServer;
   }
 
@@ -413,12 +429,24 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     // A rename must not keep a name-derived id: after the rename it would no
     // longer look legacy, yet it still hashes the old name (#1056).
     const existing = servers[index];
+    const nextId = isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id;
+    const idChanged = Boolean(existing.id) && nextId !== existing.id;
+    if (idChanged && existing.id && nextId) {
+      await remapServerIdReferences(existing.id, nextId);
+    }
     servers[index] = {
       ...existing,
       name: newName,
-      id: isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id,
+      id: nextId,
     };
-    await this.saveAll(servers);
+    try {
+      await this.saveAll(servers);
+    } catch (error) {
+      if (idChanged && existing.id && nextId) {
+        await remapServerIdReferences(nextId, existing.id).catch(() => undefined);
+      }
+      throw error;
+    }
     return true;
   }
 }

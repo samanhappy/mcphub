@@ -15,6 +15,7 @@ import { CredentialBinding } from '../../src/db/entities/CredentialBinding.js';
 import { Group } from '../../src/db/entities/Group.js';
 import { initializeDatabaseMode } from '../../src/utils/migration.js';
 import { syncSettingsToDatabase } from '../../src/utils/settingsSync.js';
+import { legacyServerId } from '../../src/utils/serverIdentity.js';
 
 let settingsPath: string;
 const servers = new Map<string, Record<string, unknown>>();
@@ -211,6 +212,22 @@ test('upserts by name, retains IDs and unrelated entries, clears removed fields 
   expect([...servers.entries()]).toEqual(snapshot);
   expect(servers.get('ui-only')).toEqual({ id: 'keep', name: 'ui-only' });
   expect(fs.readFileSync(settingsPath, 'utf8')).toBe(before);
+});
+
+test('gives a newly synced server a UUID instead of a name-derived placeholder (#1056 R14)', async () => {
+  write({ mcpServers: { remote } });
+
+  await syncSettingsToDatabase();
+
+  const stored = servers.get('remote')!;
+  expect(stored.id).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+  );
+  expect(stored.id).not.toBe(legacyServerId('remote'));
+
+  // The generated id is stable across later syncs (staging refs bind to it).
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')!.id).toBe(stored.id);
 });
 
 test('preserves runtime OAuth on unchanged declarations and invalidates it when declarations change', async () => {

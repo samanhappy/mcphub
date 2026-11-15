@@ -436,6 +436,11 @@ export interface ServerFormData {
   // Proxychains4 proxy configuration for STDIO servers (Linux/macOS only).
   // Round-tripped from the stored config so an edit does not drop it.
   proxy?: ProxychainsConfig;
+  // Per-tool file staging and the server staging declaration (#1056).
+  // Round-tripped from the stored config: the form has no editors for them
+  // yet, but saving any other field must not silently disable staging.
+  tools?: ServerConfig['tools'];
+  staging?: ServerConfig['staging'];
   keepAlive?: {
     enabled?: boolean;
     interval?: number;

@@ -1,4 +1,5 @@
 import { ServerDaoImpl } from '../../src/dao/ServerDao.js';
+import { legacyServerId } from '../../src/utils/serverIdentity.js';
 
 describe('ServerDaoImpl', () => {
   it('retains policy IDs across rename and ignores attempts to replace them', async () => {
@@ -75,5 +76,45 @@ describe('ServerDaoImpl', () => {
     expect(server.startOnDemand).toBe(true);
     expect(server.idleTimeoutMs).toBe(120000);
     expect(server.options).toEqual({ timeout: 5000 });
+  });
+});
+
+describe('server id migration keeps policy bindings', () => {
+  const legacyIdFor = (name: string) => legacyServerId(name);
+
+  it('rewrites tool-policy and fake-IP references when the id is backfilled', async () => {
+    const settings = {
+      mcpServers: {
+        ssh: { enabled: true, id: legacyIdFor('ssh') },
+      },
+    };
+    const dao = new ServerDaoImpl();
+    jest.spyOn(dao as any, 'loadSettings').mockResolvedValue(settings);
+    jest.spyOn(dao as any, 'saveSettings').mockResolvedValue(undefined);
+
+    const policyDao = {
+      get: jest.fn(async () => ({
+        toolPolicies: [
+          { id: 'deny-ssh', effect: 'deny' as const, serverId: legacyIdFor('ssh'), tool: 'exec' },
+          { id: 'other', effect: 'allow' as const, serverId: 'another-server', tool: 'exec' },
+        ],
+        network: { fakeIpExceptions: [{ serverId: legacyIdFor('ssh'), hostname: 'a.example' }] },
+      })),
+      update: jest.fn(async () => ({})),
+    };
+    jest.doMock('../../src/dao/DaoFactory.js', () => ({
+      getSystemConfigDao: () => policyDao,
+    }));
+
+    const updated = await dao.update('ssh', { description: 'changed' });
+    const newId = updated?.id;
+    expect(newId).toMatch(/^[a-f0-9-]{36}$/);
+    expect(policyDao.update).toHaveBeenCalledTimes(1);
+    const written = policyDao.update.mock.calls[0][0] as any;
+    expect(written.toolPolicies).toEqual([
+      { id: 'deny-ssh', effect: 'deny', serverId: newId, tool: 'exec' },
+      { id: 'other', effect: 'allow', serverId: 'another-server', tool: 'exec' },
+    ]);
+    expect(written.network.fakeIpExceptions[0].serverId).toBe(newId);
   });
 });

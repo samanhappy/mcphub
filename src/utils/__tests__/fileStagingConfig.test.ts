@@ -8,6 +8,7 @@ import {
 } from '../fileStagingConfig.js';
 import { normalizeServerConfigForPersistence } from '../serverConfigPersistence.js';
 import { ServerConfigValidationError } from '../serverConfigValidation.js';
+import { validateSshServerConfig } from '../../services/fileStaging/adapter.js';
 
 describe('file staging configuration', () => {
   describe('resolveFileStagingSettings', () => {
@@ -108,6 +109,15 @@ describe('file staging configuration', () => {
 
     it('keeps a disabled tool minimal', () => {
       expect(normalizeToolFileStaging({ enabled: false }, 'tool')).toEqual({ enabled: false });
+    });
+
+    it('keeps declared params when the tool is disabled (R33)', () => {
+      expect(
+        normalizeToolFileStaging(
+          { enabled: false, inputParams: ['localPath'], outputParams: ['dest'] },
+          'tool',
+        ),
+      ).toEqual({ enabled: false, inputParams: ['localPath'], outputParams: ['dest'] });
     });
   });
 
@@ -218,6 +228,62 @@ describe('file staging configuration', () => {
           },
         }),
       ).toThrow(ServerConfigValidationError);
+    });
+
+    it('rejects shared staging without per-user credential slots (R22 trust)', () => {
+      expect(() =>
+        normalizeServerConfigForPersistence({
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+          staging: { shared: true, adapter: 'ssh' },
+          tools: {
+            upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+          },
+        }),
+      ).toThrow(/Shared file staging requires per-user credential slots/);
+    });
+
+    it('accepts shared staging when per-user credential slots are declared', () => {
+      expect(() =>
+        normalizeServerConfigForPersistence({
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '{{args.ssh_host}}'],
+          staging: { shared: true, adapter: 'ssh' },
+          credentialTemplate: [{ target: 'args', name: 'ssh_host' }],
+          tools: {
+            upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('does not block saving on adapter profile drift (R22)', () => {
+      // Wrong pinned version: dispatch re-validates at call time and disables
+      // staging for this server, but the config must stay editable.
+      const wrongVersion = normalizeServerConfigForPersistence({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', '@fangjunjie/ssh-mcp-server@1.10.0'],
+        staging: { adapter: 'ssh' },
+        tools: {
+          upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+        },
+      });
+      expect(validateSshServerConfig(wrongVersion)).toMatchObject({ ok: false });
+
+      // Forbidden local-root flag: same profile-drift class, not a save error.
+      const forbiddenFlag = normalizeServerConfigForPersistence({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '--allowed-local-paths=/'],
+        staging: { adapter: 'ssh' },
+        tools: {
+          upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+        },
+      });
+      expect(validateSshServerConfig(forbiddenFlag)).toMatchObject({ ok: false });
     });
   });
 });

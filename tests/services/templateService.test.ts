@@ -364,6 +364,42 @@ describe('templateService', () => {
       expect(JSON.stringify(template)).not.toContain('basic-secret');
       expect(JSON.stringify(template)).not.toContain('bearer-secret');
     });
+
+    it('keeps per-tool fileStaging and the staging adapter, without shared trust (R46)', async () => {
+      mockServerDao.findAll.mockResolvedValue([
+        {
+          name: 'sftp',
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+          staging: { shared: true, adapter: 'ssh' },
+          tools: {
+            upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+            download: { enabled: true, fileStaging: { enabled: false, outputParams: ['dest'] } },
+          },
+        },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([
+        { id: 'g1', name: 'G', servers: [{ name: 'sftp', tools: 'all' }] },
+      ]);
+
+      const template = await exportTemplate({ name: 'Test' });
+      const config = template.servers['sftp'];
+
+      // fileStaging names params; it is not trust, so it travels with the template.
+      expect(config.tools?.upload.fileStaging).toEqual({
+        enabled: true,
+        inputParams: ['localPath'],
+      });
+      // A disabled tool keeps its declared params too (R33).
+      expect(config.tools?.download.fileStaging).toEqual({
+        enabled: false,
+        outputParams: ['dest'],
+      });
+      // The adapter is needed to revalidate an enabled staged tool on import,
+      // but `shared` is a trust grant and must never leave the deployment.
+      expect(config.staging).toEqual({ adapter: 'ssh' });
+    });
   });
 
   describe('exportGroupTemplate', () => {
@@ -575,6 +611,50 @@ describe('templateService', () => {
           }),
         }),
       );
+    });
+
+    it('imports per-tool fileStaging and the staging adapter (R46)', async () => {
+      mockServerDao.findAll.mockResolvedValue([]);
+      mockGroupDao.findByName.mockResolvedValue(null);
+      mockAddServer.mockResolvedValue(undefined);
+
+      const result = await importTemplate(
+        {
+          version: '1.0',
+          name: 'Staging',
+          createdAt: new Date().toISOString(),
+          servers: {
+            sftp: {
+              type: 'stdio',
+              command: 'npx',
+              args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+              staging: { adapter: 'ssh' },
+              tools: {
+                upload: {
+                  enabled: true,
+                  fileStaging: { enabled: true, inputParams: ['localPath'] },
+                },
+              },
+            },
+          },
+          groups: [],
+          requiredEnvVars: [],
+        },
+        'admin',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.details).toContainEqual({
+        type: 'server',
+        name: 'sftp',
+        action: 'created',
+      });
+      const imported = mockAddServer.mock.calls[0][1];
+      expect(imported.tools.upload.fileStaging).toEqual({
+        enabled: true,
+        inputParams: ['localPath'],
+      });
+      expect(imported.staging).toEqual({ adapter: 'ssh' });
     });
   });
 });

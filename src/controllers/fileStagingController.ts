@@ -1,15 +1,27 @@
 import { constants as fsConstants } from 'node:fs';
 import fs from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { pipeline } from 'node:stream/promises';
 
 import type { Request, Response } from 'express';
 
 import { logger } from '../utils/logger.js';
 import { getStagingStateStore } from '../services/fileStaging/settings.js';
-import { digestFile } from '../services/fileStaging/paths.js';
+
+/**
+ * RFC 5987 `attr-char` escaping. `encodeURIComponent` leaves `'()*` and `!`
+ * unescaped, which are not `attr-char` and make strict clients reject the
+ * header; the ASCII fallback keeps a printable name for old clients.
+ */
+const encodeFilenameStar = (value: string): string =>
+  encodeURIComponent(value).replace(
+    /['()*!]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
 
 const contentDisposition = (filename: string | undefined): string => {
-  const fallback = (filename ?? 'download').replace(/[^\x20-\x7e]|["\\]/g, '_');
-  const encoded = encodeURIComponent(filename ?? 'download');
+  const fallback = (filename ?? 'download.bin').replace(/[^\x20-\x7e]|["\\]/g, '_') || 'download.bin';
+  const encoded = encodeFilenameStar(filename ?? 'download.bin');
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 };
 
@@ -28,41 +40,56 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
     res.status(405).end();
     return;
   }
+  let releasePin: (() => Promise<void>) | undefined;
   try {
     const store = await getStagingStateStore();
     const consumed = await store.consumeDownloadToken(token);
-    const record = await store.getOwnedRef(consumed.ref, consumed.ownerHash);
+    // Pin before opening: cleanup must not delete the file between the digest
+    // check and the stream.
+    const record = await store.pinReadyRef(consumed.ref, consumed.ownerHash);
+    releasePin = () => store.unpinRef(record.ref);
     const file = await store.contentPathFor(record.ref, record.ownerHash);
-    // Re-verify at read time: O_NOFOLLOW, single-link regular file, and the
-    // same bytes the token was minted for. A tool sharing the UID could
-    // otherwise swap the content after finalization.
-    const digest = await digestFile(file);
-    if (digest.sha256 !== consumed.contentHash || digest.size !== record.size) {
-      throw new Error('staged content changed after the download token was issued');
-    }
-
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', contentDisposition(record.filename));
-    res.setHeader('Content-Length', String(digest.size));
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    // A staged HTML/SVG file must never run on the hub origin, and the link
-    // must not be cached or indexed by an intermediary.
-    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-    res.setHeader('Cache-Control', 'private, no-store');
-    res.setHeader('X-Robots-Tag', 'noindex');
-    res.setHeader('Referrer-Policy', 'no-referrer');
+    // One open for both the digest and the body: hashing one handle and
+    // streaming another leaves a window where a same-UID writer swaps the
+    // file between the two opens (reproduced by the maintainer: 22/100
+    // responses served, 6 of them with a different hash).
     const handle = await fs.open(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
-    // The digest above is from a separate open; re-check the inode we stream so
-    // a swap between the two opens cannot serve different bytes.
-    const stat = await handle.stat();
-    if (!stat.isFile() || stat.size !== digest.size) {
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.nlink !== 1 || stat.size !== record.size) {
+        throw new Error('staged content is not a regular single-link file');
+      }
+      const hash = createHash('sha256');
+      await pipeline(handle.createReadStream({ start: 0, autoClose: false }), hash);
+      if (hash.digest('hex') !== consumed.contentHash) {
+        throw new Error('staged content changed after the download token was issued');
+      }
+
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', contentDisposition(record.filename));
+      res.setHeader('Content-Length', String(stat.size));
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      // A staged HTML/SVG file must never run on the hub origin, and the link
+      // must not be cached or indexed by an intermediary.
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('X-Robots-Tag', 'noindex');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      // Same handle, explicit position: a concurrent rename/replace cannot
+      // redirect the body to different bytes.
+      await pipeline(handle.createReadStream({ start: 0, autoClose: false }), res);
+    } finally {
       await handle.close();
-      throw new Error('staged content changed before it was streamed');
     }
-    handle.createReadStream().pipe(res);
   } catch {
     // Missing, used, and expired tokens are indistinguishable to the caller.
-    res.status(404).json({ success: false, message: 'Download link is not valid' });
+    if (res.headersSent) {
+      res.destroy();
+    } else {
+      res.status(404).json({ success: false, message: 'Download link is not valid' });
+    }
     logger.warn('[staging] rejected staged download request');
+  } finally {
+    await releasePin?.();
   }
 };

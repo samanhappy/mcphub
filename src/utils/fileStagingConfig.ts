@@ -58,7 +58,9 @@ export const resolveFileStagingSettings = (
     enabled: stored?.enabled === true,
   };
   for (const key of OVERRIDEABLE_NUMERIC_KEYS) {
-    settings[key] = clampInt(stored?.[key], DEFAULT_FILE_STAGING_SETTINGS[key], 1, Number.MAX_SAFE_INTEGER);
+    // The ledger stores sizes in `integer` columns (int32); a larger setting
+    // would fail the insert at finalization instead of at configuration time.
+    settings[key] = clampInt(stored?.[key], DEFAULT_FILE_STAGING_SETTINGS[key], 1, 2_147_483_647);
   }
   // Inline uploads can never exceed a tool-written file; keep the ceiling
   // consistent even if the two settings are edited independently.
@@ -158,7 +160,14 @@ export const normalizeToolFileStaging = (
     );
   }
   if (raw.enabled === false) {
-    return { enabled: false };
+    // Disabling keeps the declared parameters: a toggle must not lose the
+    // configuration, and re-enabling should not require retyping it. They are
+    // only required while the tool is enabled.
+    return {
+      enabled: false,
+      ...(inputParams ? { inputParams } : {}),
+      ...(outputParams ? { outputParams } : {}),
+    };
   }
   return {
     enabled: true,
@@ -200,6 +209,12 @@ export const normalizeServerStaging = (input: unknown): ServerStagingConfig | un
  * Server-level consistency: any tool with `fileStaging.enabled` needs the
  * server to declare an adapter, otherwise the tool can never run (there is no
  * hub-cwd fallback in PR1). Run after tools and staging are normalized.
+ *
+ * Only trust-inconsistent declarations are rejected here. Adapter *profile*
+ * drift (a wrong pinned package version, an unknown argv flag) is deliberately
+ * accepted at save time: `resolveStagedCall` in `dispatch.ts` re-validates the
+ * resolved config at call time and disables staging for that server instead,
+ * so a harmless edit does not make the server un-editable.
  */
 export const assertStagingConfigConsistent = (config: ServerConfig): void => {
   const enabledTools = Object.entries(config.tools ?? {}).filter(
@@ -214,6 +229,15 @@ export const assertStagingConfigConsistent = (config: ServerConfig): void => {
       `File staging requires staging.adapter on this server (staged tools: ${enabledTools
         .map(([name]) => name)
         .join(', ')})`,
+    );
+  }
+  // A shared declaration lets other principals stage files through this
+  // server, so the server must connect as each principal (credential slots).
+  // Rejecting this at save time keeps a shared route from silently falling
+  // back to the owner's identity.
+  if (config.staging.shared === true && !config.credentialTemplate?.length) {
+    throw new ServerConfigValidationError(
+      'Shared file staging requires per-user credential slots so each user connects with their own credentials',
     );
   }
 };

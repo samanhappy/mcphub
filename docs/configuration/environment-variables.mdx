@@ -149,6 +149,19 @@ useDatabase = (USE_DB === 'true') OR (USE_DB unset AND DB_URL is set)
 
 See [Database Configuration](/configuration/database-configuration) for end-to-end setup.
 
+## File staging
+
+These variables configure the optional [file staging](/features/file-staging) storage and its one-time download route.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MCPHUB_STAGING_ROOT` | `data/uploads/staging` under the working directory | Root for staged content, with one subdirectory per user. Put it on persistent local storage. |
+| `MCPHUB_STAGING_STATE_DIR` | `data/staging-state` under the working directory | File-mode reference ledger (`refs.json`) and the single-writer process lock (used in both storage modes). Database mode keeps refs and tokens in PostgreSQL instead. |
+| `STAGING_DOWNLOAD_RATE_LIMIT_WINDOW_MS` | `60000` | Rate-limit window (ms) for the one-time download route. |
+| `STAGING_DOWNLOAD_RATE_LIMIT_MAX` | `120` | Maximum download requests per window. `0`, `off` or `unlimited` disables the limiter; only do that behind another protection. |
+
+The paths are resolved when the staging store is created: at startup when staging is enabled, otherwise on first use. Staging supports one hub process per staging directory; replica mode disables it.
+
 ## Smart Routing & embeddings
 
 Smart Routing performs vector search over upstream tools to surface only the few most relevant tools for a given query. It requires Postgres + pgvector and an embedding endpoint.

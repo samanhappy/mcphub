@@ -115,12 +115,24 @@ const messageFor = (error: unknown): string => {
 
 const sanitizeFilename = (value: unknown): string => {
   if (typeof value !== 'string') throw new StagingError('invalid-ref', 'filename is required');
-  const cleaned = value
+  // A display name, never a path: drop directories so `../x` and `a/b` cannot
+  // leak a traversal shape into logs, Content-Disposition, or a future adapter.
+  const base = value.split(/[\\/]/).pop() ?? '';
+  const cleaned = base
     .split('')
-    .filter((char) => char !== '\u0000' && char !== '\r' && char !== '\n')
+    .filter(
+      (char) =>
+        char !== '\u0000' &&
+        char !== '\r' &&
+        char !== '\n' &&
+        char !== '"' &&
+        char !== '\\',
+    )
     .join('')
     .trim();
-  if (!cleaned) throw new StagingError('invalid-ref', 'filename is required');
+  if (!cleaned || cleaned === '.' || cleaned === '..') {
+    throw new StagingError('invalid-ref', 'filename is required');
+  }
   return Buffer.byteLength(cleaned, 'utf8') > 255
     ? Buffer.from(cleaned, 'utf8').subarray(0, 255).toString('utf8')
     : cleaned;
@@ -150,7 +162,13 @@ export const executeStagingTool = async (
       const filename = sanitizeFilename(args?.filename);
       const inline = args?.content_base64;
       const allowZeroByte = args?.allow_zero_byte === true;
-      if (typeof inline === 'string' && inline.length > 0) {
+      if (typeof inline === 'string' && inline.length === 0) {
+        throw new StagingError(
+          'invalid-ref',
+          'content_base64 must not be empty; omit it to reserve an output path',
+        );
+      }
+      if (typeof inline === 'string') {
         const data = Buffer.from(inline, 'base64');
         if (data.length === 0) throw new StagingError('invalid-ref', 'Invalid base64 content');
         const record = await context.store.createReadyRef(

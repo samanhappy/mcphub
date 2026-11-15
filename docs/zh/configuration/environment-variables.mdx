@@ -121,6 +121,19 @@ OIDC_CLIENT_SECRET=your-oidc-client-secret
 | `FORWARD_AUTH_EMAIL_CLAIM` | 新建用户的邮箱所用声明，默认 `email`。 |
 | `FORWARD_AUTH_AUTO_CREATE` | 为新身份创建非管理员本地用户，默认 `true`。 |
 
+## 文件暂存
+
+以下变量用于可选的[文件暂存](/zh/features/file-staging)存储及其一次性下载路由。
+
+| 变量 | 默认值 | 描述 |
+| --- | --- | --- |
+| `MCPHUB_STAGING_ROOT` | 工作目录下的 `data/uploads/staging` | 暂存内容根目录，每个用户一个子目录。应放在持久化的本地存储上。 |
+| `MCPHUB_STAGING_STATE_DIR` | 工作目录下的 `data/staging-state` | 文件模式的引用账本（`refs.json`）和单写入者进程锁（两种存储模式都会使用）。数据库模式的引用和 token 保存在 PostgreSQL 中。 |
+| `STAGING_DOWNLOAD_RATE_LIMIT_WINDOW_MS` | `60000` | 一次性下载路由的限流窗口（毫秒）。 |
+| `STAGING_DOWNLOAD_RATE_LIMIT_MAX` | `120` | 每个窗口允许的最大下载请求数。设为 `0`、`off` 或 `unlimited` 可关闭限流；仅在其他防护措施之后才这样做。 |
+
+这些路径在创建暂存存储时解析：暂存已启用时为启动阶段，否则为首次使用。每个暂存目录只支持一个 hub 进程；副本模式会关闭暂存。
+
 ## 智能路由与嵌入
 
 智能路由使用 PostgreSQL + pgvector 和嵌入服务，对上游工具执行向量搜索。启用智能路由至少需要配置 `DB_URL`、OpenAI 兼容嵌入服务和开关变量。

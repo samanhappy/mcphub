@@ -8,12 +8,17 @@ export const SSH_STAGING_PACKAGE = '@fangjunjie/ssh-mcp-server';
 export const SSH_STAGING_VERSION = '1.11.0';
 const PINNED_SPEC = `${SSH_STAGING_PACKAGE}@${SSH_STAGING_VERSION}`;
 
+/** Launchers that execute the pinned specifier itself. */
+const PINNING_LAUNCHERS = new Set(['npx', 'node']);
+
 /**
- * Options the pinned SSH server may receive. The resolved argv is checked per
+ * Options the pinned SSH server may receive (verified against 1.11.0,
+ * `build/cli/command-line-parser.js`). The resolved argv is checked per
  * principal, so a credential-template args slot cannot smuggle a local-root
  * flag such as `--allowed-local-paths=/` or `--config-file`.
  */
 const ALLOWED_SSH_OPTIONS = new Set([
+  '--ssh',
   '--host',
   '--port',
   '--username',
@@ -32,13 +37,18 @@ const ALLOWED_SSH_OPTIONS = new Set([
   '--shell-ready-timeout',
   '--command-template',
   '--pty',
+  '--try-keyboard',
   '--pre-connect',
   '--mcp-transport',
+]);
+
+/** These terminate the child, so they must never reach the resolved argv. */
+const FORBIDDEN_OPTIONS = new Set([
+  '--allowed-local-paths',
+  '--config-file',
   '--help',
   '--version',
 ]);
-
-const FORBIDDEN_OPTIONS = new Set(['--allowed-local-paths', '--config-file']);
 
 export interface AdapterValidation {
   ok: boolean;
@@ -49,6 +59,20 @@ export interface PreparedRuntime {
   cwd: string;
 }
 
+/**
+ * Per-server staging adapter. `ssh` is the only PR1 adapter; later adapters
+ * (e.g. a filesystem adapter) implement the same seam.
+ */
+export interface StagingAdapter {
+  readonly id: string;
+  /** Static check of the unresolved server config. */
+  validateConfig(config: ServerConfig): AdapterValidation;
+  /** Filesystem setup the child needs; `undefined` when staging does not apply. */
+  prepareRuntime(config: ServerConfig, principalUsername?: string): Promise<PreparedRuntime | undefined>;
+  /** Check of the credential-resolved argv the child will actually receive. */
+  validateResolvedArgs(argv: readonly string[]): AdapterValidation;
+}
+
 /** Any tool on this server opted into staging. */
 export const hasStagedTools = (config: ServerConfig): boolean =>
   Object.values(config.tools ?? {}).some((tool) => tool?.fileStaging?.enabled === true);
@@ -56,20 +80,63 @@ export const hasStagedTools = (config: ServerConfig): boolean =>
 export const isStdioServerConfig = (config: ServerConfig): boolean =>
   (config.type === 'stdio' || (!config.type && Boolean(config.command))) && !config.url;
 
-const findPinnedSpecifier = (args: readonly string[] | undefined): string | undefined =>
-  args?.find((arg) => arg.includes(SSH_STAGING_PACKAGE));
+const launcherName = (command: string): string => path.basename(command.trim());
 
-/** Strict option allowlist for an argv whose credential slots are resolved. */
+/**
+ * Locate the pinned specifier as a positional argument of a trusted launcher.
+ *
+ * npx switches (`-y`) may precede it; `node` must get the CLI itself, because a
+ * script argument there would be the code that actually runs. Any other
+ * command is rejected: the pin only binds code that this launcher executes.
+ */
+const findPinnedSpecifier = (command: string | undefined, args: readonly string[] | undefined): string | undefined => {
+  if (!command || !args) return undefined;
+  const launcher = launcherName(command);
+  if (!PINNING_LAUNCHERS.has(launcher)) return undefined;
+  const tokens = [...args];
+  if (launcher === 'node' && tokens[0] === '--') tokens.shift();
+  // npx flags are switches (`-y`), never option/value pairs, so a flag may
+  // precede the spec; a script argument there would be what npx runs.
+  let specIndex = 0;
+  while (specIndex < tokens.length && tokens[specIndex].startsWith('-')) specIndex += 1;
+  if (launcher === 'node' && specIndex !== 0) return undefined;
+  const spec = tokens[specIndex];
+  if (!spec || !spec.includes(SSH_STAGING_PACKAGE)) return undefined;
+  // `npx -p <pkg> <command>` names a different command after the pin.
+  const next = tokens[specIndex + 1];
+  return next === undefined || next.startsWith('-') ? spec : undefined;
+};
+
+/** Split `--opt=value` into its option; other tokens are their own option. */
+const optionNameOf = (token: string): string => {
+  if (!token.startsWith('-')) return token;
+  const separator = token.indexOf('=');
+  return separator > 0 ? token.slice(0, separator) : token;
+};
+
+/**
+ * Strict option allowlist for an argv whose credential slots are resolved.
+ *
+ * Tokens are read pairwise: a value that follows a bare option belongs to it
+ * and is never judged as an option itself, even when it starts with dashes.
+ * Single-dash tokens are inspected too, because the pinned CLI binds short
+ * forms (`-h`, `-k`), often reached through a credential slot.
+ */
 export const validateResolvedSshArgs = (argv: readonly string[]): AdapterValidation => {
-  for (const token of argv) {
-    if (FORBIDDEN_OPTIONS.has(token) || [...FORBIDDEN_OPTIONS].some((option) => token.startsWith(`${option}=`))) {
-      return { ok: false, reason: `Forbidden SSH option: ${token}` };
+  // After `--` the pinned CLI reads only positionals; nothing is an option.
+  const end = argv.indexOf('--');
+  const tokens = end === -1 ? argv : argv.slice(0, end);
+  // Only the option positions are judged, so a value that starts with dashes
+  // (`--password --host`) is never mistaken for an option.
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (!token.startsWith('-')) continue;
+    const option = optionNameOf(token);
+    if (FORBIDDEN_OPTIONS.has(option)) return { ok: false, reason: `Forbidden SSH option: ${option}` };
+    if (!ALLOWED_SSH_OPTIONS.has(option) && !option.startsWith('--http-')) {
+      return { ok: false, reason: `Unknown SSH option: ${option}` };
     }
-    if (!token.startsWith('--')) continue;
-    if (token.startsWith('--http-')) continue;
-    if (!ALLOWED_SSH_OPTIONS.has(token)) {
-      return { ok: false, reason: `Unknown SSH option: ${token}` };
-    }
+    if (!token.includes('=')) i += 1;
   }
   return { ok: true };
 };
@@ -91,16 +158,18 @@ export const validateSshServerConfig = (config: ServerConfig): AdapterValidation
   if (config.staging.shared === true && !config.credentialTemplate?.length) {
     return { ok: false, reason: 'Shared staging requires per-user credential slots' };
   }
-  const specifier = findPinnedSpecifier(config.args);
+  const specifier = findPinnedSpecifier(config.command, config.args);
   if (!specifier) {
-    return { ok: false, reason: `Server args must include ${PINNED_SPEC}` };
+    return { ok: false, reason: `Server args must run ${PINNED_SPEC} via npx` };
   }
   if (specifier !== PINNED_SPEC) {
     return { ok: false, reason: `Server must pin ${PINNED_SPEC}, got ${specifier}` };
   }
   for (const token of config.args ?? []) {
-    if (FORBIDDEN_OPTIONS.has(token) || [...FORBIDDEN_OPTIONS].some((option) => token.startsWith(`${option}=`))) {
-      return { ok: false, reason: `Forbidden SSH option: ${token}` };
+    if (!token.startsWith('-')) continue;
+    const option = optionNameOf(token);
+    if (FORBIDDEN_OPTIONS.has(option)) {
+      return { ok: false, reason: `Forbidden SSH option: ${option}` };
     }
   }
   return { ok: true };
@@ -163,4 +232,12 @@ export const resolveStagingCwd = async (
   const runtime = await prepareStagingRuntime(config, principalUsername);
   if (!runtime) throw new Error('File staging principal is unavailable');
   return runtime.cwd;
+};
+
+/** The pinned SSH server adapter. */
+export const sshStagingAdapter: StagingAdapter = {
+  id: 'ssh',
+  validateConfig: validateSshServerConfig,
+  prepareRuntime: prepareStagingRuntime,
+  validateResolvedArgs: validateResolvedSshArgs,
 };

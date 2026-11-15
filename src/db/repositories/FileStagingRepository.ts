@@ -4,6 +4,9 @@ import { getAppDataSource } from '../connection.js';
 import { FileStagingRefEntity } from '../entities/FileStagingRef.js';
 import { FileStagingTokenEntity } from '../entities/FileStagingToken.js';
 
+/** Code-point order, not locale order: the same sequence on every host. */
+const compareRefs = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 /**
  * Thin persistence layer for the file staging ledger (#1056). All
  * security-relevant decisions live in the caller, inside one transaction.
@@ -42,12 +45,17 @@ export class FileStagingRepository {
     lock = false,
   ): Promise<FileStagingRefEntity[]> {
     if (refs.length === 0) return [];
+    // PostgreSQL locks rows in the order the `IN (...)` list presents them, so
+    // the requested ids are sorted *before* the query: two transactions locking
+    // overlapping sets then take shared rows in the same order instead of
+    // deadlocking. Sorting the result afterwards would be too late.
+    const requested = [...new Set(refs)].sort(compareRefs);
     const rows = await manager.getRepository(FileStagingRefEntity).find({
-      where: refs.map((ref) => ({ ref })),
+      where: requested.map((ref) => ({ ref })),
       ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
     });
-    // A stable lock order keeps concurrent multi-ref leases from deadlocking.
-    return rows.sort((a, b) => a.ref.localeCompare(b.ref));
+    // Output stability only; the lock order was fixed above.
+    return rows.sort((a, b) => compareRefs(a.ref, b.ref));
   }
 
   async saveRef(manager: EntityManager, row: FileStagingRefEntity): Promise<FileStagingRefEntity> {

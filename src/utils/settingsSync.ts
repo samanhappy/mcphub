@@ -1,6 +1,6 @@
 import { assertSmartRoutingNameAvailable } from './smartRoutingPath.js';
 import fs from 'node:fs';
-import { pbkdf2, randomBytes } from 'node:crypto';
+import { pbkdf2, randomBytes, randomUUID } from 'node:crypto';
 import { promisify, isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { getSettingsPath } from '../config/index.js';
@@ -12,7 +12,7 @@ import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { ServerConfig } from '../types/index.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { logger } from './logger.js';
-import { legacyServerId } from './serverIdentity.js';
+import { isLegacyServerId } from './serverIdentity.js';
 
 const deriveFingerprint = promisify(pbkdf2);
 
@@ -144,6 +144,26 @@ const canonical = (value: unknown): unknown => {
   return value;
 };
 
+/**
+ * Pick the persisted server id for a settings-sync write.
+ *
+ * An existing row's id is authoritative and preserved. Otherwise the
+ * declaration may not carry an id, and an id read from a file is not
+ * trustworthy: a name-derived placeholder (`legacyServerId`) is what old
+ * file-mode layers materialized on read, and persisting it would make staging
+ * refuse the server forever (`isLegacyServerId`). A server that exists only in
+ * the synced declaration therefore gets a random UUID instead.
+ */
+export const resolveSyncedServerId = (
+  existingId: string | undefined,
+  declaredId: string | undefined,
+  serverName: string,
+): string => {
+  if (existingId) return existingId;
+  if (declaredId && !isLegacyServerId(declaredId, serverName)) return declaredId;
+  return randomUUID();
+};
+
 /** Startup-only reconciliation. Never use loadOriginalSettings: it can write defaults. */
 export async function syncSettingsToDatabase(): Promise<void> {
   const mode = process.env.MCPHUB_SETTINGS_SYNC;
@@ -230,7 +250,7 @@ export async function syncSettingsToDatabase(): Promise<void> {
       const oauth =
         sameTarget && sameOAuth ? { ...config.oauth, ...existing?.oauth } : config.oauth;
       const data: Record<string, unknown> = {
-        id: existing?.id ?? config.id ?? legacyServerId(serverName),
+        id: resolveSyncedServerId(existing?.id, config.id, serverName),
         name: serverName,
         enabled: config.enabled ?? true,
         visibility: config.visibility ?? 'private',

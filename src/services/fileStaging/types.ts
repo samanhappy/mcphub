@@ -95,6 +95,7 @@ export type StagingErrorCode =
   | 'server-mismatch'
   | 'expired'
   | 'locked'
+  | 'unsupported'
   | 'unauthenticated';
 
 /** Expected failures; the tool/HTTP layer maps these to generic public errors. */

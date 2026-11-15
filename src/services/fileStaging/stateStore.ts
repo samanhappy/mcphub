@@ -149,17 +149,22 @@ export class FileStagingStateStore implements StagingStateStore {
       if (this.loaded) return;
       await ensureDirectory(this.rootDir);
       await ensureDirectory(this.stateDir);
-      await this.acquireProcessLock();
-      await this.load();
-      this.reconcileStartup();
-      await this.persist();
-      this.loaded = true;
+      const release = await this.acquireProcessLock();
+      try {
+        await this.load();
+        this.reconcileStartup();
+        await this.persist();
+        this.loaded = true;
+      } catch (error) {
+        await release?.();
+        throw error;
+      }
     });
   }
 
-  private async acquireProcessLock(): Promise<void> {
-    if (this.disableLock) return;
-    await acquireStagingProcessLock(this.stateDir);
+  private async acquireProcessLock(): Promise<(() => Promise<void>) | undefined> {
+    if (this.disableLock) return undefined;
+    return acquireStagingProcessLock(this.stateDir);
   }
 
   private async load(): Promise<void> {
@@ -435,6 +440,9 @@ export class FileStagingStateStore implements StagingStateStore {
       for (const ref of refs) {
         const record = this.requireRef(ref);
         const file = contentPath(this.rootDir, record.ownerHash, record.id);
+        // The tool may have replaced its ref directory with a symlink since the
+        // lease; digestFile only guards the leaf.
+        await assertNoSymlinkComponents(this.rootDir, file);
         const digest = await digestFile(file);
         const decision = decideFinalize(record, leaseId, digest, settings);
         decisions.push({ record, size: decision.size, sha256: decision.sha256 });

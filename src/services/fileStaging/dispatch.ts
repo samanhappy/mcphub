@@ -44,9 +44,40 @@ const containsStagingRef = (value: unknown): boolean => {
   return false;
 };
 
+/**
+ * One server-id resolution for both the list projection and the call seam: a
+ * server without a persisted id is never staged, and the two paths must not
+ * disagree about which id they bind a ref to.
+ */
+export const resolveStagingServerId = (config: ServerConfig, name: string): string => {
+  const id = config.id;
+  if (!id || isLegacyServerId(id, name)) {
+    throw new StagingError('invalid-ref', 'This server has no stable id; save it once first');
+  }
+  return id;
+};
+
 const errorText = (error: unknown): string => {
   if (error instanceof StagingError) return error.message;
   return 'File staging request failed';
+};
+
+/** Resolve the declared JSON-Schema type at a dot path; null means "unknown". */
+const schemaTypeAt = (
+  properties: Record<string, any>,
+  param: string,
+): string | null | undefined => {
+  let node: any = { type: 'object', properties };
+  for (const segment of param.split('.')) {
+    if (!node || typeof node !== 'object') return null;
+    const next =
+      node.properties && typeof node.properties === 'object'
+        ? node.properties[segment]
+        : undefined;
+    if (!next) return undefined;
+    node = next;
+  }
+  return typeof node?.type === 'string' ? node.type : null;
 };
 
 /** The staging target for one concrete tool call, or undefined for a normal call. */
@@ -104,18 +135,26 @@ export const resolveStagedCall = async (
   const properties = toolDefinition?.inputSchema?.properties;
   if (properties && typeof properties === 'object') {
     for (const param of declared) {
-      const root = param.split('.')[0];
-      if (!(root in (properties as Record<string, unknown>))) {
+      const type = schemaTypeAt(properties as Record<string, any>, param);
+      if (type === undefined) {
         throw new StagingError(
           'invalid-ref',
           `Staged parameter "${param}" is not part of the tool input schema`,
+        );
+      }
+      // A ref is a string. A declared number/boolean parameter can never carry
+      // one, so the configuration is wrong and the call must not be rewritten.
+      if (type !== null && type !== 'string') {
+        throw new StagingError(
+          'invalid-ref',
+          `Staged parameter "${param}" is declared as ${type}, not a string`,
         );
       }
     }
   }
   return {
     serverName: serverInfo.name,
-    serverId: fresh.id ?? serverInfo.name,
+    serverId: resolveStagingServerId(fresh, serverInfo.name),
     toolName,
     inputParams: [...(toolConfig.fileStaging.inputParams ?? [])],
     outputParams: [...(toolConfig.fileStaging.outputParams ?? [])],
