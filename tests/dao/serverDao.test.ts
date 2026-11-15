@@ -2,7 +2,13 @@ import { ServerDaoImpl } from '../../src/dao/ServerDao.js';
 
 describe('ServerDaoImpl', () => {
   it('retains policy IDs across rename and ignores attempts to replace them', async () => {
-    const settings = { mcpServers: { original: { enabled: true } } };
+    // A persisted UUID is the server's identity; the name-derived placeholder
+    // materialized for a hand-written entry is not (see serverDaoStagingId).
+    const settings = {
+      mcpServers: {
+        original: { enabled: true, id: '0f1d3d3c-1111-4111-8111-111111111111' },
+      },
+    };
     const dao = new ServerDaoImpl();
     jest.spyOn(dao as any, 'loadSettings').mockResolvedValue(settings);
     jest.spyOn(dao as any, 'saveSettings').mockResolvedValue(undefined);
