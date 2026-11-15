@@ -72,10 +72,20 @@ const ALLOWED_SSH_OPTIONS = new Set([
   '--mcp-transport',
 ]);
 
-/** These terminate the child, so they must never reach the resolved argv. */
+/**
+ * Forbidden in a staged server's argv.
+ *
+ * `--ssh` and `--ssh-config-file` are forbidden because both carry a whole
+ * connection object: the pinned parser reads `allowedLocalPaths` from that
+ * JSON, so a credential-template slot bound to `--ssh` would hand the user the
+ * local-root override that `--allowed-local-paths` is blocked from providing.
+ * `--config-file` is the same escape through a file.
+ */
 const FORBIDDEN_OPTIONS = new Set([
   '--allowed-local-paths',
   '--config-file',
+  '--ssh-config-file',
+  '--ssh',
   '--help',
   '--version',
 ]);
@@ -188,7 +198,10 @@ export const validateSshServerConfig = (config: ServerConfig): AdapterValidation
   if (!hasStagedTools(config)) {
     return { ok: false, reason: 'No tool has fileStaging enabled' };
   }
-  if (config.visibility !== 'private' && config.staging.shared !== true) {
+  // An absent visibility is the file-mode default for a hand-written entry and
+  // is owner-only; only an explicit group/public server is shared.
+  const visibility = config.visibility ?? 'private';
+  if (visibility !== 'private' && config.staging.shared !== true) {
     return { ok: false, reason: 'Shared/group servers require staging.shared' };
   }
   if (config.staging.shared === true && !config.credentialTemplate?.length) {
@@ -234,9 +247,11 @@ export const prepareStagingRuntime = async (
   const validation = validateSshServerConfig(config);
   if (!validation.ok) return undefined;
 
+  // `owner` is optional in a hand-written file entry; the DAO defaults it to
+  // the admin account on create, so the runtime uses the same default.
   const principal = principalUsername
     ? await resolveStagingPrincipal(principalUsername)
-    : await resolveOwnerPrincipal(config.owner);
+    : await resolveOwnerPrincipal(config.owner ?? 'admin');
   if (!principal) return undefined;
 
   const cwd = getStagingRootForPrincipal(principal.ownerHash);

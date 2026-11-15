@@ -15,7 +15,11 @@ import { replicaRequestContext } from './middlewares/replicaConfig.js';
 import { isReplicaMode } from './utils/replicaMode.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
-import { getFileStagingSettings, getStagingStateStore } from './services/fileStaging/settings.js';
+import {
+  getFileStagingSettings,
+  getStagingStateStore,
+  isStagingRuntimeSupported,
+} from './services/fileStaging/settings.js';
 import { initI18n } from './utils/i18n.js';
 import {
   handleSseConnection,
@@ -246,6 +250,12 @@ export class AppServer {
     try {
       const settings = await getFileStagingSettings();
       if (!settings.enabled) return;
+      // Hosted and replica deployments have no single local staging root; do
+      // not create directories or take the process lock there.
+      if (!isStagingRuntimeSupported()) {
+        logger.warn('File staging is enabled but this deployment mode does not support it');
+        return;
+      }
       await getStagingStateStore();
       logger.log('File staging ledger initialized');
     } catch (error) {

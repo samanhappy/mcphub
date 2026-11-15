@@ -30,10 +30,16 @@ const lockOwnerInstance = async (stateDir: string): Promise<string | undefined> 
   return instanceId || undefined;
 };
 
-/** Remove the lockfile only when this instance still owns it. */
+/**
+ * Remove the lockfile only when this instance still owns it.
+ *
+ * An unreadable or empty lockfile is *not* treated as ours: `acquire` creates
+ * the file and writes the owner in a second syscall, so a stalled owner's
+ * release could otherwise delete the lock a newer owner had just created.
+ */
 const releaseLockIfOwned = async (stateDir: string, instanceId: string): Promise<void> => {
   const owner = await lockOwnerInstance(stateDir);
-  if (owner && owner !== instanceId) return;
+  if (owner !== instanceId) return;
   await fs.rm(stagingLockPath(stateDir), { force: true }).catch(() => undefined);
 };
 

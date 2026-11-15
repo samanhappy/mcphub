@@ -9,6 +9,7 @@ const mockGetStagingStateStore = jest.fn();
 
 jest.mock('../../src/services/fileStaging/settings.js', () => ({
   getStagingStateStore: (...args: unknown[]) => mockGetStagingStateStore(...args),
+  isStagingRuntimeSupported: () => true,
 }));
 
 import { downloadStagedFile } from '../../src/controllers/fileStagingController.js';

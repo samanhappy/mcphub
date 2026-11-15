@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 
 import { openNoFollow } from '../services/fileStaging/paths.js';
 import { logger } from '../utils/logger.js';
-import { getStagingStateStore } from '../services/fileStaging/settings.js';
+import { getStagingStateStore, isStagingRuntimeSupported } from '../services/fileStaging/settings.js';
 
 /**
  * RFC 5987 `attr-char` escaping. `encodeURIComponent` leaves `'()*` and `!`
@@ -43,6 +43,12 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
   }
   let releasePin: (() => Promise<void>) | undefined;
   try {
+    // A token minted before the deployment mode changed must not be served by
+    // a replica that shares the ledger but not the staging root.
+    if (!isStagingRuntimeSupported()) {
+      res.status(404).json({ success: false, message: 'File not found' });
+      return;
+    }
     const store = await getStagingStateStore();
     const consumed = await store.consumeDownloadToken(token);
     // Pin before opening: cleanup must not delete the file between the digest

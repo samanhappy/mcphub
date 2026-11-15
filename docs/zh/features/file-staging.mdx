@@ -63,7 +63,7 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
 本阶段没有用于暂存的 Dashboard 界面。仍可使用整服务器 `PUT /api/servers/:name`（`{"config": ...}`）做批量编辑，但它一旦收到 `tools` 就会替换整个工具对象，因此暂存变更应优先使用 PATCH 路由。
 
 <Warning>
-**启用某个工具的暂存会改变该服务器上所有工具的工作目录。** 只要服务器上有任意一个工具设置了 `fileStaging.enabled`，hub 就会把该服务器的每个 stdio 子进程都启动在调用者对应的暂存根目录中，而不是 hub 的工作目录。依赖相对路径、或读取 hub 旁边文件（包括 `mcp_settings.json`）的工具会因此看到不同的目录，即使当前调用的工具本身没有启用暂存。只打开全局总开关不会改变工作目录，按工具启用才会。已运行的子进程会保留旧的工作目录，因此在启用第一个暂存工具后需要重载服务器（`POST /api/servers/:name/reload`），或者通过整服务器保存让服务器自动重连。
+**启用某个工具的暂存会改变该服务器上所有工具的工作目录。** 只要服务器上有任意一个工具设置了 `fileStaging.enabled`，hub 就会把该服务器的每个 stdio 子进程都启动在调用者对应的暂存根目录中，而不是 hub 的工作目录。依赖相对路径、或读取 hub 旁边文件（包括 `mcp_settings.json`）的工具会因此看到不同的目录，即使当前调用的工具本身没有启用暂存。只打开全局总开关不会改变工作目录，按工具启用才会。已运行的子进程会保留旧的工作目录，直到被重建。两个暂存 PATCH 路由与整服务器保存都会重连服务器，因此启用第一个暂存工具会立即生效；只有直接改数据库或设置文件的编辑才需要手动重载（`POST /api/servers/:name/reload`）。
 </Warning>
 
 <Warning>
@@ -75,7 +75,7 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
 - 服务器必须是 **stdio** 类型，HTTP/SSE 和 OpenAPI 服务器无法使用暂存。
 - 服务器声明 `staging.adapter: "ssh"`，每个需要暂存的工具单独开启 `fileStaging`。
 - 目前只验证了固定版本 `@fangjunjie/ssh-mcp-server@1.11.0` 这一种适配器配置。启动命令必须是 `npx`（或 `node`），且该精确版本说明必须是第一个位置参数；连接后的服务器必须报告版本 `1.11.0`。其他包、版本或启动方式都会保持关闭。
-- 解析后的命令行会按每个用户检查 SSH 参数白名单。会扩大子进程本地根目录的参数（如 `--allowed-local-paths` 和 `--config-file`）会使该服务器的暂存被关闭。
+- 解析后的命令行会按每个用户检查 SSH 参数白名单。会扩大子进程本地根目录的参数——`--allowed-local-paths`、`--config-file`，以及携带同一设置的 `--ssh`/`--ssh-config-file` 连接对象——会使该服务器的暂存被关闭。
 - 共享、分组或公开服务器还需要 `"staging": { "adapter": "ssh", "shared": true }` 和带按用户槽位的 `credentialTemplate`；两者缺一，服务器暂存都会被拒绝。
 - 需要下载链接时，必须配置 `install.baseUrl`（或 `INSTALL_BASE_URL`），因为远程客户端无法解析 hub 的 `localhost`。
 

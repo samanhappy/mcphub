@@ -137,6 +137,30 @@ describe('ssh staging adapter', () => {
     ).toMatchObject({ ok: false });
   });
 
+  it('rejects the connection-object options that carry a local-root override', () => {
+    // `--ssh` parses a JSON connection object and the pinned parser reads
+    // `allowedLocalPaths` from it, so a credential slot bound to `--ssh` would
+    // be a second way to grant the local root.
+    expect(
+      validateResolvedSshArgs(['--ssh', '{"host":"h","allowedLocalPaths":["/"]}']),
+    ).toMatchObject({ ok: false });
+    expect(validateResolvedSshArgs(['--ssh-config-file', '/tmp/ssh.json'])).toMatchObject({
+      ok: false,
+    });
+  });
+
+  it('treats a missing visibility as owner-only, not as shared', () => {
+    const config = {
+      name: 'sftp',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+      staging: { adapter: 'ssh' },
+      tools: { upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } } },
+    } as unknown as Parameters<typeof validateSshServerConfig>[0];
+    expect(validateSshServerConfig(config)).toEqual({ ok: true });
+  });
+
   it('does not let a boolean flag hide the option that follows it', () => {
     // The pinned parser declares --try-keyboard and --pre-connect as booleans,
     // so the next token is an option position, not their value.

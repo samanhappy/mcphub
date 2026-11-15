@@ -63,7 +63,7 @@ The `file-staging` route is owner-or-admin. `tool` is the bare tool name, and om
 There is no dashboard UI for staging in this phase. A whole-server `PUT /api/servers/:name` (`{"config": ...}`) is still available for bulk edits, but it replaces the entire `tools` object when one is supplied, so prefer the PATCH routes for staging changes.
 
 <Warning>
-**Enabling a staged tool changes the working directory of every tool on that server.** Once any tool on a server has `fileStaging.enabled`, the hub starts every stdio child for that server in the calling principal's staging root instead of the hub working directory. Tools that resolve relative paths or read files next to the hub (including `mcp_settings.json`) then see a different directory, even when the specific tool being called is not staged. The global master switch alone does not change the cwd; the per-tool opt-in does. A running child keeps its old cwd, so reload the server (`POST /api/servers/:name/reload`) after enabling the first staged tool, or make the change through a whole-server save, which reconnects automatically.
+**Enabling a staged tool changes the working directory of every tool on that server.** Once any tool on a server has `fileStaging.enabled`, the hub starts every stdio child for that server in the calling principal's staging root instead of the hub working directory. Tools that resolve relative paths or read files next to the hub (including `mcp_settings.json`) then see a different directory, even when the specific tool being called is not staged. The global master switch alone does not change the cwd; the per-tool opt-in does. A running child keeps its old cwd until it is rebuilt. The two staging PATCH routes and a whole-server save all reconnect the server, so enabling the first staged tool takes effect immediately; only an edit made directly in the database or the settings file needs a manual reload (`POST /api/servers/:name/reload`).
 </Warning>
 
 <Warning>
@@ -75,7 +75,7 @@ There is no dashboard UI for staging in this phase. A whole-server `PUT /api/ser
 - The server is a **stdio** server. HTTP/SSE and OpenAPI servers cannot use staging.
 - The server declares `staging.adapter: "ssh"` and each staged tool opts in with `fileStaging`.
 - The pinned upstream release `@fangjunjie/ssh-mcp-server@1.11.0` is the only adapter profile verified so far. The launcher must be `npx` (or `node`) with that exact spec as the first positional argument, and the connected server must report version `1.11.0`; staging stays disabled for any other package, version or launcher.
-- The resolved command line is checked against an SSH option allowlist for every principal. Options that would widen the child's local root, such as `--allowed-local-paths` and `--config-file`, disable staging for the server.
+- The resolved command line is checked against an SSH option allowlist for every principal. Options that would widen the child's local root — `--allowed-local-paths`, `--config-file`, and the `--ssh`/`--ssh-config-file` connection objects that carry the same setting — disable staging for the server.
 - A shared, group or public server additionally needs `"staging": { "adapter": "ssh", "shared": true }` and a `credentialTemplate` with per-user slots. Without both, staging is refused for the server.
 - `install.baseUrl` (or `INSTALL_BASE_URL`) is configured when download links are needed; a remote client cannot resolve the hub's `localhost`.
 

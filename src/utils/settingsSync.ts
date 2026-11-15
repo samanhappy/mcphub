@@ -10,6 +10,7 @@ import { CredentialBinding } from '../db/entities/CredentialBinding.js';
 import { Group } from '../db/entities/Group.js';
 import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { ServerConfig } from '../types/index.js';
+import { remapServerIdReferences } from './serverIdReferences.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { logger } from './logger.js';
 import { isLegacyServerId } from './serverIdentity.js';
@@ -277,7 +278,15 @@ export async function syncSettingsToDatabase(): Promise<void> {
           isDeepStrictEqual(existing[key as keyof Server] ?? null, value ?? null),
         );
       counts.servers[!existing ? 'created' : unchanged ? 'unchanged' : 'updated']++;
-      if (!unchanged) await serverRepo.save(serverRepo.create({ ...existing, ...data }));
+      if (!unchanged) {
+        await serverRepo.save(serverRepo.create({ ...existing, ...data }));
+        // A legacy placeholder id replaced here is the same identity change the
+        // DAO performs: policies and network exceptions keyed by the old id must
+        // follow it, or a deny rule silently stops matching.
+        if (existing?.id && existing.id !== data.id) {
+          await remapServerIdReferences(existing.id, String(data.id));
+        }
+      }
     }
     const groupRepo = manager.getRepository(Group);
     for (const group of declaration.groups ?? []) {

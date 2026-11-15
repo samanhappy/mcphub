@@ -239,6 +239,11 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
 
   it('lets the owner disable a tool without losing its declared params', async () => {
     const res = mockRes();
+    let reconnectSnapshot: any;
+    const { reconnectServer: mockedReconnect } = await import('../../src/services/mcpService.js');
+    (mockedReconnect as jest.Mock).mockImplementationOnce(async () => {
+      reconnectSnapshot = JSON.parse(JSON.stringify(liveServer.config));
+    });
 
     await updateToolFileStaging(request({ tool: 'upload', enabled: false }), res);
 
@@ -250,11 +255,29 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
       success: true,
       data: { enabled: true, fileStaging: { enabled: false, inputParams: ['localPath'] } },
     });
-    // Live config is patched before the reconnect that rebuilds the child.
+    // The child is rebuilt before the live config advertises the change, so no
+    // call is dispatched to a child that still runs in the old cwd.
+    expect(mockedReconnect).toHaveBeenCalledWith('sftp');
+    // The old child is closed while the live config still says "staged", so a
+    // call arriving during the reconnect cannot reach a hub-cwd child.
+    expect(reconnectSnapshot?.tools.upload.fileStaging?.enabled).toBe(true);
     expect(liveServer.config.tools.upload.fileStaging).toEqual({
       enabled: false,
       inputParams: ['localPath'],
     });
+  });
+
+  it('reports a restart failure instead of claiming the change is live', async () => {
+    const { reconnectServer } = await import('../../src/services/mcpService.js');
+    (reconnectServer as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    const res = mockRes();
+
+    await updateToolFileStaging(request({ tool: 'upload', enabled: false }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(responseBody(res)).toMatchObject({ success: false });
+    // The stale live config is not published when the restart failed.
+    expect(liveServer.config.tools.upload.fileStaging?.enabled).toBe(true);
   });
 
   it('rejects a non-owner', async () => {

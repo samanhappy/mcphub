@@ -1847,19 +1847,25 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
       return;
     }
 
-    // Same stale-config gap as toggleTool: the live serverInfo is only rebuilt
-    // on reconnect, so patch it now to make the change effective immediately.
+    broadcastToolListChanged();
+    // `stagedTools` is connection-relevant: the child must be rebuilt into (or
+    // out of) the per-principal staging root now, not on the next restart. The
+    // old child is closed before the live config advertises staging, so no call
+    // can be dispatched to a child that still runs in the hub cwd.
+    try {
+      await reconnectServer(serverName);
+    } catch (error) {
+      logger.error(`[staging] failed to reconnect ${serverName} after a tool change`, error);
+      res.status(500).json({
+        success: false,
+        message: 'Saved, but the server could not be restarted with the new staging setting',
+      });
+      return;
+    }
     const liveServer = getServerByName(serverName);
     if (liveServer?.config) {
       liveServer.config = { ...liveServer.config, tools: nextTools };
     }
-
-    broadcastToolListChanged();
-    // `stagedTools` is connection-relevant: the child must be rebuilt into (or
-    // out of) the per-principal staging root now, not on the next restart.
-    await reconnectServer(serverName).catch((error) => {
-      logger.error(`[staging] failed to reconnect ${serverName} after a tool change`, error);
-    });
 
     res.json({ success: true, data: nextTools[configKey] });
   } catch (error) {
@@ -1922,15 +1928,23 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
       return;
     }
 
+    broadcastToolListChanged();
+    // Same ordering as the tool PATCH: the old child must be gone before the
+    // live config says the server is staged.
+    try {
+      await reconnectServer(serverName);
+    } catch (error) {
+      logger.error(`[staging] failed to reconnect ${serverName} after a staging change`, error);
+      res.status(500).json({
+        success: false,
+        message: 'Saved, but the server could not be restarted with the new staging setting',
+      });
+      return;
+    }
     const liveServer = getServerByName(serverName);
     if (liveServer?.config) {
       liveServer.config = { ...liveServer.config, staging };
     }
-
-    broadcastToolListChanged();
-    await reconnectServer(serverName).catch((error) => {
-      logger.error(`[staging] failed to reconnect ${serverName} after a staging change`, error);
-    });
 
     res.json({ success: true, data: staging ?? null });
   } catch (error) {
