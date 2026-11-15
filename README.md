@@ -31,6 +31,7 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 - **Unified MCP Gateway** - Expose all connected servers through stable MCP endpoints, including routes for groups and individual servers
 - **Server Aliases and Routing** - Define aliases and route clients to all servers, specific groups, individual servers, or smart routing
 - **SSE / Streamable HTTP / stdio Support** - Connect local and remote MCP servers over the supported transports
+- **File Staging** - Let stdio tools accept an uploaded copy of a client file or write a result the hub serves as a one-time download ([Learn more](docs/features/file-staging.mdx))
 - **Hot-Swappable Config** - Add, remove, or update servers without downtime
 
 ### Control access and credentials

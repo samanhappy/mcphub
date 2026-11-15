@@ -128,6 +128,14 @@ export const mcpConnectionRateLimiter = createStandardRateLimiter({
   max: envLimit('MCP_RATE_LIMIT_MAX', 480),
 });
 
+// Staged downloads are one-time tokens fetched by MCP clients; they must not
+// consume the MCP connection budget (a burst of downloads would then throttle
+// tool calls) nor be unlimited.
+export const stagingDownloadRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('STAGING_DOWNLOAD_RATE_LIMIT_WINDOW_MS', MINUTE_1),
+  max: envLimit('STAGING_DOWNLOAD_RATE_LIMIT_MAX', 120),
+});
+
 export const authAttemptRateLimiter = createStandardRateLimiter({
   windowMs: envInt('AUTH_RATE_LIMIT_WINDOW_MS', MINUTES_15),
   max: envLimit('AUTH_RATE_LIMIT_MAX', 20),

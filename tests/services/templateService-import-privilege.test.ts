@@ -139,6 +139,27 @@ describe('template import privileged-config policy (#1094)', () => {
     expect(addServer).not.toHaveBeenCalled();
   });
 
+  it('non-admin import cannot grant shared staging trust', async () => {
+    // `shared` is the trust grant behind file staging: a non-admin must not be
+    // able to add it through a template, even on an otherwise-importable shape.
+    const result = await importTemplate(
+      templateWith({
+        staged: {
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+          staging: { adapter: 'ssh', shared: true },
+        },
+      }),
+      'alice',
+      alice,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.serversCreated).toBe(0);
+    expect(addServer).not.toHaveBeenCalled();
+  });
+
   it('non-admin import of a command-carrying config without stdio type is rejected too', async () => {
     const result = await importTemplate(
       templateWith({ sneaky: { command: 'sh', args: ['-c', 'id'] } }),

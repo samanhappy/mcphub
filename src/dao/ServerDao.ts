@@ -5,7 +5,9 @@ import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
 import { randomUUID } from 'node:crypto';
-import { legacyServerId } from '../utils/serverIdentity.js';
+
+import { remapServerIdReferences } from '../utils/serverIdReferences.js';
+import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
 
 /**
  * Pagination result interface
@@ -78,7 +80,7 @@ export interface ServerDao extends BaseDao<ServerConfigWithName, string> {
    */
   updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
+    tools: NonNullable<ServerConfig['tools']>,
   ): Promise<boolean>;
 
   /**
@@ -168,7 +170,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return {
       ...existing,
       ...updates,
-      id: existing.id,
+      // A name-derived placeholder is not a stable identity: persist a random
+      // UUID on the first write so staged refs (which bind to `id`) survive a
+      // rename and cannot be inherited by a re-created server (#1056).
+      id: isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id,
       // Keep the existing name unless explicitly updating via rename
       name: updates.name ?? existing.name,
     };
@@ -219,10 +224,24 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     }
 
     assertSmartRoutingNameAvailable(updates.name);
+    const previousId = servers[index].id;
     const updatedServer = this.updateEntity(servers[index], updates);
+    const idChanged = Boolean(previousId) && updatedServer.id !== previousId;
+    if (idChanged && previousId && updatedServer.id) {
+      // Rewrite policy bindings before persisting: if the rewrite fails the
+      // server keeps its legacy id and the next save retries the migration.
+      await remapServerIdReferences(previousId, updatedServer.id);
+    }
     servers[index] = updatedServer;
 
-    await this.saveAll(servers);
+    try {
+      await this.saveAll(servers);
+    } catch (error) {
+      if (idChanged && previousId && updatedServer.id) {
+        await remapServerIdReferences(updatedServer.id, previousId).catch(() => undefined);
+      }
+      throw error;
+    }
     return updatedServer;
   }
 
@@ -371,7 +390,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
 
   async updateTools(
     name: string,
-    tools: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>,
+    tools: NonNullable<ServerConfig['tools']>,
   ): Promise<boolean> {
     const result = await this.update(name, { tools });
     return result !== null;
@@ -407,8 +426,27 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       throw new Error(`Server ${newName} already exists`);
     }
 
-    servers[index] = { ...servers[index], name: newName };
-    await this.saveAll(servers);
+    // A rename must not keep a name-derived id: after the rename it would no
+    // longer look legacy, yet it still hashes the old name (#1056).
+    const existing = servers[index];
+    const nextId = isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id;
+    const idChanged = Boolean(existing.id) && nextId !== existing.id;
+    if (idChanged && existing.id && nextId) {
+      await remapServerIdReferences(existing.id, nextId);
+    }
+    servers[index] = {
+      ...existing,
+      name: newName,
+      id: nextId,
+    };
+    try {
+      await this.saveAll(servers);
+    } catch (error) {
+      if (idChanged && existing.id && nextId) {
+        await remapServerIdReferences(nextId, existing.id).catch(() => undefined);
+      }
+      throw error;
+    }
     return true;
   }
 }

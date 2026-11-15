@@ -565,3 +565,34 @@ test('preserves shared OAuth expiry when saving the form', () => {
   });
   expect(payload.config.oauth?.accessTokenExpiresAt).toBe(12345);
 });
+
+test('round-trips stored tools and staging so an edit cannot silently drop them (#1056 R53)', () => {
+  const tools = {
+    upload: {
+      enabled: true,
+      description: 'Upload',
+      hiddenParams: ['note'],
+      fileStaging: { enabled: true, inputParams: ['localPath'] },
+    },
+    download: { enabled: false, fileStaging: { enabled: false, outputParams: ['dest'] } },
+  };
+  const staging = { shared: true, adapter: 'ssh' as const };
+  const payload = buildServerPayload({
+    formData: {
+      name: 'sftp',
+      url: '',
+      command: 'npx',
+      arguments: '',
+      env: [],
+      headers: [],
+      tools,
+      staging,
+    },
+    serverType: 'stdio',
+    envVars: [],
+    headerVars: [],
+  });
+
+  expect(payload.config.tools).toEqual(tools);
+  expect(payload.config.staging).toEqual(staging);
+});

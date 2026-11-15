@@ -1,0 +1,254 @@
+---
+title: 'File Staging'
+description: 'Let stdio tools work with uploaded copies of client files'
+---
+
+## Overview
+
+A stdio MCP server behind the hub runs inside the MCPHub container. When a tool takes a local path, the path is resolved on the hub, not on the client that asked for it. File staging closes that gap for the narrow case where a client needs to hand a file to a tool and get a result back:
+
+1. the client uploads a copy to the hub,
+2. the call carries an `mcpfile://` reference in a declared input parameter,
+3. the hub rewrites the reference to a real path inside that user's staging root,
+4. the tool works on the copy. The reverse direction works too: the client reserves a destination, the tool writes it, and the hub serves the result through a one-time download link.
+
+The hub never reaches back into the client's filesystem: it works with uploaded copies only.
+
+## Enabling file staging
+
+File staging is off by default and has no dashboard UI in this phase. Three things must line up: the global master switch, the server's `staging` declaration, and the per-tool opt-in.
+
+### 1. Global master switch
+
+An administrator enables staging through the system-config API. The request merges the supplied keys over the stored settings; other settings are unchanged.
+
+```bash
+curl -X PUT http://localhost:3000/api/system-config \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"fileStaging":{"enabled":true}}'
+```
+
+`PUT /api/system-config` answers `403` for non-admin callers. Prepend `BASE_PATH` to the path when the hub is served under a sub-path.
+
+### 2. Server staging declaration
+
+Declare the adapter on the server. An owner can set the adapter on their own private server; adding or removing `shared` trust is admin-only:
+
+```bash
+curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"adapter":"ssh"}'
+```
+
+A shared, group or public server additionally needs `{"shared":true}` in the same request (admin only) and a `credentialTemplate` with per-user slots.
+
+### 3. Per-tool opt-in
+
+```bash
+curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"tool":"upload","enabled":true,"inputParams":["localPath"]}'
+
+curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"tool":"download","enabled":true,"outputParams":["localPath"]}'
+```
+
+The `file-staging` route is owner-or-admin. `tool` is the bare tool name, and omitted `inputParams`/`outputParams` keep their stored values, so disabling a tool does not lose its declaration. Both PATCH routes validate the result as a whole: an enabled tool still requires `staging.adapter` and a stdio server.
+
+There is no dashboard UI for staging in this phase. A whole-server `PUT /api/servers/:name` (`{"config": ...}`) is still available for bulk edits, but it replaces the entire `tools` object when one is supplied, so prefer the PATCH routes for staging changes.
+
+<Warning>
+**Enabling a staged tool changes the working directory of every tool on that server.** Once any tool on a server has `fileStaging.enabled`, the hub starts every stdio child for that server in the calling principal's staging root instead of the hub working directory. Tools that resolve relative paths or read files next to the hub (including `mcp_settings.json`) then see a different directory, even when the specific tool being called is not staged. The global master switch alone does not change the cwd; the per-tool opt-in does. A running child keeps its old cwd until it is rebuilt. The two staging PATCH routes and a whole-server save all reconnect the server, so enabling the first staged tool takes effect immediately: the route waits (bounded) for the child to connect and answers 500 if this restart failed. An on-demand server is the exception — it spawns on the next tool call, so the route can only confirm the configuration was saved; only an edit made directly in the database or the settings file needs a manual reload (`POST /api/servers/:name/reload`).
+</Warning>
+
+<Warning>
+**A server with a legacy id must be saved once before staging works.** Servers created before stable ids existed have a name-derived placeholder id instead of a persisted UUID. Staging refuses such a server with a warning until the server is saved once through any edit; the save persists a random UUID. The running runtime can keep the old id until it reconnects, so the same reload that applies the staging cwd also picks up the new id.
+</Warning>
+
+## Requirements
+
+- The server is a **stdio** server. HTTP/SSE and OpenAPI servers cannot use staging.
+- The server declares `staging.adapter: "ssh"` and each staged tool opts in with `fileStaging`.
+- The pinned upstream release `@fangjunjie/ssh-mcp-server@1.11.0` is the only adapter profile verified so far. The launcher must be `npx` (or `node`) with that exact spec as the first positional argument, and the connected server must report version `1.11.0`; staging stays disabled for any other package, version or launcher.
+- The resolved command line is checked against an SSH option allowlist for every principal. Options that would widen the child's local root — `--allowed-local-paths`, `--config-file`, and the `--ssh`/`--ssh-config-file` connection objects that carry the same setting — disable staging for the server.
+- A shared, group or public server additionally needs `"staging": { "adapter": "ssh", "shared": true }` and a `credentialTemplate` with per-user slots. Without both, staging is refused for the server.
+- `install.baseUrl` (or `INSTALL_BASE_URL`) is configured when download links are needed; a remote client cannot resolve the hub's `localhost`.
+
+## Configuration
+
+In file mode, the same configuration looks like this in `mcp_settings.json`. Through the API, `PATCH /api/servers/:name/staging` sets the `staging` object and `PATCH /api/servers/:name/file-staging` sets one tool's `fileStaging` object.
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@fangjunjie/ssh-mcp-server@1.11.0", "--host", "example.com", "--username", "ops"],
+      "staging": { "adapter": "ssh" },
+      "tools": {
+        "upload": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "inputParams": ["localPath"] }
+        },
+        "download": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "outputParams": ["localPath"] }
+        }
+      }
+    }
+  }
+}
+```
+
+`inputParams` lists the parameters that accept a reference to a file the hub already holds. `outputParams` lists the parameters that name a destination the tool writes and the hub later registers. A reference used in the wrong direction, in an undeclared parameter, or twice in one call is rejected before the tool runs. The same parameter cannot appear in both lists.
+
+Only `ready` references can be inputs; only `reserved` references can be outputs. When the tool schema is available, a declared parameter must exist in that schema and must be a string. `hiddenParams` must not overlap `inputParams` or `outputParams`. Enabling `fileStaging` without any parameter is rejected at save time.
+
+Configuration and group templates do not export a server's `staging` declaration or per-tool `fileStaging`; an imported template never enables staging on its own.
+
+## Directions
+
+The direction of the reference follows the direction of the data, not the tool name alone. `remotePath` is a normal remote-side parameter in both SSH calls and is never a staging parameter.
+
+| Direction | Example call | Parameter | Declared as | What the hub does |
+| --- | --- | --- | --- | --- |
+| Input | `ssh upload` | `localPath` | `inputParams` | Replaces a `ready` reference with the staged copy the tool reads |
+| Output | `ssh download` | `localPath` | `outputParams` | Replaces a `reserved` reference with a destination the tool writes, then finalizes it |
+
+### Input: hand an uploaded file to a tool
+
+```text
+mcphub_file_upload { filename: "report.pdf", content_base64: "..." }
+  -> { "ref": "mcpfile://0f1d...", "state": "ready", "size": 12345 }
+
+ssh-upload { localPath: "mcpfile://0f1d...", remotePath: "/srv/in/report.pdf" }
+  -> the hub rewrites localPath to <staging-root>/<principal>/<uuid>/content
+  -> the tool uploads that staged copy to remotePath
+```
+
+`remotePath` stays a normal remote path. It is not rewritten and must not be listed in `inputParams`.
+
+### Output: let a tool write a file the hub will serve
+
+```text
+mcphub_file_upload { filename: "report.pdf" }
+  -> { "ref": "mcpfile://8a2e...", "state": "reserved" }
+
+ssh-download { remotePath: "/srv/out/report.pdf", localPath: "mcpfile://8a2e..." }
+  -> the hub rewrites localPath to a reserved destination under the caller's root
+  -> the tool writes the remote file there; the hub hashes it and marks the reference ready
+
+mcphub_file_status { ref: "mcpfile://8a2e..." }
+  -> { "ref": "mcpfile://8a2e...", "state": "ready", "size": 23456, "sha256": "...", "expiresAt": "..." }
+
+mcphub_file_download { ref: "mcpfile://8a2e..." }
+  -> { "downloadUrl": "https://hub.example/staging/download/<token>", "expiresAt": "..." }
+```
+
+The client-visible tool names carry the server name and the configured name separator (`ssh-upload` for the server `ssh`); the `tools` keys are the bare tool names (`upload`, `download`).
+
+## Hub tools
+
+The hub injects three virtual tools into a route that exposes at least one staging-enabled server, when the caller resolves to a real user:
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `mcphub_file_upload` | `filename` (required), `content_base64`, `server`, `allow_zero_byte` | With content: `{ ref, state: "ready", size }`. Without content: `{ ref, state: "reserved" }`. |
+| `mcphub_file_status` | `ref` (required) | `{ ref, state, size, sha256, expiresAt }` (`sha256` is present once the file is ready). |
+| `mcphub_file_download` | `ref` (required) | `{ ref, downloadUrl, expiresAt }` for a ready file. |
+
+- `filename` is display metadata only, never a path. Directory components, NUL, CR, LF, quotes and backslashes are removed, and the name is cut to 255 UTF-8 bytes.
+- `content_base64` is an inline upload. Omit the field entirely to reserve an output destination; an empty string is rejected.
+- `server` is required only when the route exposes more than one staging-enabled server, and it must name one of them.
+- `allow_zero_byte` (default `false`) permits a zero-byte tool output to become ready. It applies only to an output reference.
+- `status` and `download` only see references owned by the calling user; a foreign or missing reference returns the same not-found error.
+- `download` requires a `ready` reference; a reserved, failed or expired reference is refused. The returned link is single-use and short-lived; a retry needs a new `mcphub_file_download` call.
+- The tools are listed only on routes with a staging target, and they are not exposed through `$smart` routing.
+
+### Reserved namespace
+
+Any tool name beginning with `mcphub_file_` is reserved for the hub, and configuration rejects a `tools` entry under that prefix. If an upstream server still exposes such a tool, the hub definition wins: the upstream tool is not listed, and a call with that name is handled or rejected by the hub and never forwarded to the server.
+
+## Downloads
+
+`mcphub_file_download` mints a URL from `install.baseUrl` plus the configured `basePath`:
+
+```text
+${basePath}/staging/download/:token
+```
+
+With the default empty `BASE_PATH` this is `/staging/download/:token`. The route is registered directly on the app, outside the `/api` dashboard authentication middleware: possession of the token is the capability, so a client does not need a dashboard session to fetch the file. Prepend `BASE_PATH` when the hub is served under a sub-path.
+
+The route is `GET` only (`HEAD` answers `405`). The token is random, stored hashed, expires after `downloadTtlSeconds`, and is consumed atomically on the first request; an unknown, used or expired token returns the same `404`. The response is always an attachment with a sanitized filename, `Content-Type: application/octet-stream`, `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store` and no inline rendering.
+
+If `install.baseUrl` is missing or still points at the built-in `http://localhost:3000` default, `mcphub_file_download` refuses to mint a link: a remote MCP client cannot resolve it. Set a public URL in Settings or with `INSTALL_BASE_URL`.
+
+## Staged file lifecycle and restart
+
+References move through `reserved`, `ready`, `failed` and `expired`:
+
+- `reserved` is a zero-byte destination created by `mcphub_file_upload` without content. It is not a valid input.
+- `ready` is registered content with a size and SHA-256. It is read-only and can be used as an input or downloaded.
+- `failed` is terminal: the call failed, threw, timed out, or produced a missing, oversized or (unless `allow_zero_byte`) empty file.
+- `expired` is past the reference TTL.
+
+An output reference is leased exclusively before the child runs. A second call using the same reserved destination fails as busy without invoking the tool. A tool that writes asynchronously after returning is not supported: the hub finalizes when the call returns.
+
+Restart and crash behaviour follows the ledger:
+
+- A reserved reference that held a lease when the hub stopped becomes `failed` at startup, its lease and quota reservation are cleared, and its UUID is never reused. A reference leased by a crashed call is never re-leased, overwritten or served, even if the orphaned child wrote bytes into it.
+- A reserved reference that was never leased survives the restart and remains available as an output destination until its TTL expires.
+- Ready content and its TTL survive a restart. Read pins do not: they are cleared at startup because no reader outlives the process.
+
+Staged content is local disk. Staging allows one hub writer per state directory in both file and database modes; the store takes a lockfile when staging initializes (at startup when the master switch is on) and a second process cannot initialize staging while that lock is fresh (the owner refreshes it every 30 seconds; a lock older than two minutes is treated as stale). Replica mode (`MCPHUB_REPLICA_MODE=true`) disables staging, and a second hub process must not share the same staging directory.
+
+## Settings
+
+Settings live under `systemConfig.fileStaging` and are written through `PUT /api/system-config` (admin only); file mode can also set the same object in `mcp_settings.json`. Partial updates merge over the stored values. Defaults:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `false` | Global master switch. |
+| `maxFileBytes` | 100 MiB | Per-file cap for a tool output and the ceiling for inline uploads. |
+| `inlineMaxBytes` | 1 MiB | Inline `content_base64` cap. The effective cap is the smallest of this value, `maxFileBytes`, and 75% of the JSON body limit minus 4 KiB of framing; with the default 1 MB body limit it is about 764 KiB. |
+| `perUserQuotaBytes` | 1 GiB | Quota per user. An output lease reserves `maxFileBytes` until the call finalizes. |
+| `globalQuotaBytes` | 10 GiB | Quota for the whole hub. |
+| `ttlHours` | 24 | Lifetime of a reference and its content; 1 to 8760 hours. |
+| `downloadTtlSeconds` | 300 | Download link lifetime; 10 to 3600 seconds. |
+| `maxFilesPerUser` | 100 | Maximum live references per user. |
+| `cleanupIntervalMinutes` | 15 | Expired-reference sweep interval; 1 to 1440 minutes. |
+
+Staged content lives under `data/uploads/staging` (override with `MCPHUB_STAGING_ROOT`); the file-mode ledger and the process lock live under `data/staging-state` (`MCPHUB_STAGING_STATE_DIR`). Both belong on a persistent volume. The ledger is authoritative; `meta.json` inside a reference directory is only a cache.
+
+With `DB_SYNCHRONIZE=false`, apply `docs/migrations/0006-file-staging.sql` before enabling staging in database mode. Database mode keeps refs and tokens in `file_staging_refs` and `file_staging_tokens`; the content still lives on the local staging root.
+
+## Authentication
+
+A staging call must resolve to a real user account. The following callers are refused before a reference is created or rewritten:
+
+- system bearer keys, even when the key names an owner;
+- anonymous callers and the `skipAuth` `guest` user;
+- users flagged `credentialEligible: false`, and users that no longer exist;
+- replica-mode requests.
+
+References are owned by that user. Another user gets the same not-found error as for a reference that never existed. The download route is the exception: it authenticates with the one-time token rather than a session, because the client that fetches the file may not hold a dashboard session.
+
+## Security boundary
+
+Staging makes the hub copy a file; it does not grant the client filesystem access to the hub. The boundary is enforced by hub-side ownership checks and by the trusted SSH adapter's own per-principal root.
+
+- The tool child runs as the **same OS user** in the **same container** as the hub. There is no OS-level isolation between principals.
+- The per-principal working directory and staging root are a **correctness boundary**, not a security boundary. They keep a reference and its relative paths bound to the right user and stop the trusted adapter from resolving paths outside that root. They do not stop a tool that can read the filesystem directly.
+- A shared or public server is therefore **not** an isolation boundary between its users. Neither is the hub container as a whole: another stdio server with shell or filesystem access can read the staging tree and the ledger. Restrict who can use such servers, or accept the risk.
+- A reference is a capability bound to one user and one server, and a download link is a single-use capability. Treat both as secrets.
+- Staging is not transparent: only declared parameters are rewritten. A raw path the client sends in another parameter still resolves inside the container, and the hub does not scan or rewrite tool responses.
+
+## Not included
+
+Staging does not yet provide browser upload pages, S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, `$smart` exposure of the virtual tools, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee. There is also no dashboard editor for staging in this phase; configuration goes through the PATCH routes described above.

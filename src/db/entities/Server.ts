@@ -69,7 +69,10 @@ export class Server {
   protocolNegotiation?: 'auto' | 'legacy';
 
   @Column({ type: 'simple-json', nullable: true })
-  tools?: Record<string, { enabled: boolean; description?: string; hiddenParams?: string[] }>;
+  tools?: import('../../types/index.js').ServerConfig['tools'];
+
+  @Column({ type: 'simple-json', nullable: true })
+  staging?: import('../../types/index.js').ServerStagingConfig;
 
   @Column({ type: 'simple-json', nullable: true })
   prompts?: Record<string, { enabled: boolean; description?: string }>;

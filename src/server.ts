@@ -15,6 +15,11 @@ import { replicaRequestContext } from './middlewares/replicaConfig.js';
 import { isReplicaMode } from './utils/replicaMode.js';
 import { initMiddlewares } from './middlewares/index.js';
 import { initRoutes } from './routes/index.js';
+import {
+  getFileStagingSettings,
+  getStagingStateStore,
+  isStagingRuntimeSupported,
+} from './services/fileStaging/settings.js';
 import { initI18n } from './utils/i18n.js';
 import {
   handleSseConnection,
@@ -135,6 +140,12 @@ export class AppServer {
 
       initMiddlewares(this.app);
       await initRoutes(this.app);
+
+      // Bring up the file-staging ledger before serving tool calls (#1056,
+      // R4b): the process/DB lock must fail at startup, not on the first tool
+      // call that needs staging. Failure is logged, never fatal.
+      await this.initializeFileStaging();
+
       logger.log('Server initialized successfully');
 
       const upstreamInitialization = initUpstreamServers()
@@ -229,6 +240,29 @@ export class AppServer {
     }
   }
 
+  /**
+   * Initialize the file-staging ledger when the feature is enabled (#1056).
+   * A second instance sharing the staging state directory fails here on the
+   * lock instead of on the first staging tool call. A failure (including a
+   * disabled feature whose config read fails) must never prevent startup.
+   */
+  private async initializeFileStaging(): Promise<void> {
+    try {
+      const settings = await getFileStagingSettings();
+      if (!settings.enabled) return;
+      // Hosted and replica deployments have no single local staging root; do
+      // not create directories or take the process lock there.
+      if (!isStagingRuntimeSupported()) {
+        logger.warn('File staging is enabled but this deployment mode does not support it');
+        return;
+      }
+      await getStagingStateStore();
+      logger.log('File staging ledger initialized');
+    } catch (error) {
+      logger.error('Failed to initialize the file staging ledger:', error);
+    }
+  }
+
   private findAndServeFrontend(): void {
     if (this.disableWeb) {
       logger.log('Web UI disabled via DISABLE_WEB=true. Server will run without frontend.');
@@ -308,6 +342,15 @@ export class AppServer {
     }
 
     this.server = null;
+
+    // Hand the staging lock back before the process exits: the next instance
+    // would otherwise refuse to start until the heartbeat staleness window.
+    try {
+      const { releaseAllStagingProcessLocks } = await import('./services/fileStaging/processLock.js');
+      await releaseAllStagingProcessLocks();
+    } catch (error) {
+      logger.error('[SHUTDOWN] Error releasing the staging lock', safeStringify({ error }));
+    }
 
     // Close database connection if in database mode
     const useDatabase =

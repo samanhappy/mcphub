@@ -18,6 +18,8 @@ jest.mock('../../src/controllers/serverController.js', () => ({
   updateServer: routeHandler,
   deleteServer: routeHandler,
   toggleServer: routeHandler,
+  updateToolFileStaging: routeHandler,
+  updateServerStaging: routeHandler,
   reloadServer: routeHandler,
   reinstallServerHandler: routeHandler,
   disconnectServerOAuth: routeHandler,

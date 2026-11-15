@@ -239,6 +239,57 @@ describe('startOnDemand lifecycle', () => {
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
   });
 
+  it('does not treat a reconnected on-demand runtime as ready', async () => {
+    // reconnectServer closes the client before rebuilding the entry; a stale
+    // `status: 'connected'` would make ensureServerReady return immediately and
+    // dispatch the next call to the closed client.
+    const serverInfo = createSleepingServerInfo();
+    (serverInfo as any).status = 'connected';
+    (serverInfo as any).client = { close: jest.fn(), callTool: jest.fn() };
+    mcpService.setServerInfosForTest([serverInfo as any]);
+
+    await mcpService.reconnectServer('demo');
+
+    // `ensureServerReady` returns early on 'connected', so the reset is what
+    // makes the next call spawn a fresh child instead of using the closed one.
+    expect(serverInfo.client).toBeUndefined();
+    expect(serverInfo.transport).toBeUndefined();
+    expect(serverInfo.status).toBe('disconnected');
+  });
+
+  it('a superseded cold start does not publish its client or error', async () => {
+    // The spawn began before a reconnect; the reconnect bumps the generation,
+    // so the late completion must close its own handles and leave the entry
+    // alone instead of resurrecting the pre-reconnect runtime.
+    const serverInfo = createSleepingServerInfo();
+    mcpService.setServerInfosForTest([serverInfo as any]);
+
+    let releaseConnect: () => void = () => undefined;
+    mockConnect.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseConnect = resolve;
+        }),
+    );
+
+    const pending = mcpService.handleCallToolRequest(
+      { params: { name: 'demo::ping', arguments: {} } },
+      { sessionId: 'session-1' },
+    );
+    // Let the spawn reach the connect await, then reconnect underneath it.
+    await new Promise((resolve) => setImmediate(resolve));
+    await mcpService.reconnectServer('demo');
+    releaseConnect();
+    await pending.catch(() => undefined);
+
+    expect(serverInfo.status).not.toBe('connected');
+    expect(serverInfo.client).toBeUndefined();
+    // The superseded spawn owns no slot any more: a later wake must be able to
+    // start a fresh spawn instead of queueing behind a dead promise.
+    expect(serverInfo.spawningPromise).toBeUndefined();
+    if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
+  });
+
   it('coalesces concurrent replica calls to a sleeping runtime and publishes the live client', async () => {
     jest.useFakeTimers();
     process.env.MCPHUB_REPLICA_MODE = 'true';

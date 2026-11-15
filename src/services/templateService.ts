@@ -384,7 +384,34 @@ function serverConfigToTemplate(config: ServerConfig): {
     envVars.push(...placeholders);
   }
 
-  if (config.tools) templateConfig.tools = { ...config.tools };
+  if (config.tools) {
+    // `fileStaging` names parameters for the staging seam; it does not grant
+    // access, so it travels with the template instead of being silently lost
+    // on export/import (#1056, R46).
+    templateConfig.tools = Object.fromEntries(
+      Object.entries(config.tools).map(([name, tool]) => {
+        const { fileStaging } = tool;
+        if (!fileStaging) return [name, { ...tool }];
+        return [
+          name,
+          {
+            ...tool,
+            fileStaging: {
+              enabled: fileStaging.enabled,
+              ...(fileStaging.inputParams ? { inputParams: [...fileStaging.inputParams] } : {}),
+              ...(fileStaging.outputParams ? { outputParams: [...fileStaging.outputParams] } : {}),
+            },
+          },
+        ];
+      }),
+    );
+  }
+  // Staging *trust* never leaves the deployment: `shared` stays behind. The
+  // adapter is exported because an enabled staged tool is invalid without it,
+  // and it grants no access on its own.
+  if (config.staging?.adapter) {
+    templateConfig.staging = { adapter: config.staging.adapter };
+  }
   if (config.prompts) templateConfig.prompts = { ...config.prompts };
   if (config.resources) templateConfig.resources = { ...config.resources };
   if (config.options) templateConfig.options = { ...config.options };

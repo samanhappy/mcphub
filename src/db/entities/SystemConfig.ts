@@ -54,6 +54,9 @@ export class SystemConfig {
   @Column({ type: 'simple-json', nullable: true })
   activityLog?: Record<string, any>;
 
+  @Column({ type: 'simple-json', nullable: true })
+  fileStaging?: import('../../types/index.js').FileStagingSettings;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

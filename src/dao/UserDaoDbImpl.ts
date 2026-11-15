@@ -16,6 +16,7 @@ export class UserDaoDbImpl implements UserDao {
 
   private toIUser(u: User): IUser {
     return {
+      id: u.id,
       username: u.username,
       userGroups: u.userGroups ?? undefined,
       password: u.password,

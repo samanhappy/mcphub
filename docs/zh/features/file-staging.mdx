@@ -1,0 +1,254 @@
+---
+title: '文件暂存'
+description: '让 stdio 工具处理客户端文件的上传副本'
+---
+
+## 概述
+
+部署在 MCPHub 后面的 stdio MCP 服务器运行在容器内。当工具接收本地路径时，该路径在 hub 上解析，而不是在发起请求的客户端机器上。文件暂存只解决其中一个窄场景：客户端需要把文件交给工具处理，再把结果取回。
+
+1. 客户端把文件副本上传到 hub；
+2. 调用时在声明过的输入参数里传入 `mcpfile://` 引用，而不是路径；
+3. hub 把引用改写成该用户暂存目录中的真实路径；
+4. 工具处理副本。反方向同样成立：客户端预留一个目标路径，工具写入后，hub 通过一次性下载链接把结果提供出去。
+
+hub 不会反向访问客户端文件系统，只处理上传后的副本。
+
+## 启用文件暂存
+
+文件暂存默认关闭，本阶段没有 Dashboard 界面。需要同时具备三部分：全局总开关、服务器的 `staging` 声明，以及按工具的启用项。
+
+### 1. 全局总开关
+
+管理员通过 system-config API 打开总开关。请求会把传入的键合并到已保存的设置上，其他设置保持不变。
+
+```bash
+curl -X PUT http://localhost:3000/api/system-config \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{"fileStaging":{"enabled":true}}'
+```
+
+`PUT /api/system-config` 对非管理员调用返回 `403`。如果 hub 部署在子路径下，请在路径前加上 `BASE_PATH`。
+
+### 2. 服务器暂存声明
+
+在服务器上声明适配器。服务器所有者可以为自己的私有服务器设置适配器；添加或移除 `shared` 信任只有管理员可以操作：
+
+```bash
+curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"adapter":"ssh"}'
+```
+
+共享、分组或公开服务器还需要在同一请求中传入 `{"shared":true}`（仅管理员），并配置带按用户槽位的 `credentialTemplate`。
+
+### 3. 按工具启用
+
+```bash
+curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"tool":"upload","enabled":true,"inputParams":["localPath"]}'
+
+curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"tool":"download","enabled":true,"outputParams":["localPath"]}'
+```
+
+`file-staging` 路由允许所有者或管理员调用。`tool` 是不带服务器前缀的工具名；省略 `inputParams`/`outputParams` 时会保留已保存的值，因此禁用工具不会丢失声明。两个 PATCH 路由都会对结果做整体校验：启用中的工具仍然要求 `staging.adapter` 和 stdio 服务器。
+
+本阶段没有用于暂存的 Dashboard 界面。仍可使用整服务器 `PUT /api/servers/:name`（`{"config": ...}`）做批量编辑，但它一旦收到 `tools` 就会替换整个工具对象，因此暂存变更应优先使用 PATCH 路由。
+
+<Warning>
+**启用某个工具的暂存会改变该服务器上所有工具的工作目录。** 只要服务器上有任意一个工具设置了 `fileStaging.enabled`，hub 就会把该服务器的每个 stdio 子进程都启动在调用者对应的暂存根目录中，而不是 hub 的工作目录。依赖相对路径、或读取 hub 旁边文件（包括 `mcp_settings.json`）的工具会因此看到不同的目录，即使当前调用的工具本身没有启用暂存。只打开全局总开关不会改变工作目录，按工具启用才会。已运行的子进程会保留旧的工作目录，直到被重建。两个暂存 PATCH 路由与整服务器保存都会重连服务器，因此启用第一个暂存工具会立即生效：路由会（有界地）等待子进程连接，若本次重启失败则返回 500。按需启动（startOnDemand）的服务器是例外——它在下次工具调用时才启动，路由只能确认配置已保存；只有直接改数据库或设置文件的编辑才需要手动重载（`POST /api/servers/:name/reload`）。
+</Warning>
+
+<Warning>
+**id 仍是旧格式的服务器必须先保存一次。** 在稳定 id 机制之前创建的服务器使用由名称派生的占位 id，而不是持久化的 UUID。在此之前，暂存会拒绝该服务器并记录警告；通过任意编辑保存一次服务器即可持久化随机 UUID。运行中的实例可能仍持有旧 id，因此应用暂存工作目录的同一个重载操作也会读取到新的 id。
+</Warning>
+
+## 前提条件
+
+- 服务器必须是 **stdio** 类型，HTTP/SSE 和 OpenAPI 服务器无法使用暂存。
+- 服务器声明 `staging.adapter: "ssh"`，每个需要暂存的工具单独开启 `fileStaging`。
+- 目前只验证了固定版本 `@fangjunjie/ssh-mcp-server@1.11.0` 这一种适配器配置。启动命令必须是 `npx`（或 `node`），且该精确版本说明必须是第一个位置参数；连接后的服务器必须报告版本 `1.11.0`。其他包、版本或启动方式都会保持关闭。
+- 解析后的命令行会按每个用户检查 SSH 参数白名单。会扩大子进程本地根目录的参数——`--allowed-local-paths`、`--config-file`，以及携带同一设置的 `--ssh`/`--ssh-config-file` 连接对象——会使该服务器的暂存被关闭。
+- 共享、分组或公开服务器还需要 `"staging": { "adapter": "ssh", "shared": true }` 和带按用户槽位的 `credentialTemplate`；两者缺一，服务器暂存都会被拒绝。
+- 需要下载链接时，必须配置 `install.baseUrl`（或 `INSTALL_BASE_URL`），因为远程客户端无法解析 hub 的 `localhost`。
+
+## 配置
+
+文件模式下，同样的配置在 `mcp_settings.json` 中如下。通过 API 时，`PATCH /api/servers/:name/staging` 设置 `staging` 对象，`PATCH /api/servers/:name/file-staging` 设置单个工具的 `fileStaging` 对象。
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@fangjunjie/ssh-mcp-server@1.11.0", "--host", "example.com", "--username", "ops"],
+      "staging": { "adapter": "ssh" },
+      "tools": {
+        "upload": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "inputParams": ["localPath"] }
+        },
+        "download": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "outputParams": ["localPath"] }
+        }
+      }
+    }
+  }
+}
+```
+
+`inputParams` 列出可以携带“hub 已持有的文件”引用的参数；`outputParams` 列出工具会写出、由 hub 登记的目标参数。方向用反、写在未声明的参数里，或在一次调用中重复使用同一个引用，都会在工具执行前被拒绝。同一个参数不能同时出现在两个列表中。
+
+只有 `ready` 引用能作为输入，只有 `reserved` 引用能作为输出。能拿到工具 schema 时，声明过的参数必须存在于该 schema 中，且类型必须是字符串。`hiddenParams` 不能与 `inputParams`/`outputParams` 重叠。启用了 `fileStaging` 却没有任何参数，会在保存时被拒绝。
+
+配置模板和分组模板不会导出服务器的 `staging` 声明或按工具的 `fileStaging`；导入模板本身不会启用暂存。
+
+## 方向
+
+引用的方向取决于数据流的方向，而不只是工具名称。两次 SSH 调用中的 `remotePath` 都是普通的远端参数，永远不是暂存参数。
+
+| 方向 | 示例调用 | 参数 | 声明位置 | hub 的行为 |
+| --- | --- | --- | --- | --- |
+| 输入 | `ssh upload` | `localPath` | `inputParams` | 把 `ready` 引用替换为工具要读取的暂存副本路径 |
+| 输出 | `ssh download` | `localPath` | `outputParams` | 把 `reserved` 引用替换为工具要写入的目标路径，然后完成登记 |
+
+### 输入：把上传的文件交给工具
+
+```text
+mcphub_file_upload { filename: "report.pdf", content_base64: "..." }
+  -> { "ref": "mcpfile://0f1d...", "state": "ready", "size": 12345 }
+
+ssh-upload { localPath: "mcpfile://0f1d...", remotePath: "/srv/in/report.pdf" }
+  -> hub 把 localPath 改写成 <staging-root>/<principal>/<uuid>/content
+  -> 工具把该暂存副本上传到 remotePath
+```
+
+`remotePath` 仍是普通的远端路径，不会被改写，也不应写进 `inputParams`。
+
+### 输出：让工具写出文件并由 hub 提供下载
+
+```text
+mcphub_file_upload { filename: "report.pdf" }
+  -> { "ref": "mcpfile://8a2e...", "state": "reserved" }
+
+ssh-download { remotePath: "/srv/out/report.pdf", localPath: "mcpfile://8a2e..." }
+  -> hub 把 localPath 改写成调用者根目录下预留的目标路径
+  -> 工具把远端文件写到那里；hub 计算哈希并把引用标记为 ready
+
+mcphub_file_status { ref: "mcpfile://8a2e..." }
+  -> { "ref": "mcpfile://8a2e...", "state": "ready", "size": 23456, "sha256": "...", "expiresAt": "..." }
+
+mcphub_file_download { ref: "mcpfile://8a2e..." }
+  -> { "downloadUrl": "https://hub.example/staging/download/<token>", "expiresAt": "..." }
+```
+
+客户端看到的工具名带有服务器名和配置的名称分隔符（服务器 `ssh` 下是 `ssh-upload`）；`tools` 的键是不带前缀的工具名（`upload`、`download`）。
+
+## 内置工具
+
+当调用者能解析到真实用户时，对于至少暴露一个已启用暂存服务器的路由，hub 会注入三个虚拟工具：
+
+| 工具 | 参数 | 返回 |
+| --- | --- | --- |
+| `mcphub_file_upload` | `filename`（必填）、`content_base64`、`server`、`allow_zero_byte` | 带内容时返回 `{ ref, state: "ready", size }`；不带内容时返回 `{ ref, state: "reserved" }`。 |
+| `mcphub_file_status` | `ref`（必填） | `{ ref, state, size, sha256, expiresAt }`（文件就绪后才有 `sha256`）。 |
+| `mcphub_file_download` | `ref`（必填） | 就绪文件返回 `{ ref, downloadUrl, expiresAt }`。 |
+
+- `filename` 只用于展示，永远不是路径。目录部分、NUL、CR、LF、引号和反斜杠会被去掉，名称截断到 255 个 UTF-8 字节。
+- `content_base64` 是内联上传。要预留输出目标，请完全省略该字段；空字符串会被拒绝。
+- 只有当路由暴露多个已启用暂存的服务器时才需要 `server`，且必须是其中之一。
+- `allow_zero_byte`（默认 `false`）允许零字节的工具输出变成就绪。它只对输出引用生效。
+- `status` 和 `download` 只能看到调用者拥有的引用；他人的或缺失的引用返回相同的未找到错误。
+- `download` 要求引用处于 `ready` 状态；`reserved`、`failed` 或已过期的引用会被拒绝。返回的链接一次性且短期有效；重试需要重新调用 `mcphub_file_download`。
+- 这些工具只在存在暂存目标的路由中列出，也不会通过 `$smart` 路由暴露。
+
+### 保留命名空间
+
+任何以 `mcphub_file_` 开头的工具名都归 hub 保留，配置中的 `tools` 条目也不允许使用该前缀。如果上游服务器仍然暴露了同前缀的工具，hub 的定义优先：上游工具不会出现在列表中，同名调用由 hub 处理或拒绝，永远不会转发给上游服务器。
+
+## 下载
+
+`mcphub_file_download` 使用 `install.baseUrl` 加上配置的 `basePath` 生成链接：
+
+```text
+${basePath}/staging/download/:token
+```
+
+`BASE_PATH` 默认为空时，路径是 `/staging/download/:token`。该路由直接注册在 app 上，位于 `/api` 的 Dashboard 认证中间件之外：持有 token 即代表拥有该能力，因此客户端不需要 Dashboard 会话即可取文件。如果 hub 部署在子路径下，请在路径前加上 `BASE_PATH`。
+
+该路由只接受 `GET`（`HEAD` 返回 `405`）。token 随机生成、按哈希存储，在 `downloadTtlSeconds` 后过期，并在第一次请求时原子消费；未知、已使用或已过期的 token 都返回相同的 `404`。响应始终为附件下载，文件名经过清理，并带有 `Content-Type: application/octet-stream`、`X-Content-Type-Options: nosniff`、`Cache-Control: private, no-store`，不会内联渲染。
+
+如果 `install.baseUrl` 缺失，或仍指向内置的 `http://localhost:3000` 默认值，`mcphub_file_download` 会拒绝生成链接，因为远程 MCP 客户端无法解析该地址。请在设置中配置公网地址，或使用 `INSTALL_BASE_URL`。
+
+## 引用生命周期与重启
+
+引用会经过 `reserved`、`ready`、`failed` 和 `expired` 四种状态：
+
+- `reserved`：不带内容调用 `mcphub_file_upload` 时创建的零字节目标，不能作为输入。
+- `ready`：已登记内容，带有大小和 SHA-256，只读，可作为输入或下载。
+- `failed`：终态。调用失败、抛错、超时，或产出的文件缺失、超限、（未设置 `allow_zero_byte` 时）为空。
+- `expired`：超过引用 TTL。
+
+输出引用会在子进程运行前被独占租用。另一个调用使用同一个预留目标时会直接返回“忙”，不会执行工具。工具在返回后异步写入不受支持：hub 在调用返回时完成登记。
+
+重启和崩溃行为由账本决定：
+
+- 停止 hub 时仍持有租约的 `reserved` 引用会在启动时变为 `failed`，租约和配额预留被清除，其 UUID 永远不会被复用。被崩溃调用租用的引用不会再次出租、覆盖或提供下载，即使残留的子进程已经写入了字节。
+- 从未被租用的 `reserved` 引用会跨重启保留，并在 TTL 到期前继续作为输出目标可用。
+- `ready` 内容及其 TTL 会跨重启保留。读钉不会：启动时会被清除，因为没有任何读取者能活过进程重启。
+
+暂存内容保存在本地磁盘。无论文件模式还是数据库模式，一个状态目录都只允许一个 hub 写入者；存储在暂存初始化时获取锁文件（总开关开启时即启动阶段），只要锁仍新鲜，第二个进程就无法初始化暂存（持有者每 30 秒刷新一次，超过两分钟的锁会被视为过期）。副本模式（`MCPHUB_REPLICA_MODE=true`）会关闭暂存，第二个 hub 进程也不得共享同一个暂存目录。
+
+## 配置项
+
+设置位于 `systemConfig.fileStaging`，通过 `PUT /api/system-config`（仅管理员）写入；文件模式也可以在 `mcp_settings.json` 中设置同一个对象。部分更新会合并到已保存的值上。默认值：
+
+| 配置项 | 默认值 | 含义 |
+| --- | --- | --- |
+| `enabled` | `false` | 全局总开关。 |
+| `maxFileBytes` | 100 MiB | 单个工具输出的大小上限，也是内联上传的上限。 |
+| `inlineMaxBytes` | 1 MiB | 内联 `content_base64` 上限。实际生效值是本值、`maxFileBytes`、JSON 请求体上限的 75% 减去 4 KiB 三者中的最小值；默认 1 MB 请求体下约为 764 KiB。 |
+| `perUserQuotaBytes` | 1 GiB | 每个用户的配额。输出租约会预留 `maxFileBytes`，直到调用完成登记。 |
+| `globalQuotaBytes` | 10 GiB | 整个 hub 的配额。 |
+| `ttlHours` | 24 | 引用及其内容的生命周期，范围 1 到 8760 小时。 |
+| `downloadTtlSeconds` | 300 | 下载链接有效期，范围 10 到 3600 秒。 |
+| `maxFilesPerUser` | 100 | 每个用户同时存在的引用上限。 |
+| `cleanupIntervalMinutes` | 15 | 过期引用清理周期，范围 1 到 1440 分钟。 |
+
+暂存内容位于 `data/uploads/staging`（可用 `MCPHUB_STAGING_ROOT` 覆盖）；文件模式账本和进程锁位于 `data/staging-state`（`MCPHUB_STAGING_STATE_DIR`）。两者都应放在持久卷上。账本是权威数据；引用目录里的 `meta.json` 只是缓存。
+
+在 `DB_SYNCHRONIZE=false` 的部署中，数据库模式启用暂存前需先执行 `docs/migrations/0006-file-staging.sql`。数据库模式把引用和 token 保存在 `file_staging_refs` 和 `file_staging_tokens` 中，内容仍然位于本地暂存根目录。
+
+## 认证
+
+暂存调用必须解析到真实用户账号。以下调用者会在创建或改写引用之前被拒绝：
+
+- system bearer key，即使该 key 指定了 owner；
+- 匿名调用者和 `skipAuth` 的 `guest` 用户；
+- 标记为 `credentialEligible: false` 的用户，以及已不存在的用户；
+- 副本模式下的请求。
+
+引用归该用户所有。其他用户得到的错误与引用从未存在时相同。下载路由是例外：它使用一次性 token 而不是会话进行认证，因为取文件的客户端可能不持有 Dashboard 会话。
+
+## 安全边界
+
+暂存让 hub 复制文件，而不是把 hub 的文件系统访问权授予客户端。边界由 hub 侧的所有权检查和受信任 SSH 适配器自身的按用户根目录检查共同保证。
+
+- 工具子进程与 hub 以**同一操作系统用户**运行在**同一容器**中。用户之间没有操作系统级隔离。
+- 按用户的工作目录和暂存根目录是**正确性边界**，不是安全边界。它们保证引用及其相对路径绑定到正确的用户，并阻止受信任适配器解析到该根目录之外；但无法阻止能直接读取文件系统的工具。
+- 因此，共享或公开服务器**不是**其用户之间的隔离边界。整个 hub 容器也不是：同一部署中另一个具备 shell 或文件系统访问权限的 stdio 服务器可以读取暂存目录和账本。请限制这类服务器的使用范围，或接受该风险。
+- 引用是绑定到单个用户和单个服务器的能力，下载链接是一次性能力。两者都应视为机密。
+- 暂存不是透明访问：只有声明过的参数会被改写。客户端在其他参数中直接传入的原始路径仍然在容器内解析，hub 不会扫描或改写工具响应。
+
+## 尚未包含
+
+暂存目前不提供浏览器上传页面、S3/MinIO 或多节点存储、响应路径自动识别或自动注入 `downloadUrl`、虚拟工具的 `$smart` 暴露、MCP Apps 文件 API、已签发引用的撤销路径、非 SSH 适配器，以及操作系统级隔离。直接调用、嵌套调用与错误记录都会把引用排除在活动记录之外；经 hub 不检查的通道（例如资源读取）传到上游工具的内容不在该保证范围内。本阶段也没有用于暂存的 Dashboard 编辑器；配置通过上述 PATCH 路由完成。

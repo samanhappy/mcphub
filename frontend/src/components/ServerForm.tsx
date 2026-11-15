@@ -175,6 +175,10 @@ const ServerForm = ({
     // Proxychains proxy config: round-trip the stored value so editing the
     // server does not silently drop it (there is no in-form editor for it).
     proxy: initialData?.config?.proxy,
+    // Per-tool file staging and the server staging declaration (#1056): no
+    // in-form editors in PR1, so round-trip them through the payload.
+    tools: initialData?.config?.tools,
+    staging: initialData?.config?.staging,
     // On-demand spawning initialization
     startOnDemand: initialData?.config?.startOnDemand === true,
     idleTimeoutMs: initialData?.config?.idleTimeoutMs ?? 300000,

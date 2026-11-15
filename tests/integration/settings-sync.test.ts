@@ -11,10 +11,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { getMetadataArgsStorage } from 'typeorm';
 import { Server } from '../../src/db/entities/Server.js';
+import { SystemConfig } from '../../src/db/entities/SystemConfig.js';
 import { CredentialBinding } from '../../src/db/entities/CredentialBinding.js';
 import { Group } from '../../src/db/entities/Group.js';
 import { initializeDatabaseMode } from '../../src/utils/migration.js';
 import { syncSettingsToDatabase } from '../../src/utils/settingsSync.js';
+import { legacyServerId } from '../../src/utils/serverIdentity.js';
 
 let settingsPath: string;
 const servers = new Map<string, Record<string, unknown>>();
@@ -23,6 +25,7 @@ let failGroupSave = false;
 let failDelete = false;
 let vectorTableExists = true;
 const bindings = new Map<string, Record<string, unknown>>();
+const systemConfigs = new Map<string, Record<string, unknown>>();
 const embeddings = new Map<string, Record<string, unknown>>();
 const query = jest.fn(async (sql: string, parameters?: string[]) => {
   if (sql.startsWith('SELECT')) return [{ exists: vectorTableExists }];
@@ -40,6 +43,7 @@ const query = jest.fn(async (sql: string, parameters?: string[]) => {
 const saveDeclaration = jest.fn();
 const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => {
   const beforeServers = new Map(servers);
+  const beforeSystemConfigs = new Map(systemConfigs);
   const beforeGroups = new Map(groups);
   const beforeBindings = new Map(bindings);
   const beforeEmbeddings = new Map(embeddings);
@@ -47,7 +51,14 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
     await run({
       query,
       getRepository: (entity: unknown) => {
-        const rows = entity === Server ? servers : entity === Group ? groups : bindings;
+        const rows =
+          entity === Server
+            ? servers
+            : entity === Group
+              ? groups
+              : entity === SystemConfig
+                ? systemConfigs
+                : bindings;
         return {
           metadata: {
             columns: getMetadataArgsStorage()
@@ -66,15 +77,28 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
             }
           },
           update: async (criteria: Record<string, unknown>, patch: Record<string, unknown>) => {
+            // TypeORM rejects empty criteria; a fake that accepts it hides a
+            // remap that never writes (the maintainer hit this on PostgreSQL).
+            if (Object.keys(criteria).length === 0)
+              throw new Error('Empty criteria(s) are not allowed for the update method.');
             for (const [key, row] of rows) {
               if (Object.entries(criteria).every(([field, value]) => row[field] === value))
                 rows.set(key, { ...row, ...patch });
             }
           },
           findOneBy: async ({ name }: { name: string }) => rows.get(name) ?? null,
+          findOne: async () => [...rows.values()][0] ?? null,
           create: (value: Record<string, unknown>) => value,
           save: async (value: Record<string, unknown>) => {
             saveDeclaration(entity);
+            // Postgres rejects a second row with the same name, which is what
+            // makes "save the rotated id" fail before the remap can run.
+            if (entity === Server) {
+              const clash = [...servers.values()].find(
+                (row) => row.name === value.name && row.id !== value.id,
+              );
+              if (clash) throw new Error('duplicate key value violates unique constraint "servers_name"');
+            }
             if (entity === Group && failGroupSave) throw new Error('DB write failed');
             rows.set(value.name as string, { id: value.id ?? `id-${value.name}`, ...value });
           },
@@ -89,6 +113,8 @@ const transaction = jest.fn(async (run: (manager: unknown) => Promise<void>) => 
     beforeBindings.forEach((value, key) => bindings.set(key, value));
     beforeEmbeddings.forEach((value, key) => embeddings.set(key, value));
     beforeServers.forEach((value, key) => servers.set(key, value));
+    systemConfigs.clear();
+    beforeSystemConfigs.forEach((value, key) => systemConfigs.set(key, value));
     beforeGroups.forEach((value, key) => groups.set(key, value));
     throw error;
   }
@@ -211,6 +237,43 @@ test('upserts by name, retains IDs and unrelated entries, clears removed fields 
   expect([...servers.entries()]).toEqual(snapshot);
   expect(servers.get('ui-only')).toEqual({ id: 'keep', name: 'ui-only' });
   expect(fs.readFileSync(settingsPath, 'utf8')).toBe(before);
+});
+
+test('rotates an existing legacy id in place and remaps its references (#1056)', async () => {
+  // The maintainer reproduced a unique-name violation here: saving the new id
+  // inserted a second row before the references could be remapped.
+  servers.set('remote', { id: legacyServerId('remote'), name: 'remote' });
+  systemConfigs.set('default', {
+    id: 'default',
+    toolPolicies: [{ id: 'p1', serverId: legacyServerId('remote'), tools: ['search'], action: 'deny' }],
+    network: { fakeIpExceptions: [{ serverId: legacyServerId('remote'), host: 'h' }] },
+  });
+  write({ mcpServers: { remote } });
+
+  await syncSettingsToDatabase();
+
+  expect(servers.size).toBe(1);
+  const stored = servers.get('remote')!;
+  expect(stored.id).not.toBe(legacyServerId('remote'));
+  const config = systemConfigs.get('default')! as any;
+  expect(config.toolPolicies[0].serverId).toBe(stored.id);
+  expect(config.network.fakeIpExceptions[0].serverId).toBe(stored.id);
+});
+
+test('gives a newly synced server a UUID instead of a name-derived placeholder (#1056 R14)', async () => {
+  write({ mcpServers: { remote } });
+
+  await syncSettingsToDatabase();
+
+  const stored = servers.get('remote')!;
+  expect(stored.id).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+  );
+  expect(stored.id).not.toBe(legacyServerId('remote'));
+
+  // The generated id is stable across later syncs (staging refs bind to it).
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')!.id).toBe(stored.id);
 });
 
 test('preserves runtime OAuth on unchanged declarations and invalidates it when declarations change', async () => {
