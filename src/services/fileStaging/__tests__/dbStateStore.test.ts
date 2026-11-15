@@ -266,4 +266,19 @@ describe('DbStagingStateStore', () => {
     expect(order[0]).toBe('lock');
     expect(order).toContain('usage');
   });
+
+  it('refuses to start alongside another hub process on the same state dir', async () => {
+    const locked = new DbStagingStateStore(new FakeRepository(), {
+      rootDir: path.join(path.dirname(rootDir), 'staging-locked'),
+      stateDir: path.join(path.dirname(rootDir), 'state-locked'),
+      disableLock: false,
+    });
+    await locked.init();
+    const second = new DbStagingStateStore(new FakeRepository(), {
+      rootDir: path.join(path.dirname(rootDir), 'staging-locked-2'),
+      stateDir: path.join(path.dirname(rootDir), 'state-locked'),
+      disableLock: false,
+    });
+    await expect(second.init()).rejects.toMatchObject({ code: 'locked' });
+  });
 });

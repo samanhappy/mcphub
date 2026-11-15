@@ -53,7 +53,9 @@ describe('staged file download endpoint', () => {
     expect(response.headers['content-disposition']).toContain("filename*=UTF-8''");
     expect(response.headers['content-disposition']).not.toMatch(/["\\]final["\\]/);
     expect(response.headers['x-content-type-options']).toBe('nosniff');
-    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(response.headers['x-robots-tag']).toBe('noindex');
     expect(response.body.toString('utf8')).toBe('download body');
   });
 

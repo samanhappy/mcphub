@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { FileStagingSettings } from '../../types/index.js';
 import {
   assertDiskCapacity,
+  assertNoSymlinkComponents,
   isValidOwnerHash,
   contentPath,
   digestFile,
@@ -22,6 +23,7 @@ import {
   writeFileAtomic,
 } from './paths.js';
 import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
+import { acquireStagingProcessLock } from './processLock.js';
 import {
   type CreateRefInput,
   type LeaseGrant,
@@ -72,16 +74,6 @@ const emptyDocument = (): StagingStateDocument => ({ version: 1, refs: {}, token
 
 const sha256 = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 
-const isLivePid = (pid: number): boolean => {
-  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
-  }
-};
-
 export interface FileStagingStateStoreOptions {
   rootDir?: string;
   stateDir?: string;
@@ -128,9 +120,6 @@ const isValidTokenRecord = (key: string, value: unknown): value is StagingTokenR
   );
 };
 
-/** State dirs locked by this process (see acquireProcessLock). */
-const acquiredStateDirs = new Set<string>();
-
 /**
  * Single-process JSON backend. A lockfile refuses to start when another hub
  * process owns staging: the lease model has no cross-process heartbeat, so
@@ -142,12 +131,10 @@ export class FileStagingStateStore implements StagingStateStore {
   private readonly now: () => number;
   private readonly disableLock: boolean;
   private readonly refsPath: string;
-  private readonly lockPath: string;
   private state: StagingStateDocument = emptyDocument();
   private queue: Promise<unknown> = Promise.resolve();
   private loaded = false;
   private lockHandle?: fs.FileHandle;
-  private readonly instanceId = randomUUID();
 
   constructor(options: FileStagingStateStoreOptions = {}) {
     this.rootDir = options.rootDir ?? getStagingRoot();
@@ -155,7 +142,6 @@ export class FileStagingStateStore implements StagingStateStore {
     this.now = options.now ?? (() => Date.now());
     this.disableLock = options.disableLock ?? process.env.NODE_ENV === 'test';
     this.refsPath = path.join(this.stateDir, 'refs.json');
-    this.lockPath = path.join(this.stateDir, 'staging.lock');
   }
 
   async init(): Promise<void> {
@@ -173,54 +159,7 @@ export class FileStagingStateStore implements StagingStateStore {
 
   private async acquireProcessLock(): Promise<void> {
     if (this.disableLock) return;
-    // One writer per process even when two stores are constructed: a second
-    // store would otherwise share the pid and silently take the lock over.
-    if (acquiredStateDirs.has(this.stateDir)) {
-      throw new StagingError(
-        'locked',
-        'File staging is already initialized in this process for the same state directory',
-      );
-    }
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        // One syscall creates and writes the pid; a concurrent reader never
-        // sees an empty lockfile.
-        await fs.writeFile(this.lockPath, `${process.pid}:${this.instanceId}`, {
-          flag: 'wx',
-          mode: 0o600,
-        });
-        acquiredStateDirs.add(this.stateDir);
-        return;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-        const raw = await fs.readFile(this.lockPath, 'utf8').catch(() => '');
-        const [pidRaw] = raw.trim().split(':');
-        const owner = Number.parseInt(pidRaw, 10);
-        // The default container runs node as PID 1, so a restart reuses the pid.
-        // A same-pid lock can only belong to a previous instance of this process:
-        // our own store is blocked earlier by acquiredStateDirs.
-        if (Number.isFinite(owner) && owner === process.pid) {
-          await fs.rm(this.lockPath, { force: true });
-          continue;
-        }
-        if (Number.isFinite(owner) && isLivePid(owner)) {
-          throw new StagingError(
-            'locked',
-            `File staging is already owned by hub process ${owner}; only one process may run staging`,
-          );
-        }
-        if (!Number.isFinite(owner)) {
-          // A truncated/empty lockfile is treated as held: deleting it could
-          // hand the ledger to a second live writer.
-          throw new StagingError(
-            'locked',
-            'The file staging lockfile is unreadable; remove it only after confirming no hub process is running',
-          );
-        }
-        await fs.rm(this.lockPath, { force: true });
-      }
-    }
-    throw new StagingError('locked', 'Unable to acquire the file staging process lock');
+    await acquireStagingProcessLock(this.stateDir);
   }
 
   private async load(): Promise<void> {
@@ -425,7 +364,11 @@ export class FileStagingStateStore implements StagingStateStore {
       if (record.ownerHash !== ownerHash) {
         throw new StagingError('not-found', 'Staging reference not found');
       }
-      return contentPath(this.rootDir, record.ownerHash, record.id);
+      const target = contentPath(this.rootDir, record.ownerHash, record.id);
+      // A tool shares this process's UID and could replace its own ref
+      // directory with a symlink; never hand out a path through one.
+      await assertNoSymlinkComponents(this.rootDir, target);
+      return target;
     });
   }
 

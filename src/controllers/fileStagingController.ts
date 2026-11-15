@@ -45,9 +45,20 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
     res.setHeader('Content-Disposition', contentDisposition(record.filename));
     res.setHeader('Content-Length', String(digest.size));
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'no-store');
+    // A staged HTML/SVG file must never run on the hub origin, and the link
+    // must not be cached or indexed by an intermediary.
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Robots-Tag', 'noindex');
     res.setHeader('Referrer-Policy', 'no-referrer');
     const handle = await fs.open(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    // The digest above is from a separate open; re-check the inode we stream so
+    // a swap between the two opens cannot serve different bytes.
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size !== digest.size) {
+      await handle.close();
+      throw new Error('staged content changed before it was streamed');
+    }
     handle.createReadStream().pipe(res);
   } catch {
     // Missing, used, and expired tokens are indistinguishable to the caller.

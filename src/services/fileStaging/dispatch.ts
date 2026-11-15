@@ -95,10 +95,12 @@ export const resolveStagedCall = async (
   // When the connected tool schema is known, a declared parameter must exist:
   // a typo would otherwise silently stage nothing until the child rejects it.
   const prefix = `${serverInfo.name}${getNameSeparator()}`;
-  const bareName = toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
-  const toolDefinition = serverInfo.tools.find(
-    (tool) => tool.name === toolName || tool.name === bareName,
-  );
+  // Runtime names may or may not carry the server prefix depending on the
+  // caller (direct API vs MCP client), so compare both sides unprefixed.
+  const bareName = (name: string): string =>
+    name.startsWith(prefix) ? name.slice(prefix.length) : name;
+  const wanted = bareName(toolName);
+  const toolDefinition = serverInfo.tools.find((tool) => bareName(tool.name) === wanted);
   const properties = toolDefinition?.inputSchema?.properties;
   if (properties && typeof properties === 'object') {
     for (const param of declared) {
@@ -126,7 +128,14 @@ export const dispatchStagedToolCall = async (
   invoke: (params: any) => Promise<any>,
   username: string | undefined,
 ): Promise<any> => {
-  const staged = await resolveStagedCall(serverInfo, toolParams?.name);
+  let staged: StagedCall | undefined;
+  try {
+    staged = await resolveStagedCall(serverInfo, toolParams?.name);
+  } catch (error) {
+    // A misdeclared staging config is a tool-level error, not a crash: the
+    // caller sees it as a failed call and other tools keep working.
+    return { isError: true, content: [{ type: 'text', text: errorText(error) }] };
+  }
   const args =
     toolParams?.arguments && typeof toolParams.arguments === 'object'
       ? toolParams.arguments

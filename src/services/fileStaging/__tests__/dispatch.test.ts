@@ -271,4 +271,33 @@ describe('staging dispatch seam', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/not allowed/i);
   });
+
+  it('checks declared parameters against the schema for a bare tool name', async () => {
+    // A direct API/controller caller passes the upstream name while the runtime
+    // lists the prefixed one; the schema check must still fire (it used to be
+    // skipped for this combination).
+    currentConfig.tools = {
+      upload: {
+        enabled: true,
+        fileStaging: { enabled: true, inputParams: ['nope'], outputParams: [] },
+      },
+    };
+    const ready = await store.createReadyRef(input(), Buffer.from('payload'));
+    const info = serverInfo();
+    info.tools = [
+      {
+        name: 'ssh-upload',
+        description: '',
+        inputSchema: { properties: { localPath: { type: 'string' } } },
+      },
+    ] as never;
+    const result = await dispatchStagedToolCall(
+      info,
+      { name: 'upload', arguments: { nope: ready.ref } },
+      async () => ({ content: [] }),
+      'alice',
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/not part of the tool input schema/i);
+  });
 });

@@ -4668,11 +4668,12 @@ const handleHubStagingCall = async (request: any, extra: any) => {
     const store = await getStagingStateStore();
     // Activity logging is deliberately bypassed (no base64/ref payloads); this
     // line is the audit trail for the hub's own tools.
+    // Metadata only: no base64 payloads, filenames or refs in the log.
     logger.log('[staging] hub tool call', {
       tool: name,
       username: principal.username,
       group,
-      ref: request?.params?.arguments?.ref,
+      hasRef: typeof request?.params?.arguments?.ref === 'string',
     });
     return await executeStagingTool(name, request?.params?.arguments ?? {}, {
       targets: targets.map((target) => ({
@@ -4690,8 +4691,15 @@ const handleHubStagingCall = async (request: any, extra: any) => {
           settings.downloadTtlSeconds,
         );
         const systemConfig = await getSystemConfigDao().get();
-        const baseUrl =
-          resolveInstallBaseUrl(systemConfig) ?? `http://localhost:${config.port}`;
+        // A remote client cannot resolve the hub's localhost: staging links
+        // require the configured install base URL (design §8.1).
+        const baseUrl = resolveInstallBaseUrl(systemConfig);
+        if (!baseUrl) {
+          throw new StagingError(
+            'invalid-ref',
+            'Downloads require a configured install.baseUrl in the hub settings',
+          );
+        }
         return {
           downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(

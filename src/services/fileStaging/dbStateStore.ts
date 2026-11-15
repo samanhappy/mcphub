@@ -8,6 +8,7 @@ import type { FileStagingRefEntity } from '../../db/entities/FileStagingRef.js';
 import type { FileStagingTokenEntity } from '../../db/entities/FileStagingToken.js';
 import {
   assertDiskCapacity,
+  assertNoSymlinkComponents,
   contentPath,
   digestFile,
   ensureDirectory,
@@ -21,6 +22,7 @@ import {
   writeFileAtomic,
 } from './paths.js';
 import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
+import { acquireStagingProcessLock } from './processLock.js';
 import type { StagingStateStore } from './stateStore.js';
 import {
   type CreateRefInput,
@@ -98,26 +100,35 @@ const isSweepable = (record: StagingRefRecord, nowIso: string): boolean => {
 
 /**
  * Database-backed staging ledger. Used in DB mode so the authoritative state
- * survives container restarts and is not tied to a single data directory;
- * staging still refuses to run alongside a second hub process.
+ * survives container restarts and is not tied to a single data directory.
+ * Staged *content* is still local, so the same process lock as the file
+ * backend keeps a second hub process off this state directory (#1056).
  */
 export class DbStagingStateStore implements StagingStateStore {
   private readonly rootDir: string;
   private readonly stateDir: string;
   private readonly now: () => number;
+  private readonly disableLock: boolean;
 
   constructor(
     private readonly repository: FileStagingRepository = new FileStagingRepository(),
-    options: { rootDir?: string; stateDir?: string; now?: () => number } = {},
+    options: {
+      rootDir?: string;
+      stateDir?: string;
+      now?: () => number;
+      disableLock?: boolean;
+    } = {},
   ) {
     this.rootDir = options.rootDir ?? getStagingRoot();
     this.stateDir = options.stateDir ?? getStagingStateDir();
     this.now = options.now ?? (() => Date.now());
+    this.disableLock = options.disableLock ?? process.env.NODE_ENV === 'test';
   }
 
   async init(): Promise<void> {
     await ensureDirectory(this.rootDir);
     await ensureDirectory(this.stateDir);
+    if (!this.disableLock) await acquireStagingProcessLock(this.stateDir);
     // A child process can outlive the hub. Never re-lease a destination whose
     // lease was still held at restart; the UUID is never reused.
     await this.repository.transaction(async (manager) => {
@@ -296,7 +307,11 @@ export class DbStagingStateStore implements StagingStateStore {
 
   async contentPathFor(ref: string, ownerHash: string): Promise<string> {
     const record = await this.getOwnedRef(ref, ownerHash);
-    return contentPath(this.rootDir, record.ownerHash, record.id);
+    const target = contentPath(this.rootDir, record.ownerHash, record.id);
+    // A tool shares this process's UID and could replace its own ref directory
+    // with a symlink; never hand the child (or a download) a path through one.
+    await assertNoSymlinkComponents(this.rootDir, target);
+    return target;
   }
 
   async acquireOutputLeases(

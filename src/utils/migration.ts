@@ -1,4 +1,3 @@
-import { legacyServerId } from './serverIdentity.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 import { isReplicaMode } from './replicaMode.js';
 import fs from 'node:fs';
@@ -153,7 +152,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             type: config.type ?? (config.url ? 'sse' : 'stdio'),
           });
           await serverRepo.create({
-            id: config.id ?? legacyServerId(name),
+            id: config.id ?? randomUUID(),
             name,
             type: config.type,
             description: config.description,

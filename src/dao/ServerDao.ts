@@ -5,7 +5,7 @@ import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
 import { randomUUID } from 'node:crypto';
-import { legacyServerId } from '../utils/serverIdentity.js';
+import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
 
 /**
  * Pagination result interface
@@ -168,7 +168,10 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
     return {
       ...existing,
       ...updates,
-      id: existing.id,
+      // A name-derived placeholder is not a stable identity: persist a random
+      // UUID on the first write so staged refs (which bind to `id`) survive a
+      // rename and cannot be inherited by a re-created server (#1056).
+      id: isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id,
       // Keep the existing name unless explicitly updating via rename
       name: updates.name ?? existing.name,
     };
@@ -407,7 +410,14 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
       throw new Error(`Server ${newName} already exists`);
     }
 
-    servers[index] = { ...servers[index], name: newName };
+    // A rename must not keep a name-derived id: after the rename it would no
+    // longer look legacy, yet it still hashes the old name (#1056).
+    const existing = servers[index];
+    servers[index] = {
+      ...existing,
+      name: newName,
+      id: isLegacyServerId(existing.id, existing.name) ? randomUUID() : existing.id,
+    };
     await this.saveAll(servers);
     return true;
   }
