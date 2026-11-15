@@ -1,4 +1,4 @@
-import { ConnectionIsNotSetError, TypeORMError } from 'typeorm';
+import { DataSource, ConnectionIsNotSetError, TypeORMError } from 'typeorm';
 
 const dataSources: Array<{
   options: Record<string, unknown>;
@@ -56,6 +56,7 @@ jest.mock('./types/postgresVectorType.js', () => ({
 }));
 
 import {
+  getDatabaseHealth,
   checkDatabaseHealth,
   closeDatabase,
   initializeDatabase,
@@ -130,8 +131,10 @@ describe('database connection recovery', () => {
       const recovery = reconnectDatabase();
       await jest.runAllTimersAsync();
 
-      await expect(recovery).resolves.toBe(dataSource);
-      expect(dataSource.initialize).toHaveBeenCalledTimes(2);
+      const recovered = await recovery;
+      expect(recovered).not.toBe(dataSource);
+      expect(recovered.isInitialized).toBe(true);
+      expect(dataSource.initialize).toHaveBeenCalledTimes(1);
       expect(dataSource.destroy).toHaveBeenCalledTimes(1);
     } finally {
       jest.useRealTimers();
@@ -226,6 +229,90 @@ describe('database connection recovery', () => {
       await expect(health).resolves.toBe(true);
       expect(dataSource.destroy).toHaveBeenCalledTimes(1);
       expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each(['initialize', 'group query', 'internal destroy', 'late rejection'])(
+    'bounds a hung %s and isolates its late completion',
+    async (stage) => {
+      jest.useFakeTimers();
+      const dataSource = await updateDataSourceConfig();
+      const synchronize = dataSource.options.synchronize;
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      if (stage === 'initialize' || stage === 'late rejection') {
+        dataSource.initialize.mockImplementationOnce(async () => {
+          await blocked;
+          if (stage === 'late rejection') throw new Error('late connection failure');
+          dataSource.isInitialized = true;
+          return dataSource;
+        });
+      } else if (stage === 'group query') {
+        dataSource.query.mockImplementationOnce(async () => {
+          await blocked;
+          return [{ exists: false }];
+        });
+      } else {
+        dataSource.query.mockRejectedValueOnce(new Error('group check failed'));
+        dataSource.destroy.mockImplementationOnce(async () => {
+          await blocked;
+          dataSource.isInitialized = false;
+        });
+      }
+      let settled = false;
+      const recovery = reconnectDatabase().then((source) => {
+        settled = true;
+        return source;
+      });
+      const waiter = reconnectDatabase();
+      try {
+        await jest.advanceTimersByTimeAsync(59999);
+        expect(settled).toBe(false);
+        expect(getDatabaseHealth().reconnecting).toBe(true);
+        await expect(checkDatabaseHealth()).resolves.toBe(false);
+        await jest.advanceTimersByTimeAsync(1 + 15000 + 3000);
+        const recovered = await recovery;
+        expect(recovered).not.toBe(dataSource);
+        expect(recovered.isInitialized).toBe(true);
+        expect(recovered.options.synchronize).toBe(synchronize);
+        await expect(waiter).resolves.toBe(recovered);
+        expect(getDatabaseHealth().reconnecting).toBe(false);
+        release();
+        await jest.runAllTimersAsync();
+        expect(recovered.isInitialized).toBe(true);
+        expect(dataSource.options.synchronize).toBe(synchronize);
+        await expect(initializeDatabase()).resolves.toBe(recovered);
+        if (stage !== 'late rejection') expect(dataSource.destroy).toHaveBeenCalled();
+      } finally {
+        release();
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it('clears shared recovery state after all attempts time out and permits a later retry', async () => {
+    jest.useFakeTimers();
+    const factory = jest.mocked(DataSource).getMockImplementation()!;
+    const source = await updateDataSourceConfig();
+    source.initialize.mockReturnValueOnce(new Promise(() => {}));
+    for (let i = 0; i < 4; i++) {
+      jest.mocked(DataSource).mockImplementationOnce((options) => {
+        const next = factory(options);
+        jest.mocked(next.initialize).mockReturnValueOnce(new Promise(() => {}));
+        return next;
+      });
+    }
+    try {
+      const recovery = expect(reconnectDatabase()).rejects.toThrow('initialization timed out');
+      await jest.advanceTimersByTimeAsync(5 * (60000 + 15000) + 45000);
+      await recovery;
+      expect(getDatabaseHealth()).toMatchObject({ healthy: false, reconnecting: false });
+      await expect(checkDatabaseHealth()).resolves.toBe(true);
+      expect(getDatabaseHealth()).toMatchObject({ healthy: true, reconnecting: false });
     } finally {
       jest.useRealTimers();
     }

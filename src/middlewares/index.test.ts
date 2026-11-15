@@ -217,4 +217,19 @@ describe('initMiddlewares', () => {
     expect(auth).toHaveBeenCalled();
     expect(userContextMiddleware).toHaveBeenCalled();
   });
+
+  it.each(['/health', '/livez', '/readyz'])(
+    'lets %s reach its handler without reading unavailable configuration',
+    async (path) => {
+      mockGetSystemConfig.mockImplementationOnce(() => new Promise(() => {}));
+      const app = { use: jest.fn() } as any;
+      initMiddlewares(app);
+      const next = jest.fn();
+      await app.use.mock.calls[1][0]({ path }, {}, next);
+      expect(mockGetSystemConfig).not.toHaveBeenCalled();
+      expect(mockGetCachedSystemConfig).not.toHaveBeenCalled();
+      expect(mockExpressJson).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledTimes(1);
+    },
+  );
 });

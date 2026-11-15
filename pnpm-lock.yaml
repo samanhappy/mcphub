@@ -26,7 +26,7 @@ overrides:
   flatted@3.3.3: 3.4.2
   glob@10.4.5: 10.5.0
   handlebars@4.7.8: 4.7.9
-  hono: 4.13.11
+  hono: 4.13.16
   ajv@6.12.6: 6.14.0
   ajv@8.17.1: 8.18.0
   baseline-browser-mapping: 2.11.9
@@ -71,7 +71,7 @@ importers:
         version: 2.1.0(patch_hash=079c63400aa7d0a113255c26cee3b9b6239327d2bb468e1930f871a1e31b57be)
       '@modelcontextprotocol/node':
         specifier: ^2.1.0
-        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
+        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.16)
       '@modelcontextprotocol/server':
         specifier: ^2.1.0
         version: 2.3.0
@@ -139,8 +139,8 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
       hono:
-        specifier: 4.13.11
-        version: 4.13.11
+        specifier: 4.13.16
+        version: 4.13.16
       i18next:
         specifier: ^25.5.0
         version: 25.6.0(typescript@5.9.3)
@@ -1043,7 +1043,7 @@ packages:
     resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@huggingface/tokenizers@0.2.0':
     resolution: {integrity: sha512-LidMHe1FpcSYH4vcSjXooda34pC0M8m1gmDOv7SQi6Iv+ib1zX7J3sHBCC9/3FPCkn2k1b55FneVqMRxrr99pg==}
@@ -1233,7 +1233,7 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@modelcontextprotocol/server': ^2.1.0
-      hono: 4.13.11
+      hono: 4.13.16
     peerDependenciesMeta:
       hono:
         optional: true
@@ -3429,8 +3429,8 @@ packages:
   hast-util-whitespace@3.0.0:
     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}
 
-  hono@4.13.11:
-    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -6100,9 +6100,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@hono/node-server@1.19.17(hono@4.13.11)':
+  '@hono/node-server@1.19.17(hono@4.13.16)':
     dependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@huggingface/tokenizers@0.2.0': {}
 
@@ -6440,16 +6440,16 @@ snapshots:
     dependencies:
       zod: 4.6.6
 
-  '@modelcontextprotocol/node@2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)':
+  '@modelcontextprotocol/node@2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.16)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.11)
+      '@hono/node-server': 1.19.17(hono@4.13.16)
       '@modelcontextprotocol/server': 2.3.0
     optionalDependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.6.6)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.11)
+      '@hono/node-server': 1.19.17(hono@4.13.16)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -6459,7 +6459,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.3.0(express@5.2.1)
-      hono: 4.13.11
+      hono: 4.13.16
       jose: 6.2.4
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -8669,7 +8669,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.5
 
-  hono@4.13.11: {}
+  hono@4.13.16: {}
 
   html-escaper@2.0.2: {}
 

@@ -15,7 +15,6 @@ describe('SDK v2 with legacy protocol behavior', () => {
     requests.length = 0;
     listTools.mockReset().mockResolvedValue({
       tools: [{ name: 'echo', inputSchema: { type: 'object' } }],
-      nextCursor: 'second-page',
     });
     callTool.mockReset().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
     server = new Server(
@@ -27,11 +26,10 @@ describe('SDK v2 with legacy protocol behavior', () => {
     );
     server.setRequestHandler('tools/list', listTools);
     server.setRequestHandler('tools/call', callTool);
-    server.setRequestHandler('prompts/list', async () => ({ prompts: [], nextCursor: 'more' }));
-    server.setRequestHandler('resources/list', async () => ({ resources: [], nextCursor: 'more' }));
+    server.setRequestHandler('prompts/list', async () => ({ prompts: [] }));
+    server.setRequestHandler('resources/list', async () => ({ resources: [] }));
     server.setRequestHandler('resources/templates/list', async () => ({
       resourceTemplates: [],
-      nextCursor: 'more',
     }));
     client = new LegacyMcpClient(
       { name: 'mcphub', version: '1' },
@@ -75,7 +73,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
     expect(remainingListTtl([newest.tools], now, now)).toBe(5000);
   });
 
-  it('tracks all four list envelopes and refuses TTL on incomplete pages', async () => {
+  it('tracks all four list envelopes and refuses cyclic pagination', async () => {
     listTools.mockResolvedValue({ tools: [], ttlMs: 60000 });
     server.setRequestHandler('prompts/list', async () => ({ prompts: [], ttlMs: 60000 }));
     server.setRequestHandler('resources/list', async () => ({ resources: [], ttlMs: 60000 }));
@@ -92,8 +90,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
     const now = performance.now();
     expect(remainingListTtl(snapshots, now, now)).toBe(5000);
     listTools.mockResolvedValue({ tools: [], ttlMs: 60000, nextCursor: 'more' });
-    const partial = await client.listTools({});
-    expect(remainingListTtl([partial.tools], now, performance.now())).toBe(0);
+    await expect(client.listTools({})).rejects.toThrow('Invalid tools pagination');
   });
 
   it('revokes discovery freshness while a list-change refresh is still running', async () => {
@@ -132,13 +129,77 @@ describe('SDK v2 with legacy protocol behavior', () => {
     expect(remainingListTtl([fresh.tools], now, performance.now())).toBe(0);
   });
 
-  it('keeps initialize/initialized and single-page discovery for every list method', async () => {
+  it.each([
+    ['tools/list', 'tools', (entry: LegacyMcpClient) => entry.listTools({})],
+    ['prompts/list', 'prompts', (entry: LegacyMcpClient) => entry.listPrompts({})],
+    ['resources/list', 'resources', (entry: LegacyMcpClient) => entry.listResources({})],
+    [
+      'resources/templates/list',
+      'resourceTemplates',
+      (entry: LegacyMcpClient) => entry.listResourceTemplates({}),
+    ],
+  ] as const)(
+    'reads every page of %s, including empty intermediate pages',
+    async (method, field, list) => {
+      const cursors: unknown[] = [];
+      const tool = {
+        name: 'last-page',
+        ...(field === 'tools' ? { inputSchema: { type: 'object' } } : {}),
+        ...(field === 'resources' ? { uri: 'test://last-page' } : {}),
+        ...(field === 'resourceTemplates' ? { uriTemplate: 'test://{name}' } : {}),
+      };
+      server.setRequestHandler(method, async (request) => {
+        const cursor = request.params?.cursor;
+        cursors.push(cursor);
+        if (!cursor) return { [field]: [tool], nextCursor: 'page-2', ttlMs: 60000 };
+        if (cursor === 'page-2') return { [field]: [], nextCursor: 'page-3' };
+        return { [field]: [tool] };
+      });
+      const result = await list(client);
+      expect(result).toMatchObject({ [field]: [tool, tool] });
+      expect(result.nextCursor).toBeUndefined();
+      expect(cursors).toEqual([undefined, 'page-2', 'page-3']);
+      const now = performance.now();
+      expect(
+        remainingListTtl([(result as Record<string, unknown>)[field] as object], now, now),
+      ).toBe(0);
+    },
+  );
+
+  it('rejects excessive pagination instead of publishing a truncated list', async () => {
+    let page = 0;
+    listTools.mockImplementation(async () => ({ tools: [], nextCursor: String(++page) }));
+    await expect(client.listTools()).rejects.toThrow('Invalid tools pagination');
+    expect(listTools).toHaveBeenCalledTimes(101);
+  });
+
+  it('preserves request options and rejects a failed later page', async () => {
+    const failure = new Error('page failed');
+    const request = jest.spyOn(client, 'request');
+    listTools.mockResolvedValueOnce({ tools: [], nextCursor: 'page-2' });
+    listTools.mockRejectedValueOnce(failure);
+    const options = { timeout: 1234, signal: new AbortController().signal };
+    await expect(client.listTools({ cursor: 'start' }, options)).rejects.toThrow('page failed');
+    expect(request).toHaveBeenNthCalledWith(
+      1,
+      { method: 'tools/list', params: { cursor: 'start' } },
+      options,
+    );
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      { method: 'tools/list', params: { cursor: 'page-2' } },
+      options,
+    );
+    request.mockRestore();
+  });
+
+  it('keeps initialize/initialized and unpaginated discovery for every list method', async () => {
     expect(requests).toEqual(['initialize', 'notifications/initialized']);
     expect(client.getProtocolEra()).toBe('legacy');
-    expect((await client.listTools({})).nextCursor).toBe('second-page');
-    expect((await client.listPrompts({})).nextCursor).toBe('more');
-    expect((await client.listResources({})).nextCursor).toBe('more');
-    expect((await client.listResourceTemplates({})).nextCursor).toBe('more');
+    expect((await client.listTools({})).nextCursor).toBeUndefined();
+    expect((await client.listPrompts({})).nextCursor).toBeUndefined();
+    expect((await client.listResources({})).nextCursor).toBeUndefined();
+    expect((await client.listResourceTemplates({})).nextCursor).toBeUndefined();
     expect(listTools).toHaveBeenCalledTimes(1);
     expect(requests).toEqual([
       'initialize',
@@ -150,7 +211,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
     ]);
   });
 
-  it('retains output validation after single-page discovery', async () => {
+  it('retains output validation for tools discovered on later pages', async () => {
     listTools.mockResolvedValue({
       tools: [
         {
@@ -164,6 +225,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
         },
       ],
     });
+    listTools.mockResolvedValueOnce({ tools: [], nextCursor: 'page-2' });
     await client.listTools();
     callTool.mockResolvedValue({ content: [], structuredContent: { value: 'invalid' } });
     await expect(client.callTool({ name: 'echo' })).rejects.toMatchObject({ code: -32602 });
@@ -171,7 +233,7 @@ describe('SDK v2 with legacy protocol behavior', () => {
     await expect(client.callTool({ name: 'echo' })).resolves.toMatchObject({
       structuredContent: { value: 42 },
     });
-    expect(listTools).toHaveBeenCalledTimes(1);
+    expect(listTools).toHaveBeenCalledTimes(2);
   });
 
   it('continues calling tools whose output schema cannot compile', async () => {

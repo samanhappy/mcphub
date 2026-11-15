@@ -8,7 +8,7 @@ import { invalidateListFreshness, recordListFreshness } from '../utils/listFresh
 import { Client, type Tool } from './mcpSdkClient.js';
 import { LEGACY_PROTOCOL_VERSIONS } from '../utils/mcpProtocol.js';
 
-/** Keep v1's single-page discovery and output validation while using SDK v2. */
+/** Keep v1's output validation and discover all upstream pages while using SDK v2. */
 export class LegacyMcpClient extends Client {
   readonly [upstreamListOwner] = {};
   private readonly listVersions = new Map<string, number>();
@@ -26,8 +26,8 @@ export class LegacyMcpClient extends Client {
 
   private async freshList<T extends { ttlMs?: number; nextCursor?: string }>(
     key: UpstreamList,
-    fetch: () => Promise<T>,
-    snapshot: (result: T) => object,
+    fetch: (cursor?: string) => Promise<T>,
+    snapshot: (result: T) => unknown[],
   ): Promise<T> {
     const version = (this.listVersions.get(key) ?? 0) + 1;
     this.listVersions.set(key, version);
@@ -37,6 +37,24 @@ export class LegacyMcpClient extends Client {
     recordUpstreamList(this, key, undefined, startedAt);
     const result = await fetch();
     const items = snapshot(result);
+    const seen = new Set<string>();
+    let cursor = result.nextCursor;
+    while (cursor !== undefined) {
+      if (seen.has(cursor) || seen.size >= 100) {
+        throw new Error(
+          `Invalid ${key} pagination: repeated cursor or more than 100 additional pages`,
+        );
+      }
+      seen.add(cursor);
+      const page = await fetch(cursor);
+      items.push(...snapshot(page));
+      cursor = page.nextCursor;
+    }
+    if (seen.size > 0) {
+      result.nextCursor = undefined;
+      // A page's TTL does not certify the freshness of the combined list.
+      result.ttlMs = undefined;
+    }
     if (this.listVersions.get(key) === version) {
       const ttl = result.nextCursor ? undefined : result.ttlMs;
       recordListFreshness(items, ttl, startedAt);
@@ -57,7 +75,11 @@ export class LegacyMcpClient extends Client {
   override async listTools(...[params, options]: Parameters<Client['listTools']>) {
     const result = await this.freshList(
       'tools',
-      () => this.request({ method: 'tools/list', params }, options),
+      (cursor) =>
+        this.request(
+          { method: 'tools/list', params: cursor === undefined ? params : { ...params, cursor } },
+          options,
+        ),
       (result) => result.tools,
     );
     this.listedTools.clear();
@@ -68,7 +90,11 @@ export class LegacyMcpClient extends Client {
   override listPrompts(...[params, options]: Parameters<Client['listPrompts']>) {
     return this.freshList(
       'prompts',
-      () => this.request({ method: 'prompts/list', params }, options),
+      (cursor) =>
+        this.request(
+          { method: 'prompts/list', params: cursor === undefined ? params : { ...params, cursor } },
+          options,
+        ),
       (result) => result.prompts,
     );
   }
@@ -76,7 +102,14 @@ export class LegacyMcpClient extends Client {
   override listResources(...[params, options]: Parameters<Client['listResources']>) {
     return this.freshList(
       'resources',
-      () => this.request({ method: 'resources/list', params }, options),
+      (cursor) =>
+        this.request(
+          {
+            method: 'resources/list',
+            params: cursor === undefined ? params : { ...params, cursor },
+          },
+          options,
+        ),
       (result) => result.resources,
     );
   }
@@ -86,7 +119,14 @@ export class LegacyMcpClient extends Client {
   ) {
     return this.freshList(
       'templates',
-      () => this.request({ method: 'resources/templates/list', params }, options),
+      (cursor) =>
+        this.request(
+          {
+            method: 'resources/templates/list',
+            params: cursor === undefined ? params : { ...params, cursor },
+          },
+          options,
+        ),
       (result) => result.resourceTemplates,
     );
   }
