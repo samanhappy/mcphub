@@ -12,6 +12,16 @@ export interface StagingPrincipal {
 const hashIdentity = (value: string): string =>
   createHash('sha256').update(`user:${value}`).digest('hex');
 
+/**
+ * One in-flight resolution per username (#1056).
+ *
+ * File-mode users have no stable id, so the salt is generated on first use.
+ * Two concurrent first requests would otherwise generate different salts, the
+ * later write would win, and files created under the first identity would be
+ * unreachable (and the child's cwd would differ between calls).
+ */
+const inflight = new Map<string, Promise<StagingPrincipal>>();
+
 /** Names that must never receive a staging root. */
 const RESERVED_NAMES = new Set(['system', 'api-session', 'openapi-session', 'guest', 'anonymous']);
 
@@ -28,6 +38,19 @@ export const resolveStagingPrincipal = async (username: string | undefined): Pro
     throw new StagingError('unauthenticated', 'A signed-in user is required for file staging');
   }
 
+  const pending = inflight.get(name);
+  if (pending) return pending;
+
+  const resolution = resolveUncachedPrincipal(name);
+  inflight.set(name, resolution);
+  try {
+    return await resolution;
+  } finally {
+    inflight.delete(name);
+  }
+};
+
+const resolveUncachedPrincipal = async (name: string): Promise<StagingPrincipal> => {
   const user = await getUserDao().findByUsername(name);
   if (!user) {
     throw new StagingError('unauthenticated', 'A signed-in user is required for file staging');
@@ -44,7 +67,10 @@ export const resolveStagingPrincipal = async (username: string | undefined): Pro
   if (!updated) {
     throw new StagingError('unauthenticated', 'A signed-in user is required for file staging');
   }
-  return { username: name, ownerHash: hashIdentity(salt) };
+  // Re-read: a concurrent writer (another process sharing the file store) may
+  // have persisted a different salt first; the stored value is authoritative.
+  const persisted = (await getUserDao().findByUsername(name))?.stagingSalt ?? salt;
+  return { username: name, ownerHash: hashIdentity(persisted) };
 };
 
 /** Owner hash used when a server has no principal child (owner-only runtime). */

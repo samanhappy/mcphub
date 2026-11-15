@@ -614,6 +614,11 @@ export class FileStagingStateStore implements StagingStateStore {
       if (!ref || ref.state !== 'ready' || ref.version !== record.version || ref.sha256 !== record.contentHash) {
         throw new StagingError('not-found', 'Download link is not valid');
       }
+      // A token minted just before the ref's TTL must not outlive it: cleanup
+      // runs on a timer, so the gap is otherwise a real download window.
+      if (ref.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
       record.usedAt = new Date(this.now()).toISOString();
       await this.persist();
       return record;

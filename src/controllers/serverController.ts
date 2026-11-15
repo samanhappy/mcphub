@@ -9,7 +9,6 @@ import {
 } from '../services/credentialBindingService.js';
 import { StdioOptionsError } from '../utils/stdioOptions.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
-import { isDeepStrictEqual } from 'node:util';
 import { Request, Response } from 'express';
 import {
   ApiResponse,
@@ -69,6 +68,7 @@ import {
 import { disconnectUpstreamOAuth } from '../services/upstreamOAuthDisconnectService.js';
 import type { UpstreamOAuthDisconnectScope } from '../services/upstreamOAuthDisconnectService.js';
 import { normalizeServerConfigForPersistence } from '../utils/serverConfigPersistence.js';
+import { hasConnectionRelevantChange, type ServerRecord } from '../utils/connectionRelevantConfig.js';
 import {
   isPrivilegedServerConfig,
   ServerConfigValidationError,
@@ -97,7 +97,7 @@ type DescribableConfig = Record<
   string,
   { enabled: boolean; description?: string; hiddenParams?: string[] }
 >;
-type ServerRecord = ServerConfig & { name: string };
+
 
 type RequestUser = {
   username: string;
@@ -228,90 +228,7 @@ const clearDescriptionOverride = (
   return nextItems;
 };
 
-const stripUndefinedDeep = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map((item) => stripUndefinedDeep(item));
-  }
 
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([, nestedValue]) => nestedValue !== undefined)
-        .map(([key, nestedValue]) => [key, stripUndefinedDeep(nestedValue)]),
-    );
-  }
-
-  return value;
-};
-
-// Fields baked into the live MCP client/transport at connect time. Editing any
-// of these requires tearing down and re-establishing the runtime. Everything
-// else in ServerConfig (description, owner, visibility, sharedWithUsers,
-// `enabled`, and the tools/prompts/resources per-item overrides) is read-time
-// or access metadata that can be applied without a reconnect.
-const CONNECTION_RELEVANT_CONFIG_FIELDS = [
-  'type',
-  'url',
-  'command',
-  'args',
-  'env',
-  'headers',
-  'passthroughHeaders',
-  'options',
-  'oauth',
-  'openapi',
-  'perSessionClient',
-  'credentialTemplate',
-  'staging',
-  'startOnDemand',
-  'idleTimeoutMs',
-  'enableKeepAlive',
-  'protocolNegotiation',
-  'keepAliveInterval',
-  'proxy',
-] as const;
-
-type ConnectionRelevantServerConfig = Pick<
-  ServerConfig,
-  (typeof CONNECTION_RELEVANT_CONFIG_FIELDS)[number]
->;
-
-const toConnectionRelevantConfig = (
-  config: ServerConfig | ServerRecord,
-): ConnectionRelevantServerConfig => {
-  const normalized = normalizeServerConfigForPersistence(config) as Record<string, unknown>;
-  const picked: Record<string, unknown> = {};
-  for (const field of CONNECTION_RELEVANT_CONFIG_FIELDS) {
-    // Database mode reads unset columns (e.g. `proxy`) back as null, while a
-    // request leaves them out; both mean "not set".
-    picked[field] = normalized[field] ?? undefined;
-  }
-  const comparable = stripUndefinedDeep(picked) as Record<string, unknown>;
-  // Treat the default request timeout (60000, the dashboard form default) as
-  // equivalent to "not set": an explicit 60000 stored via API/file import and an
-  // absent timeout resolve to the same effective connect timeout. Without this, a
-  // stored explicit 60000 (or the dashboard echoing 60000 back) would look like a
-  // connection change on unrelated edits and reload the runtime for nothing.
-  const options = comparable.options as { timeout?: number } | undefined;
-  if (options && options.timeout === 60000) {
-    delete options.timeout;
-    if (Object.keys(options).length === 0) {
-      delete comparable.options;
-    }
-  }
-  return comparable as ConnectionRelevantServerConfig;
-};
-
-// True when an edit touches at least one field the live connection depends on,
-// i.e. the runtime must be torn down and reconnected.
-const hasConnectionRelevantChange = (
-  existingServer: ServerRecord,
-  nextConfig: ServerConfig,
-): boolean =>
-  !isDeepStrictEqual(
-    toConnectionRelevantConfig(existingServer),
-    toConnectionRelevantConfig(nextConfig),
-  );
 
 export const getAllServers = async (req: Request, res: Response): Promise<void> => {
   try {

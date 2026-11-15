@@ -51,4 +51,22 @@ describe('staging principal identity', () => {
     expect(second.ownerHash).toBe(first.ownerHash);
     expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it('gives two concurrent first requests the same identity and one salt', async () => {
+    let stored: { stagingSalt?: string } | undefined;
+    mockFindByUsername.mockImplementation(async () => ({ username: 'carol', password: 'x', ...stored }));
+    mockUpdate.mockImplementation(async (_name: string, updates: { stagingSalt?: string }) => {
+      // A real DAO round-trip is slow enough for a second request to interleave.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      stored = { ...stored, ...updates };
+      return { username: 'carol', password: 'x', ...stored };
+    });
+
+    const [first, second] = await Promise.all([
+      resolveStagingPrincipal('carol'),
+      resolveStagingPrincipal('carol'),
+    ]);
+    expect(first.ownerHash).toBe(second.ownerHash);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
 });

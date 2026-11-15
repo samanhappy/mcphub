@@ -13,6 +13,18 @@ export class FileStagingRepository {
     return getAppDataSource().transaction(run);
   }
 
+  /**
+   * Serialize quota accounting across concurrent transactions (#1056).
+   *
+   * Usage is a SUM over ledger rows, so two transactions reserving *different*
+   * refs would each read the pre-reservation total and both pass the check.
+   * A transaction-scoped advisory lock makes "read usage, then reserve" atomic
+   * for the per-user and global limits alike; it is released at commit.
+   */
+  async lockQuota(manager: EntityManager): Promise<void> {
+    await manager.query('SELECT pg_advisory_xact_lock(1056, 0)');
+  }
+
   async findRef(
     manager: EntityManager,
     ref: string,

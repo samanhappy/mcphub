@@ -340,4 +340,19 @@ describe('FileStagingStateStore', () => {
     );
     expect(await store.usageBytes('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe(0);
   });
+
+  it('rejects a download token once the underlying ref has expired', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const ready = await store.createReadyRef(input(rootDir), Buffer.from('payload'));
+    const token = await store.createDownloadToken(
+      ready.ref,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      300,
+    );
+    // Past the ref TTL but before the token TTL would matter: cleanup runs on a
+    // timer, so without the ref check the token would still serve the content.
+    clock += 2 * 3600_000;
+    await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'expired' });
+  });
 });

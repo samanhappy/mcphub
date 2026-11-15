@@ -52,6 +52,13 @@ class FakeRepository extends FileStagingRepository {
     return this.view ?? { refs: this.refs, tokens: this.tokens };
   }
 
+  /** Recorded so tests can prove quota reads happen under the lock. */
+  quotaLockCalls = 0;
+
+  override async lockQuota(): Promise<void> {
+    this.quotaLockCalls += 1;
+  }
+
   override async findRef(_m: EntityManager, ref: string): Promise<FileStagingRefEntity | null> {
     return this.current().refs.get(ref) ?? null;
   }
@@ -230,5 +237,33 @@ describe('DbStagingStateStore', () => {
     await expect(store.getOwnedRef(failed.ref, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).rejects.toMatchObject({
       code: 'not-found',
     });
+  });
+
+  it('takes the shared quota lock before accounting uploads and output leases', async () => {
+    const order: string[] = [];
+    const originalLock = repository.lockQuota.bind(repository);
+    const originalList = repository.listRefs.bind(repository);
+    repository.lockQuota = async (manager: EntityManager) => {
+      order.push('lock');
+      await originalLock(manager);
+    };
+    repository.listRefs = async (manager: EntityManager) => {
+      order.push('usage');
+      return originalList(manager);
+    };
+
+    await store.createReadyRef(input(rootDir), Buffer.from('x'));
+    expect(order[0]).toBe('lock');
+
+    order.length = 0;
+    const reserved = await store.createReservedRef(input(rootDir));
+    order.length = 0;
+    await store.acquireOutputLeases(
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      [{ ref: reserved.ref, leaseId: 'call-1' }],
+      settings(),
+    );
+    expect(order[0]).toBe('lock');
+    expect(order).toContain('usage');
   });
 });

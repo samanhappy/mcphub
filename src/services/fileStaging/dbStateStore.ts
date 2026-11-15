@@ -239,6 +239,9 @@ export class DbStagingStateStore implements StagingStateStore {
     record.version = 1;
     try {
       await this.repository.transaction(async (manager) => {
+        // Uploads and output leases share one lock: usage is a SUM, so without
+        // it two concurrent writes can both pass the same quota check.
+        await this.repository.lockQuota(manager);
         if (
           (await this.usage(manager, record.ownerHash)) + digest.size >
           input.settings.perUserQuotaBytes
@@ -268,6 +271,7 @@ export class DbStagingStateStore implements StagingStateStore {
     await handle.close();
     try {
       await this.repository.transaction(async (manager) => {
+        await this.repository.lockQuota(manager);
         await this.assertFileCount(manager, record.ownerHash, 1, input.settings);
         await this.repository.saveRef(manager, toRow(record));
       });
@@ -305,6 +309,9 @@ export class DbStagingStateStore implements StagingStateStore {
       throw new StagingError('invalid-ref', 'Invalid staging reference');
     }
     return this.repository.transaction(async (manager) => {
+      // Same lock as uploads: the usage reads below must not interleave with
+      // another reservation that leases a different ref.
+      await this.repository.lockQuota(manager);
       const rows = await this.repository.findRefs(
         manager,
         items.map((item) => item.ref),
