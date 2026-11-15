@@ -239,6 +239,24 @@ describe('startOnDemand lifecycle', () => {
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
   });
 
+  it('does not treat a reconnected on-demand runtime as ready', async () => {
+    // reconnectServer closes the client before rebuilding the entry; a stale
+    // `status: 'connected'` would make ensureServerReady return immediately and
+    // dispatch the next call to the closed client.
+    const serverInfo = createSleepingServerInfo();
+    (serverInfo as any).status = 'connected';
+    (serverInfo as any).client = { close: jest.fn(), callTool: jest.fn() };
+    mcpService.setServerInfosForTest([serverInfo as any]);
+
+    await mcpService.reconnectServer('demo');
+
+    // `ensureServerReady` returns early on 'connected', so the reset is what
+    // makes the next call spawn a fresh child instead of using the closed one.
+    expect(serverInfo.client).toBeUndefined();
+    expect(serverInfo.transport).toBeUndefined();
+    expect(serverInfo.status).toBe('disconnected');
+  });
+
   it('coalesces concurrent replica calls to a sleeping runtime and publishes the live client', async () => {
     jest.useFakeTimers();
     process.env.MCPHUB_REPLICA_MODE = 'true';

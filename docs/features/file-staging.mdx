@@ -251,4 +251,4 @@ Staging makes the hub copy a file; it does not grant the client filesystem acces
 
 ## Not included
 
-Staging does not yet provide browser upload pages, S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, `$smart` exposure of the virtual tools, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. There is also no dashboard editor for staging in this phase; configuration goes through the PATCH routes described above.
+Staging does not yet provide browser upload pages, S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, `$smart` exposure of the virtual tools, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee. There is also no dashboard editor for staging in this phase; configuration goes through the PATCH routes described above.

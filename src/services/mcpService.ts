@@ -2542,6 +2542,13 @@ export const initializeClientsFromSettings = async (
           resources: [],
           createTime: Date.now(),
         };
+        // A reconnect closes the client before rebuilding the entry. Carrying
+        // `status: 'connected'` (and the closed handle) into the new entry would
+        // make `ensureServerReady` return immediately and dispatch the next call
+        // to a dead client. A changed config always needs a fresh spawn, and a
+        // closed client is never "ready".
+        const needsRespawn =
+          configChanged || (onDemandInfo.status === 'connected' && !onDemandInfo.client);
         Object.assign(onDemandInfo, {
           owner: expandedConf.owner,
           visibility: expandedConf.visibility,
@@ -2549,6 +2556,14 @@ export const initializeClientsFromSettings = async (
           sharedWithUsers: expandedConf.sharedWithUsers,
           enabled: true,
           config: expandedConf,
+          ...(needsRespawn
+            ? {
+                status: 'disconnected' as const,
+                client: undefined,
+                transport: undefined,
+                keepAliveIntervalId: undefined,
+              }
+            : {}),
         });
         const cachedTools = await prepareCapabilitySnapshot(onDemandInfo, expandedConf);
         if (cachedTools !== undefined) {
@@ -3368,6 +3383,13 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
     clearInterval(serverInfo.keepAliveIntervalId);
     serverInfo.keepAliveIntervalId = undefined;
   }
+
+  // The closed handles must not survive the reconnect: `status: 'connected'`
+  // with a closed client makes an on-demand server look ready and sends the
+  // next call to a dead transport.
+  serverInfo.client = undefined;
+  serverInfo.transport = undefined;
+  serverInfo.status = 'disconnected';
 
   // Reinitialize the server
   await initializeClientsFromSettings(false, serverName);
@@ -5317,6 +5339,8 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
         keyName,
         sourceIp,
         hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
+        // A nested call forwards its inner arguments, which may carry a ref.
+        suppressPayload: containsStagingRef(finalArgs),
         errorMessage: result.isError ? 'Tool returned error response' : undefined,
       });
 
@@ -5521,7 +5545,6 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
     // Log successful activity. A staged call carries refs and staging paths;
     // the payload is suppressed (the ref is a download capability).
     const duration = Date.now() - startTime;
-    const suppressPayload = containsStagingRef(request.params.arguments);
     await activityLogger.logToolCall({
       policy: policyAudit,
       server: serverInfo.name,
@@ -5536,7 +5559,9 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyName,
       sourceIp,
       hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
-      suppressPayload,
+      // A staged call carries refs and staging paths; the ref is a download
+      // capability, so it never enters the activity record.
+      suppressPayload: containsStagingRef(request.params.arguments),
       errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 
@@ -5587,6 +5612,9 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyName,
       sourceIp,
       hasCredentialTemplate: hasPersonalAuthentication(serverInfo?.config),
+      // An error path can still carry a ref (a staging call that failed after
+      // rewriting); the payload rule applies to it as well.
+      suppressPayload: containsStagingRef(request.params.arguments),
       // The reason is an internal diagnostic; the caller-facing message stays
       // identical for hidden and nonexistent targets.
       errorMessage: unavailable

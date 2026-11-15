@@ -279,12 +279,17 @@ export async function syncSettingsToDatabase(): Promise<void> {
         );
       counts.servers[!existing ? 'created' : unchanged ? 'unchanged' : 'updated']++;
       if (!unchanged) {
-        await serverRepo.save(serverRepo.create({ ...existing, ...data }));
-        // A legacy placeholder id replaced here is the same identity change the
-        // DAO performs: policies and network exceptions keyed by the old id must
-        // follow it, or a deny rule silently stops matching.
-        if (existing?.id && existing.id !== data.id) {
-          await remapServerIdReferences(existing.id, String(data.id));
+        const rotatingId = Boolean(existing?.id) && existing!.id !== data.id;
+        if (rotatingId) {
+          // A new id is an update of the existing row, not a second row with the
+          // same name: `save()` on a fresh id would insert and hit the unique
+          // name constraint before the references could be remapped.
+          await serverRepo.update({ id: existing!.id }, data as never);
+          // Same transaction: a deny rule keyed by the old id must move with it,
+          // or it silently stops matching.
+          await remapServerIdReferences(existing!.id, String(data.id), manager);
+        } else {
+          await serverRepo.save(serverRepo.create({ ...existing, ...data }));
         }
       }
     }
