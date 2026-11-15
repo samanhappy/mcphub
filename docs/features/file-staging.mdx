@@ -1,0 +1,103 @@
+---
+title: 'File Staging'
+description: 'Let stdio tools work with uploaded copies of client files'
+---
+
+## Overview
+
+A stdio MCP server behind the hub runs inside the MCPHub container. When a tool takes a local path, the path is resolved on the hub, not on the client that asked for it. File staging closes that gap for the narrow case where a client needs to hand a file to a tool and get a result back:
+
+1. the client uploads a copy to the hub,
+2. the call carries a reference instead of a path,
+3. the hub rewrites the reference to a real path inside that user's staging root,
+4. the tool works on the copy, and the result can be downloaded.
+
+The hub never reaches back into the client's filesystem: it works with uploaded copies only.
+
+## Requirements
+
+- The server is a **stdio** server. HTTP/SSE servers cannot use staging.
+- The server declares `staging.adapter` and each staged tool opts in with `fileStaging`.
+- The pinned upstream release `@fangjunjie/ssh-mcp-server@1.11.0` is the only adapter profile verified so far. Staging stays off for any other package or version.
+- `install.baseUrl` is configured when download links are needed; a remote client cannot resolve the hub's `localhost`.
+
+## Configuration
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@fangjunjie/ssh-mcp-server@1.11.0", "--host", "example.com", "--username", "ops"],
+      "staging": { "adapter": "ssh" },
+      "tools": {
+        "upload": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "inputParams": ["localPath"], "outputParams": ["remotePath"] }
+        },
+        "download": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "outputParams": ["localPath"] }
+        }
+      }
+    }
+  }
+}
+```
+
+`inputParams` lists the parameters that may carry a ready reference (a file the hub already holds). `outputParams` lists the parameters where the tool writes a file the hub should register. A reference used in the wrong direction, or in an undeclared parameter, is rejected before the tool runs.
+
+Shared and public servers additionally need `"staging": { "adapter": "ssh", "shared": true }` and a `credentialTemplate` with per-user slots, so every user gets their own child process and their own staging root. Without that, staging is refused for the server.
+
+## Hub tools
+
+| Tool | Purpose |
+| --- | --- |
+| `mcphub_file_upload` | Upload an inline (base64) file, or create an empty destination to be filled by a tool |
+| `mcphub_file_status` | Show the state, size and expiry of a reference |
+| `mcphub_file_download` | Get a short-lived, single-use download link for a ready file |
+
+### Upload, process, retrieve
+
+```text
+mcphub_file_upload { filename: "report.pdf", content_base64: "..." }
+  -> mcpfile://0f1d...            (ready reference)
+
+ssh-upload { localPath: "mcpfile://0f1d...", remotePath: "/srv/in/report.pdf" }
+  -> the hub rewrites localPath to the staged copy
+
+mcphub_file_download { ref: "mcpfile://0f1d..." }
+  -> { downloadUrl, expiresAt }
+```
+
+For the reverse direction, call `mcphub_file_upload` with only a filename to get a reserved reference, pass it as an output parameter, then download it once the tool has written it.
+
+## Settings
+
+File staging is off until an operator enables it. Defaults:
+
+| Setting | Default |
+| --- | --- |
+| `enabled` | `false` |
+| `maxFileBytes` | 100 MiB |
+| `inlineMaxBytes` | 1 MiB (capped by the JSON body limit) |
+| `perUserQuotaBytes` | 1 GiB |
+| `globalQuotaBytes` | 10 GiB |
+| `ttlHours` | 24 |
+| `downloadTtlSeconds` | 300 |
+| `maxFilesPerUser` | 100 |
+
+Staged content lives under `data/uploads/staging` (override with `MCPHUB_STAGING_ROOT`); the file-mode ledger lives under `data/staging-state` (`MCPHUB_STAGING_STATE_DIR`). Both belong on a persistent volume.
+
+With `DB_SYNCHRONIZE=false`, create the two tables and columns from the migration SQL in the pull request before enabling staging in database mode.
+
+## Limits and risks
+
+- **Single instance only.** Staged content is local disk. A second hub process on the same data directory is refused at startup; replica deployments cannot use staging.
+- **No OS isolation.** The tool runs as the same user as the hub. Staging roots separate users' files by convention and by hub-side checks, not by the operating system.
+- **Other local tools share the boundary.** A different server with filesystem or shell access in the same deployment can read the staging root. Restrict who can use such servers, or accept the risk.
+- **Refs are capabilities.** A reference is bound to one user and one server, and the download link is single-use and short-lived. Treat both as secrets.
+- **Not transparent.** Only declared parameters are rewritten; a path the client sends directly still resolves inside the container.
+
+Not included yet: smart-routing (`$smart`) exposure, a browser upload page, response-path detection, and S3-backed storage.

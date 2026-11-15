@@ -1,0 +1,103 @@
+---
+title: '文件暂存'
+description: '让 stdio 工具处理客户端文件的上传副本'
+---
+
+## 概述
+
+部署在 MCPHub 后面的 stdio MCP 服务器运行在容器内。当工具接收本地路径时，该路径在 hub 上解析，而不是在发起请求的客户端机器上。文件暂存只解决其中一个窄场景：客户端需要把文件交给工具处理，再把结果取回。
+
+1. 客户端把文件副本上传到 hub；
+2. 调用时传入引用而不是路径；
+3. hub 把引用改写成该用户暂存目录中的真实路径；
+4. 工具处理副本，结果可以下载。
+
+hub 不会反向访问客户端文件系统，只处理上传后的副本。
+
+## 前提条件
+
+- 服务器必须是 **stdio** 类型，HTTP/SSE 服务器无法使用暂存。
+- 服务器声明 `staging.adapter`，每个需要暂存的工具单独开启 `fileStaging`。
+- 目前只验证了固定版本 `@fangjunjie/ssh-mcp-server@1.11.0` 这一种适配器配置；其他包或版本会保持关闭。
+- 需要下载链接时，必须配置 `install.baseUrl`，因为远程客户端无法解析 hub 的 `localhost`。
+
+## 配置
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@fangjunjie/ssh-mcp-server@1.11.0", "--host", "example.com", "--username", "ops"],
+      "staging": { "adapter": "ssh" },
+      "tools": {
+        "upload": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "inputParams": ["localPath"], "outputParams": ["remotePath"] }
+        },
+        "download": {
+          "enabled": true,
+          "fileStaging": { "enabled": true, "outputParams": ["localPath"] }
+        }
+      }
+    }
+  }
+}
+```
+
+`inputParams` 列出允许携带就绪引用（hub 已持有的文件）的参数；`outputParams` 列出工具会写出、需要 hub 登记为暂存文件的参数。方向用反或写在未声明的参数里，都会在工具执行前被拒绝。
+
+共享/公开服务器还需要 `"staging": { "adapter": "ssh", "shared": true }` 和带按用户槽位的 `credentialTemplate`，这样每个用户拥有独立子进程和独立暂存目录；否则该服务器的暂存会被拒绝。
+
+## 内置工具
+
+| 工具 | 用途 |
+| --- | --- |
+| `mcphub_file_upload` | 上传内联（base64）文件，或创建一个空的目标文件供工具写入 |
+| `mcphub_file_status` | 查看引用的状态、大小和过期时间 |
+| `mcphub_file_download` | 获取短期、一次性的下载链接 |
+
+### 上传—处理—取回
+
+```text
+mcphub_file_upload { filename: "report.pdf", content_base64: "..." }
+  -> mcpfile://0f1d...            （就绪引用）
+
+ssh-upload { localPath: "mcpfile://0f1d...", remotePath: "/srv/in/report.pdf" }
+  -> hub 把 localPath 改写成暂存副本路径
+
+mcphub_file_download { ref: "mcpfile://0f1d..." }
+  -> { downloadUrl, expiresAt }
+```
+
+反方向同理：只传文件名调用 `mcphub_file_upload` 得到一个预留引用，作为输出参数交给工具，工具写完后即可下载。
+
+## 配置项
+
+文件暂存默认关闭，需要运维显式开启。默认值：
+
+| 配置项 | 默认值 |
+| --- | --- |
+| `enabled` | `false` |
+| `maxFileBytes` | 100 MiB |
+| `inlineMaxBytes` | 1 MiB（同时受 JSON 请求体上限约束） |
+| `perUserQuotaBytes` | 1 GiB |
+| `globalQuotaBytes` | 10 GiB |
+| `ttlHours` | 24 |
+| `downloadTtlSeconds` | 300 |
+| `maxFilesPerUser` | 100 |
+
+暂存内容位于 `data/uploads/staging`（可用 `MCPHUB_STAGING_ROOT` 覆盖），文件模式账本位于 `data/staging-state`（`MCPHUB_STAGING_STATE_DIR`）。两者都应放在持久卷上。
+
+在 `DB_SYNCHRONIZE=false` 的部署中，数据库模式启用前需先执行 PR 中的建表/加列 SQL。
+
+## 限制与风险
+
+- **仅支持单实例。** 暂存内容在本地磁盘；同一数据目录上的第二个 hub 进程会在启动时被拒绝，副本部署不能使用暂存。
+- **没有操作系统级隔离。** 工具与 hub 以同一用户运行；用户目录之间靠 hub 侧检查区分，而不是靠操作系统权限。
+- **其他本地工具共享同一边界。** 同一部署中具备文件系统或 shell 权限的其他服务器可以读取暂存目录。请限制这类服务器的使用范围，或接受该风险。
+- **引用即凭证。** 引用绑定到单个用户和单个服务器，下载链接一次性且短期有效，都应视为机密。
+- **不是透明访问。** 只有声明过的参数会被改写，客户端直接传入的路径仍然在容器内解析。
+
+尚未包含：`$smart` 智能路由暴露、浏览器上传页面、响应路径自动识别、S3 存储。
