@@ -182,6 +182,7 @@ jest.mock('../../src/services/mcpService.js', () => ({
   syncToolEmbedding: jest.fn(),
   toggleServerStatus: jest.fn(),
   reconnectServer: jest.fn().mockResolvedValue(undefined),
+  waitForServerConnect: jest.fn(async () => true),
   reinstallServer: jest.fn(),
   updateServerInfoVisibility: jest.fn(),
 }));
@@ -284,9 +285,11 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
     await updateToolFileStaging(request({ tool: 'upload', enabled: false }), res);
 
     expect(res.status).toHaveBeenCalledWith(500);
+    // The raw runtime error is not echoed back to a non-admin owner; the route
+    // only reports that the restart did not succeed.
     expect(responseBody(res)).toMatchObject({
       success: false,
-      message: expect.stringContaining('File staging principal is unavailable'),
+      message: 'Saved, but the server did not start with the new staging setting',
     });
   });
 
@@ -406,6 +409,20 @@ describe('updateServerStaging (PATCH /servers/:name/staging)', () => {
       success: true,
       data: { shared: true, adapter: 'ssh' },
     });
+  });
+
+  it('reports a spawn failure for the server-level staging edit too', async () => {
+    const { reconnectServer: mockedReconnect } = await import('../../src/services/mcpService.js');
+    (mockedReconnect as jest.Mock).mockImplementationOnce(async () => {
+      liveServer.status = 'disconnected';
+      liveServer.error = 'Failed to connect: spawn npx ENOENT';
+    });
+    const res = mockRes();
+
+    await updateServerStaging(request({ adapter: 'ssh' }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(responseBody(res)).toMatchObject({ success: false });
   });
 
   it('rejects an unknown adapter with 400', async () => {

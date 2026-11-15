@@ -284,6 +284,9 @@ describe('startOnDemand lifecycle', () => {
 
     expect(serverInfo.status).not.toBe('connected');
     expect(serverInfo.client).toBeUndefined();
+    // The superseded spawn owns no slot any more: a later wake must be able to
+    // start a fresh spawn instead of queueing behind a dead promise.
+    expect(serverInfo.spawningPromise).toBeUndefined();
     if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
   });
 

@@ -2854,7 +2854,7 @@ export const initializeClientsFromSettings = async (
         return current.client === client && current.enabled !== false;
       };
 
-      connectGate
+      const connectPromise = connectGate
         .run(
           () =>
             connectClientWithDiagnostics(client, transport, initRequestOptions || requestOptions),
@@ -3024,7 +3024,15 @@ export const initializeClientsFromSettings = async (
             info.error = `Failed to connect: ${formatErrorForLogging(error)}`;
             setupServerKeepAlive(info, expandedConf);
           }
+        })
+        .finally(() => {
+          // Only clear our own promise: a reconnect may already have published
+          // an entry whose connect is the one callers should wait on.
+          if (serverInfo.connectingPromise === connectPromise) {
+            serverInfo.connectingPromise = undefined;
+          }
         });
+      serverInfo.connectingPromise = connectPromise;
       logger.log(`Initialized client for server: ${name}`);
     }
   } catch (error) {
@@ -3823,6 +3831,30 @@ const beginOnDemandToolCall = (serverInfo: ServerInfo): (() => void) | undefined
  *
  * Concurrent callers coalesce on `spawningPromise` so only one spawn runs.
  */
+/**
+ * Tear down one spawn's own handles. Deliberately not `closeServerRuntime`:
+ * on a superseded spawn the entry already holds the *replacement* runtime, and
+ * closing through the entry would kill the runtime that replaced it.
+ */
+const closeSpawnRuntime = (
+  name: string,
+  client: { close?: () => unknown } | undefined,
+  transport: { close?: () => unknown; pid?: unknown } | undefined,
+): void => {
+  const pid = typeof transport?.pid === 'number' ? transport.pid : null;
+  try {
+    client?.close?.();
+  } catch {
+    logger.warn('Error closing superseded client');
+  }
+  try {
+    transport?.close?.();
+  } catch {
+    logger.warn('Error closing superseded transport');
+  }
+  if (pid) killStdioProcessTree(name, pid);
+};
+
 const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   if (serverInfo.status === 'connected') return;
 
@@ -3837,6 +3869,9 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   // A reconnect (config change, staging edit) increments the generation and
   // invalidates this spawn's right to publish anything.
   const stale = () => (serverInfo.runtimeGeneration ?? 0) !== generation;
+
+  let spawnClient: { close?: () => unknown } | undefined;
+  let spawnTransport: { close?: () => unknown; pid?: unknown } | undefined;
 
   const spawnPromise = (async () => {
     // Load the config fresh from the DAO for the expanded transport config and
@@ -3861,7 +3896,9 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     logger.log(`[${name}] Cold-starting on-demand server…`);
 
     const transport = await createTransportFromConfig(name, expandedConf);
+    spawnTransport = transport;
     const client = createUpstreamMcpClient(name, () => serverInfo, expandedConf);
+    spawnClient = client;
 
     const serverRequestOptions = expandedConf.options || {};
     const defaultRequestTimeout = Number(process.env.DEFAULT_REQUEST_TIMEOUT) || 60000;
@@ -3875,17 +3912,10 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
 
     if (stale()) {
       // The server was reconfigured while this cold start was connecting: the
-      // new runtime owns the entry, so close this one instead of publishing it.
-      try {
-        client.close();
-      } catch {
-        /* already closed */
-      }
-      try {
-        transport.close();
-      } catch {
-        /* already closed */
-      }
+      // new runtime owns the entry, so shut this one down instead of
+      // publishing it. `closeServerRuntime` also kills a spawned child, which a
+      // bare client.close() would leave running.
+      closeSpawnRuntime(name, client, transport);
       return;
     }
 
@@ -3920,6 +3950,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (capabilities?.tools) {
       try {
         const tools = await client.listTools({}, requestOptions);
+        if (stale()) return;
         toolCount = tools.tools.length;
         updateServerToolsCache(serverInfo, tools.tools);
         broadcastToolListChanged();
@@ -3936,6 +3967,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     if (capabilities?.prompts) {
       try {
         const prompts = await client.listPrompts({}, requestOptions);
+        if (stale()) return;
         promptCount = prompts.prompts.length;
         updateServerPromptsCache(serverInfo, prompts.prompts);
       } catch (error) {
@@ -3948,6 +3980,7 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
       void refreshServerResourceTemplatesCache(() => serverInfo, client, requestOptions);
       try {
         const resources = await client.listResources({}, requestOptions);
+        if (stale()) return;
         resourceCount = resources.resources.length;
         updateServerResourcesCache(serverInfo, resources.resources);
       } catch (error) {
@@ -3971,14 +4004,22 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     await spawnPromise;
   } catch (error) {
     // A failed spawn from a superseded generation must not overwrite the error
-    // state of the runtime that replaced it.
-    if (!stale()) {
+    // state of the runtime that replaced it, and must not leave its own child
+    // or client behind.
+    if (stale()) {
+      closeSpawnRuntime(serverInfo.name, spawnClient, spawnTransport);
+    } else {
       serverInfo.status = 'disconnected';
       serverInfo.error = `Failed to start on-demand server: ${formatErrorForLogging(error)}`;
     }
     throw error;
   } finally {
-    serverInfo.spawningPromise = undefined;
+    // Only clear our own promise: a reconnect (or a newer spawn) may already
+    // own the slot, and clearing it would let the next caller start a second
+    // child while that one is still connecting.
+    if (serverInfo.spawningPromise === spawnPromise) {
+      serverInfo.spawningPromise = undefined;
+    }
   }
 };
 
@@ -7320,3 +7361,33 @@ export async function filterResourceTemplatesByGroup<
 
   return resourceTemplates;
 }
+
+/**
+ * Wait (bounded) for a server's in-flight connect to settle.
+ *
+ * `reconnectServer` resolves as soon as the entry is published and the
+ * handshake is fired; a caller that reports "restarted" must not treat that
+ * as success. Returns whether the connect settled within the budget; the
+ * caller still reads `status`/`error` to learn the outcome.
+ */
+export const waitForServerConnect = async (
+  serverName: string,
+  timeoutMs = 5000,
+): Promise<boolean> => {
+  const pending = getServerByName(serverName)?.connectingPromise;
+  if (!pending) return true;
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+    timer.unref?.();
+  });
+  const settled = pending.then(
+    () => true,
+    () => true,
+  );
+  try {
+    return await Promise.race([settled, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};

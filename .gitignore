@@ -47,3 +47,6 @@ temp-test-config/
 # OAuth consent grants (runtime state, excluded from configuration exports)
 *.approvals.json
 *.approvals.json.*.tmp
+
+# Local design drafts and review scratch space
+.scratch/

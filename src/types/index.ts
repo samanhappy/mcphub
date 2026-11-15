@@ -757,6 +757,12 @@ export interface ServerInfo {
    * superseded spawn cannot resurrect the pre-reconnect runtime (#1056).
    */
   runtimeGeneration?: number;
+  /**
+   * The in-flight connect for this entry, if any. `reconnectServer` returns
+   * before the handshake finishes, so a caller that must know whether the
+   * child actually came up awaits this instead of reading `status` once.
+   */
+  connectingPromise?: Promise<void>;
   activeToolCalls?: number; // Calls holding the on-demand runtime awake, including cold starts
   idleTimeoutId?: NodeJS.Timeout; // Timer ID for idle-shutdown (cleared/reset on each tool call)
   lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)

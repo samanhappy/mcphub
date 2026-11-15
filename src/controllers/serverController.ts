@@ -43,6 +43,7 @@ import {
   syncToolEmbedding,
   toggleServerStatus,
   reconnectServer,
+  waitForServerConnect,
   reinstallServer,
   updateServerInfoVisibility,
 } from '../services/mcpService.js';
@@ -1778,16 +1779,32 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
 
 /**
  * A staging edit is only live once the child has been rebuilt in the new cwd.
- * `initializeClientsFromSettings` records a failed spawn on the entry instead
- * of throwing, so the reconnect promise resolving is not proof of success.
+ * `initializeClientsFromSettings` publishes the entry and fires the handshake,
+ * so a resolved reconnect is not proof of success: wait (bounded) for the
+ * connect to settle, then report only a failure this restart produced. An
+ * on-demand server spawns on the next call, so there is nothing to wait for.
  */
-const restartFailureOf = (serverName: string): string | undefined => {
+const restartFailureOf = async (serverName: string, errorBefore: string | null): Promise<boolean> => {
   const runtime = getServerByName(serverName);
-  if (!runtime || runtime.config?.startOnDemand === true) return undefined;
-  if (runtime.status === 'disconnected' && runtime.error) return runtime.error;
-  return undefined;
+  if (!runtime || runtime.config?.startOnDemand === true) return false;
+  if (runtime.enabled === false) return false;
+  await waitForServerConnect(serverName);
+  const after = getServerByName(serverName);
+  if (!after || after.enabled === false) return false;
+  return after.status === 'disconnected' && Boolean(after.error) && after.error !== errorBefore;
 };
 
+/**
+ * Per-tool file staging opt-in (#1056, design §9.5, R13).
+ *
+ * PATCH /api/servers/:name/file-staging with
+ * `{ tool, enabled, inputParams?, outputParams? }`.
+ *
+ * Owner-or-admin, the same permission `toggleTool` uses. Omitted parameter
+ * lists keep their stored value, so disabling a tool (or re-enabling it) never
+ * loses the declaration. The updated config is validated as a whole so an
+ * enabled tool still requires `staging.adapter` (and a stdio server).
+ */
 export const updateToolFileStaging = async (req: Request, res: Response): Promise<void> => {
   try {
     const serverName = decodeURIComponent(req.params.name);
@@ -1861,6 +1878,7 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
     }
 
     broadcastToolListChanged();
+    const errorBeforeRestart = getServerByName(serverName)?.error ?? null;
     // `stagedTools` is connection-relevant: the child must be rebuilt into (or
     // out of) the per-principal staging root now, not on the next restart. The
     // old child is closed before the live config advertises staging, so no call
@@ -1880,11 +1898,10 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
       liveServer.config = { ...liveServer.config, tools: nextTools };
     }
 
-    const restartFailure = restartFailureOf(serverName);
-    if (restartFailure) {
+    if (await restartFailureOf(serverName, errorBeforeRestart)) {
       res.status(500).json({
         success: false,
-        message: `Saved, but the server did not start with the new staging setting: ${restartFailure}`,
+        message: 'Saved, but the server did not start with the new staging setting',
       });
       return;
     }
@@ -1951,6 +1968,7 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
     }
 
     broadcastToolListChanged();
+    const errorBeforeRestart = getServerByName(serverName)?.error ?? null;
     // Same ordering as the tool PATCH: the old child must be gone before the
     // live config says the server is staged.
     try {
@@ -1968,11 +1986,10 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
       liveServer.config = { ...liveServer.config, staging };
     }
 
-    const restartFailure = restartFailureOf(serverName);
-    if (restartFailure) {
+    if (await restartFailureOf(serverName, errorBeforeRestart)) {
       res.status(500).json({
         success: false,
-        message: `Saved, but the server did not start with the new staging setting: ${restartFailure}`,
+        message: 'Saved, but the server did not start with the new staging setting',
       });
       return;
     }
