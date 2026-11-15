@@ -1775,6 +1775,19 @@ export const toggleTool = async (req: Request, res: Response): Promise<void> => 
  * loses the declaration. The updated config is validated as a whole so an
  * enabled tool still requires `staging.adapter` (and a stdio server).
  */
+
+/**
+ * A staging edit is only live once the child has been rebuilt in the new cwd.
+ * `initializeClientsFromSettings` records a failed spawn on the entry instead
+ * of throwing, so the reconnect promise resolving is not proof of success.
+ */
+const restartFailureOf = (serverName: string): string | undefined => {
+  const runtime = getServerByName(serverName);
+  if (!runtime || runtime.config?.startOnDemand === true) return undefined;
+  if (runtime.status === 'disconnected' && runtime.error) return runtime.error;
+  return undefined;
+};
+
 export const updateToolFileStaging = async (req: Request, res: Response): Promise<void> => {
   try {
     const serverName = decodeURIComponent(req.params.name);
@@ -1867,6 +1880,15 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
       liveServer.config = { ...liveServer.config, tools: nextTools };
     }
 
+    const restartFailure = restartFailureOf(serverName);
+    if (restartFailure) {
+      res.status(500).json({
+        success: false,
+        message: `Saved, but the server did not start with the new staging setting: ${restartFailure}`,
+      });
+      return;
+    }
+
     res.json({ success: true, data: nextTools[configKey] });
   } catch (error) {
     if (error instanceof ServerConfigValidationError) {
@@ -1944,6 +1966,15 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
     const liveServer = getServerByName(serverName);
     if (liveServer?.config) {
       liveServer.config = { ...liveServer.config, staging };
+    }
+
+    const restartFailure = restartFailureOf(serverName);
+    if (restartFailure) {
+      res.status(500).json({
+        success: false,
+        message: `Saved, but the server did not start with the new staging setting: ${restartFailure}`,
+      });
+      return;
     }
 
     res.json({ success: true, data: staging ?? null });

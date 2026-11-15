@@ -257,6 +257,36 @@ describe('startOnDemand lifecycle', () => {
     expect(serverInfo.status).toBe('disconnected');
   });
 
+  it('a superseded cold start does not publish its client or error', async () => {
+    // The spawn began before a reconnect; the reconnect bumps the generation,
+    // so the late completion must close its own handles and leave the entry
+    // alone instead of resurrecting the pre-reconnect runtime.
+    const serverInfo = createSleepingServerInfo();
+    mcpService.setServerInfosForTest([serverInfo as any]);
+
+    let releaseConnect: () => void = () => undefined;
+    mockConnect.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseConnect = resolve;
+        }),
+    );
+
+    const pending = mcpService.handleCallToolRequest(
+      { params: { name: 'demo::ping', arguments: {} } },
+      { sessionId: 'session-1' },
+    );
+    // Let the spawn reach the connect await, then reconnect underneath it.
+    await new Promise((resolve) => setImmediate(resolve));
+    await mcpService.reconnectServer('demo');
+    releaseConnect();
+    await pending.catch(() => undefined);
+
+    expect(serverInfo.status).not.toBe('connected');
+    expect(serverInfo.client).toBeUndefined();
+    if (serverInfo.idleTimeoutId) clearTimeout(serverInfo.idleTimeoutId);
+  });
+
   it('coalesces concurrent replica calls to a sleeping runtime and publishes the live client', async () => {
     jest.useFakeTimers();
     process.env.MCPHUB_REPLICA_MODE = 'true';

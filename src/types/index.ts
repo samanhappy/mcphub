@@ -751,6 +751,12 @@ export interface ServerInfo {
   config?: ServerConfig; // Reference to the original server configuration for OpenAPI passthrough headers
   // On-demand spawning runtime state
   spawningPromise?: Promise<void>; // Singleton promise: concurrent callers await this instead of double-spawning
+  /**
+   * Bumped on every reconnect. A cold start captures the value it began with
+   * and refuses to publish its client/status once the entry has moved on, so a
+   * superseded spawn cannot resurrect the pre-reconnect runtime (#1056).
+   */
+  runtimeGeneration?: number;
   activeToolCalls?: number; // Calls holding the on-demand runtime awake, including cold starts
   idleTimeoutId?: NodeJS.Timeout; // Timer ID for idle-shutdown (cleared/reset on each tool call)
   lastUsedAt?: number; // Timestamp of last tool call (ms since epoch)

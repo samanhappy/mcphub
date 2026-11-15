@@ -3386,10 +3386,14 @@ export const reconnectServer = async (serverName: string): Promise<void> => {
 
   // The closed handles must not survive the reconnect: `status: 'connected'`
   // with a closed client makes an on-demand server look ready and sends the
-  // next call to a dead transport.
+  // next call to a dead transport. Bumping the generation also fences off a
+  // cold start that was already in flight: it must not publish the old config,
+  // client or status after this point.
   serverInfo.client = undefined;
   serverInfo.transport = undefined;
   serverInfo.status = 'disconnected';
+  serverInfo.runtimeGeneration = (serverInfo.runtimeGeneration ?? 0) + 1;
+  serverInfo.spawningPromise = undefined;
 
   // Reinitialize the server
   await initializeClientsFromSettings(false, serverName);
@@ -3829,6 +3833,10 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   }
 
   const spawnStart = Date.now();
+  const generation = serverInfo.runtimeGeneration ?? 0;
+  // A reconnect (config change, staging edit) increments the generation and
+  // invalidates this spawn's right to publish anything.
+  const stale = () => (serverInfo.runtimeGeneration ?? 0) !== generation;
 
   const spawnPromise = (async () => {
     // Load the config fresh from the DAO for the expanded transport config and
@@ -3864,6 +3872,22 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
     };
 
     await connectClientWithDiagnostics(client, transport, requestOptions);
+
+    if (stale()) {
+      // The server was reconfigured while this cold start was connecting: the
+      // new runtime owns the entry, so close this one instead of publishing it.
+      try {
+        client.close();
+      } catch {
+        /* already closed */
+      }
+      try {
+        transport.close();
+      } catch {
+        /* already closed */
+      }
+      return;
+    }
 
     // Mutate in place so every holder of this serverInfo (resolution paths,
     // the caller about to invoke the tool) sees the live client/status.
@@ -3946,8 +3970,12 @@ const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
   try {
     await spawnPromise;
   } catch (error) {
-    serverInfo.status = 'disconnected';
-    serverInfo.error = `Failed to start on-demand server: ${formatErrorForLogging(error)}`;
+    // A failed spawn from a superseded generation must not overwrite the error
+    // state of the runtime that replaced it.
+    if (!stale()) {
+      serverInfo.status = 'disconnected';
+      serverInfo.error = `Failed to start on-demand server: ${formatErrorForLogging(error)}`;
+    }
     throw error;
   } finally {
     serverInfo.spawningPromise = undefined;

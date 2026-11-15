@@ -229,6 +229,10 @@ const resetServer = (overrides: Record<string, unknown> = {}) => {
     ...overrides,
   });
   liveServer.config = JSON.parse(JSON.stringify(serverRow));
+  // Runtime fields leak between tests otherwise; a stale error would make the
+  // restart check report a failure that this test never produced.
+  liveServer.status = 'connected';
+  liveServer.error = null;
 };
 
 describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
@@ -264,6 +268,25 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
     expect(liveServer.config.tools.upload.fileStaging).toEqual({
       enabled: false,
       inputParams: ['localPath'],
+    });
+  });
+
+  it('reports a spawn failure the reconnect swallowed', async () => {
+    // `initializeClientsFromSettings` records the failure on the entry instead
+    // of throwing, so a resolved reconnect is not proof the child started.
+    const { reconnectServer: mockedReconnect } = await import('../../src/services/mcpService.js');
+    (mockedReconnect as jest.Mock).mockImplementationOnce(async () => {
+      liveServer.status = 'disconnected';
+      liveServer.error = 'File staging principal is unavailable';
+    });
+    const res = mockRes();
+
+    await updateToolFileStaging(request({ tool: 'upload', enabled: false }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(responseBody(res)).toMatchObject({
+      success: false,
+      message: expect.stringContaining('File staging principal is unavailable'),
     });
   });
 
