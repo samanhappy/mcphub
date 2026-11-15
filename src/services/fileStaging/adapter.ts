@@ -17,6 +17,36 @@ const PINNING_LAUNCHERS = new Set(['npx', 'node']);
  * principal, so a credential-template args slot cannot smuggle a local-root
  * flag such as `--allowed-local-paths=/` or `--config-file`.
  */
+/**
+ * Options that consume the next token, taken from the pinned 1.11.0 parser
+ * (`parseArgs` with `type: 'string'`). Everything else in the allowlist is a
+ * boolean flag: advancing past the next token for a boolean would hide the
+ * option that follows it.
+ */
+const VALUE_OPTIONS = new Set([
+  '--config-file',
+  '--ssh-config-file',
+  '--ssh',
+  '--host',
+  '--port',
+  '--username',
+  '--password',
+  '--privateKey',
+  '--passphrase',
+  '--agent',
+  '--whitelist',
+  '--blacklist',
+  '--proxy',
+  '--socksProxy',
+  '--allowed-local-paths',
+  '--allowed-remote-paths',
+  '--transport-mode',
+  '--shell-ready-timeout',
+  '--command-template',
+  '--pty',
+  '--mcp-transport',
+]);
+
 const ALLOWED_SSH_OPTIONS = new Set([
   '--ssh',
   '--host',
@@ -123,9 +153,14 @@ const optionNameOf = (token: string): string => {
  * forms (`-h`, `-k`), often reached through a credential slot.
  */
 export const validateResolvedSshArgs = (argv: readonly string[]): AdapterValidation => {
+  // Only the arguments the SSH program receives are judged. The launcher
+  // (`npx -y @fangjunjie/ssh-mcp-server@1.11.0`) has its own flags (`-y`), and
+  // the pinned specifier is checked separately by validateSshServerConfig.
+  const specifierIndex = argv.findIndex((token) => token === PINNED_SPEC);
+  const programArgv = specifierIndex === -1 ? argv : argv.slice(specifierIndex + 1);
   // After `--` the pinned CLI reads only positionals; nothing is an option.
-  const end = argv.indexOf('--');
-  const tokens = end === -1 ? argv : argv.slice(0, end);
+  const end = programArgv.indexOf('--');
+  const tokens = end === -1 ? programArgv : programArgv.slice(0, end);
   // Only the option positions are judged, so a value that starts with dashes
   // (`--password --host`) is never mistaken for an option.
   for (let i = 0; i < tokens.length; i++) {
@@ -136,7 +171,8 @@ export const validateResolvedSshArgs = (argv: readonly string[]): AdapterValidat
     if (!ALLOWED_SSH_OPTIONS.has(option) && !option.startsWith('--http-')) {
       return { ok: false, reason: `Unknown SSH option: ${option}` };
     }
-    if (!token.includes('=')) i += 1;
+    // A boolean flag never consumes the next token; only a value option does.
+    if (!token.includes('=') && VALUE_OPTIONS.has(option)) i += 1;
   }
   return { ok: true };
 };

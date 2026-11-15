@@ -119,6 +119,38 @@ describe('ssh staging adapter', () => {
     expect(validateResolvedSshArgs(['--', '--allowed-local-paths=/'])).toEqual({ ok: true });
   });
 
+  it('ignores the launcher prefix and judges only the SSH program args', () => {
+    // `npx -y` is the documented launcher; `-y` is not an SSH option.
+    expect(
+      validateResolvedSshArgs([
+        'npx',
+        '-y',
+        '@fangjunjie/ssh-mcp-server@1.11.0',
+        '--host',
+        'h',
+        '--username',
+        'u',
+      ]),
+    ).toEqual({ ok: true });
+    expect(
+      validateResolvedSshArgs(['-y', '@fangjunjie/ssh-mcp-server@1.11.0', '--help']),
+    ).toMatchObject({ ok: false });
+  });
+
+  it('does not let a boolean flag hide the option that follows it', () => {
+    // The pinned parser declares --try-keyboard and --pre-connect as booleans,
+    // so the next token is an option position, not their value.
+    expect(validateResolvedSshArgs(['--pre-connect', '--allowed-local-paths=/'])).toMatchObject({
+      ok: false,
+    });
+    expect(validateResolvedSshArgs(['--try-keyboard', '--config-file=/tmp/x'])).toMatchObject({
+      ok: false,
+    });
+    expect(validateResolvedSshArgs(['--pre-connect', '--try-keyboard', '--host', 'h'])).toEqual({
+      ok: true,
+    });
+  });
+
   it('inspects and rejects unknown single-dash options', () => {
     expect(validateResolvedSshArgs(['-x'])).toMatchObject({ ok: false });
     expect(validateResolvedSshArgs(['-x', 'value'])).toMatchObject({ ok: false });

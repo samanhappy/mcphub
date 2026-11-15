@@ -2463,6 +2463,41 @@ describe('serverController - authorization hardening', () => {
     });
   });
 
+  it('rejects a non-admin update that adds shared staging trust', async () => {
+    // The whole-server PUT path must not become a way around the PATCH rule:
+    // `shared` is admin-only, and a stdio config is admin-only to modify.
+    const json = jest.fn();
+    const status = jest.fn().mockReturnThis();
+    mockServerDao.findById.mockResolvedValue({
+      name: 'stdio-server',
+      owner: 'alice',
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+      tools: {},
+    });
+    const req = {
+      params: { name: 'stdio-server' },
+      body: {
+        config: {
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@fangjunjie/ssh-mcp-server@1.11.0'],
+          staging: { adapter: 'ssh', shared: true },
+        },
+      },
+      user: { username: 'alice', isAdmin: false },
+    } as unknown as Request;
+    const res = { json, status } as unknown as Response;
+
+    await updateServer(req, res);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false }),
+    );
+  });
+
   it('rejects reading another user server by direct name lookup', async () => {
     mockServerDao.findById.mockResolvedValue({
       name: 'shared-server',
