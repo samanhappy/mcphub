@@ -1,8 +1,10 @@
 import type { FileStagingSettings } from '../../types/index.js';
 import { getSystemConfigDao } from '../../dao/DaoFactory.js';
 import { isDatabaseModeEnabled } from '../../utils/systemConfigCache.js';
+import { isHostedModeEnabled } from '../hostedMode.js';
 import { resolveFileStagingSettings } from '../../utils/fileStagingConfig.js';
 import { resolveJsonBodyLimit } from '../../utils/bearerAuth.js';
+import { isReplicaMode } from '../../utils/replicaMode.js';
 
 const parseByteLimit = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
@@ -64,6 +66,14 @@ export const getFileStagingSettings = async (): Promise<FileStagingSettings> => 
  * Process-wide ledger. The backend is chosen once: DB mode uses the ledger
  * tables, file mode uses the locked JSON store.
  */
+/**
+ * Staging is unavailable in hosted and replica modes: both run the hub as a
+ * stateless/leased process where a per-user local directory is not durable and
+ * the ledger owner is not stable. Fail closed before any file is created.
+ */
+export const isStagingRuntimeSupported = (): boolean =>
+  !isReplicaMode() && !isHostedModeEnabled();
+
 export const getStagingStateStore = (): Promise<StagingStateStore> => {
   if (!storePromise) {
     storePromise = (async () => {

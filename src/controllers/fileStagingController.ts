@@ -5,6 +5,7 @@ import { pipeline } from 'node:stream/promises';
 
 import type { Request, Response } from 'express';
 
+import { openNoFollow } from '../services/fileStaging/paths.js';
 import { logger } from '../utils/logger.js';
 import { getStagingStateStore } from '../services/fileStaging/settings.js';
 
@@ -53,7 +54,9 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
     // streaming another leaves a window where a same-UID writer swaps the
     // file between the two opens (reproduced by the maintainer: 22/100
     // responses served, 6 of them with a different hash).
-    const handle = await fs.open(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    // Same fail-closed opener as the ledger: on a platform without O_NOFOLLOW
+    // this throws instead of silently following a leaf symlink.
+    const handle = await openNoFollow(file, fsConstants.O_RDONLY);
     try {
       const stat = await handle.stat();
       if (!stat.isFile() || stat.nlink !== 1 || stat.size !== record.size) {
@@ -90,6 +93,9 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
     }
     logger.warn('[staging] rejected staged download request');
   } finally {
-    await releasePin?.();
+    // A failing unpin must not replace the response that was already sent.
+    await releasePin?.().catch((error) => {
+      logger.warn('[staging] failed to release a download pin', error);
+    });
   }
 };

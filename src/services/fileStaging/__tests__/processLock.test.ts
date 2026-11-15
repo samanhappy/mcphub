@@ -79,7 +79,12 @@ describe('staging process lock', () => {
       const created = (await fs.stat(lockPath)).mtimeMs;
       await ageLock(lockPath, STAGING_LOCK_STALE_MS + 60_000);
       jest.advanceTimersByTime(STAGING_LOCK_HEARTBEAT_INTERVAL_MS);
-      await jest.advanceTimersByTimeAsync(0);
+      // The heartbeat reads the owner before touching the mtime, so the file
+      // I/O resolves a few microtasks after the timer fires.
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await jest.advanceTimersByTimeAsync(1);
+        if ((await fs.stat(lockPath)).mtimeMs > created) break;
+      }
       const refreshed = (await fs.stat(lockPath)).mtimeMs;
       expect(refreshed).toBeGreaterThan(created);
       expect(Date.now() - refreshed).toBeLessThan(STAGING_LOCK_HEARTBEAT_INTERVAL_MS);

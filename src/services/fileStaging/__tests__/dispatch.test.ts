@@ -35,6 +35,7 @@ jest.mock('../../../dao/index.js', () => ({
 jest.mock('../settings.js', () => ({
   getFileStagingSettings: jest.fn(async () => settings),
   getStagingStateStore: jest.fn(async () => store),
+  isStagingRuntimeSupported: jest.fn(() => true),
 }));
 
 jest.mock('../identity.js', () => ({
@@ -84,13 +85,15 @@ describe('staging dispatch seam', () => {
       owner: 'admin',
       staging: { adapter: 'ssh' },
       tools: {
+        // Direction is per tool: upload reads the staged copy, download writes
+        // a reserved destination. Declaring both on one tool is rejected.
         upload: {
           enabled: true,
-          fileStaging: {
-            enabled: true,
-            inputParams: ['localPath'],
-            outputParams: ['remotePath'],
-          },
+          fileStaging: { enabled: true, inputParams: ['localPath'] },
+        },
+        download: {
+          enabled: true,
+          fileStaging: { enabled: true, outputParams: ['localPath'] },
         },
       },
     };
@@ -120,12 +123,12 @@ describe('staging dispatch seam', () => {
   it('finalizes a declared output after the child writes it', async () => {
     const reserved = await store.createReservedRef(input());
     const invoke = jest.fn(async (params: any) => {
-      await fs.writeFile(params.arguments.remotePath, 'written');
+      await fs.writeFile(params.arguments.localPath, 'written');
       return { content: [{ type: 'text', text: 'ok' }] };
     });
     const result = await dispatchStagedToolCall(
       serverInfo(),
-      { name: 'ssh-upload', arguments: { remotePath: reserved.ref } },
+      { name: 'ssh-download', arguments: { localPath: reserved.ref } },
       invoke,
       'alice',
     );
@@ -140,7 +143,7 @@ describe('staging dispatch seam', () => {
     const reserved = await store.createReservedRef(input());
     const result = await dispatchStagedToolCall(
       serverInfo(),
-      { name: 'ssh-upload', arguments: { remotePath: reserved.ref } },
+      { name: 'ssh-download', arguments: { localPath: reserved.ref } },
       async () => ({ isError: true, content: [] }),
       'alice',
     );
@@ -163,20 +166,20 @@ describe('staging dispatch seam', () => {
     const invoke = jest.fn(async (params: any) => {
       started();
       await gate;
-      await fs.writeFile(params.arguments.remotePath, 'first');
+      await fs.writeFile(params.arguments.localPath, 'first');
       return { content: [{ type: 'text', text: 'ok' }] };
     });
 
     const first = dispatchStagedToolCall(
       serverInfo(),
-      { name: 'ssh-upload', arguments: { remotePath: reserved.ref } },
+      { name: 'ssh-download', arguments: { localPath: reserved.ref } },
       invoke,
       'alice',
     );
     await entered;
     const second = await dispatchStagedToolCall(
       serverInfo(),
-      { name: 'ssh-upload', arguments: { remotePath: reserved.ref } },
+      { name: 'ssh-download', arguments: { localPath: reserved.ref } },
       invoke,
       'alice',
     );
@@ -207,7 +210,7 @@ describe('staging dispatch seam', () => {
     const foreign = await store.createReservedRef({ ...input(), serverId: 'another-server' });
     const wrongServer = await dispatchStagedToolCall(
       serverInfo(),
-      { name: 'ssh-upload', arguments: { remotePath: foreign.ref } },
+      { name: 'ssh-upload', arguments: { localPath: foreign.ref } },
       async () => ({ content: [] }),
       'alice',
     );

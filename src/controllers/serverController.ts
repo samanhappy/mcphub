@@ -1855,6 +1855,11 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
     }
 
     broadcastToolListChanged();
+    // `stagedTools` is connection-relevant: the child must be rebuilt into (or
+    // out of) the per-principal staging root now, not on the next restart.
+    await reconnectServer(serverName).catch((error) => {
+      logger.error(`[staging] failed to reconnect ${serverName} after a tool change`, error);
+    });
 
     res.json({ success: true, data: nextTools[configKey] });
   } catch (error) {
@@ -1895,7 +1900,7 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
 
     const server = await loadAuthorizedServer(req, res, serverName);
     if (!server) return;
-
+    // See updateToolFileStaging: only `shared` is a trust change.
     // `shared` is a trust grant: only an admin may add or remove it. An owner
     // keeps control of the adapter for their own private server.
     if (shared !== undefined && getRequestUser(req)?.isAdmin !== true) {
@@ -1923,6 +1928,9 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
     }
 
     broadcastToolListChanged();
+    await reconnectServer(serverName).catch((error) => {
+      logger.error(`[staging] failed to reconnect ${serverName} after a staging change`, error);
+    });
 
     res.json({ success: true, data: staging ?? null });
   } catch (error) {

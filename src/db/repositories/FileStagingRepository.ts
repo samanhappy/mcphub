@@ -45,17 +45,18 @@ export class FileStagingRepository {
     lock = false,
   ): Promise<FileStagingRefEntity[]> {
     if (refs.length === 0) return [];
-    // PostgreSQL locks rows in the order the `IN (...)` list presents them, so
-    // the requested ids are sorted *before* the query: two transactions locking
-    // overlapping sets then take shared rows in the same order instead of
-    // deadlocking. Sorting the result afterwards would be too late.
     const requested = [...new Set(refs)].sort(compareRefs);
-    const rows = await manager.getRepository(FileStagingRefEntity).find({
-      where: requested.map((ref) => ({ ref })),
-      ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
-    });
-    // Output stability only; the lock order was fixed above.
-    return rows.sort((a, b) => compareRefs(a.ref, b.ref));
+    // `FOR UPDATE` locks rows in the order the executor returns them, which the
+    // planner chooses — sorting the `IN (...)` list does not fix lock order. An
+    // explicit `ORDER BY ref` does: two transactions locking overlapping sets
+    // then take shared rows in the same order instead of deadlocking.
+    const query = manager
+      .getRepository(FileStagingRefEntity)
+      .createQueryBuilder('ref')
+      .where('ref.ref IN (:...refs)', { refs: requested })
+      .orderBy('ref.ref', 'ASC');
+    if (lock) query.setLock('pessimistic_write');
+    return query.getMany();
   }
 
   async saveRef(manager: EntityManager, row: FileStagingRefEntity): Promise<FileStagingRefEntity> {

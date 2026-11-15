@@ -9,11 +9,16 @@ import {
   validateSshServerConfig,
 } from './fileStaging/adapter.js';
 import {
+  containsStagingRef,
   dispatchStagedToolCall as dispatchStagingCall,
   resolveStagingServerId,
 } from './fileStaging/dispatch.js';
 import { resolveStagingPrincipal } from './fileStaging/identity.js';
-import { getFileStagingSettings, getStagingStateStore } from './fileStaging/settings.js';
+import {
+  getFileStagingSettings,
+  getStagingStateStore,
+  isStagingRuntimeSupported,
+} from './fileStaging/settings.js';
 import { StagingError } from './fileStaging/types.js';
 import {
   STAGING_TOOL_DEFINITIONS,
@@ -1930,16 +1935,14 @@ export const createTransportFromConfig = async (
   conf: ServerConfig,
   principalUsername?: string,
 ): Promise<any> => {
-  // Resolved before any transport branch: a staging-enabled stdio child gets a
-  // per-principal cwd. A failure disables staging for this server (dispatch
-  // re-checks the same conditions) instead of taking the whole server down.
-  const stagingCwd = await resolveStagingCwd(conf, principalUsername).catch((error) => {
-    logger.error(
-      `[staging] ${name}: staging cwd unavailable, staging stays disabled for this server`,
-      error,
-    );
-    return undefined;
-  });
+  // Resolved before any transport branch, and only for a server that actually
+  // stages: an unresolvable staging root fails this server closed. Starting the
+  // child in the hub cwd instead would root an ssh/filesystem tool at /app,
+  // where mcp_settings.json and the ledger live — the exact escape the staging
+  // boundary exists to prevent.
+  const stagingCwd = hasStagedTools(conf)
+    ? await resolveStagingCwd(conf, principalUsername)
+    : undefined;
   let transport;
   const env = await getServerEnvironment(conf);
 
@@ -4667,7 +4670,7 @@ const stagingAskUsername = (extra: any): string | undefined => {
  */
 const resolveStagingTargets = async (group: string | undefined): Promise<StagingTarget[]> => {
   const settings = await getFileStagingSettings();
-  if (!settings.enabled || isReplicaMode()) return [];
+  if (!settings.enabled || !isStagingRuntimeSupported()) return [];
   const lookupGroup = getGroupLookupName(group);
   const { filteredServerInfos, serverConfigsByName } =
     await getFilteredServerInfosForGroup(lookupGroup);
@@ -4805,7 +4808,7 @@ const handleHubStagingCall = async (request: any, extra: any) => {
     };
   }
   const settings = await getFileStagingSettings();
-  if (!settings.enabled || isReplicaMode()) {
+  if (!settings.enabled || !isStagingRuntimeSupported()) {
     return { isError: true, content: [{ type: 'text', text: 'File staging is not enabled' }] };
   }
   const group = getMcpRequestGroup(extra);
@@ -5515,8 +5518,10 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       result: summarizeToolResultForLogging(result),
     });
 
-    // Log successful activity
+    // Log successful activity. A staged call carries refs and staging paths;
+    // the payload is suppressed (the ref is a download capability).
     const duration = Date.now() - startTime;
+    const suppressPayload = containsStagingRef(request.params.arguments);
     await activityLogger.logToolCall({
       policy: policyAudit,
       server: serverInfo.name,
@@ -5531,6 +5536,7 @@ const handleCallToolRequestImpl = async (request: any, extra: any) => {
       keyName,
       sourceIp,
       hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
+      suppressPayload,
       errorMessage: result.isError ? 'Tool returned error response' : undefined,
     });
 

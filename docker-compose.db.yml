@@ -47,12 +47,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Staged content and the file-mode ledger live under /app/data. In database
+    # mode the ledger is in Postgres but the content is still local, so the
+    # volume is required for a staged file to survive a container restart.
+    volumes:
+      - mcphub-data:/app/data
     restart: unless-stopped
     networks:
       - mcphub-network
 
 volumes:
   pgdata:
+  mcphub-data:
     driver: local
 
 networks:

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ServerConfig, ServerInfo } from '../../types/index.js';
 import { getServerDao } from '../../dao/index.js';
-import { isReplicaMode } from '../../utils/replicaMode.js';
+import { isStagingRuntimeSupported } from './settings.js';
 import { logger } from '../../utils/logger.js';
 import { getNameSeparator } from '../../config/index.js';
 import { findToolConfig } from '../../utils/toolConfig.js';
@@ -37,7 +37,7 @@ export interface StagedCall {
   outputParams: string[];
 }
 
-const containsStagingRef = (value: unknown): boolean => {
+export const containsStagingRef = (value: unknown): boolean => {
   if (typeof value === 'string') return value.startsWith('mcpfile://');
   if (Array.isArray(value)) return value.some(containsStagingRef);
   if (value && typeof value === 'object') return Object.values(value).some(containsStagingRef);
@@ -89,7 +89,7 @@ export const resolveStagedCall = async (
   if (!config?.staging || !hasStagedTools(config)) return undefined;
   // Replica mode cannot own a lease or a file. Disable staging, not the
   // server: non-staging tools keep working and a ref is rejected below.
-  if (isReplicaMode()) return undefined;
+  if (!isStagingRuntimeSupported()) return undefined;
   const settings = await getFileStagingSettings();
   // Master switch off: normal calls pass through, but a staging ref is still
   // rejected by the containsStagingRef guard below rather than forwarded.

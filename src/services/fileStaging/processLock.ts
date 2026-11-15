@@ -21,6 +21,21 @@ export const STAGING_LOCK_HEARTBEAT_INTERVAL_MS = 30_000;
 export const STAGING_LOCK_STALE_MS = 120_000;
 
 const acquiredStateDirs = new Set<string>();
+/** Live handles, so a shutdown can hand the lock back without a stale window. */
+const heldLocks = new Map<string, { instanceId: string; release: () => Promise<void> }>();
+
+const lockOwnerInstance = async (stateDir: string): Promise<string | undefined> => {
+  const raw = await fs.readFile(stagingLockPath(stateDir), 'utf8').catch(() => '');
+  const [, instanceId] = raw.trim().split(':');
+  return instanceId || undefined;
+};
+
+/** Remove the lockfile only when this instance still owns it. */
+const releaseLockIfOwned = async (stateDir: string, instanceId: string): Promise<void> => {
+  const owner = await lockOwnerInstance(stateDir);
+  if (owner && owner !== instanceId) return;
+  await fs.rm(stagingLockPath(stateDir), { force: true }).catch(() => undefined);
+};
 
 export const stagingLockPath = (stateDir: string): string => path.join(stateDir, 'staging.lock');
 
@@ -54,17 +69,28 @@ export const acquireStagingProcessLock = async (
       }
       acquiredStateDirs.add(stateDir);
       const heartbeat = setInterval(() => {
-        const now = new Date();
-        void fs.utimes(lockPath, now, now).catch(() => undefined);
+        // Refresh only while we still own the file: a stalled initialization
+        // that lost the lock must not keep another owner's mtime fresh, nor
+        // delete its file on release.
+        void lockOwnerInstance(stateDir)
+          .then((owner) => {
+            if (owner !== instanceId) return;
+            const now = new Date();
+            return fs.utimes(lockPath, now, now);
+          })
+          .catch(() => undefined);
       }, STAGING_LOCK_HEARTBEAT_INTERVAL_MS);
       heartbeat.unref();
       // A failed initialization must hand the lock back: the retry path in
       // settings.ts would otherwise stay blocked until a hub restart.
-      return async () => {
+      const release = async () => {
         clearInterval(heartbeat);
         acquiredStateDirs.delete(stateDir);
-        await fs.rm(lockPath, { force: true }).catch(() => undefined);
+        heldLocks.delete(stateDir);
+        await releaseLockIfOwned(stateDir, instanceId);
       };
+      heldLocks.set(stateDir, { instanceId, release });
+      return release;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       const raw = await fs.readFile(lockPath, 'utf8').catch(() => '');
@@ -91,6 +117,16 @@ export const acquireStagingProcessLock = async (
     }
   }
   throw new StagingError('locked', 'Unable to acquire the file staging process lock');
+};
+
+/**
+ * Hand every lock this process holds back to the next instance. Called from the
+ * shutdown path so a restart does not have to wait out the staleness window.
+ */
+export const releaseAllStagingProcessLocks = async (): Promise<void> => {
+  for (const [, held] of heldLocks) {
+    await held.release().catch(() => undefined);
+  }
 };
 
 /** Test seam: forget that this process owns the lock for a state directory. */

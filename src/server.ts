@@ -333,6 +333,15 @@ export class AppServer {
 
     this.server = null;
 
+    // Hand the staging lock back before the process exits: the next instance
+    // would otherwise refuse to start until the heartbeat staleness window.
+    try {
+      const { releaseAllStagingProcessLocks } = await import('./services/fileStaging/processLock.js');
+      await releaseAllStagingProcessLocks();
+    } catch (error) {
+      logger.error('[SHUTDOWN] Error releasing the staging lock', safeStringify({ error }));
+    }
+
     // Close database connection if in database mode
     const useDatabase =
       process.env.USE_DB !== undefined ? process.env.USE_DB === 'true' : !!process.env.DB_URL;

@@ -8,33 +8,50 @@ const A = ref('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 const B = ref('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 const C = ref('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
 
-/** Records the `where` list the query builder receives, in order. */
-const fakeManager = (): { manager: EntityManager; whereCalls: string[][]; lockModes: string[] } => {
+/**
+ * The lock order is decided by the statement's ORDER BY, not by the order of
+ * the `IN (...)` list: PostgreSQL locks rows as the executor returns them.
+ */
+const fakeManager = (): {
+  manager: EntityManager;
+  whereCalls: string[][];
+  orderBy: string[];
+  locks: string[];
+} => {
   const whereCalls: string[][] = [];
-  const lockModes: string[] = [];
+  const orderBy: string[] = [];
+  const locks: string[] = [];
+  const query = {
+    where: (_sql: string, params: { refs: string[] }) => {
+      whereCalls.push(params.refs);
+      return query;
+    },
+    orderBy: (column: string, direction: string) => {
+      orderBy.push(`${column} ${direction}`);
+      return query;
+    },
+    setLock: (mode: string) => {
+      locks.push(mode);
+      return query;
+    },
+    getMany: async () => whereCalls.at(-1)!.map((value) => ({ ref: value })),
+  };
   const manager = {
-    getRepository: () => ({
-      find: async (options: { where: Array<{ ref: string }>; lock?: { mode: string } }) => {
-        whereCalls.push(options.where.map((entry) => entry.ref));
-        if (options.lock) lockModes.push(options.lock.mode);
-        // Deliberately return the rows out of order.
-        return options.where.map((entry) => ({ ref: entry.ref })).reverse();
-      },
-    }),
+    getRepository: () => ({ createQueryBuilder: () => query }),
   } as unknown as EntityManager;
-  return { manager, whereCalls, lockModes };
+  return { manager, whereCalls, orderBy, locks };
 };
 
 describe('FileStagingRepository.findRefs', () => {
-  it('sorts the requested refs before the locking query', async () => {
+  it('orders the locking query by ref so concurrent transactions agree', async () => {
     const repository = new FileStagingRepository();
-    const { manager, whereCalls, lockModes } = fakeManager();
+    const { manager, whereCalls, orderBy, locks } = fakeManager();
 
     await repository.findRefs(manager, [C, A, B], true);
 
-    // PostgreSQL locks rows in the order the IN (...) list presents them.
     expect(whereCalls).toEqual([[A, B, C]]);
-    expect(lockModes).toEqual(['pessimistic_write']);
+    expect(orderBy).toEqual(['ref.ref ASC']);
+    expect(locks).toEqual(['pessimistic_write']);
   });
 
   it('deduplicates the requested refs', async () => {
@@ -46,13 +63,13 @@ describe('FileStagingRepository.findRefs', () => {
     expect(whereCalls).toEqual([[A, B]]);
   });
 
-  it('returns rows in a stable order', async () => {
+  it('does not lock when the caller did not ask for it', async () => {
     const repository = new FileStagingRepository();
-    const { manager } = fakeManager();
+    const { manager, locks } = fakeManager();
 
-    const rows = await repository.findRefs(manager, [C, A, B]);
+    await repository.findRefs(manager, [A]);
 
-    expect(rows.map((row) => row.ref)).toEqual([A, B, C]);
+    expect(locks).toEqual([]);
   });
 
   it('does not query for an empty list', async () => {

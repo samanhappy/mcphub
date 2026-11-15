@@ -181,7 +181,7 @@ jest.mock('../../src/services/mcpService.js', () => ({
   broadcastResourceListChanged: jest.fn(),
   syncToolEmbedding: jest.fn(),
   toggleServerStatus: jest.fn(),
-  reconnectServer: jest.fn(),
+  reconnectServer: jest.fn().mockResolvedValue(undefined),
   reinstallServer: jest.fn(),
   updateServerInfoVisibility: jest.fn(),
 }));
@@ -250,7 +250,7 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
       success: true,
       data: { enabled: true, fileStaging: { enabled: false, inputParams: ['localPath'] } },
     });
-    // Live config is patched so the change applies without a reconnect.
+    // Live config is patched before the reconnect that rebuilds the child.
     expect(liveServer.config.tools.upload.fileStaging).toEqual({
       enabled: false,
       inputParams: ['localPath'],

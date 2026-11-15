@@ -159,7 +159,9 @@ export const resolveSyncedServerId = (
   declaredId: string | undefined,
   serverName: string,
 ): string => {
-  if (existingId) return existingId;
+  // A name-derived placeholder is not an identity: keeping it would leave the
+  // synced server permanently ineligible for staging. Any real id wins.
+  if (existingId && !isLegacyServerId(existingId, serverName)) return existingId;
   if (declaredId && !isLegacyServerId(declaredId, serverName)) return declaredId;
   return randomUUID();
 };
