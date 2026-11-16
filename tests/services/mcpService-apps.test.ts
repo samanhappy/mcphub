@@ -287,20 +287,22 @@ describe('mcpService MCP Apps transparent proxy', () => {
     cleanupAllServers();
   });
 
-  it.each([undefined, false, true])('round-trips dotted MCP names with compatibility=%s', async (enabled) => {
+  it.each([undefined, false, true].flatMap((enabled) =>
+    ['users.list', 'mcphub.file_query'].map((name) => ({ enabled, name })),
+  ))('round-trips $name with compatibility=$enabled', async ({ enabled, name }) => {
     mockSystemConfig.mockResolvedValue({ normalizeToolNames: enabled });
-    mockClient.listTools.mockResolvedValue({ tools: [{ name: 'users.list', inputSchema: { type: 'object' } }] });
+    mockClient.listTools.mockResolvedValue({ tools: [{ name, inputSchema: { type: 'object' } }] });
     await initUpstreamServers();
     await flushPromises();
     const extra = { sessionId: 'ordinary-session' };
     const { tools } = await handleListToolsRequest({}, extra);
     expect(tools).toHaveLength(1);
-    expect(tools[0].name === 'users.list').toBe(enabled !== true);
+    expect(tools[0].name === name).toBe(enabled !== true);
     if (enabled) expect(tools[0].name).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
     const result = await handleCallToolRequest({ params: { name: tools[0].name, arguments: {} } }, extra);
     expect(result.isError).not.toBe(true);
-    expect(mockClient.callTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'users.list' }), expect.anything());
-    expect(getServerByName('apps-server')?.tools[0].name).toBe('apps-server::users.list');
+    expect(mockClient.callTool).toHaveBeenCalledWith(expect.objectContaining({ name }), expect.anything());
+    expect(getServerByName('apps-server')?.tools[0].name).toBe(`apps-server::${name}`);
   });
 
   it('maps OpenAPI aliases back to operation names and rechecks disabled tools', async () => {

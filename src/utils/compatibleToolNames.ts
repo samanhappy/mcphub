@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isReservedStagingName } from '../services/fileStaging/tools.js';
 
 const compatibleName = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -15,7 +16,9 @@ export const compatibleToolNames = (
       aliases.set(name, name);
       continue;
     }
-    const stem = name.replace(/[^A-Za-z0-9_-]/g, '_') || 'tool';
+    let stem = name.replace(/[^A-Za-z0-9_-]/g, '_') || 'tool';
+    // Generated aliases must not be intercepted by the hub's early staging dispatch.
+    if (isReservedStagingName(stem)) stem = `tool_${stem}`;
     const hash = createHash('sha256').update(name).digest('hex').slice(0, 12);
     let counter = 0;
     let alias: string;
