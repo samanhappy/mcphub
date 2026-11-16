@@ -874,6 +874,19 @@ describe('serverController - updateSystemConfig', () => {
     expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
   });
 
+  it.each([true, false])('saves tool-name compatibility=%s', async (normalizeToolNames) => {
+    mockRequest.body = { normalizeToolNames };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockSystemConfigDao.update).toHaveBeenCalledWith(expect.objectContaining({ normalizeToolNames }));
+  });
+
+  it.each([null, 'true', 1, {}])('rejects invalid tool-name compatibility=%s', async (normalizeToolNames) => {
+    mockRequest.body = { normalizeToolNames, nameSeparator: '-' };
+    await updateSystemConfig(mockRequest as Request, mockResponse as Response);
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockSystemConfigDao.update).not.toHaveBeenCalled();
+  });
+
   it('does not let non-admin users rename the dashboard', async () => {
     mockRequest.user = { username: 'user', isAdmin: false } as never;
     mockRequest.body = { dashboardName: 'Team' };

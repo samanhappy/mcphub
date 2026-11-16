@@ -6,6 +6,7 @@
  */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
+const mockGetSystemConfig = jest.fn(async () => ({ normalizeToolNames: true }));
 const mockCallTool = jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'upstream' }] });
 const mockGetFileStagingSettings = jest.fn(async () => ({ enabled: false }));
 const mockGetStagingStateStore = jest.fn(async () => ({}));
@@ -19,7 +20,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findAll: jest.fn(async () => []),
     findById: jest.fn(async () => undefined),
   })),
-  getSystemConfigDao: jest.fn(() => ({ get: jest.fn(async () => ({})) })),
+  getSystemConfigDao: jest.fn(() => ({ get: mockGetSystemConfig })),
   getBuiltinPromptDao: jest.fn(() => ({ findEnabled: jest.fn(async () => []) })),
   getBuiltinResourceDao: jest.fn(() => ({ findEnabled: jest.fn(async () => []) })),
   getUserDao: jest.fn(() => ({
@@ -153,6 +154,7 @@ describe('hub staging tools at the public MCP entry points', () => {
     );
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/not enabled/i);
+    expect(mockGetSystemConfig).not.toHaveBeenCalled();
     expect(mockCallTool).not.toHaveBeenCalled();
   });
 
@@ -168,6 +170,7 @@ describe('hub staging tools at the public MCP entry points', () => {
     );
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/cannot be called through call_tool/i);
+    expect(mockGetSystemConfig).not.toHaveBeenCalled();
     expect(mockCallTool).not.toHaveBeenCalled();
   });
 

@@ -1,3 +1,4 @@
+import { compatibleToolNames } from '../utils/compatibleToolNames.js';
 import { getToolPolicy } from './toolPolicyService.js';
 import { DEFAULT_INSTALL_BASE_URL, resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { isLegacyServerId, legacyServerId } from '../utils/serverIdentity.js';
@@ -7000,8 +7001,15 @@ const withToolPolicy = async (
   return principalServerScope.run(eligible, () => handler(request, extra));
 };
 
-export const handleListToolsRequest = (request: any, extra: any) =>
-  withToolPolicy(listToolsWithPrincipal, request, extra, false);
+export const handleListToolsRequest = async (request: any, extra: any) => {
+  const result = await withToolPolicy(listToolsWithPrincipal, request, extra, false);
+  if ((await getSystemConfigDao().get())?.normalizeToolNames !== true) return result;
+  const aliases = compatibleToolNames(result.tools);
+  return {
+    ...result,
+    tools: result.tools.map((tool: Tool) => ({ ...tool, name: aliases.get(tool.name)! })),
+  };
+};
 
 // Polling refreshes connections; authorization always reads the current shared records.
 const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> => {
@@ -7054,7 +7062,7 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   });
   return context.runWithContext(() => principalServerScope.run(visible, action), user ?? null);
 };
-export const handleCallToolRequest = (request: any, extra: any) => {
+const handleOriginalToolCallRequest = (request: any, extra: any) => {
   // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
   // past the outer dispatch, and the hub namespace is never reachable from a
   // non-MCP caller (the OpenAPI controller rejects it as well).
@@ -7077,6 +7085,25 @@ export const handleCallToolRequest = (request: any, extra: any) => {
         ),
       );
 };
+export const handleCallToolRequest = async (request: any, extra: any) => {
+  if (
+    isReservedStagingName(request?.params?.name) ||
+    isReservedStagingName(request?.params?.arguments?.toolName)
+  ) {
+    return handleOriginalToolCallRequest(request, extra);
+  }
+  if ((await getSystemConfigDao().get())?.normalizeToolNames === true && !extra?.server) {
+    // Resolve through the caller's current catalog; never retain aliases across principals.
+    const catalog = await withToolPolicy(listToolsWithPrincipal, {}, extra, false);
+    const aliases = compatibleToolNames(catalog.tools);
+    const original = [...aliases].find(([, alias]) => alias === request.params?.name)?.[0];
+    if (original !== undefined) {
+      request = { ...request, params: { ...request.params, name: original } };
+    }
+  }
+  return handleOriginalToolCallRequest(request, extra);
+};
+
 export const handleGetPromptRequest = withPrincipalServers(
   withModernLists(handleGetPromptRequestImpl, ['prompts']),
   'prompt',

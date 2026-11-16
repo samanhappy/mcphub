@@ -29,6 +29,15 @@ describe('SystemConfigDaoImpl smart-routing migration', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  it('persists the optional tool-name compatibility flag across fresh DAO instances', async () => {
+    writeSettings(settingsPath, { mcpServers: {}, systemConfig: { nameSeparator: '::' } });
+    expect((await new SystemConfigDaoImpl().get()).normalizeToolNames).not.toBe(true);
+    await new SystemConfigDaoImpl().update({ normalizeToolNames: true });
+    expect((await new SystemConfigDaoImpl().get()).normalizeToolNames).toBe(true);
+    await new SystemConfigDaoImpl().update({ normalizeToolNames: false });
+    expect(await new SystemConfigDaoImpl().get()).toMatchObject({ normalizeToolNames: false, nameSeparator: '::' });
+  });
+
   it('persists dashboard branding across reads and clears it without losing other settings', async () => {
     writeSettings(settingsPath, { mcpServers: {}, systemConfig: { nameSeparator: '::' } });
     await new SystemConfigDaoImpl().update({ dashboardName: 'Team MCP' });

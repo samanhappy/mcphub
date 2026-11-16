@@ -692,6 +692,22 @@ Administrators can enable this in **Settings → Keys → Allow Authorization pa
 
 After configuring the server's passthrough list, send `X-MCP-Authorization: Bearer <mcphub-key>` and `Authorization: Bearer <upstream-user-token>` with each MCP request. Static upstream headers and personal credentials remain separate authentication options; they do not replace per-request caller tokens.
 
+## OpenAI-compatible Tool Names
+
+Tool name normalization is **disabled by default**. Enable **Settings → System Settings → OpenAI-compatible tool names**, or set `systemConfig.normalizeToolNames` to `true`:
+
+```json
+{
+  "systemConfig": {
+    "normalizeToolNames": true
+  }
+}
+```
+
+When enabled, MCP tool listings use names matching `[A-Za-z0-9_-]` with at most 64 characters. Already compatible names remain unchanged. Other names, including server prefixes and group aliases, receive a readable normalized prefix and a deterministic hash suffix; collisions receive a numeric suffix. Calls resolve aliases through the caller's current authorized tool catalog before following the existing authorization and upstream dispatch paths. Both MCP and OpenAPI tools are supported. Original upstream names, stored tool settings, Smart Routing `toolName` arguments and direct dashboard API calls retain their existing names.
+
+Reconnect clients after changing the setting so they reload tool definitions. Normalized calls require an additional catalog read; personal or modern upstreams may need discovery requests. With database schema synchronization disabled, apply `docs/migrations/0007-tool-name-compatibility.sql` before upgrading (or run `pnpm db:setup` with synchronization enabled).
+
 ## Tool Result Compression
 
 MCPHub can transparently compress large text tool results before returning them to MCP clients. This is useful when upstream tools return large logs, diffs, search output, JSON arrays, or long text blobs that would otherwise consume too much model context.

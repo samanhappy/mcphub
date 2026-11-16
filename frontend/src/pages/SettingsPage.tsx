@@ -756,6 +756,8 @@ const SettingsPage: React.FC = () => {
     error: settingsError,
     fetchSettings,
     betterAuthConfig,
+    normalizeToolNames,
+    updateNormalizeToolNames,
     nameSeparator,
     enableSessionRebuild,
     fakeIpExceptions,
@@ -4267,6 +4269,24 @@ const SettingsPage: React.FC = () => {
                     {t('common.save')}
                   </button>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div>
+                  <h3 id="normalize-tool-names-label" className="font-medium text-gray-700">
+                    {t('settings.normalizeToolNames')}
+                  </h3>
+                  <p id="normalize-tool-names-description" className="text-sm text-gray-500">
+                    {t('settings.normalizeToolNamesDescription')}
+                  </p>
+                </div>
+                <Switch
+                  aria-labelledby="normalize-tool-names-label"
+                  aria-describedby="normalize-tool-names-description"
+                  disabled={loading}
+                  checked={normalizeToolNames}
+                  onCheckedChange={updateNormalizeToolNames}
+                />
               </div>
 
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">

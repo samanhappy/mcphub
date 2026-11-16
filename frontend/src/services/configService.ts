@@ -43,6 +43,7 @@ export interface SystemConfig {
     maxOutputTokens?: number;
     strategy?: 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
   };
+  normalizeToolNames?: boolean; // Opt-in OpenAI-compatible downstream tool names (default: false)
   nameSeparator?: string;
   auth?: {
     allowRegistration?: boolean;
