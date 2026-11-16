@@ -7,6 +7,7 @@ import fs from 'fs';
 import { McpSettings, IUser } from '../types/index.js';
 import { getConfigFilePath } from '../utils/path.js';
 import { normalizeBasePath } from '../utils/basePath.js';
+import { resolveListenHost } from '../utils/listenAddress.js';
 import { getCachedSystemConfig, isDatabaseModeEnabled } from '../utils/systemConfigCache.js';
 import { getPackageVersion } from '../utils/version.js';
 import { getDataService } from '../services/services.js';
@@ -17,6 +18,7 @@ dotenv.config();
 
 const defaultConfig = {
   port: process.env.PORT || 3000,
+  host: resolveListenHost(process.env.MCPHUB_HOST),
   initTimeout: process.env.INIT_TIMEOUT || 300000,
   basePath: normalizeBasePath(process.env.BASE_PATH),
   smartRoutingPath: getSmartRoutingPath(),
