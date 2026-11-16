@@ -29,6 +29,7 @@ import {
 } from '../../src/services/mcpService.js';
 import { listenOnAddress } from '../../src/utils/listenAddress.js';
 import { exitAfterBindFailure } from '../../src/utils/bindFailureExit.js';
+import { readProcessStartTimesSync } from '../../src/utils/processTree.js';
 import type { ServerInfo } from '../../src/types/index.js';
 
 // Ignores SIGTERM and stays alive, so only SIGKILL can end it. On Windows
@@ -44,6 +45,17 @@ import type { ServerInfo } from '../../src/types/index.js';
 const STUBBORN_CHILD =
   "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000); console.log('ready');";
 
+// A wrapper that honours SIGTERM, with a grandchild that does not: the shape
+// `npx` has. The wrapper dies on the first signal and its grandchild is
+// reparented, after which no `ps --ppid` walk from the wrapper can find it, so
+// the pid has to have been captured before anything was signalled.
+const WRAPPER_WITH_STUBBORN_GRANDCHILD = [
+  "const { spawn } = require('child_process');",
+  `const grandchild = spawn(process.execPath, ['-e', ${JSON.stringify(STUBBORN_CHILD)}], { stdio: ['ignore', 'pipe', 'ignore'] });`,
+  "grandchild.stdout.on('data', (chunk) => { if (String(chunk).includes('ready')) console.log('grandchild ' + grandchild.pid); });",
+  'setInterval(() => {}, 1000);',
+].join('\n');
+
 // Exits on SIGTERM like a well-behaved server, so the wait should end as soon
 // as it is gone rather than sitting out the grace period.
 const COMPLIANT_CHILD = 'setInterval(() => {}, 1000);';
@@ -54,6 +66,17 @@ const COMPLIANT_CHILD = 'setInterval(() => {}, 1000);';
 const GENEROUS_BUDGET_MS = 60_000;
 
 const children: ChildProcess[] = [];
+
+// Processes that are not direct children of this test process, so afterEach can
+// still make sure nothing is left running on the host. The start time is kept
+// with the pid: there is no ChildProcess handle for a reparented grandchild, so
+// that is the only thing that tells cleanup the pid is still the process it
+// recorded and not an unrelated one that reused the number.
+const strayPids: { pid: number; startedAt: string | undefined }[] = [];
+
+const recordStrayPid = (pid: number): void => {
+  strayPids.push({ pid, startedAt: readProcessStartTimesSync([pid])?.get(pid) });
+};
 
 const startStubbornChild = async (): Promise<ChildProcess> => {
   const child = spawn(process.execPath, ['-e', STUBBORN_CHILD], {
@@ -72,6 +95,36 @@ const startStubbornChild = async (): Promise<ChildProcess> => {
     child.once('exit', () => reject(new Error('the stubborn child exited before it was ready')));
   });
   return child;
+};
+
+// Resolves once the grandchild has installed its SIGTERM handler and the
+// wrapper has reported its pid. Waiting for that line matters for the same
+// reason it does above: a grandchild signalled before it runs its script dies
+// like any other process and the case proves nothing.
+const startWrapperWithStubbornGrandchild = async (): Promise<{
+  wrapper: ChildProcess;
+  grandchildPid: number;
+}> => {
+  const wrapper = spawn(process.execPath, ['-e', WRAPPER_WITH_STUBBORN_GRANDCHILD], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  children.push(wrapper);
+  const grandchildPid = await new Promise<number>((resolve, reject) => {
+    const onData = (chunk: Buffer): void => {
+      const match = /grandchild (\d+)/.exec(chunk.toString());
+      if (match) {
+        wrapper.stdout?.off('data', onData);
+        resolve(Number(match[1]));
+      }
+    };
+    wrapper.stdout?.on('data', onData);
+    wrapper.once('error', reject);
+    wrapper.once('exit', () =>
+      reject(new Error('the wrapper exited before its grandchild was ready')),
+    );
+  });
+  recordStrayPid(grandchildPid);
+  return { wrapper, grandchildPid };
 };
 
 const startCompliantChild = async (): Promise<ChildProcess> => {
@@ -133,6 +186,24 @@ describe('draining stdio terminations before exit', () => {
         await waitForExit(child, 2000);
       }
     }
+    for (const stray of strayPids.splice(0)) {
+      if (!isAlive(stray.pid)) {
+        continue;
+      }
+      // A liveness check alone is not enough to SIGKILL a bare pid. If this
+      // process exited and the host reused its number, the signal would land on
+      // something unrelated, and a test suite has no business doing that. Only
+      // signal while the kernel still reports the start time recorded at spawn.
+      const startedAt = readProcessStartTimesSync([stray.pid])?.get(stray.pid);
+      if (stray.startedAt === undefined || startedAt !== stray.startedAt) {
+        continue;
+      }
+      try {
+        process.kill(stray.pid, 'SIGKILL');
+      } catch {
+        // Already gone between the check and the signal.
+      }
+    }
     await drainStdioTerminations(10_000);
     resetStdioTerminationsForTest();
   });
@@ -175,6 +246,28 @@ describe('draining stdio terminations before exit', () => {
       expect(isAlive(pid)).toBe(false);
     },
     30_000,
+  );
+
+  // The second half of the orphan problem, and the one a single child cannot
+  // show: the wrapper honours SIGTERM and dies, which used to resolve the wait
+  // as "gone" while the grandchild it left behind kept running. Drop the
+  // captured descendants and this fails with the grandchild still alive.
+  itPosix(
+    'ends a grandchild that outlives the wrapper it was spawned from',
+    async () => {
+      const { wrapper, grandchildPid } = await startWrapperWithStubbornGrandchild();
+      const wrapperPid = wrapper.pid!;
+      setServerInfosForTest([stdioServerInfo('wrapper-upstream', wrapperPid)]);
+
+      cleanupAllServers();
+      const settled = await drainStdioTerminations(GENEROUS_BUDGET_MS);
+
+      expect(settled).toBe(true);
+      await expect(waitForExit(wrapper, 5000)).resolves.toBe(true);
+      expect(isAlive(wrapperPid)).toBe(false);
+      expect(isAlive(grandchildPid)).toBe(false);
+    },
+    60_000,
   );
 
   // The composed chain, as close to production as a test process can get: a
