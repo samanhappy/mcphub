@@ -1,0 +1,80 @@
+frontend/src/pages/SettingsPage.tsx
+  s_d182202877e951::t_d578e537ea1ed3 759-760,4274-4275,4282-4283,4289
+  s_d182202877e951::t_3f28f4cefb7f24 4276-4281,4284-4288,4291
+  s_d182202877e951::t_f87b66cdff0fdd 4290
+locales/vi.json
+  s_d182202877e951::t_c0100e64ad4440 1072-1073
+  s_d182202877e951::t_5182b61b2e577d 1071
+src/services/mcpService.ts
+  s_d182202877e951::t_9f818c8a0b2c1f 7092-7094
+  s_d182202877e951::t_c0100e64ad4440 1,7004-7012,7065,7088,7095-7106
+  s_d182202877e951::t_885d9ecb642fff 7089-7091
+src/dao/SystemConfigDaoDbImpl.ts
+  s_d182202877e951::t_d578e537ea1ed3 35,59,82
+frontend/src/contexts/SettingsContext.tsx
+  s_d182202877e951::t_d4b73dbb4750f2 593,1095-1097
+  s_d182202877e951::t_d578e537ea1ed3 136,172-173,433,1074-1089,1091-1094,1099-1104,1346-1347
+  s_d182202877e951::t_7a61876553b0fc 1090,1098
+src/db/entities/SystemConfig.ts
+  s_d182202877e951::t_d578e537ea1ed3 36-38
+locales/zh.json
+  s_d182202877e951::t_c0100e64ad4440 1075-1076
+  s_d182202877e951::t_ee17913ec7e114 1074
+locales/en.json
+  s_d182202877e951::t_c0100e64ad4440 1072-1073
+  s_d182202877e951::t_e24508c07db68e 1071
+src/controllers/serverController.ts
+  s_d182202877e951::t_d578e537ea1ed3 2260,2398-2402,2452,3109-3111
+  s_d182202877e951::t_f19179c5013f4a 3112
+docs/migrations/0007-tool-name-compatibility.sql
+  s_d182202877e951::t_c0100e64ad4440 1-2
+locales/tr.json
+  s_d182202877e951::t_c0100e64ad4440 1070-1071
+  s_d182202877e951::t_a3d81831df685f 1069
+tests/services/mcpService-apps.test.ts
+  s_d182202877e951::t_c34ce6c3162cda 131,161,247,290-339,1309-1322
+  s_d182202877e951::t_f7c37b287feaa8 1323
+locales/es.json
+  s_d182202877e951::t_c0100e64ad4440 1072-1073
+  s_d182202877e951::t_cf46133d435e6a 1071
+frontend/src/services/configService.ts
+  s_d182202877e951::t_d578e537ea1ed3 46
+src/utils/compatibleToolNames.ts
+  s_d182202877e951::t_c0100e64ad4440 1-27
+  s_d182202877e951::t_29a798cffb6d96 28-31
+src/types/index.ts
+  s_d182202877e951::t_d578e537ea1ed3 331
+locales/fr.json
+  s_d182202877e951::t_c0100e64ad4440 1071-1072
+  s_d182202877e951::t_15c7bb7a04bf66 1070
+docs/configuration/mcp-settings.mdx
+  s_d182202877e951::t_300bcff53cfa86 695-710
+src/utils/compatibleToolNames.test.ts
+  s_d182202877e951::t_f72e0b7ea49554 1-20
+src/utils/migration.ts
+  s_d182202877e951::t_d6d366be77cb16 218
+tests/controllers/serverController.test.ts
+  s_d182202877e951::t_9bcd1ed4cbf622 877-889
+tests/dao/SystemConfigDao.test.ts
+  s_d182202877e951::t_c45cda21234947 32-40
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_d182202877e951::t_e63554fc731f96 59-69
+tests/services/mcpService-fileStaging.test.ts
+  s_d182202877e951::t_ab40c14e149e92 9,23,157,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "298b197ba9566c72d44675b7bf0c566624b0f4e1",
+  "prompts": {},
+  "sessions": {
+    "s_d182202877e951": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e30b-b70f-7642-af33-3d5cce24b696",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
