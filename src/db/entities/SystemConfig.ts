@@ -33,6 +33,9 @@ export class SystemConfig {
   @Column({ type: 'simple-json', nullable: true })
   mcpRouter?: Record<string, any>;
 
+  @Column({ type: 'boolean', nullable: true })
+  normalizeToolNames?: boolean;
+
   @Column({ type: 'varchar', length: 10, nullable: true })
   nameSeparator?: string;
 

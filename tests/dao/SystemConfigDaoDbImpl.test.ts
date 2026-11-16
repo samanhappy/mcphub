@@ -56,3 +56,14 @@ it('round-trips dashboard branding through database reads, updates and resets', 
   expect(mockUpdate).toHaveBeenLastCalledWith({ dashboardName: '' });
   expect((await dao.reset()).dashboardName).toBeUndefined();
 });
+
+it('round-trips tool-name compatibility in database mode', async () => {
+  mockGet.mockResolvedValue({ normalizeToolNames: true });
+  mockUpdate.mockResolvedValue({ normalizeToolNames: false });
+  mockReset.mockResolvedValue({});
+  const dao = new SystemConfigDaoDbImpl();
+  expect((await dao.get()).normalizeToolNames).toBe(true);
+  expect((await dao.update({ normalizeToolNames: false })).normalizeToolNames).toBe(false);
+  expect(mockUpdate).toHaveBeenLastCalledWith({ normalizeToolNames: false });
+  expect((await dao.reset()).normalizeToolNames).toBeUndefined();
+});

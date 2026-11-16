@@ -133,6 +133,7 @@ interface SystemSettings {
     smartRouting?: SmartRoutingConfig;
     toolResultCompression?: ToolResultCompressionConfig;
     mcpRouter?: MCPRouterConfig;
+    normalizeToolNames?: boolean;
     nameSeparator?: string;
     oauthServer?: OAuthServerConfig;
     auth?: {
@@ -168,6 +169,8 @@ interface SettingsContextValue {
   allowRegistration: boolean;
   updateAllowRegistration: (value: boolean) => Promise<void>;
   betterAuthConfig: BetterAuthConfig;
+  normalizeToolNames: boolean;
+  updateNormalizeToolNames: (value: boolean) => Promise<boolean | undefined>;
   nameSeparator: string;
   enableSessionRebuild: boolean;
   fakeIpExceptions: FakeIpException[];
@@ -427,6 +430,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     getDefaultBetterAuthConfig(),
   );
 
+  const [normalizeToolNames, setNormalizeToolNames] = useState(false);
   const [nameSeparator, setNameSeparator] = useState<string>('-');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
   const [fakeIpExceptions, setFakeIpExceptions] = useState<FakeIpException[]>([]);
@@ -586,6 +590,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       }
       if (data.success) setFakeIpExceptions(data.data?.systemConfig?.network?.fakeIpExceptions ?? []);
       if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
+      if (data.success) setNormalizeToolNames(data.data?.systemConfig?.normalizeToolNames === true);
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
       }
@@ -1066,6 +1071,37 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
+  // Update tool name compatibility flag
+  const updateNormalizeToolNames = async (value: boolean) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        normalizeToolNames: value,
+      });
+
+      if (data.success) {
+        setNormalizeToolNames(value);
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update tool name compatibility setting');
+        showToast(data.error || t('settings.toolNameCompatibilityUpdateFailed'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update tool name compatibility setting', { value, error });
+      setError(
+        error instanceof Error ? error.message : 'Failed to update tool name compatibility setting',
+      );
+      showToast(t('settings.toolNameCompatibilityUpdateFailed'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Update session rebuild flag
   const updateSessionRebuild = async (value: boolean) => {
     setLoading(true);
@@ -1307,6 +1343,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     allowRegistration,
     updateAllowRegistration,
     betterAuthConfig,
+    normalizeToolNames,
+    updateNormalizeToolNames,
     nameSeparator,
     enableSessionRebuild,
     fakeIpExceptions,

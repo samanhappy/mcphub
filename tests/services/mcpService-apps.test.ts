@@ -128,6 +128,7 @@ jest.mock('../../src/services/proxy.js', () => ({
   getProxyConfigFromEnv: jest.fn(() => undefined),
 }));
 
+const mockSystemConfig = jest.fn(async () => ({} as import('../../src/types/index.js').SystemConfig));
 const mockFindAll = jest.fn();
 const mockFindById = jest.fn();
 const mockUserFindByUsername = jest.fn(async () => ({
@@ -157,7 +158,7 @@ jest.mock('../../src/dao/index.js', () => ({
     findById: jest.fn(async () => null),
   })),
   getSystemConfigDao: jest.fn(() => ({
-    get: jest.fn(async () => ({})),
+    get: mockSystemConfig,
   })),
   getBuiltinPromptDao: jest.fn(() => ({
     findEnabled: mockBuiltinPrompts,
@@ -243,6 +244,7 @@ const markSessionAsAppsCapable = async (sessionId: string, group: string) => {
 describe('mcpService MCP Apps transparent proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSystemConfig.mockResolvedValue({});
     cleanupAllServers();
     mockClientsByServer.clear();
     mockFindAll.mockResolvedValue([makeServerConfig('apps-server')]);
@@ -283,6 +285,56 @@ describe('mcpService MCP Apps transparent proxy', () => {
 
   afterEach(() => {
     cleanupAllServers();
+  });
+
+  it.each([undefined, false, true])('round-trips dotted MCP names with compatibility=%s', async (enabled) => {
+    mockSystemConfig.mockResolvedValue({ normalizeToolNames: enabled });
+    mockClient.listTools.mockResolvedValue({ tools: [{ name: 'users.list', inputSchema: { type: 'object' } }] });
+    await initUpstreamServers();
+    await flushPromises();
+    const extra = { sessionId: 'ordinary-session' };
+    const { tools } = await handleListToolsRequest({}, extra);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name === 'users.list').toBe(enabled !== true);
+    if (enabled) expect(tools[0].name).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    const result = await handleCallToolRequest({ params: { name: tools[0].name, arguments: {} } }, extra);
+    expect(result.isError).not.toBe(true);
+    expect(mockClient.callTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'users.list' }), expect.anything());
+    expect(getServerByName('apps-server')?.tools[0].name).toBe('apps-server::users.list');
+  });
+
+  it('maps OpenAPI aliases back to operation names and rechecks disabled tools', async () => {
+    mockSystemConfig.mockResolvedValue({ normalizeToolNames: true });
+    const config = { ...makeServerConfig('apps-server'), type: 'openapi' as const, openapi: { url: 'https://example.com/spec.json' } };
+    mockFindAll.mockResolvedValue([config]);
+    mockFindById.mockResolvedValue(config);
+    mockOpenApiClient.getTools.mockReturnValue([{ name: 'users.list', inputSchema: { type: 'object' } }]);
+    await initUpstreamServers();
+    await flushPromises();
+    const extra = { sessionId: 'ordinary-session' };
+    const { tools } = await handleListToolsRequest({}, extra);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    await handleCallToolRequest({ params: { name: tools[0].name, arguments: {} } }, extra);
+    expect(mockOpenApiClient.callTool.mock.calls[0][0]).toBe('users.list');
+    mockOpenApiClient.callTool.mockClear();
+    getServerByName('apps-server')!.config!.tools = { 'users.list': { enabled: false } };
+    const result = await handleCallToolRequest({ params: { name: tools[0].name, arguments: {} } }, extra);
+    expect(result.isError).toBe(true);
+    expect(mockOpenApiClient.callTool).not.toHaveBeenCalled();
+  });
+
+  it('does not route a previously listed alias after a policy denies its original name', async () => {
+    mockSystemConfig.mockResolvedValue({ normalizeToolNames: true });
+    mockClient.listTools.mockResolvedValue({ tools: [{ name: 'users.list', inputSchema: { type: 'object' } }] });
+    await initUpstreamServers();
+    await flushPromises();
+    const extra = { sessionId: 'ordinary-session' };
+    const { tools } = await handleListToolsRequest({}, extra);
+    mockSystemConfig.mockResolvedValue({ normalizeToolNames: true, toolPolicies: [{ id: 'deny', effect: 'deny', tool: 'users.list' }] });
+    const result = await handleCallToolRequest({ params: { name: tools[0].name, arguments: {} } }, extra);
+    expect(result.isError).toBe(true);
+    expect(mockClient.callTool).not.toHaveBeenCalled();
   });
 
   it('preserves positive discovery expiry on modern lists and leaves legacy shapes unchanged', async () => {
@@ -1253,6 +1305,21 @@ describe('mcpService MCP Apps transparent proxy', () => {
         expect(mockOpenApiClient.callTool).not.toHaveBeenCalled();
       },
     );
+
+    it.each([false, true])('round-trips normalized group aliases with preserveToolNames=%s', async (preserveToolNames) => {
+      mockSystemConfig.mockResolvedValue({ normalizeToolNames: true });
+      await setUpMixedRoute();
+      mockGroupFindByName.mockImplementation(async (name: string) => name === 'mixed' ? {
+        servers: [{ name: 'apps-server', alias: 'app.tools' }, { name: 'openapi-server', alias: 'api.tools', preserveToolNames }],
+      } : null);
+      const list = await withAppsRoute('mixed', () => handleListToolsRequest({}, { group: 'mixed' }));
+      expect(list.tools).toHaveLength(3);
+      for (const tool of list.tools) expect(tool.name).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+      const result = await withAppsRoute('mixed', () => handleCallToolRequest({ params: { name: list.tools[2].name, arguments: {} } }, { group: 'mixed' }));
+      expect(result.isError).not.toBe(true);
+      expect(mockOpenApiClient.callTool.mock.calls[0][0]).toBe('search-memories');
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    });
 
     it.each(['direct', 'wrapped'])(
       'resolves group aliases on a mixed Apps route (%s)',

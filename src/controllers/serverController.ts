@@ -2257,6 +2257,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       toolResultCompression,
       mcpRouter,
       nameSeparator,
+      normalizeToolNames,
       dashboardName,
       enableSessionRebuild,
       oauthServer,
@@ -2394,6 +2395,11 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         typeof mcpRouter.title === 'string' ||
         typeof mcpRouter.baseUrl === 'string');
 
+    if (normalizeToolNames !== undefined && typeof normalizeToolNames !== 'boolean') {
+      res.status(400).json({ success: false, message: 'normalizeToolNames must be a boolean' });
+      return;
+    }
+
     const hasNameSeparatorUpdate = typeof nameSeparator === 'string';
 
     const hasSessionRebuildUpdate = typeof enableSessionRebuild === 'boolean';
@@ -2443,6 +2449,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       !hasToolResultCompressionUpdate &&
       !hasMcpRouterUpdate &&
       !hasNameSeparatorUpdate &&
+      normalizeToolNames === undefined &&
       dashboardName === undefined &&
       !hasSessionRebuildUpdate &&
       !hasOAuthServerUpdate &&
@@ -3097,6 +3104,10 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
 
     if (typeof dashboardName === 'string') {
       systemConfig.dashboardName = dashboardName.trim();
+    }
+
+    if (typeof normalizeToolNames === 'boolean') {
+      systemConfig.normalizeToolNames = normalizeToolNames;
     }
 
     if (typeof nameSeparator === 'string') {
