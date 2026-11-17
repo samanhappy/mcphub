@@ -1,6 +1,6 @@
 import { oauthServerMetadataSchema } from '../utils/oauthServerMetadata.js';
 import { isReplicaMode } from '../utils/replicaMode.js';
-import { withReplicaLock } from './replicaLock.js';
+import { withOAuthPendingAuthLock, withReplicaLock } from './replicaLock.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import * as sharedOAuthSettings from './oauthSettingsStore.js';
 import {
@@ -104,6 +104,18 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
   private getSystemInstallBaseUrl(): string | undefined {
     return this._systemInstallBaseUrl;
+  }
+
+  /**
+   * Serialize one server's pending-OAuth read/write (state + PKCE verifier)
+   * with concurrent flows for the same server and credential scope. Two
+   * simultaneous `connect()` calls otherwise interleave on the shared
+   * `pendingAuthorization` record, and a callback can exchange a code
+   * against a verifier stored for the wrong state
+   * (`invalid_grant: Invalid PKCE code_verifier`).
+   */
+  private withOAuthFlowLock<T>(action: () => Promise<T>): Promise<T> {
+    return withOAuthPendingAuthLock(this.serverName, this.personal?.username || 'shared', action);
   }
 
   async allowInsecureTokenEndpoint(endpoint: URL): Promise<boolean> {
@@ -356,12 +368,13 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         // SDK issuer annotation re-saves tokens; do not turn remaining lifetime into a new expiry.
         const provider = new Proxy(this, {
           get: (target, property) => {
-            if (property === 'tokens') return () => {
-              const stored = this.storedTokens();
-              if (!stored) return undefined;
-              const { expires_in: _expiry, ...tokens } = stored;
-              return tokens;
-            };
+            if (property === 'tokens')
+              return () => {
+                const stored = this.storedTokens();
+                if (!stored) return undefined;
+                const { expires_in: _expiry, ...tokens } = stored;
+                return tokens;
+              };
             const value = Reflect.get(target, property);
             return typeof value === 'function' ? value.bind(target) : value;
           },
@@ -517,74 +530,80 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
 
     const authorizationUrl = url.toString();
 
-    try {
-      const pendingUpdate: Partial<NonNullable<ServerConfig['oauth']>['pendingAuthorization']> = {
-        authorizationUrl,
-        discoveryState: this._discoveryState,
-        issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
-        issRequired: this._issRequired,
-        state,
-      };
+    // Serialize the persist + ServerInfo publication: a concurrent connect()
+    // for the same server must not overwrite `pendingAuthorization` (state,
+    // codeVerifier) in the middle of this flow. The in-flight flow holds the
+    // per-server OAuth lock until its callback's token exchange completes.
+    await this.withOAuthFlowLock(async () => {
+      try {
+        const pendingUpdate: Partial<NonNullable<ServerConfig['oauth']>['pendingAuthorization']> = {
+          authorizationUrl,
+          discoveryState: this._discoveryState,
+          issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
+          issRequired: this._issRequired,
+          state,
+        };
 
-      if (this._codeVerifier) {
-        pendingUpdate.codeVerifier = this._codeVerifier;
+        if (this._codeVerifier) {
+          pendingUpdate.codeVerifier = this._codeVerifier;
+        }
+
+        const updatedConfig = await this.settings.updatePendingAuthorization(
+          this.serverName,
+          pendingUpdate,
+        );
+        if (updatedConfig) {
+          this.serverConfig = updatedConfig;
+        }
+      } catch (error) {
+        logger.error('Failed to persist pending OAuth authorization state', {
+          serverName: this.serverName,
+          error,
+        });
+        throw error;
       }
 
-      const updatedConfig = await this.settings.updatePendingAuthorization(
-        this.serverName,
-        pendingUpdate,
-      );
-      if (updatedConfig) {
-        this.serverConfig = updatedConfig;
+      // Store the authorization URL in ServerInfo for the frontend to access
+      const serverInfo = this.personal ? undefined : getServerByName(this.serverName);
+      if (serverInfo) {
+        // Keep serverInfo.config in sync with the freshly persisted pending
+        // authorization (new state + createdAt). The OAuth callback's TTL check
+        // (isOAuthStateCurrent) reads createdAt from serverInfo.config, not from
+        // this provider's private this.serverConfig. Without this, serverInfo.config
+        // keeps whatever stale pendingAuthorization snapshot was loaded at server
+        // init/last reconnect, so the TTL check compares against an ever-older
+        // timestamp and eventually rejects fresh, well-within-TTL callbacks as
+        // "expired" even though serverInfo.oauth.state matches correctly.
+        if (this.serverConfig) {
+          serverInfo.config = this.serverConfig;
+        }
+        serverInfo.status = 'oauth_required';
+        serverInfo.oauth = {
+          authorizationUrl,
+          issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
+          issRequired: this._issRequired,
+          state,
+          // codeVerifier is intentionally NOT stored on serverInfo.oauth: it is a
+          // PKCE credential, and storing it on the long-lived ServerInfo taints the
+          // whole object (CodeQL js/clear-text-logging), flagging every log that
+          // touches serverInfo.name. The verifier lives on this provider's private
+          // _codeVerifier and the DAO's pendingAuthorization.codeVerifier. See #1029.
+          // Flag when a static clientId is configured (which suppresses dynamic client
+          // registration). Such a client is registered on the provider with its own
+          // redirect URI allow-list, which frequently does NOT include this hub's callback,
+          // producing an "invalid redirect_uri" 400 at the provider's authorize endpoint.
+          // The frontend uses this to hint the user to remove clientId and let MCPHub self-register.
+          clientIdConfigured: Boolean(this.serverConfig?.oauth?.clientId),
+        };
+        logger.log('Stored OAuth authorization URL in server info', {
+          serverName: this.serverName,
+        });
+      } else {
+        logger.warn('Server info not found while storing OAuth authorization URL', {
+          serverName: this.serverName,
+        });
       }
-    } catch (error) {
-      logger.error('Failed to persist pending OAuth authorization state', {
-        serverName: this.serverName,
-        error,
-      });
-      throw error;
-    }
-
-    // Store the authorization URL in ServerInfo for the frontend to access
-    const serverInfo = this.personal ? undefined : getServerByName(this.serverName);
-    if (serverInfo) {
-      // Keep serverInfo.config in sync with the freshly persisted pending
-      // authorization (new state + createdAt). The OAuth callback's TTL check
-      // (isOAuthStateCurrent) reads createdAt from serverInfo.config, not from
-      // this provider's private this.serverConfig. Without this, serverInfo.config
-      // keeps whatever stale pendingAuthorization snapshot was loaded at server
-      // init/last reconnect, so the TTL check compares against an ever-older
-      // timestamp and eventually rejects fresh, well-within-TTL callbacks as
-      // "expired" even though serverInfo.oauth.state matches correctly.
-      if (this.serverConfig) {
-        serverInfo.config = this.serverConfig;
-      }
-      serverInfo.status = 'oauth_required';
-      serverInfo.oauth = {
-        authorizationUrl,
-        issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
-        issRequired: this._issRequired,
-        state,
-        // codeVerifier is intentionally NOT stored on serverInfo.oauth: it is a
-        // PKCE credential, and storing it on the long-lived ServerInfo taints the
-        // whole object (CodeQL js/clear-text-logging), flagging every log that
-        // touches serverInfo.name. The verifier lives on this provider's private
-        // _codeVerifier and the DAO's pendingAuthorization.codeVerifier. See #1029.
-        // Flag when a static clientId is configured (which suppresses dynamic client
-        // registration). Such a client is registered on the provider with its own
-        // redirect URI allow-list, which frequently does NOT include this hub's callback,
-        // producing an "invalid redirect_uri" 400 at the provider's authorize endpoint.
-        // The frontend uses this to hint the user to remove clientId and let MCPHub self-register.
-        clientIdConfigured: Boolean(this.serverConfig?.oauth?.clientId),
-      };
-      logger.log('Stored OAuth authorization URL in server info', {
-        serverName: this.serverName,
-      });
-    } else {
-      logger.warn('Server info not found while storing OAuth authorization URL', {
-        serverName: this.serverName,
-      });
-    }
+    });
 
     // Throw error to indicate authorization is needed
     // The error will be caught in the connection flow and handled appropriately
@@ -599,9 +618,16 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
   async saveCodeVerifier(verifier: string): Promise<void> {
     this._codeVerifier = verifier;
     try {
-      const updatedConfig = await this.settings.updatePendingAuthorization(this.serverName, {
-        codeVerifier: verifier,
-      });
+      // Persist the verifier together with its state so state + codeVerifier
+      // always move as a pair: a concurrent flow can replace both (the stale
+      // callback then fails its state check) but can never store a verifier
+      // for one state alongside another state's verifier.
+      const updatedConfig = await this.withOAuthFlowLock(() =>
+        this.settings.updatePendingAuthorization(this.serverName, {
+          codeVerifier: verifier,
+          ...(this._currentState ? { state: this._currentState } : {}),
+        }),
+      );
       if (updatedConfig) {
         this.serverConfig = updatedConfig;
       }
@@ -618,20 +644,42 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Retrieve PKCE code verifier for token exchange
    */
   async codeVerifier(): Promise<string> {
-    if (this._codeVerifier) {
-      return this._codeVerifier;
-    }
+    return this.withOAuthFlowLock(async () => {
+      const storedConfig = await this.settings.loadServerConfig(this.serverName);
+      const pending = storedConfig?.oauth?.pendingAuthorization;
 
-    const storedConfig = await this.settings.loadServerConfig(this.serverName);
-    const storedVerifier = storedConfig?.oauth?.pendingAuthorization?.codeVerifier;
+      // Bind the verifier to the in-flight state: if another flow overwrote
+      // pendingAuthorization, this provider's in-memory verifier belongs to a
+      // stale state and must not be handed to a token exchange for the new
+      // one (`invalid_grant: Invalid PKCE code_verifier`).
+      if (pending?.state && this._currentState && pending.state !== this._currentState) {
+        this._codeVerifier = undefined;
+      }
+      if (this._codeVerifier) {
+        return this._codeVerifier;
+      }
 
-    if (storedVerifier) {
-      this.serverConfig = storedConfig || this.serverConfig;
-      this._codeVerifier = storedVerifier;
-      return storedVerifier;
-    }
+      // The provider's own flow was superseded by another one: the stored
+      // verifier belongs to the new state, so exchanging this provider's code
+      // with it would fail (or bind the wrong pair). Refuse instead of falling
+      // back to it. A provider with no state of its own (e.g. after a restart)
+      // may still recover the stored pair.
+      if (pending?.state && this._currentState && pending.state !== this._currentState) {
+        throw new Error(
+          `OAuth state for server ${this.serverName} was superseded by another authorization flow`,
+        );
+      }
 
-    throw new Error(`No code verifier stored for server: ${this.serverName}`);
+      const storedVerifier = pending?.codeVerifier;
+
+      if (storedVerifier) {
+        this.serverConfig = storedConfig || this.serverConfig;
+        this._codeVerifier = storedVerifier;
+        return storedVerifier;
+      }
+
+      throw new Error(`No code verifier stored for server: ${this.serverName}`);
+    });
   }
 
   /**
@@ -833,7 +881,8 @@ const createOAuthProviderUnlocked = async (
 export const createOAuthProvider = (
   name: string,
   definition: ServerConfig,
-): Promise<OAuthClientProvider | undefined> => withReplicaLock(
-  JSON.stringify(['oauth', name, personalOAuthContexts.get(definition)?.username || 'shared']),
-  () => createOAuthProviderUnlocked(name, definition),
-);
+): Promise<OAuthClientProvider | undefined> =>
+  withReplicaLock(
+    JSON.stringify(['oauth', name, personalOAuthContexts.get(definition)?.username || 'shared']),
+    () => createOAuthProviderUnlocked(name, definition),
+  );

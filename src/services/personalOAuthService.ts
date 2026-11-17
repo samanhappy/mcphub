@@ -322,11 +322,22 @@ export class PersonalOAuthContext {
     pending: Partial<NonNullable<OAuth['pendingAuthorization']>>,
   ) {
     return this.mutate(({ oauth }) => {
+      const existing = oauth.pendingAuthorization;
+      // Mirror oauthSettingsStore.updatePendingAuthorization: the verifier is
+      // bound to its state (drop a stale verifier on state change) and the
+      // flow TTL only refreshes when the state actually changes.
+      const stateChanged =
+        pending.state !== undefined && pending.state !== existing?.state;
       oauth.pendingAuthorization = {
-        ...oauth.pendingAuthorization,
+        ...existing,
         ...pending,
-        createdAt: pending.createdAt ?? Date.now(),
+        codeVerifier: pending.codeVerifier ?? (stateChanged ? undefined : existing?.codeVerifier),
+        createdAt:
+          pending.createdAt ?? (stateChanged || !existing?.createdAt ? Date.now() : existing.createdAt),
       };
+      if (oauth.pendingAuthorization.codeVerifier === undefined) {
+        delete oauth.pendingAuthorization.codeVerifier;
+      }
     });
   }
   clearOAuthData(_name: string, scope: 'all' | 'client' | 'tokens' | 'verifier' | 'discovery') {

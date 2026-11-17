@@ -26,6 +26,7 @@ import {
 } from '../services/mcpService.js';
 import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
+import { withOAuthPendingAuthLock } from '../services/replicaLock.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import type { ServerInfo } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -194,6 +195,42 @@ const isOAuthStateCurrent = (serverInfo: ServerInfo, state: string): boolean => 
     return false;
   }
 
+  return true;
+};
+
+/**
+ * Re-check `state` against the freshly persisted pending authorization. Called
+ * under the per-server OAuth lock, immediately before the token exchange, to
+ * catch a flow that replaced the pending state (or a callback that consumed
+ * it) while this callback waited for the lock.
+ */
+const isPersistedOAuthStateCurrent = (
+  serverInfo: ServerInfo,
+  storedConfig: Awaited<ReturnType<typeof loadServerConfig>>,
+  state: string,
+): boolean => {
+  pruneConsumedOAuthStates();
+  if (consumedOAuthStates.has(state)) {
+    return false;
+  }
+  const pending = storedConfig?.oauth?.pendingAuthorization;
+  if (pending?.state) {
+    // Persisted record is authoritative: any other state means another flow
+    // replaced this one.
+    if (pending.state !== state) {
+      return false;
+    }
+  } else if (serverInfo.oauth?.state !== state) {
+    // Nothing persisted (e.g. persistence failed): only the live in-memory
+    // flow's own state is acceptable.
+    return false;
+  }
+  if (pending?.createdAt !== undefined && Date.now() - pending.createdAt > OAUTH_STATE_TTL_MS) {
+    logger.warn('OAuth callback state expired while waiting for lock; rejecting', {
+      serverName: serverInfo.name,
+    });
+    return false;
+  }
   return true;
 };
 
@@ -398,7 +435,44 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       try {
         logger.log('Calling transport.finishAuth for server', { serverName: serverInfo.name });
         const currentTransport = serverInfo.transport as any;
-        await currentTransport.finishAuth(codeParam, issParam);
+        // Hold the per-server OAuth lock during the token exchange so a
+        // concurrent reconnect cannot overwrite pendingAuthorization between
+        // this callback's state check and the provider's codeVerifier lookup.
+        // Nested provider lock acquisition is reentrant (see replicaLock).
+        //
+        // The state was validated before the lock was taken, so another flow
+        // may have replaced (or another callback consumed) it while this
+        // callback waited. Revalidate against the persisted pending record
+        // under the lock, before finishAuth(), so an old code is never
+        // exchanged with a different flow's code verifier.
+        const stateStillCurrent = await withOAuthPendingAuthLock(
+          serverInfo.name,
+          'shared',
+          async () => {
+            const storedConfig = await loadServerConfig(serverInfo.name);
+            if (!isPersistedOAuthStateCurrent(serverInfo, storedConfig, stateParam)) {
+              return false;
+            }
+            await currentTransport.finishAuth(codeParam, issParam);
+            return true;
+          },
+        );
+
+        if (!stateStillCurrent) {
+          logger.error('OAuth callback state superseded while waiting for lock; rejecting', {
+            serverName: serverInfo.name,
+          });
+          return res
+            .status(400)
+            .send(
+              generateHtmlResponse(
+                t,
+                'error',
+                t('oauthCallback.serverNotFound'),
+                `${t('oauthCallback.serverNotFoundMessage')}\n${t('oauthCallback.sessionExpiredMessage')}`,
+              ),
+            );
+        }
 
         // The state has served its purpose: the code was exchanged and the
         // server now holds the resulting tokens. Mark it consumed so a replayed
