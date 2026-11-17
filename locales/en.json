@@ -109,7 +109,10 @@
     "passwordRequireLetter": "Password must contain at least one letter",
     "passwordRequireNumber": "Password must contain at least one number",
     "passwordRequireSpecial": "Password must contain at least one special character",
-    "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters"
+    "passwordStrengthHint": "Password must be at least 8 characters and contain letters, numbers, and special characters",
+    "loginWithPasskey": "Sign in with a passkey",
+    "passkeyCancelled": "Passkey sign-in was cancelled or timed out.",
+    "passkeyLoginFailed": "This passkey could not sign you in. It may have been removed from your account."
   },
   "server": {
     "protocolVersion": "MCP protocol",
@@ -1322,7 +1325,17 @@
       "failedToGetMarketTags": "Failed to get market tags",
       "failedToSearchMarketServers": "Failed to search market servers",
       "failedToFilterMarketServers": "Failed to filter market servers",
-      "failedToProcessMcpbFile": "Failed to process MCPB file"
+      "failedToProcessMcpbFile": "Failed to process MCPB file",
+      "passkey_unavailable": "Passkeys can only be managed from a signed-in local account",
+      "passkey_password_invalid": "Current password is incorrect",
+      "passkey_origin_invalid": "Could not determine the site address for passkeys",
+      "passkey_limit_reached": "You have reached the maximum number of passkeys",
+      "passkey_invalid_request": "Invalid passkey request",
+      "passkey_challenge_invalid": "The passkey request has expired. Please try again",
+      "passkey_already_registered": "This passkey is already registered",
+      "passkey_verification_failed": "The passkey could not be verified",
+      "passkey_not_found": "Passkey not found",
+      "passkey_login_failed": "Passkey sign-in failed"
     },
     "success": {
       "serverCreated": "Server created successfully",
@@ -1601,5 +1614,39 @@
     "lifetime": "Consent lifetime (seconds)",
     "lifetimeDescription": "Fixed duration from approval: 1–31536000 seconds (default 1209600, 14 days). Token refresh does not extend it.",
     "invalidLifetime": "Enter a whole number between 1 and 31536000 seconds."
+  },
+  "passkeys": {
+    "title": "Passkeys",
+    "description": "Sign in without a password using your device's fingerprint, face, screen lock, or a security key.",
+    "passwordChangeNote": "Passkeys stop working when your password changes, like your other sessions. Add them again afterwards.",
+    "add": "Add passkey",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Work laptop",
+    "currentPassword": "Current password",
+    "confirmHint": "Confirm your password, then follow your browser's prompt to create the passkey.",
+    "create": "Create passkey",
+    "waiting": "Waiting for your device…",
+    "cancel": "Cancel",
+    "loading": "Loading passkeys…",
+    "empty": "You have no passkeys yet. Add one to sign in without typing your password.",
+    "synced": "Synced",
+    "deviceBound": "This device only",
+    "site": "Site",
+    "createdAt": "Added",
+    "lastUsedAt": "Last used",
+    "never": "Never",
+    "remove": "Remove",
+    "confirmRemove": "Remove the passkey \"{{name}}\"? You will no longer be able to sign in with it.",
+    "confirmRemoveButton": "Remove passkey",
+    "added": "Passkey added. You can now use it to sign in.",
+    "removed": "Passkey removed.",
+    "failed": "Could not load your passkeys.",
+    "removeFailed": "Could not remove the passkey.",
+    "registerFailed": "The passkey could not be created.",
+    "cancelled": "Passkey creation was cancelled or timed out.",
+    "alreadyRegistered": "This device already holds a passkey for your account.",
+    "insecureContext": "Passkeys need the dashboard to be opened by its domain name over HTTPS (or on localhost).",
+    "unsupported": "This browser does not support passkeys.",
+    "unavailable": "Passkeys are unavailable because this deployment only allows single sign-on."
   }
 }

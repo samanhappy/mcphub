@@ -155,6 +155,13 @@ export const authRegistrationRateLimiter = createStandardRateLimiter({
   max: envLimit('REGISTER_RATE_LIMIT_MAX', 20),
 });
 
+// Public passkey sign-in challenges are issued before any credential is checked,
+// so every request counts. Verification attempts use the login limiter instead.
+export const passkeyChallengeRateLimiter = createStandardRateLimiter({
+  windowMs: envInt('PASSKEY_RATE_LIMIT_WINDOW_MS', MINUTES_15),
+  max: envLimit('PASSKEY_RATE_LIMIT_MAX', 100),
+});
+
 export const spaPageRateLimiter = createStandardRateLimiter({
   windowMs: envInt('SPA_RATE_LIMIT_WINDOW_MS', MINUTE_1),
   max: envLimit('SPA_RATE_LIMIT_MAX', 600),

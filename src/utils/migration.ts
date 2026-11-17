@@ -20,6 +20,8 @@ import { OAuthTokenRepository } from '../db/repositories/OAuthTokenRepository.js
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 import { BuiltinPromptRepository } from '../db/repositories/BuiltinPromptRepository.js';
 import { BuiltinResourceRepository } from '../db/repositories/BuiltinResourceRepository.js';
+import { PasskeyDaoImpl } from '../dao/PasskeyDao.js';
+import { PasskeyDaoDbImpl } from '../dao/PasskeyDaoDbImpl.js';
 import { logger } from './logger.js';
 
 /**
@@ -105,6 +107,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
     const builtinResourceRepo = new BuiltinResourceRepository();
 
     // Migrate users
+    const createdUsernames = new Set<string>();
     if (settings.users && settings.users.length > 0) {
       logger.log(`Migrating ${settings.users.length} users...`);
       for (const user of settings.users) {
@@ -118,6 +121,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             ssoUserId: (user as any).ssoUserId ?? null,
             userGroups: user.userGroups,
           });
+          createdUsernames.add(user.username);
           logger.log(`  - Created user: ${user.username}`);
         } else {
           logger.log(`  - User already exists: ${user.username}`);
@@ -394,6 +398,29 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
         } else {
           logger.log(`  - Built-in resource already exists: ${resource.uri}`);
         }
+      }
+    }
+
+    // Migrate passkeys of the users created above from the file-mode sidecar store;
+    // an account that already existed in the database keeps only its own passkeys.
+    // A damaged store must not block the migration: users can add passkeys again.
+    if (createdUsernames.size > 0) {
+      try {
+        const sourcePasskeys = new PasskeyDaoImpl();
+        const targetPasskeys = new PasskeyDaoDbImpl();
+        for (const username of createdUsernames) {
+          for (const passkey of await sourcePasskeys.findByUsername(username)) {
+            if (!(await targetPasskeys.findByCredentialId(passkey.credentialId))) {
+              await targetPasskeys.save(passkey);
+              logger.log(`  - Migrated a passkey for user: ${username}`);
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          'Skipped passkey migration; affected users must register their passkeys again',
+          error,
+        );
       }
     }
 

@@ -1,4 +1,12 @@
 import { listMyOAuthApprovals, revokeMyOAuthApproval } from '../controllers/oauthApprovalController.js';
+import {
+  createPasskeyLoginOptions,
+  createPasskeyRegistrationOptions,
+  deleteMyPasskey,
+  listMyPasskeys,
+  loginWithPasskey,
+  registerMyPasskey,
+} from '../controllers/passkeyController.js';
 import { handleOAuthRelay } from '../controllers/oauthRelayController.js';
 import { metrics } from '../controllers/metricsController.js';
 import { managePersonalOAuth } from '../controllers/personalOAuthController.js';
@@ -206,6 +214,7 @@ import {
   authenticatedRouteRateLimiter,
   hostedInternalEventRateLimiter,
   mcpConnectionRateLimiter,
+  passkeyChallengeRateLimiter,
   stagingDownloadRateLimiter,
   templateRateLimiter,
 } from '../utils/rateLimit.js';
@@ -419,6 +428,17 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/oauth/clients/:clientId/regenerate-secret', regenerateSecret);
 
   // Bearer authentication key management (admin only)
+  // Personal passkeys. Adding one re-checks the current password, so failed
+  // attempts also spend the login limiter's budget.
+  authenticatedRouter.get('/auth/passkeys', listMyPasskeys);
+  authenticatedRouter.post(
+    '/auth/passkeys/registration/options',
+    authAttemptRateLimiter,
+    createPasskeyRegistrationOptions,
+  );
+  authenticatedRouter.post('/auth/passkeys', registerMyPasskey);
+  authenticatedRouter.delete('/auth/passkeys/:id', deleteMyPasskey);
+
   authenticatedRouter.get('/auth/keys', getBearerKeys);
   authenticatedRouter.post('/auth/keys', createBearerKey);
   authenticatedRouter.put('/auth/keys/:id', updateBearerKey);
@@ -535,6 +555,10 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     authRegistrationRateLimiter,
     register,
   );
+
+  // Public passkey sign-in; exempted from the /api auth gate in isApiAuthExemptPath
+  router.post('/auth/passkey/options', passkeyChallengeRateLimiter, createPasskeyLoginOptions);
+  router.post('/auth/passkey/login', authAttemptRateLimiter, loginWithPasskey);
 
   router.get('/auth/user', authenticatedRouteRateLimiter, auth, getCurrentUser);
 

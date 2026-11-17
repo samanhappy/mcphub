@@ -9,6 +9,22 @@ import { safeCompare } from './safeCompare.js';
 export const getUserSessionVersion = (user: IUser): string =>
   createHash('sha256').update(`${user.username}\0${user.password}`).digest('hex');
 
+export const DASHBOARD_TOKEN_EXPIRY = '24h';
+
+/** Signs the dashboard session token returned by every local sign-in method. */
+export const signDashboardToken = (user: IUser): string =>
+  jwt.sign(
+    {
+      user: {
+        username: user.username,
+        sessionVersion: getUserSessionVersion(user),
+        isAdmin: user.isAdmin || false,
+      },
+    },
+    JWT_SECRET,
+    { expiresIn: DASHBOARD_TOKEN_EXPIRY },
+  );
+
 export const resolveUserSession = async (session: unknown): Promise<IUser | null> => {
   if (!session || typeof session !== 'object') return null;
   const { username, sessionVersion } = session as Record<string, unknown>;

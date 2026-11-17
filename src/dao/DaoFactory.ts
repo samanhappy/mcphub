@@ -1,4 +1,5 @@
 import { OAuthApprovalDao, OAuthApprovalDaoImpl } from './OAuthApprovalDao.js';
+import { PasskeyDao, PasskeyDaoImpl } from './PasskeyDao.js';
 import { CapabilitySnapshotDao, CapabilitySnapshotDaoImpl } from './CapabilitySnapshotDao.js';
 import { CredentialBindingDao, CredentialBindingDaoImpl } from './CredentialBindingDao.js';
 import { UserDao, UserDaoImpl } from './UserDao.js';
@@ -19,6 +20,7 @@ import { logger } from '../utils/logger.js';
  */
 export interface DaoFactory {
   getOAuthApprovalDao(): OAuthApprovalDao;
+  getPasskeyDao(): PasskeyDao;
   getCapabilitySnapshotDao(): CapabilitySnapshotDao;
   getCredentialBindingDao(): CredentialBindingDao;
   getUserDao(): UserDao;
@@ -67,6 +69,10 @@ export class JsonFileDaoFactory implements DaoFactory {
 
   getOAuthApprovalDao(): OAuthApprovalDao {
     return new OAuthApprovalDaoImpl();
+  }
+
+  getPasskeyDao(): PasskeyDao {
+    return new PasskeyDaoImpl();
   }
 
   getCapabilitySnapshotDao(): CapabilitySnapshotDao {
@@ -266,4 +272,8 @@ export function getCredentialBindingDao(): CredentialBindingDao {
 
 export function getOAuthApprovalDao(): OAuthApprovalDao {
   return getDaoFactory().getOAuthApprovalDao();
+}
+
+export function getPasskeyDao(): PasskeyDao {
+  return getDaoFactory().getPasskeyDao();
 }

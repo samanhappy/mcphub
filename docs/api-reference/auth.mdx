@@ -33,6 +33,20 @@ import { Card, Cards } from 'mintlify';
   Change the password for the current user.
 </Card>
 
+<Card
+  title="POST /api/auth/passkey/login"
+  href="#passkey-sign-in"
+>
+  Sign in with a passkey.
+</Card>
+
+<Card
+  title="GET /api/auth/passkeys"
+  href="#manage-passkeys"
+>
+  List, add, and remove the current user's passkeys.
+</Card>
+
 ---
 
 ### Login
@@ -146,6 +160,81 @@ Allows the authenticated user to change their password.
     "message": "Password updated successfully"
   }
   ```
+
+---
+
+### Passkey Sign-in
+
+Signs in with a passkey (WebAuthn discoverable credential) in two steps. The browser side is what `@simplewebauthn/browser` produces: pass `options` to `startAuthentication({ optionsJSON: options })` and send its result back. See [Passkeys](/features/authentication#passkeys) for requirements and behavior.
+
+Both endpoints are public. While [SSO-only sign-in](/features/authentication#sso-only-sign-in) is in effect they answer `403`. The relying party is taken from the request's `Origin` header (or its host and protocol).
+
+**1. Request a challenge**
+
+- **Endpoint**: `/api/auth/passkey/options`
+- **Method**: `POST`
+- **Success Response**:
+  ```json
+  {
+    "success": true,
+    "options": {
+      "challenge": "…",
+      "rpId": "hub.example.com",
+      "userVerification": "required",
+      "timeout": 60000
+    },
+    "challengeToken": "eyJhbGciOiJIUzI1NiIs…"
+  }
+  ```
+
+The `challengeToken` is valid for five minutes and can be used once.
+
+**2. Verify the assertion**
+
+- **Endpoint**: `/api/auth/passkey/login`
+- **Method**: `POST`
+- **Body**:
+  - `challengeToken` (string, required): The token from step 1.
+  - `response` (object, required): The `AuthenticationResponseJSON` returned by the browser.
+- **Success Response**: the same `token` and `user` fields as [Login](#login).
+- **Failure**: `401` with `{"success": false, "code": "passkey_login_failed", "message": "Passkey sign-in failed"}` for an unknown, removed, revoked, or invalid passkey, a reused or expired challenge, or another origin. Every passkey error response carries such a `code`.
+
+---
+
+### Manage Passkeys
+
+Endpoints for the signed-in user's own passkeys. They require a dashboard session (JWT or Better Auth session) of a local account; bearer keys, forward-auth identities, and skip-auth mode receive `403`.
+
+- **List**: `GET /api/auth/passkeys`
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "4f6c1a2e-…",
+        "name": "Work laptop",
+        "rpId": "hub.example.com",
+        "createdAt": "2026-11-17T02:00:00.000Z",
+        "lastUsedAt": "2026-11-17T03:00:00.000Z",
+        "deviceType": "multiDevice",
+        "backedUp": true
+      }
+    ],
+    "registrationAvailable": true
+  }
+  ```
+  Credential IDs and public keys are never returned. `rpId` is the host name the passkey works on. Passkeys revoked by a password change are not listed. `registrationAvailable` is `false` while SSO-only sign-in is in effect.
+
+- **Start registration**: `POST /api/auth/passkeys/registration/options`
+  - **Body**: `currentPassword` (string, required).
+  - **Response**: `options` for `startRegistration({ optionsJSON: options })` and a `challengeToken`, as in passkey sign-in.
+  - A wrong password answers `400` (not `401`, which would end the dashboard session). Failed attempts count against the login rate limit.
+
+- **Finish registration**: `POST /api/auth/passkeys`
+  - **Body**: `challengeToken` (string, required), `response` (`RegistrationResponseJSON`, required), `name` (string, optional, up to 64 characters).
+  - **Response**: `201` with the new passkey in `data`. `409` if the credential is already registered; `400` when the challenge expired, belongs to another user, or the response cannot be verified.
+
+- **Remove**: `DELETE /api/auth/passkeys/:id` removes one of the user's passkeys. Another user's passkey answers `404`.
 
 ---
 

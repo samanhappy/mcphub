@@ -109,7 +109,10 @@
     "passwordRequireLetter": "密码必须包含至少一个字母",
     "passwordRequireNumber": "密码必须包含至少一个数字",
     "passwordRequireSpecial": "密码必须包含至少一个特殊字符",
-    "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符"
+    "passwordStrengthHint": "密码必须至少 8 个字符，且包含字母、数字和特殊字符",
+    "loginWithPasskey": "使用通行密钥登录",
+    "passkeyCancelled": "通行密钥登录已取消或超时。",
+    "passkeyLoginFailed": "无法使用此通行密钥登录，它可能已从你的账户中移除。"
   },
   "server": {
     "protocolVersion": "MCP 协议",
@@ -1324,7 +1327,17 @@
       "failedToGetMarketTags": "获取市场标签失败",
       "failedToSearchMarketServers": "搜索市场服务器失败",
       "failedToFilterMarketServers": "过滤市场服务器失败",
-      "failedToProcessMcpbFile": "处理 MCPB 文件失败"
+      "failedToProcessMcpbFile": "处理 MCPB 文件失败",
+      "passkey_unavailable": "只能在已登录的本地账户中管理通行密钥",
+      "passkey_password_invalid": "当前密码不正确",
+      "passkey_origin_invalid": "无法确定通行密钥使用的站点地址",
+      "passkey_limit_reached": "通行密钥数量已达上限",
+      "passkey_invalid_request": "无效的通行密钥请求",
+      "passkey_challenge_invalid": "通行密钥请求已过期，请重试",
+      "passkey_already_registered": "此通行密钥已注册",
+      "passkey_verification_failed": "无法验证此通行密钥",
+      "passkey_not_found": "未找到通行密钥",
+      "passkey_login_failed": "通行密钥登录失败"
     },
     "success": {
       "serverCreated": "服务器创建成功",
@@ -1603,5 +1616,39 @@
     "lifetime": "授权记忆有效期（秒）",
     "lifetimeDescription": "从明确授权时起固定计算：1–31536000 秒（默认 1209600，即 14 天）。刷新令牌不会延长期限。",
     "invalidLifetime": "请输入 1–31536000 之间的整数秒数。"
+  },
+  "passkeys": {
+    "title": "通行密钥",
+    "description": "使用设备的指纹、面容、屏幕锁或安全密钥登录，无需输入密码。",
+    "passwordChangeNote": "与其他会话一样，修改密码后通行密钥会失效，之后需要重新添加。",
+    "add": "添加通行密钥",
+    "nameLabel": "名称",
+    "namePlaceholder": "例如：工作笔记本",
+    "currentPassword": "当前密码",
+    "confirmHint": "请先确认密码，然后按照浏览器提示创建通行密钥。",
+    "create": "创建通行密钥",
+    "waiting": "正在等待你的设备…",
+    "cancel": "取消",
+    "loading": "正在加载通行密钥…",
+    "empty": "你还没有通行密钥。添加一个即可免密码登录。",
+    "synced": "已同步",
+    "deviceBound": "仅限此设备",
+    "site": "站点",
+    "createdAt": "添加时间",
+    "lastUsedAt": "上次使用",
+    "never": "从未",
+    "remove": "移除",
+    "confirmRemove": "移除通行密钥“{{name}}”？移除后将无法再用它登录。",
+    "confirmRemoveButton": "移除通行密钥",
+    "added": "通行密钥已添加，现在可以用它登录。",
+    "removed": "通行密钥已移除。",
+    "failed": "无法加载你的通行密钥。",
+    "removeFailed": "无法移除通行密钥。",
+    "registerFailed": "无法创建通行密钥。",
+    "cancelled": "通行密钥创建已取消或超时。",
+    "alreadyRegistered": "此设备已保存你账户的通行密钥。",
+    "insecureContext": "通行密钥要求通过域名以 HTTPS（或 localhost）访问控制台。",
+    "unsupported": "此浏览器不支持通行密钥。",
+    "unavailable": "此部署仅允许单点登录，因此无法使用通行密钥。"
   }
 }

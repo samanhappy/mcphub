@@ -37,7 +37,7 @@ It works with MCP clients such as Claude Code, Cursor, Cherry Studio, OpenWebUI,
 ### Control access and credentials
 
 - **Per-user Credentials** ⭐ - Bind personal keys to one shared server, with encrypted storage and isolated stdio runtimes ([Learn more](docs/features/per-user-credentials.mdx))
-- **Authentication and Access Control** - Use OAuth 2.0, bearer keys, and server or group visibility controls to manage access
+- **Authentication and Access Control** - Use OAuth 2.0, bearer keys, passkeys, and server or group visibility controls to manage access
 - **OAuth 2.0 Support** ⭐ - Both client and server modes for secure authentication ([Learn more](https://docs.mcphub.app/features/oauth))
 - **Social Login** - Seamless GitHub and Google login support with Better Auth integration (requires Database Mode)
 - **Server and Group Management** - Organize servers into groups, manage visibility, and control Tool, Prompt, and Resource exposure
@@ -177,7 +177,7 @@ Local development uses `admin` / `admin123` and stores its writable settings cop
 - **Backend**: Node.js, Express, TypeScript (ESM)
 - **Frontend**: React, Vite, Tailwind CSS
 - **Storage**: file-based `mcp_settings.json` by default; PostgreSQL via TypeORM with pgvector for Smart Routing
-- **Auth**: JWT + bcrypt for local accounts; bearer keys; built-in OAuth 2.0 server (`@node-oauth/oauth2-server`); optional Better Auth for GitHub/Google login
+- **Auth**: JWT + bcrypt for local accounts, with optional passkeys (WebAuthn); bearer keys; built-in OAuth 2.0 server (`@node-oauth/oauth2-server`); optional Better Auth for GitHub/Google login
 - **Protocol**: Model Context Protocol SDK
 
 ## 🏢 Production Support

@@ -2,11 +2,12 @@ import { useBranding } from '@/contexts/BrandingContext';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, AlertCircle } from 'lucide-react';
+import { BookOpen, AlertCircle, KeyRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getToken } from '../services/authService';
 import { getPublicConfig } from '../services/configService';
 import { createBetterAuthClient, startOidcLogin } from '../services/betterAuthClient';
+import { passkeysSupported } from '../services/passkeyService';
 import { getBasePath } from '../utils/runtime';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
@@ -14,6 +15,7 @@ import GitHubIcon from '@/components/icons/GitHubIcon';
 import DefaultPasswordWarningModal from '@/components/ui/DefaultPasswordWarningModal';
 
 type SocialProvider = 'google' | 'github' | 'oidc';
+type AlternativeSignIn = SocialProvider | 'passkey';
 
 const sanitizeReturnUrl = (value: string | null): string | null => {
   if (!value) return null;
@@ -39,7 +41,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
+  const [socialLoading, setSocialLoading] = useState<AlternativeSignIn | null>(null);
   const [socialError, setSocialError] = useState<string | null>(null);
   const [betterAuthBasePath, setBetterAuthBasePath] = useState<string | undefined>(undefined);
   // Set from the public config: only SSO sign-in is offered
@@ -51,7 +53,8 @@ const LoginPage: React.FC = () => {
   });
   const [oidcProviderId, setOidcProviderId] = useState<string>('oidc');
   const [showDefaultPasswordWarning, setShowDefaultPasswordWarning] = useState(false);
-  const { login, register, auth } = useAuth();
+  const { login, loginWithPasskey, register, auth } = useAuth();
+  const [passkeySupport] = useState(passkeysSupported);
   const location = useLocation();
   const navigate = useNavigate();
   const returnUrl = useMemo(() => {
@@ -201,7 +204,38 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    setError(null);
+    setSocialError(null);
+    setSocialLoading('passkey');
+    try {
+      const result = await loginWithPasskey();
+      if (result.success) {
+        redirectAfterLogin();
+        return;
+      }
+      if (result.error === 'cancelled') setSocialError(t('auth.passkeyCancelled'));
+      else if (result.error === 'insecureContext') setSocialError(t('passkeys.insecureContext'));
+      else if (result.error || result.code === 'passkey_login_failed' || !result.message) {
+        setSocialError(t('auth.passkeyLoginFailed'));
+      } else if (isServerUnavailableError(result.message)) {
+        setSocialError(t('auth.serverUnavailable'));
+      } else {
+        // For example a rate limit, or SSO-only sign-in switched on after the page loaded
+        setSocialError(result.message);
+      }
+    } catch {
+      setSocialError(t('auth.passkeyLoginFailed'));
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
   const formError = error || (registering ? auth.error : null);
+  // Passkeys belong to local accounts, so they follow the password sign-in policy.
+  const showPasskey = passkeySupport && !passwordLoginDisabled && !registering;
+  const showAlternatives =
+    showPasskey || socialProviders.google || socialProviders.github || socialProviders.oidc;
 
   const handleCloseWarning = () => {
     setShowDefaultPasswordWarning(false);
@@ -421,7 +455,7 @@ const LoginPage: React.FC = () => {
               </form>
             )}
 
-            {(socialProviders.google || socialProviders.github || socialProviders.oidc) && (
+            {showAlternatives && (
               <div className={passwordLoginDisabled ? 'space-y-3' : 'mt-5 space-y-3'}>
                 {!passwordLoginDisabled && (
                   <div className="flex items-center gap-3">
@@ -438,6 +472,7 @@ const LoginPage: React.FC = () => {
 
                 {socialError && (
                   <div
+                    role="alert"
                     className="flex items-center gap-2"
                     style={{
                       padding: '8px 10px',
@@ -454,6 +489,20 @@ const LoginPage: React.FC = () => {
                 )}
 
                 <div className="space-y-2">
+                  {showPasskey && (
+                    <button
+                      type="button"
+                      onClick={handlePasskeyLogin}
+                      disabled={socialLoading !== null || loading}
+                      className="hub-btn w-full justify-center"
+                      style={{ height: 34 }}
+                    >
+                      <KeyRound className="h-3.5 w-3.5" />
+                      {socialLoading === 'passkey'
+                        ? t('auth.loggingIn')
+                        : t('auth.loginWithPasskey')}
+                    </button>
+                  )}
                   {socialProviders.google && (
                     <button
                       type="button"

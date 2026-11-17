@@ -268,8 +268,9 @@ export const getBetterAuthRuntimeConfig = async (
  * authentication gate and its rate limiter. This is the single source of truth
  * for the exemption applied in `src/middlewares/index.ts` and mirrored by the
  * `apiAuthGateRateLimiter` skip in `src/utils/rateLimit.ts`: public auth routes
- * (login, register) and better-auth endpoints carry their own limiters or
- * handler, so they must not consume the shared authenticated-route budget.
+ * (login, register, passkey sign-in) and better-auth endpoints carry their own
+ * limiters or handler, so they must not consume the shared authenticated-route
+ * budget.
  *
  * `reqPath` is the path relative to the `/api` mount (Express strips the mount
  * prefix), e.g. `/auth/login` for a request to `/api/auth/login`.
@@ -284,6 +285,8 @@ export const isApiAuthExemptPath = (
   return (
     reqPath === '/auth/login' ||
     reqPath === '/auth/register' ||
+    reqPath === '/auth/passkey/options' ||
+    reqPath === '/auth/passkey/login' ||
     (betterAuthApiPath !== null && reqPath.startsWith(betterAuthApiPath)) ||
     reqPath.startsWith('/better-auth')
   );

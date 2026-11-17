@@ -49,7 +49,8 @@ Bearer keys have explicit kinds. Legacy and operator-created keys use `kind: 'sy
 - `/mcp/{group|server}` routes to a group, server, or `$smart`. `SMART_ROUTING_PATH` adds a reserved alias for `$smart`; transport middleware normalizes the alias before authentication while preserving the original OAuth resource URL.
 - `/:user/mcp/{group|server}` and `/:user/sse/{group}` are user-scoped variants.
 - `AppServer.initialize()` in `src/server.ts` is the route-registration entry point.
-- Authentication spans dashboard JWT/bcrypt, bearer keys, MCPHub's OAuth authorization server, and optional Better Auth. Inspect the current middleware and route code before changing auth behavior.
+- Authentication spans dashboard JWT/bcrypt, passkeys, bearer keys, MCPHub's OAuth authorization server, and optional Better Auth. Inspect the current middleware and route code before changing auth behavior.
+- Passkeys (`src/services/passkeyService.ts`) are a local-account credential: they follow `disablePasswordLogin`, are stored like OAuth approvals (`PasskeyDao` sidecar file or `user_passkeys`), and their two public sign-in routes are listed in `isApiAuthExemptPath`. Each passkey keeps the RP ID it was created under and is accepted only there, and is bound to the owner's session version like OAuth approvals, so a password change or account recreation revokes it. Sign-in usage is written update-only (`recordUse`) with the counter check in the same write (`isCounterAdvance`; a conditional `UPDATE` in database mode), so a removed passkey is never recreated and a racing sign-in cannot move the counter backwards; replica mode records spent challenges in `oauth_state`.
 
 ## Declarative database configuration
 

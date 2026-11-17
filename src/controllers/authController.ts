@@ -1,4 +1,4 @@
-import { getUserSessionVersion } from '../utils/userSession.js';
+import { DASHBOARD_TOKEN_EXPIRY, getUserSessionVersion } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
@@ -20,7 +20,7 @@ import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 
 const dataService: DataService = getDataService();
 
-const TOKEN_EXPIRY = '24h';
+const TOKEN_EXPIRY = DASHBOARD_TOKEN_EXPIRY;
 
 // Login user
 export const login = async (req: Request, res: Response): Promise<void> => {

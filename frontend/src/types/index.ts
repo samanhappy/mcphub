@@ -965,6 +965,16 @@ export interface OpenApiToolStats {
   declaredSecurity?: OpenAPIDeclaredSecurity;
 }
 
+export interface Passkey {
+  id: string;
+  name: string;
+  rpId: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  deviceType: 'singleDevice' | 'multiDevice';
+  backedUp: boolean;
+}
+
 export interface OAuthApproval {
   id: string;
   clientId: string;

@@ -37,7 +37,7 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 ### 管控访问与凭据
 
 - **个人凭据** ⭐ - 一个共享服务器支持每位用户独立绑定密钥，加密保存并隔离 stdio 运行进程（[了解更多](docs/zh/features/per-user-credentials.mdx)）
-- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key 以及服务器或分组可见性控制访问权限
+- **身份认证与访问控制** - 使用 OAuth 2.0、Bearer Key、通行密钥以及服务器或分组可见性控制访问权限
 - **OAuth 2.0 支持** ⭐ - 客户端和服务端模式，实现安全认证 ([了解更多](https://docs.mcphub.app/zh/features/oauth))
 - **社交一键登录** - 通过 Better Auth 集成支持 GitHub 和 Google 快捷登录（需启用数据库模式）
 - **服务器与分组管理** - 组织服务器分组，管理可见性，并控制 Tool、Prompt 与 Resource 的暴露范围
@@ -170,7 +170,7 @@ pnpm dev
 - **后端**：Node.js、Express、TypeScript（ESM）
 - **前端**：React、Vite、Tailwind CSS
 - **存储**：默认基于文件的 `mcp_settings.json`；可选 PostgreSQL（TypeORM + pgvector，用于智能路由）
-- **认证**：本地账号使用 JWT + bcrypt；支持 Bearer Key、内置 OAuth 2.0 服务端（`@node-oauth/oauth2-server`），以及可选的 Better Auth（GitHub/Google 一键登录）
+- **认证**：本地账号使用 JWT + bcrypt，并可选用通行密钥（WebAuthn）；支持 Bearer Key、内置 OAuth 2.0 服务端（`@node-oauth/oauth2-server`），以及可选的 Better Auth（GitHub/Google 一键登录）
 - **协议**：Model Context Protocol SDK
 
 ## 🏢 生产支持

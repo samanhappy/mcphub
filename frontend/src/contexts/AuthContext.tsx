@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AuthState } from '../types';
 import * as authService from '../services/authService';
 import { getPublicConfig } from '../services/configService';
+import { signInWithPasskey, type PasskeySignInResult } from '../services/passkeyService';
 
 // Initial auth state
 const initialState: AuthState = {
@@ -18,11 +19,13 @@ const AuthContext = createContext<{
     username: string,
     password: string,
   ) => Promise<{ success: boolean; isUsingDefaultPassword?: boolean; message?: string }>;
+  loginWithPasskey: () => Promise<PasskeySignInResult>;
   register: (username: string, password: string, isAdmin?: boolean) => Promise<boolean>;
   logout: () => void;
 }>({
   auth: initialState,
   login: async () => ({ success: false }),
+  loginWithPasskey: async () => ({ success: false }),
   register: async () => false,
   logout: () => {},
 });
@@ -160,6 +163,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Passkey login function. A dismissed browser prompt leaves the auth state untouched.
+  const loginWithPasskey = async (): Promise<PasskeySignInResult> => {
+    const result = await signInWithPasskey();
+    if (result.success && result.user) {
+      setAuth({
+        isAuthenticated: true,
+        loading: false,
+        user: result.user,
+        error: null,
+      });
+    }
+    return result;
+  };
+
   // Register function
   const register = async (
     username: string,
@@ -205,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ auth, login, register, logout }}>
+    <AuthContext.Provider value={{ auth, login, loginWithPasskey, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
