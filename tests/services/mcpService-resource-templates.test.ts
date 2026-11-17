@@ -505,6 +505,78 @@ describe('resources/read through upstream resource templates', () => {
     expect(info.activeToolCalls).toBe(0);
   });
 
+  it.each(['success', 'wake failure', 'read failure'])(
+    'wakes an idle server for a listed static resource (%s)',
+    async (outcome) => {
+      const alpha = addUpstream('alpha', []);
+      alpha.listResources.mockResolvedValue({
+        resources: [{ uri: 'x://static', name: 'Static' }],
+      });
+      await start('alpha');
+      const onDemandConfig = makeServerConfig('alpha', { startOnDemand: true });
+      mockFindById.mockResolvedValue(onDemandConfig);
+      const info = getServerByName('alpha')!;
+      info.config = onDemandConfig;
+      info.status = 'disconnected';
+      info.client = undefined;
+      info.transport = undefined;
+      alpha.connect.mockClear();
+      if (outcome === 'wake failure') alpha.connect.mockRejectedValueOnce(new Error('wake failed'));
+      if (outcome === 'read failure')
+        alpha.readResource.mockRejectedValueOnce(new Error('read failed'));
+
+      const result = await read('x://static', 'alpha-session');
+
+      expect(result.contents[0].text).toBe(
+        outcome === 'success'
+          ? 'alpha:x://static'
+          : `Error: Error | ${outcome === 'wake failure' ? 'wake failed' : 'read failed'}`,
+      );
+      expect(alpha.connect).toHaveBeenCalledTimes(1);
+      expect(alpha.readResource).toHaveBeenCalledTimes(outcome === 'wake failure' ? 0 : 1);
+      expect(info.activeToolCalls).toBe(0);
+    },
+  );
+
+  it('does not wake an idle server for a disabled static resource', async () => {
+    const alpha = addUpstream('alpha', []);
+    alpha.listResources.mockResolvedValue({ resources: [{ uri: 'x://static', name: 'Static' }] });
+    await start('alpha');
+    const conf = makeServerConfig('alpha', {
+      startOnDemand: true,
+      resources: { 'x://static': { enabled: false } },
+    });
+    mockFindById.mockResolvedValue(conf);
+    const info = getServerByName('alpha')!;
+    info.config = conf;
+    info.status = 'disconnected';
+    info.client = undefined;
+    info.transport = undefined;
+    alpha.connect.mockClear();
+
+    const result = await read('x://static', 'alpha-session');
+
+    expect(result.contents[0].text).toContain('Resource not found');
+    expect(alpha.connect).not.toHaveBeenCalled();
+    expect(alpha.readResource).not.toHaveBeenCalled();
+  });
+
+  it('omits disabled resource templates while retaining enabled templates', async () => {
+    addUpstream('alpha', ['x://disabled/{id}', 'x://enabled/{id}']);
+    mockFindById.mockImplementation(async (name: string) =>
+      makeServerConfig(name, {
+        resources: { 'x://disabled/{id}': { enabled: false } },
+      }),
+    );
+    await start('alpha');
+
+    const result = await handleListResourceTemplatesRequest({}, { sessionId: 'alpha-session' });
+
+    expect(
+      result.resourceTemplates.map((template: { uriTemplate: string }) => template.uriTemplate),
+    ).toEqual(['x://enabled/{id}']);
+  });
+
   describe('modern upstreams', () => {
     const addModernUpstream = (name: string, uriTemplates: string[]) => {
       const client = addUpstream(name, uriTemplates);

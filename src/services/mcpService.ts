@@ -1,3 +1,17 @@
+import { createToolHandlers, findToolOnServer } from './mcpTools.js';
+import { createPromptHandlers, normalizePromptForList } from './mcpPrompts.js';
+import {
+  getExposedServerName,
+  getGroupLookupName,
+  normalizeToolNameForServer,
+  resolveNameFromGroup,
+} from '../utils/mcpRouteNames.js';
+import { ToolUnavailableError } from '../utils/toolUnavailableError.js';
+export { ToolUnavailableError } from '../utils/toolUnavailableError.js';
+export {
+  summarizeArgumentsForLogging,
+  summarizeToolResultForLogging,
+} from '../utils/mcpRequestLogging.js';
 import { compatibleToolNames } from '../utils/compatibleToolNames.js';
 import { getToolPolicy } from './toolPolicyService.js';
 import { DEFAULT_INSTALL_BASE_URL, resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
@@ -10,7 +24,6 @@ import {
   validateSshServerConfig,
 } from './fileStaging/adapter.js';
 import {
-  containsStagingRef,
   dispatchStagedToolCall as dispatchStagingCall,
   resolveStagingServerId,
 } from './fileStaging/dispatch.js';
@@ -31,9 +44,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { isReplicaMode } from '../utils/replicaMode.js';
 import { withReplicaLock } from './replicaLock.js';
 import type { ToolPolicyAudit } from '../types/index.js';
-import { projectGroupToolName, assertValidGroupToolNames } from '../utils/groupToolNames.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
-import { observeToolCall, setMetricsServer } from './metricsService.js';
+import { observeToolCall } from './metricsService.js';
 import {
   hasPersonalOAuth,
   PersonalOAuthContext,
@@ -41,11 +53,7 @@ import {
   personalAuthorizationRequired,
   PersonalAuthorizationRequiredError,
 } from './personalOAuthService.js';
-import {
-  preserveListFreshness,
-  combineListFreshness,
-  remainingListTtl,
-} from '../utils/listFreshness.js';
+import { preserveListFreshness, remainingListTtl } from '../utils/listFreshness.js';
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { revalidateUpstreamList, type UpstreamList } from './upstreamListRefresh.js';
@@ -57,16 +65,20 @@ import {
   withElicitation,
 } from './elicitationService.js';
 import { LEGACY_PROTOCOL_VERSIONS, resolveUpstreamProtocolMode } from '../utils/mcpProtocol.js';
-import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  createRequestServerProjection,
+  getRequestServers,
+  withRequestServers,
+} from './mcpRequestScope.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { canServeToolRequests } from '../utils/serverAvailability.js';
-import { uriMatchesResourceTemplate } from '../utils/resourceTemplateMatch.js';
-import {
-  assertToolCallArgumentsSafe,
-  isToolCallGuardEnabled,
-  ToolCallBlockedError,
-} from '../middlewares/toolCallGuard.js';
+import { createResourceHandlers, normalizeResourceForList } from './mcpResources.js';
+import type {
+  FilteredGroupServersResult,
+  IsolatedClientContext,
+  McpAppsRouteContext,
+} from '../types/mcpRouting.js';
 import {
   applyHiddenParams,
   findToolConfig,
@@ -94,15 +106,17 @@ import {
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import treeKill from 'tree-kill';
+import { captureStdioTreeSafely, killStdioProcessTree } from './mcpStdioLifecycle.js';
 import {
-  captureProcessTreeSync,
-  isProcessTreeKillAvailable,
-  readProcessStartTimesSync,
-  UNKNOWN_START_TIME,
-  type ProcessSnapshotEntry,
-  type ProcessTreeSnapshot,
-} from '../utils/processTree.js';
+  closeServerRuntime,
+  createOnDemandLifecycle,
+  isStdioServer,
+} from './mcpConnectionLifecycle.js';
+export {
+  STDIO_TERMINATION_DRAIN_BUDGET_MS,
+  drainStdioTerminations,
+  resetStdioTerminationsForTest,
+} from './mcpStdioLifecycle.js';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import {
   type Client,
@@ -163,25 +177,11 @@ import {
 } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider } from './mcpOAuthProvider.js';
-import {
-  initSmartRoutingService,
-  getSmartRoutingTools,
-  handleSearchToolsRequest,
-  handleDescribeToolRequest,
-  isSmartRoutingGroup,
-} from './smartRoutingService.js';
+import { initSmartRoutingService, isSmartRoutingGroup } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
-import { maybeCompressToolResult } from './toolResultCompressionService.js';
-import {
-  assertHostedToolAllowed,
-  filterHostedTools,
-  HostedCreditReservation,
-  reserveHostedToolCall,
-  settleHostedToolCall,
-} from './hostedAuthService.js';
+import { filterHostedTools } from './hostedAuthService.js';
 import {
   formatErrorForLogging,
-  sanitizeStringForLogging,
   summarizeErrorForLogging,
 } from '../utils/serialization.js';
 import { addStdioErrorContext, observeStdioStderr } from '../utils/stdioDiagnostics.js';
@@ -516,66 +516,6 @@ export const deleteMcpServer = (sessionId: string): void => {
   delete servers[sessionId];
   // Clean up any per-session isolated upstream clients for this session
   cleanupIsolatedSession(sessionId);
-};
-
-// Takes the pre-close snapshot without being able to fail. captureProcessTreeSync
-// wraps its own I/O and is total today, but this is a synchronous call at the top
-// of the only shutdown path: were it ever to throw, cleanupAllServers would abort
-// mid-loop, every server after this one would stay open, and the caller's catch
-// would skip drainStdioTerminations entirely, so every termination already
-// started is abandoned by the process.exit() that follows. That is the orphan
-// class this code exists to prevent, and it must not rest on the capture
-// staying total.
-//
-// A pid that cannot be signalled is reported rather than passed on, because an
-// unusable pid otherwise means cleanup silently does not happen, which in the
-// log is indistinguishable from cleanup that worked.
-// Reads the pid as well as taking the snapshot, because `transport.pid` is a
-// getter on an object this code does not own: the SDK's cannot throw, but a
-// replica or a disposed custom transport is duck-typed in here, and a throw
-// while reading it would abort the shutdown loop exactly as a throwing capture
-// would. Returns the pid it managed to read, so the caller never reads it twice.
-const captureStdioTreeSafely = (
-  serverName: string,
-  readPid: () => unknown,
-): { pid: number | null; captured: ProcessTreeSnapshot } => {
-  const none = { pid: null, captured: { descendants: [] } };
-  let raw: unknown;
-  try {
-    raw = readPid();
-  } catch (err) {
-    logger.warn('Could not read the pid of an stdio transport, skipping process-tree cleanup', {
-      serverName,
-      err,
-    });
-    return none;
-  }
-  if (raw === null || raw === undefined) {
-    // An http or sse transport, or a stdio one that never started. Nothing to
-    // clean up and nothing worth saying.
-    return none;
-  }
-  if (typeof raw !== 'number' || !isSignallableTarget(raw)) {
-    // A number that must never be signalled, or not a number at all. Either
-    // way cleanup cannot happen, and silence here is indistinguishable in the
-    // log from cleanup that worked.
-    logger.warn('Not cleaning up an stdio process tree: unusable pid', {
-      serverName,
-      pid: raw,
-      type: typeof raw,
-    });
-    return none;
-  }
-  try {
-    return { pid: raw, captured: captureProcessTreeSync(raw) };
-  } catch (err) {
-    logger.warn('Could not capture the stdio process tree, watching the root pid alone', {
-      serverName,
-      pid: raw,
-      err,
-    });
-    return { pid: raw, captured: { descendants: [] } };
-  }
 };
 
 /**
@@ -993,45 +933,11 @@ export const syncCredentialServerToolEmbeddings = async (
   return enabledTools.length;
 };
 
-// Normalize prompt payload to satisfy MCP ListPrompts response schema
-const normalizePromptForList = (prompt: {
-  name: string;
-  title?: string;
-  description?: string;
-  arguments?: any[];
-  [key: string]: unknown;
-}) => {
-  return {
-    ...prompt,
-    name: prompt.name,
-    title: prompt.title || prompt.name,
-    description: prompt.description || '',
-    arguments: Array.isArray(prompt.arguments) ? prompt.arguments : [],
-  };
-};
-
 const normalizePromptForCache = (serverName: string, prompt: McpPrompt) => {
   return normalizePromptForList({
     ...prompt,
     name: `${serverName}${getNameSeparator()}${prompt.name}`,
   });
-};
-
-// Normalize resource payload to avoid nullable DB fields violating MCP schema
-const normalizeResourceForList = (resource: {
-  uri: string;
-  name?: string | null;
-  description?: string | null;
-  mimeType?: string | null;
-  [key: string]: unknown;
-}): Resource => {
-  return {
-    ...resource,
-    uri: resource.uri,
-    name: resource.name || '',
-    description: resource.description || '',
-    mimeType: resource.mimeType || '',
-  };
 };
 
 const normalizeResourceForCache = (resource: McpResource): Resource => {
@@ -1155,12 +1061,11 @@ const createConnectGate = (limit: number): ConnectGate => {
 // result anywhere. See the `liveServerInfo` helper in that function.
 let initGeneration = 0;
 
-const principalServerScope = new AsyncLocalStorage<ServerInfo[]>();
 // Header-dependent discovery must never publish descriptors or embeddings globally.
 const requestDiscoveryInfos = new WeakSet<ServerInfo>();
 
 const getVisibleServerInfos = (): ServerInfo[] => {
-  const visible = getDataService().filterData(principalServerScope.getStore() ?? serverInfos);
+  const visible = getDataService().filterData(getRequestServers(serverInfos));
   // A system key with accessType 'exclude' hides its excluded servers (and the
   // members of excluded groups, already expanded by the auth layer) from every
   // listing, call resolution and smart-routing surface that reads this list.
@@ -1282,178 +1187,6 @@ export const connectClientWithDiagnostics = async (
 // Consumed once by createTransportFromConfig on the next reconnect.
 const pendingReinstalls = new Set<string>();
 
-// Grace period after sending SIGTERM to a stdio process tree before falling back
-// to SIGKILL. Long enough to let well-behaved servers shut down cleanly, short
-// enough that a hung child does not block the container indefinitely.
-const STDIO_KILL_GRACE_PERIOD_MS = 2000;
-
-// Default bound a caller should allow when waiting for stdio terminations
-// before it exits the process. It is a bound, not a pause: the wait ends as
-// soon as the processes are gone, and this only decides how long a caller is
-// willing to hang on for a server that will not die.
-export const STDIO_TERMINATION_DRAIN_BUDGET_MS = STDIO_KILL_GRACE_PERIOD_MS + 3000;
-
-// Interval between liveness probes while waiting for a signalled process tree
-// to exit. The probe is what ends the wait, so a server that honours SIGTERM
-// does not cost a caller the whole grace period, and a slow host only costs
-// what it actually needs.
-const STDIO_KILL_POLL_INTERVAL_MS = 50;
-
-// How long a single termination may stay on the pending list. Nothing should
-// reach it: it exists so a tree-kill callback that never fires, or a process
-// that cannot be signalled at all, eventually leaves the list instead of
-// pinning it for the lifetime of the hub.
-const STDIO_TERMINATION_CAP_MS = STDIO_KILL_GRACE_PERIOD_MS + 60_000;
-
-// Terminations started by killStdioProcessTree that are not finished yet. Both
-// halves of a termination are asynchronous: tree-kill signals the tree from its
-// own child process, and the SIGKILL fallback runs on a timer. process.exit()
-// cancels both, so a caller that is about to exit drains this set first (see
-// drainStdioTerminations) rather than orphaning an `npx` wrapper's descendants.
-//
-// An outcome of 'gone' means the pid was observed to disappear. 'unconfirmed'
-// means it was not, and the caller is told which pids those were, because a
-// kill that was merely sent is not a process that has stopped.
-type StdioTerminationOutcome = 'gone' | 'unconfirmed';
-
-interface PendingStdioTermination {
-  serverName: string;
-  pid: number;
-  // Every pid this termination is waiting on: the transport's own child first,
-  // then the descendants captured before it was signalled. Mutated in place by
-  // killStdioProcessTree as it drops pids it has stopped watching.
-  pids: number[];
-  outcome: Promise<StdioTerminationOutcome>;
-  // Set as the outcome settles, so a drain that gives up on its budget can
-  // still tell which entries had finished and which had not. Reading the
-  // outcomes alone cannot: on the timeout path there is nothing to read.
-  settledOutcome?: StdioTerminationOutcome;
-  // Cancels this termination's liveness probes. Called when the outcome is
-  // known, and by the test-only reset helper.
-  stopWatching: () => void;
-}
-
-const pendingStdioTerminations = new Set<PendingStdioTermination>();
-
-// Resolves with `value` after `ms`, without holding the event loop open, and
-// hands back a way to cancel the timer once nobody is waiting for it.
-const afterDelay = <T>(ms: number, value: T): { promise: Promise<T>; cancel: () => void } => {
-  let timer: NodeJS.Timeout | undefined;
-  const promise = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(value), ms);
-    timer.unref?.();
-  });
-  return {
-    promise,
-    cancel: () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-    },
-  };
-};
-
-const trackStdioTermination = (
-  serverName: string,
-  pid: number,
-  work: Promise<StdioTerminationOutcome>,
-  options: { pids?: number[]; stopWatching?: () => void } = {},
-): void => {
-  const cap = afterDelay(STDIO_TERMINATION_CAP_MS, 'unconfirmed' as const);
-  const outcome = Promise.race([work.catch(() => 'unconfirmed' as const), cap.promise]);
-  const entry: PendingStdioTermination = {
-    serverName,
-    pid,
-    pids: options.pids ?? [pid],
-    outcome,
-    stopWatching: options.stopWatching ?? ((): void => {}),
-  };
-  pendingStdioTerminations.add(entry);
-  void outcome.then((settled) => {
-    entry.settledOutcome = settled;
-    pendingStdioTerminations.delete(entry);
-    cap.cancel();
-    // Whichever side of the race won, nothing reads the probes any more. The
-    // cap in particular has to take the poll loop with it: a pid that cannot
-    // be signalled at all (EPERM) keeps answering the liveness probe forever,
-    // and one leaked loop per disable/reconnect runs for the hub's lifetime.
-    entry.stopWatching();
-  });
-};
-
-/**
- * Waits until every pending stdio process tree has been observed to go away,
- * giving up after `timeoutMs`. Resolves true only when all of them were seen to
- * disappear, so a caller about to exit knows the difference between "they are
- * gone" and "the signals were sent". Terminations started after the call are
- * not awaited.
- *
- * The timeout is a ceiling, not a delay: on an idle host this returns in
- * milliseconds, and a slow or loaded host only pays for what it needs.
- */
-export const drainStdioTerminations = async (
-  timeoutMs: number = STDIO_TERMINATION_DRAIN_BUDGET_MS,
-): Promise<boolean> => {
-  // A non-finite or negative budget would otherwise become "give up at once",
-  // reported as if the wait had been honoured.
-  const budgetMs =
-    Number.isFinite(timeoutMs) && timeoutMs >= 0 ? timeoutMs : STDIO_TERMINATION_DRAIN_BUDGET_MS;
-  const pending = [...pendingStdioTerminations];
-  if (pending.length === 0) {
-    // Said out loud: "nothing was pending" and "everything is gone" are both
-    // reported as true, and an operator has to be able to tell them apart.
-    logger.log('No upstream stdio terminations were pending');
-    return true;
-  }
-
-  let timer: NodeJS.Timeout | undefined;
-  const expiry = new Promise<'timeout'>((resolve) => {
-    timer = setTimeout(() => resolve('timeout'), budgetMs);
-  });
-
-  try {
-    const result = await Promise.race([Promise.all(pending.map((entry) => entry.outcome)), expiry]);
-
-    if (result !== 'timeout' && result.every((outcome) => outcome === 'gone')) {
-      logger.log('Upstream stdio process trees are gone', {
-        count: pending.length,
-        // Only the terminations that were pending when this call started. A
-        // close that happens during the drain is neither counted nor waited
-        // for, and "are gone" on its own reads as a claim about everything.
-        startedSinceThisCall: pendingStdioTerminations.size,
-      });
-      return true;
-    }
-
-    // Name the survivors: this line is how anyone finds the orphans later. The
-    // outcomes decide which ones those are, NOT membership of
-    // pendingStdioTerminations: an entry removes itself from that set as soon
-    // as its outcome settles, and it settles before this code runs, so asking
-    // the set produced an empty list on every path but a timeout — exactly the
-    // path where naming the orphan matters most.
-    const outcomes = result === 'timeout' ? null : result;
-    logger.warn('Upstream stdio process trees were not confirmed gone', {
-      budgetMs,
-      timedOut: result === 'timeout',
-      pending: pending
-        .filter((entry, index) =>
-          // On the timeout path there are no outcomes to read, so each entry
-          // answers for itself: one that settled 'gone' before the budget ran
-          // out is not a survivor and naming it sends whoever reads this after
-          // a process that stopped on its own.
-          outcomes === null ? entry.settledOutcome !== 'gone' : outcomes[index] !== 'gone',
-        )
-        .map((entry) => ({ serverName: entry.serverName, pid: entry.pid, pids: [...entry.pids] })),
-    });
-    return false;
-  } finally {
-    if (timer) {
-      clearTimeout(timer);
-    }
-  }
-};
-
 // Test-only helper to set serverInfos directly. Not for production use.
 export const setServerInfosForTest = (infos: ServerInfo[]): void => {
   serverInfos = infos;
@@ -1469,17 +1202,6 @@ export const setIsolatedClientForTest = (
   const existing = sessionIsolatedClients.get(sessionId) ?? new Map();
   existing.set(serverName, entry as { client: Client; transport: any });
   sessionIsolatedClients.set(sessionId, existing);
-};
-
-// Test-only helper to forget pending terminations, so one test's unconfirmed
-// pid cannot change the answer a later test gets. Not for production use.
-export const resetStdioTerminationsForTest = (): void => {
-  for (const entry of pendingStdioTerminations) {
-    // Forgetting the entry is not enough: its probes would keep running and
-    // keep answering for a pid the next test reuses.
-    entry.stopWatching();
-  }
-  pendingStdioTerminations.clear();
 };
 
 export const updateServerToolsCache = (
@@ -1905,72 +1627,6 @@ const getHeaderValue = (
   return undefined;
 };
 
-const LOG_SUMMARY_LIMIT = 8;
-
-const getValueTypeForLogging = (value: unknown): string => {
-  if (Array.isArray(value)) {
-    return `array(${value.length})`;
-  }
-  if (value === null) {
-    return 'null';
-  }
-  if (value && typeof value === 'object') {
-    return `object(${Object.keys(value as Record<string, unknown>).length} keys)`;
-  }
-  return typeof value;
-};
-
-const summarizeObjectShapeForLogging = (
-  value: Record<string, unknown>,
-): Record<string, unknown> => {
-  const entries = Object.entries(value);
-  return {
-    keyCount: entries.length,
-    keys: entries.slice(0, LOG_SUMMARY_LIMIT).map(([key]) => key),
-    valueTypes: Object.fromEntries(
-      entries
-        .slice(0, LOG_SUMMARY_LIMIT)
-        .map(([key, entryValue]) => [key, getValueTypeForLogging(entryValue)]),
-    ),
-    truncated: entries.length > LOG_SUMMARY_LIMIT || undefined,
-  };
-};
-
-export const summarizeArgumentsForLogging = (value: unknown): Record<string, unknown> => {
-  if (value === undefined) {
-    return { present: false };
-  }
-
-  if (Array.isArray(value)) {
-    return {
-      present: true,
-      type: 'array',
-      length: value.length,
-      itemTypes: Array.from(new Set(value.slice(0, LOG_SUMMARY_LIMIT).map(getValueTypeForLogging))),
-      truncated: value.length > LOG_SUMMARY_LIMIT || undefined,
-    };
-  }
-
-  if (value && typeof value === 'object') {
-    return {
-      present: true,
-      type: 'object',
-      ...summarizeObjectShapeForLogging(value as Record<string, unknown>),
-    };
-  }
-
-  return {
-    present: true,
-    type: getValueTypeForLogging(value),
-  };
-};
-
-const summarizeTextPayloadForLogging = (text: string): Record<string, unknown> => ({
-  textLength: text.length,
-  looksLikeJson: /^[[{]/.test(text.trim()) || undefined,
-  wasSanitized: sanitizeStringForLogging(text) !== text || undefined,
-});
-
 const getHttpErrorStatusCode = (error: unknown): number | undefined => {
   if (!error || typeof error !== 'object') {
     return undefined;
@@ -2006,113 +1662,6 @@ const isRecoverableHttp4xxError = (error: unknown): boolean => {
       : '';
 
   return /Error POSTing to endpoint \(HTTP 40[14]/.test(message);
-};
-
-const summarizeContentItemForLogging = (item: unknown): Record<string, unknown> => {
-  if (!item || typeof item !== 'object') {
-    return { type: getValueTypeForLogging(item) };
-  }
-
-  const record = item as Record<string, unknown>;
-  return {
-    type: typeof record.type === 'string' ? record.type : 'object',
-    keys: Object.keys(record).slice(0, LOG_SUMMARY_LIMIT),
-    text: typeof record.text === 'string' ? summarizeTextPayloadForLogging(record.text) : undefined,
-    truncated: Object.keys(record).length > LOG_SUMMARY_LIMIT || undefined,
-  };
-};
-
-export const summarizeToolResultForLogging = (value: unknown): Record<string, unknown> => {
-  if (!value || typeof value !== 'object') {
-    return { type: getValueTypeForLogging(value) };
-  }
-
-  const record = value as Record<string, unknown>;
-  const summary: Record<string, unknown> = {
-    type: 'object',
-    ...summarizeObjectShapeForLogging(record),
-  };
-
-  if (typeof record.isError === 'boolean') {
-    summary.isError = record.isError;
-  }
-
-  if (Array.isArray(record.content)) {
-    summary.contentCount = record.content.length;
-    summary.content = record.content
-      .slice(0, LOG_SUMMARY_LIMIT)
-      .map((item) => summarizeContentItemForLogging(item));
-    summary.contentTruncated = record.content.length > LOG_SUMMARY_LIMIT || undefined;
-  }
-
-  return summary;
-};
-
-const summarizeToolRequestForLogging = (params: any): Record<string, unknown> => ({
-  name: typeof params?.name === 'string' ? params.name : 'unknown',
-  arguments: summarizeArgumentsForLogging(params?.arguments),
-});
-
-const getActivityInputFromToolRequest = (request: any): unknown => {
-  if (request?.params?.name === 'call_tool') {
-    return request?.params?.arguments?.arguments;
-  }
-
-  return request?.params?.arguments;
-};
-
-const getActivityToolNameFromRequest = (request: any): string => {
-  if (request?.params?.name === 'call_tool') {
-    const nestedToolName = request?.params?.arguments?.toolName;
-    return typeof nestedToolName === 'string' ? nestedToolName : 'call_tool';
-  }
-
-  return typeof request?.params?.name === 'string' ? request.params.name : 'unknown';
-};
-
-const stripToolServerPrefix = (toolName: string, serverName?: string): string => {
-  if (!serverName) {
-    return toolName;
-  }
-
-  const separator = getNameSeparator();
-  const prefix = `${serverName}${separator}`;
-  return toolName.startsWith(prefix) ? toolName.substring(prefix.length) : toolName;
-};
-
-const summarizePromptForLogging = (prompt: unknown): Record<string, unknown> => {
-  if (!prompt || typeof prompt !== 'object') {
-    return { type: getValueTypeForLogging(prompt) };
-  }
-
-  const record = prompt as Record<string, unknown>;
-  const summary: Record<string, unknown> = {
-    type: 'object',
-    ...summarizeObjectShapeForLogging(record),
-  };
-
-  if (Array.isArray(record.messages)) {
-    const messages = record.messages as Array<Record<string, unknown>>;
-    summary.messageCount = messages.length;
-    summary.messages = messages.slice(0, LOG_SUMMARY_LIMIT).map((message) => ({
-      role: typeof message.role === 'string' ? message.role : undefined,
-      contentType:
-        message.content && typeof message.content === 'object'
-          ? (message.content as Record<string, unknown>).type
-          : getValueTypeForLogging(message.content),
-      text:
-        message.content &&
-        typeof message.content === 'object' &&
-        typeof (message.content as Record<string, unknown>).text === 'string'
-          ? summarizeTextPayloadForLogging(
-              String((message.content as Record<string, unknown>).text),
-            )
-          : undefined,
-    }));
-    summary.messagesTruncated = messages.length > LOG_SUMMARY_LIMIT || undefined;
-  }
-
-  return summary;
 };
 
 export const collectPassthroughHeaders = (
@@ -2397,12 +1946,6 @@ export const createTransportFromConfig = async (
   }
 
   return transport;
-};
-
-type IsolatedClientContext = {
-  sessionId: string;
-  client: Client;
-  transport: any;
 };
 
 // Call arguments without the tool's hidden parameters; `toolName` is the bare upstream name.
@@ -3814,32 +3357,6 @@ const filterToolsByConfig = async (serverName: string, tools: Tool[]): Promise<T
   });
 };
 
-// Get server by tool name
-const getServerByTool = (toolName: string): ServerInfo | undefined => {
-  return getVisibleServerInfos().find(
-    (serverInfo) =>
-      serverInfo.enabled !== false && serverInfo.tools.some((tool) => tool.name === toolName),
-  );
-};
-
-/**
- * Error thrown when the requested server/tool (or server/prompt) cannot be
- * used by the current caller. `message` is the single safe text returned to
- * the caller — intentionally identical whether the target is hidden from them
- * or does not exist at all, so server/tool existence is never leaked through
- * distinguishable authorization errors (see #1103). `reason` is an internal
- * diagnostic recorded only in logs/activity, never surfaced to the caller.
- */
-export class ToolUnavailableError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-  ) {
-    super(message);
-    this.name = 'ToolUnavailableError';
-  }
-}
-
 /**
  * Best-effort internal classification of why a qualified tool/prompt name was
  * unavailable, for logs/activity only. The externally visible message must not
@@ -3962,61 +3479,6 @@ function checkAuthError(result: any) {
   }
 }
 
-const clearIdleShutdown = (serverInfo: ServerInfo): void => {
-  if (serverInfo.idleTimeoutId) {
-    clearTimeout(serverInfo.idleTimeoutId);
-    serverInfo.idleTimeoutId = undefined;
-  }
-};
-
-const closeServerRuntime = (serverInfo: ServerInfo): void => {
-  clearIdleShutdown(serverInfo);
-  if (serverInfo.client) serverInfo.client.onclose = undefined;
-  serverInfo.recovery = undefined;
-  if (serverInfo.keepAliveIntervalId) {
-    clearInterval(serverInfo.keepAliveIntervalId);
-    serverInfo.keepAliveIntervalId = undefined;
-    logger.log('Cleared MCP server keep-alive interval');
-  }
-
-  const candidateTransport = serverInfo.transport as
-    | {
-        pid?: unknown;
-      }
-    | undefined;
-  // Snapshot the tree while it is still intact. Both close() calls below
-  // signal the child, and a wrapper such as `npx` that exits on SIGTERM takes
-  // the only link to its children with it.
-  const { pid: stdioPid, captured } = captureStdioTreeSafely(
-    serverInfo.name,
-    () => candidateTransport?.pid,
-  );
-
-  if (serverInfo.client) {
-    try {
-      serverInfo.client.close();
-    } catch {
-      logger.warn('Error closing MCP client during runtime shutdown');
-    }
-    serverInfo.client = undefined;
-  }
-
-  if (serverInfo.transport) {
-    try {
-      serverInfo.transport.close();
-    } catch {
-      logger.warn('Error closing MCP transport during runtime shutdown');
-    }
-    serverInfo.transport = undefined;
-  }
-
-  if (stdioPid) {
-    killStdioProcessTree(serverInfo.name, stdioPid, captured);
-  }
-
-  logger.log('Closed MCP server client and transport');
-};
-
 // Close server client and transport (keeps the entry in serverInfos; the next
 // initializeClientsFromSettings rebuild drops it if it is no longer configured).
 export function closeServer(name: string) {
@@ -4027,278 +3489,20 @@ export function closeServer(name: string) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// On-demand spawning helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Shuts down an on-demand stdio server without removing it from serverInfos.
- * The tool/prompt/resource lists are preserved so agents can still see what
- * the server offers and trigger a cold-start on the next tool call.
- */
-const shutdownOnDemandServer = (serverInfo: ServerInfo): void => {
-  // Discovery priming may finish while a tool call is using the same child.
-  if (serverInfo.activeToolCalls) return;
-
-  // Close runtime (kills process) but intentionally keep tools/prompts/resources
-  closeServerRuntime(serverInfo);
-
-  serverInfo.status = 'disconnected';
-  logger.log(
-    `[${serverInfo.name}] On-demand server shut down after idle; ` +
-      `${serverInfo.tools.length} tools cached for next wake-up`,
-  );
-};
-
-/**
- * Starts the idle period once the last active call has finished.
- */
-const scheduleIdleShutdown = (serverInfo: ServerInfo): void => {
-  clearIdleShutdown(serverInfo);
-  if (
-    !serverInfo.config?.startOnDemand ||
-    !isStdioServer(serverInfo.config) ||
-    hasPersonalAuthentication(serverInfo.config) ||
-    serverInfo.status !== 'connected' ||
-    !serverInfo.client ||
-    serverInfo.activeToolCalls
-  ) {
-    return;
-  }
-
-  const idleMs = serverInfo.config.idleTimeoutMs ?? 300_000; // default 5 minutes
-  serverInfo.idleTimeoutId = setTimeout(() => {
-    if (serverInfo.status === 'connected') {
-      shutdownOnDemandServer(serverInfo);
-    }
-  }, idleMs);
-};
-
-const beginOnDemandToolCall = (serverInfo: ServerInfo): (() => void) | undefined => {
-  if (
-    !serverInfo.config?.startOnDemand ||
-    !isStdioServer(serverInfo.config) ||
-    hasPersonalAuthentication(serverInfo.config)
-  ) {
-    return undefined;
-  }
-
-  clearIdleShutdown(serverInfo);
-  serverInfo.activeToolCalls = (serverInfo.activeToolCalls ?? 0) + 1;
-  return () => {
-    serverInfo.activeToolCalls = serverInfo.activeToolCalls! - 1;
-    scheduleIdleShutdown(serverInfo);
-  };
-};
-
-/**
- * Ensures an on-demand server is connected before a tool call proceeds.
- *
- * Performs a direct, awaited wake-up that mutates the existing `serverInfo`
- * in place (preserving the reference callers hold), rather than going through
- * `reconnectServer` -> `initializeClientsFromSettings`. The latter skips the
- * connect for on-demand servers, resolves before the fire-and-forget handshake
- * completes, and rebuilds `serverInfos` (leaving callers with a stale object) -
- * so it could never actually wake a sleeping server. See #1029.
- *
- * Concurrent callers coalesce on `spawningPromise` so only one spawn runs.
- */
-/**
- * Tear down one spawn's own handles. Deliberately not `closeServerRuntime`:
- * on a superseded spawn the entry already holds the *replacement* runtime, and
- * closing through the entry would kill the runtime that replaced it.
- */
-const closeSpawnRuntime = (
-  name: string,
-  client: { close?: () => unknown } | undefined,
-  transport: { close?: () => unknown; pid?: unknown } | undefined,
-): void => {
-  const pid = typeof transport?.pid === 'number' ? transport.pid : null;
-  try {
-    client?.close?.();
-  } catch {
-    logger.warn('Error closing superseded client');
-  }
-  try {
-    transport?.close?.();
-  } catch {
-    logger.warn('Error closing superseded transport');
-  }
-  if (pid) killStdioProcessTree(name, pid);
-};
-
-const ensureServerReady = async (serverInfo: ServerInfo): Promise<void> => {
-  if (serverInfo.status === 'connected') return;
-
-  // Another call is already spawning - wait for it
-  if (serverInfo.spawningPromise) {
-    await serverInfo.spawningPromise;
-    return;
-  }
-
-  const spawnStart = Date.now();
-  const generation = serverInfo.runtimeGeneration ?? 0;
-  // A reconnect (config change, staging edit) increments the generation and
-  // invalidates this spawn's right to publish anything.
-  const stale = () => (serverInfo.runtimeGeneration ?? 0) !== generation;
-
-  let spawnClient: { close?: () => unknown } | undefined;
-  let spawnTransport: { close?: () => unknown; pid?: unknown } | undefined;
-
-  const spawnPromise = (async () => {
-    // Load the config fresh from the DAO for the expanded transport config and
-    // to read the server name. See #1029.
-    const rawConfig = await getServerDao().findById(serverInfo.name);
-    if (!rawConfig) {
-      throw new Error('Server configuration not found for on-demand wake');
-    }
-    if (rawConfig.enabled === false) {
-      throw new Error(`Cannot start disabled on-demand server: ${rawConfig.name}`);
-    }
-    const expandedConf = await expandServerConfig(rawConfig);
-
-    // startOnDemand is a stdio-only optimisation; OpenAPI/HTTP servers have no
-    // deferred process to spawn, so there is nothing to wake.
-    if (expandedConf.type === 'openapi') {
-      return;
-    }
-
-    await prepareCapabilitySnapshot(serverInfo, expandedConf);
-    const name = rawConfig.name;
-    logger.log(`[${name}] Cold-starting on-demand server…`);
-
-    const transport = await createTransportFromConfig(name, expandedConf);
-    spawnTransport = transport;
-    const client = createUpstreamMcpClient(name, () => serverInfo, expandedConf);
-    spawnClient = client;
-
-    const serverRequestOptions = expandedConf.options || {};
-    const defaultRequestTimeout = Number(process.env.DEFAULT_REQUEST_TIMEOUT) || 60000;
-    const requestOptions = {
-      timeout: serverRequestOptions.timeout || defaultRequestTimeout,
-      resetTimeoutOnProgress: serverRequestOptions.resetTimeoutOnProgress ?? true,
-      maxTotalTimeout: serverRequestOptions.maxTotalTimeout,
-    };
-
-    await connectClientWithDiagnostics(client, transport, requestOptions);
-
-    if (stale()) {
-      // The server was reconfigured while this cold start was connecting: the
-      // new runtime owns the entry, so shut this one down instead of
-      // publishing it. `closeServerRuntime` also kills a spawned child, which a
-      // bare client.close() would leave running.
-      closeSpawnRuntime(name, client, transport);
-      return;
-    }
-
-    // Mutate in place so every holder of this serverInfo (resolution paths,
-    // the caller about to invoke the tool) sees the live client/status.
-    serverInfo.client = client;
-    serverInfo.transport = transport;
-    serverInfo.options = requestOptions;
-    serverInfo.version = client.getServerVersion?.()?.version;
-    serverInfo.instructions = client.getInstructions?.();
-    serverInfo.config = expandedConf;
-    // Record the resolved npx/uvx package version backing this server.
-    applyResolvedPackageVersion(serverInfo, expandedConf);
-    serverInfo.status = 'connected';
-    serverInfo.error = null;
-
-    let toolCount = 0;
-    let promptCount = 0;
-    let resourceCount = 0;
-    const capabilities = client.getServerCapabilities?.();
-    if (isHubSelfConnection(client)) {
-      serverInfo.tools = [];
-      serverInfo.prompts = [];
-      serverInfo.resources = [];
-      serverInfo.resourceTemplates = [];
-      setupServerKeepAlive(serverInfo, expandedConf);
-      logger.warn(
-        `Ignoring capabilities from self-connection '${name}' to prevent a recursive list loop`,
-      );
-      return;
-    }
-    if (capabilities?.tools) {
-      try {
-        const tools = await client.listTools({}, requestOptions);
-        if (stale()) return;
-        toolCount = tools.tools.length;
-        updateServerToolsCache(serverInfo, tools.tools);
-        broadcastToolListChanged();
-      } catch (error) {
-        logger.warn(`[${name}] Failed to list tools during wake`, {
-          error: summarizeErrorForLogging(error),
-        });
-      }
-    } else {
-      updateServerToolsCache(serverInfo, []);
-      broadcastToolListChanged();
-    }
-    await flushCapabilitySnapshot(serverInfo);
-    if (capabilities?.prompts) {
-      try {
-        const prompts = await client.listPrompts({}, requestOptions);
-        if (stale()) return;
-        promptCount = prompts.prompts.length;
-        updateServerPromptsCache(serverInfo, prompts.prompts);
-      } catch (error) {
-        logger.warn(`[${name}] Failed to list prompts during wake`, {
-          error: summarizeErrorForLogging(error),
-        });
-      }
-    }
-    if (capabilities?.resources) {
-      void refreshServerResourceTemplatesCache(() => serverInfo, client, requestOptions);
-      try {
-        const resources = await client.listResources({}, requestOptions);
-        if (stale()) return;
-        resourceCount = resources.resources.length;
-        updateServerResourcesCache(serverInfo, resources.resources);
-      } catch (error) {
-        logger.warn(`[${name}] Failed to list resources during wake`, {
-          error: summarizeErrorForLogging(error),
-        });
-      }
-    }
-
-    // No-op for stdio transports; only SSE/streamable-http opt in via enableKeepAlive.
-    setupServerKeepAlive(serverInfo, expandedConf);
-
-    logger.log(
-      `[${name}] On-demand server ready in ${Date.now() - spawnStart}ms` +
-        ` (${toolCount} tools, ${promptCount} prompts, ${resourceCount} resources)`,
-    );
-  })();
-
-  serverInfo.spawningPromise = spawnPromise;
-  try {
-    await spawnPromise;
-  } catch (error) {
-    // A failed spawn from a superseded generation must not overwrite the error
-    // state of the runtime that replaced it, and must not leave its own child
-    // or client behind.
-    if (stale()) {
-      closeSpawnRuntime(serverInfo.name, spawnClient, spawnTransport);
-    } else {
-      serverInfo.status = 'disconnected';
-      serverInfo.error = `Failed to start on-demand server: ${formatErrorForLogging(error)}`;
-    }
-    throw error;
-  } finally {
-    // Only clear our own promise: a reconnect (or a newer spawn) may already
-    // own the slot, and clearing it would let the next caller start a second
-    // child while that one is still connecting.
-    if (serverInfo.spawningPromise === spawnPromise) {
-      serverInfo.spawningPromise = undefined;
-    }
-  }
-};
-
-// stdio servers are the only ones that benefit from deferred spawning; HTTP/SSE
-// and OpenAPI servers have no long-lived child process to skip.
-const isStdioServer = (conf: ServerConfig | undefined): boolean =>
-  !!conf && (conf.type === 'stdio' || (!conf.type && !!conf.command));
+const { beginOnDemandToolCall, ensureServerReady, shutdownOnDemandServer } =
+  createOnDemandLifecycle({
+    createTransportFromConfig: (...args) => createTransportFromConfig(...args),
+    createUpstreamMcpClient,
+    connectClientWithDiagnostics: (...args) => connectClientWithDiagnostics(...args),
+    applyResolvedPackageVersion,
+    isHubSelfConnection,
+    setupServerKeepAlive,
+    updateServerToolsCache: (...args) => updateServerToolsCache(...args),
+    updateServerPromptsCache,
+    updateServerResourcesCache,
+    refreshServerResourceTemplatesCache,
+    broadcastToolListChanged: (...args) => broadcastToolListChanged(...args),
+  });
 
 /**
  * Connects each on-demand stdio server once to populate its tool cache, then
@@ -4381,418 +3585,6 @@ export const resetServerOAuthConnection = (name: string): boolean => {
   return true;
 };
 
-// Kill the entire process tree of a stdio transport's child process.
-//
-// transport.close() only sends SIGTERM to the direct child. When the server is
-// launched through a wrapper like `npx` / `npm exec`, the wrapper does not
-// forward signals to its descendants, so the real server process is left
-// running as an orphan. Walk the whole tree and force-kill it.
-//
-// When the process-lister tool tree-kill needs (`ps` on Linux) is missing —
-// e.g. slim Docker images without procps — tree-kill's internal spawn fails
-// with an unhandled 'error' event that would crash MCPHub. Fall back to
-// signaling just the direct child instead (issue #1072).
-// process.kill() takes a negative pid as "the whole process group", and in a
-// container pid 1 is MCPHub itself. Neither is ever the intended target, and the
-// hub's own pid never is either. Every path that names a pid to the kernel goes
-// through this, the liveness probe included, rather than trusting its caller: a
-// caller that checks the pid for truthiness alone lets pid 1 through, and
-// probing pid 0 asks about the hub's own process group, which answers "alive"
-// for as long as the hub runs.
-const isSignallableTarget = (target: number): boolean =>
-  Number.isInteger(target) && target > 1 && target !== process.pid;
-
-function killStdioProcessTree(
-  name: string,
-  pid: number,
-  captured: ProcessTreeSnapshot = { descendants: [] },
-): void {
-  const safeDirectKillPid = (target: number, signal: 'SIGTERM' | 'SIGKILL'): void => {
-    if (!isSignallableTarget(target)) {
-      logger.warn('Refusing to signal pid', { serverName: name, pid: target, signal });
-      return;
-    }
-    try {
-      process.kill(target, signal);
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code !== 'ESRCH') {
-        logger.warn('Failed to send signal to process', {
-          serverName: name,
-          pid: target,
-          signal,
-          err,
-        });
-      }
-    }
-  };
-
-  const safeDirectKill = (signal: 'SIGTERM' | 'SIGKILL'): void => safeDirectKillPid(pid, signal);
-
-  // Resolves once tree-kill's own child process has finished signalling the
-  // tree. Callers that exit the process must wait for that, or the kill never
-  // reaches the descendants.
-  const safeTreeKill = (signal: 'SIGTERM' | 'SIGKILL'): Promise<void> =>
-    new Promise((resolve) => {
-      // The same guard safeDirectKillPid applies, for the same reason. tree-kill
-      // signals a whole tree, so reaching it with pid 1, a negative pid or the
-      // hub's own pid is worse than a stray single signal, and a caller that
-      // only checked the pid for truthiness lets pid 1 through.
-      if (!isSignallableTarget(pid)) {
-        logger.warn('Refusing to signal process tree', { serverName: name, pid, signal });
-        resolve();
-        return;
-      }
-      try {
-        treeKill(pid, signal, (err) => {
-          if (err) {
-            // ESRCH (no such process) is expected when the process already
-            // exited: treat that as success. Anything else is worth a warning.
-            const code = (err as NodeJS.ErrnoException).code;
-            if (code !== 'ESRCH') {
-              // Pass the user-controlled `name` as a separate argument so a
-              // server named e.g. "%s" cannot inject format specifiers into the
-              // log line (CodeQL: use-of-externally-controlled-format-string).
-              logger.warn('Failed to send signal to process tree', {
-                serverName: name,
-                pid,
-                signal,
-                err,
-              });
-            }
-          }
-          resolve();
-        });
-      } catch (err) {
-        logger.warn('Failed to send signal to process tree', {
-          serverName: name,
-          pid,
-          signal,
-          err,
-        });
-        resolve();
-      }
-    });
-
-  const safeKill = isProcessTreeKillAvailable()
-    ? safeTreeKill
-    : (signal: 'SIGTERM' | 'SIGKILL'): Promise<void> => {
-        logger.warn('Process lister unavailable, killing only the direct child process', {
-          serverName: name,
-          pid,
-          signal,
-        });
-        safeDirectKill(signal);
-        return Promise.resolve();
-      };
-
-  // Descendants captured before anything signalled this tree (see
-  // captureProcessTreeSync). Watched by pid from here on: once an `npx`
-  // wrapper exits, its children are reparented and tree-kill's `ps --ppid`
-  // walk returns nothing, so the root going away says nothing about them.
-  const watched: ProcessSnapshotEntry[] = captured.descendants.filter((entry) => entry.pid !== pid);
-  const rootStartedAt = captured.rootStartedAt;
-  const watchedPids = [pid, ...watched.map((entry) => entry.pid)];
-
-  // Set once the root pid is known to belong to something else. The process
-  // that was captured must have exited for its pid to be reusable, so from then
-  // on the root is neither signalled nor waited for. Without this the stranger
-  // keeps answering the liveness probe and the wait runs to its cap, reporting
-  // a process that did stop as unconfirmed.
-  let rootForgotten = false;
-
-  const forgetRoot = (): void => {
-    if (rootForgotten) {
-      return;
-    }
-    rootForgotten = true;
-    const index = watchedPids.indexOf(pid);
-    if (index >= 0) {
-      watchedPids.splice(index, 1);
-    }
-  };
-
-  const isAnyoneAlive = (): boolean =>
-    (!rootForgotten && isProcessAlive(pid)) || watched.some((entry) => isProcessAlive(entry.pid));
-
-  // True when the root pid still looks like the process whose tree was
-  // captured. Without a captured start time (win32, or a host whose process
-  // table could not be read) there is nothing to compare, and the answer is
-  // the behaviour this had before: go ahead.
-  let saidUnchecked = false;
-  const rootIsStillOurs = (): boolean => {
-    if (rootForgotten) {
-      return false;
-    }
-    if (rootStartedAt === undefined) {
-      // No token, so the pid is signalled on trust. On win32 and on a host
-      // whose table cannot be read that is the documented fallback and saying
-      // so every close would be noise. A table that WAS read and did not list
-      // the root is a different thing, and silence there reads as a check that
-      // passed.
-      if (captured.rootUnknown && !saidUnchecked) {
-        saidUnchecked = true;
-        logger.warn('Signalling an stdio process tree without checking its identity', {
-          serverName: name,
-          pid,
-          reason: 'the process table did not list the root pid',
-        });
-      }
-      return true;
-    }
-    const current = readProcessStartTimesSync([pid]);
-    if (current === null) {
-      // A token was captured for this root and the lookup that would check it
-      // failed, so this is "could not verify", not "verified". Treating it as
-      // confirmation is how a reused pid gets its tree signalled: capture pid
-      // X, the wrapper exits, X is reused, the lookup times out, and SIGTERM
-      // then SIGKILL reach the new owner and everything under it. Not signalled
-      // and not forgotten: unknown is not gone either, so the wait stands and
-      // reports unconfirmed rather than claiming a process stopped.
-      logger.warn('Could not verify the identity of an stdio root pid, not signalling its tree', {
-        serverName: name,
-        pid,
-      });
-      return false;
-    }
-    const startedAt = current.get(pid);
-    if (startedAt === rootStartedAt) {
-      return true;
-    }
-    if (startedAt === UNKNOWN_START_TIME) {
-      // The pid exists and the kernel would not describe it. Not a stranger,
-      // not ours either, so do not signal its tree and do not drop it from the
-      // wait: dropping it would report a process that may still be running as
-      // gone.
-      logger.warn('Cannot confirm the identity of an stdio root pid, not signalling its tree', {
-        serverName: name,
-        pid,
-      });
-      return false;
-    }
-    // Absent from the map is "the kernel says this pid is gone". Signalling a
-    // gone pid is harmless (ESRCH), and NOT signalling it is harmless too, so
-    // the safe reading wins: with /proc mounted hidepid=2 or subset=pid, a live
-    // process owned by another user also reads as absent, and a hub running as
-    // root would tree-kill it rather than failing EPERM.
-    logger.warn('Not signalling the tree of a pid that is no longer the upstream process', {
-      serverName: name,
-      pid,
-      reason: startedAt === undefined ? 'not listed' : 'start time differs',
-    });
-    forgetRoot();
-    return false;
-  };
-
-  // The first SIGTERM is checked too. The transport's own close() has already
-  // sent one by the time this runs, so the wrapper may have exited and its pid
-  // been reused in between — and tree-kill would then walk a stranger's
-  // children, not ours. Captured descendants are unaffected: they are signalled
-  // on their own identities during escalation.
-  const termination = rootIsStillOurs() ? safeKill('SIGTERM') : Promise.resolve();
-
-  // Three invariants for whoever edits this next. Every branch must resolve, or
-  // the entry stays on pendingStdioTerminations until its cap and spoils the
-  // answer every later drain gives. The root's SIGKILL is issued inside the
-  // timer callback, synchronously, so the escalation keeps the instant it fired
-  // at before it became observable; the captured descendants are signalled
-  // after it, once tree-kill's own child has finished. And every exit path goes
-  // through stopWatching, so no probe outlives the wait that reads it.
-  let stopWatching = (): void => {};
-
-  const gone = new Promise<StdioTerminationOutcome>((resolve) => {
-    let pollTimer: NodeJS.Timeout | undefined;
-    let escalationTimer: NodeJS.Timeout | undefined;
-    let settled = false;
-
-    const clearProbes = (): void => {
-      settled = true;
-      if (pollTimer) {
-        clearTimeout(pollTimer);
-        pollTimer = undefined;
-      }
-      if (escalationTimer) {
-        clearTimeout(escalationTimer);
-        escalationTimer = undefined;
-      }
-    };
-
-    // Called when the outcome is already known, including by the cap and by
-    // the test reset helper. It resolves as well as clearing, so the promise
-    // chain reading it is released instead of being retained for the lifetime
-    // of the hub.
-    stopWatching = (): void => {
-      const alreadySettled = settled;
-      clearProbes();
-      if (!alreadySettled) {
-        resolve('unconfirmed');
-      }
-    };
-
-    const finish = (outcome: StdioTerminationOutcome): void => {
-      if (settled) {
-        return;
-      }
-      clearProbes();
-      resolve(outcome);
-    };
-
-    // Stop watching a pid that has been recycled: it belongs to someone else
-    // now, so neither signalling it nor waiting for it means anything.
-    const forget = (target: number): void => {
-      const index = watched.findIndex((entry) => entry.pid === target);
-      if (index >= 0) {
-        watched.splice(index, 1);
-      }
-      const trackedIndex = watchedPids.indexOf(target);
-      if (trackedIndex >= 0) {
-        watchedPids.splice(trackedIndex, 1);
-      }
-    };
-
-    // The probe decides when this is over, not a timer: it watches until every
-    // pid is actually gone. That is what makes the wait as short as the host
-    // allows rather than a fixed pause, and it is the only thing that can tell
-    // a delivered signal from a stopped process.
-    const probe = (): void => {
-      if (settled) {
-        return;
-      }
-      if (!isAnyoneAlive()) {
-        finish('gone');
-        return;
-      }
-      scheduleProbe();
-    };
-
-    const scheduleProbe = (): void => {
-      pollTimer = setTimeout(probe, STDIO_KILL_POLL_INTERVAL_MS);
-      pollTimer.unref?.();
-    };
-
-    const escalate = async (): Promise<void> => {
-      if (settled) {
-        return;
-      }
-      if (!isAnyoneAlive()) {
-        finish('gone');
-        return;
-      }
-
-      // The root's tree first: whatever is still attached to it goes with it.
-      // Its identity is checked too, because tree-kill walks whatever children
-      // the pid has now, and after this long the pid may belong to a stranger.
-      if (isProcessAlive(pid) && rootIsStillOurs()) {
-        await safeKill('SIGKILL');
-      }
-
-      // The await above yields for as long as tree-kill's own child takes, and
-      // the cap or a test reset can land inside that window. Nothing below may
-      // send a signal on behalf of a wait that has already been abandoned.
-      if (settled) {
-        return;
-      }
-
-      const survivors = watched.filter((entry) => isProcessAlive(entry.pid));
-      if (survivors.length === 0) {
-        return;
-      }
-
-      // Then the captured pids, one by one. The wrapper may already be gone,
-      // which is exactly why these are not reachable through its tree any
-      // more. A pid can have been recycled in the meantime, so each one is
-      // signalled only while the kernel still reports the start time it had
-      // when it was captured.
-      const startTimes = readProcessStartTimesSync(survivors.map((entry) => entry.pid));
-      if (startTimes === null) {
-        // The process table could not be read, so identity cannot be
-        // established for any of them. Signalling anyway is how a recycled pid
-        // gets killed, and tree-kill has already covered everything still
-        // attached to the root.
-        logger.warn('Cannot confirm pid identity, not signalling captured pids', {
-          serverName: name,
-          pids: survivors.map((entry) => entry.pid),
-        });
-        return;
-      }
-      for (const survivor of survivors) {
-        const startedAt = startTimes.get(survivor.pid);
-        if (startedAt === UNKNOWN_START_TIME) {
-          // Exists, but the kernel would not say what it is. Not signalled,
-          // and not forgotten either: it may still be the captured process,
-          // and calling it gone would be a claim this cannot support. One such
-          // pid must not stop the others being dealt with, which is why this
-          // is decided per pid rather than for the whole lookup.
-          logger.warn('Cannot confirm the identity of a captured pid, not signalling it', {
-            serverName: name,
-            pid: survivor.pid,
-          });
-          continue;
-        }
-        if (startedAt !== survivor.startedAt) {
-          // Either the pid is gone (nothing to do) or it is somebody else's
-          // now. Both mean: stop watching it, never signal it.
-          logger.warn('Not signalling a pid that is no longer the captured process', {
-            serverName: name,
-            pid: survivor.pid,
-          });
-          forget(survivor.pid);
-          continue;
-        }
-        safeDirectKillPid(survivor.pid, 'SIGKILL');
-      }
-
-      if (!isAnyoneAlive()) {
-        finish('gone');
-      }
-    };
-
-    escalationTimer = setTimeout(() => {
-      void escalate();
-    }, STDIO_KILL_GRACE_PERIOD_MS);
-
-    scheduleProbe();
-  });
-
-  // The SIGTERM spawn has to finish as well: on Windows tree-kill shells out to
-  // taskkill, and a caller that exits before that spawn has run kills the kill.
-  //
-  // An observed exit outweighs it, though. Waiting for both meant a tree-kill
-  // whose callback never fires — a hung taskkill is the real case — turned a
-  // shutdown where every pid had been seen to go into a reported orphan. Once
-  // the processes are gone there is nothing left for that spawn to deliver.
-  const settled = gone.then(async (outcome) => {
-    if (outcome === 'gone') {
-      return outcome;
-    }
-    await termination.catch(() => undefined);
-    return outcome;
-  });
-
-  trackStdioTermination(name, pid, settled, {
-    pids: watchedPids,
-    stopWatching: () => stopWatching(),
-  });
-}
-
-function isProcessAlive(pid: number): boolean {
-  // Signal 0 sends nothing, but it is still a pid named to the kernel: pid 0
-  // asks about the hub's own process group and would answer "alive" forever,
-  // which is a wait that can never end rather than a stray signal.
-  if (!isSignallableTarget(pid)) {
-    return false;
-  }
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    // EPERM means the process exists but we don't have permission to signal
-    // it — count it as alive so the SIGKILL fallback still fires. Any other
-    // error (typically ESRCH) means the process is gone.
-    return (err as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
 // Toggle server enabled status
 export const toggleServerStatus = async (
   name: string,
@@ -4842,19 +3634,6 @@ export const toggleServerStatus = async (
     logger.error('Failed to toggle server status', { serverName: name, error });
     return { success: false, message: 'Failed to toggle server status' };
   }
-};
-
-type McpAppsRouteContext = {
-  enabled: boolean;
-  // Set when the route has exactly one eligible MCP upstream (including idle on-demand).
-  // Used for Apps resource routing and legacy unqualified aggregate calls.
-  serverInfo?: ServerInfo;
-  // Eligible MCP upstreams on an aggregate route. Tool names stay qualified
-  // (server::tool), even when other configured upstreams use OpenAPI or their
-  // personal runtimes have not been acquired for this request, so
-  // calls can still be routed unambiguously; Apps metadata and app-only
-  // tools are still surfaced, unlike ordinary (non-Apps) group routes.
-  serverInfos?: ServerInfo[];
 };
 
 const getMcpAppsRouteContext = async (
@@ -4915,405 +3694,6 @@ const getMcpAppsRouteContext = async (
     serverInfos: eligibleServerInfos,
   };
 };
-
-const normalizeToolNameForServer = (serverName: string, toolName: string): string => {
-  const prefix = `${serverName}${getNameSeparator()}`;
-  return toolName.startsWith(prefix) ? toolName.substring(prefix.length) : toolName;
-};
-
-const getGroupLookupName = (group: string | undefined): string | undefined => {
-  if (group === '$smart') {
-    return undefined;
-  }
-  if (group?.startsWith('$smart/')) {
-    return group.substring(7) || undefined;
-  }
-  return group;
-};
-
-const getExposedServerName = (serverName: string, serverConfig?: IGroupServerConfig): string => {
-  return serverConfig?.alias?.trim() || serverName;
-};
-
-const replacePrefixedServerName = (
-  name: string,
-  fromServerName: string,
-  toServerName: string,
-): string => {
-  if (fromServerName === toServerName) {
-    return name;
-  }
-
-  const separator = getNameSeparator();
-  const prefix = `${fromServerName}${separator}`;
-  return name.startsWith(prefix)
-    ? `${toServerName}${separator}${name.substring(prefix.length)}`
-    : name;
-};
-
-const projectNameForGroup = (
-  name: string,
-  serverName: string,
-  serverConfig?: IGroupServerConfig,
-): string => {
-  return replacePrefixedServerName(
-    name,
-    serverName,
-    getExposedServerName(serverName, serverConfig),
-  );
-};
-
-const resolveNameFromGroup = (
-  name: string,
-  serverName: string,
-  serverConfig?: IGroupServerConfig,
-): string => {
-  return replacePrefixedServerName(
-    name,
-    getExposedServerName(serverName, serverConfig),
-    serverName,
-  );
-};
-
-const findToolOnServer = (
-  serverInfo: ServerInfo,
-  toolName: string,
-  allowRawName: boolean,
-  preferRawName = false,
-): Tool | undefined => {
-  // A listed upstream name takes precedence over a colliding legacy cache alias.
-  const rawTool =
-    preferRawName && allowRawName
-      ? serverInfo.tools.find(
-          (tool) => normalizeToolNameForServer(serverInfo.name, tool.name) === toolName,
-        )
-      : undefined;
-  const tool =
-    rawTool ||
-    serverInfo.tools.find(
-      (tool) =>
-        tool.name === toolName ||
-        (allowRawName && normalizeToolNameForServer(serverInfo.name, tool.name) === toolName),
-    );
-  if (!tool) {
-    return undefined;
-  }
-  // A tool disabled via POST /api/servers/:server/tools/:tool/toggle must be
-  // unresolvable for execution, not just hidden from tools/list — otherwise a
-  // caller who already knows the tool name can invoke it regardless of the
-  // disabled flag.
-  //
-  // The runtime tool cache (serverInfo.tools, built by normalizeToolForCache)
-  // never carries an `enabled` field — that field only exists on the
-  // *projection* built for the dashboard/API (buildToolWithDescriptionMetadata),
-  // which is a different object. So the persisted per-tool config must be
-  // consulted directly here.
-  //
-  // A disable may be stored under the runtime (prefixed) name, as the
-  // dashboard writes it, or under the bare upstream name, as a settings file
-  // or a direct API call may. findToolConfig checks both, and never reads
-  // another tool's runtime key as this tool's bare name.
-  const toolConfig = findToolConfig(
-    serverInfo.config?.tools,
-    serverInfo.name,
-    tool.name,
-    serverInfo.tools.map((candidate) => candidate.name),
-  );
-  if (toolConfig && toolConfig.enabled === false) {
-    return undefined;
-  }
-  return tool;
-};
-
-const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteContext): void => {
-  if (isAppOnlyTool(tool) && !appsRouteContext.enabled) {
-    throw new Error(`Tool '${tool.name}' is only available to MCP Apps`);
-  }
-};
-
-const resolveToolInGroup = async (
-  group: string | undefined,
-  toolName: string,
-  appsRouteContext: McpAppsRouteContext,
-): Promise<{ serverInfo: ServerInfo; toolName: string; tool: Tool } | undefined> => {
-  const lookupGroup = getGroupLookupName(group);
-  if (!lookupGroup) {
-    return undefined;
-  }
-
-  const { filteredServerInfos, serverConfigsByName } =
-    await getFilteredServerInfosForGroup(lookupGroup);
-
-  // Accept raw names only on single-upstream routes, even without client
-  // capabilities after session rebuild. Count configured servers as well so
-  // a disabled or disconnected peer cannot make a group appear unambiguous.
-  const allowRawName =
-    !isSmartRoutingGroup(group) &&
-    serverConfigsByName.size <= 1 &&
-    filteredServerInfos.length === 1;
-
-  // Validate the full visible catalog before routing, even if the client skips tools/list.
-  const hasOriginalToolNames = [...serverConfigsByName.values()].some(
-    (config) => config.preserveToolNames,
-  );
-  if (hasOriginalToolNames) {
-    await listGroupTools(lookupGroup, filteredServerInfos, serverConfigsByName, appsRouteContext);
-  }
-
-  for (const serverInfo of filteredServerInfos) {
-    // An idle on-demand server is selected here and woken by the caller (#1029)
-    if (!canServeToolRequests(serverInfo)) {
-      continue;
-    }
-
-    const serverConfig = serverConfigsByName.get(serverInfo.name);
-    const internalToolName = serverConfig?.preserveToolNames
-      ? `${serverInfo.name}${getNameSeparator()}${toolName}`
-      : resolveNameFromGroup(toolName, serverInfo.name, serverConfig);
-    const tool = findToolOnServer(
-      serverInfo,
-      internalToolName,
-      allowRawName,
-      serverConfigsByName.size === 0,
-    );
-    if (!tool || (hasOriginalToolNames && !appsRouteContext.enabled && isAppOnlyTool(tool))) {
-      continue;
-    }
-
-    const filteredTools = await filterToolsByGroup(
-      lookupGroup,
-      serverInfo.name,
-      [tool],
-      serverConfig,
-    );
-    if (filteredTools.length === 0) {
-      continue;
-    }
-
-    // Retain the resolved identity when callers revalidate discovery after waking.
-    return { serverInfo, toolName: tool.name, tool };
-  }
-
-  return undefined;
-};
-
-const findEnabledPromptOnServer = async (
-  serverInfo: ServerInfo,
-  name: string,
-  allowRawName = false,
-) => {
-  if (serverInfo.status !== 'connected' || serverInfo.enabled === false) return undefined;
-  const prompt = serverInfo.prompts.find(
-    (item) =>
-      item.name === name ||
-      (allowRawName && item.name === `${serverInfo.name}${getNameSeparator()}${name}`),
-  );
-  if (!prompt) return undefined;
-  const config = await getServerDao().findById(serverInfo.name);
-  const promptConfig = findToolConfig(
-    config?.prompts,
-    serverInfo.name,
-    prompt.name,
-    serverInfo.prompts.map((item) => item.name),
-  );
-  return config?.enabled === false || promptConfig?.enabled === false ? undefined : prompt;
-};
-
-async function resolvePromptInGroup(
-  group: string | undefined,
-  promptName: string,
-): Promise<{ serverInfo: ServerInfo; promptName: string } | undefined> {
-  const lookupGroup = getGroupLookupName(group);
-  if (!lookupGroup) {
-    return undefined;
-  }
-
-  const { filteredServerInfos, serverConfigsByName } =
-    await getFilteredServerInfosForGroup(lookupGroup);
-
-  for (const serverInfo of filteredServerInfos) {
-    if (serverInfo.status !== 'connected' || serverInfo.enabled === false) {
-      continue;
-    }
-
-    const serverConfig = serverConfigsByName.get(serverInfo.name);
-    const internalPromptName = resolveNameFromGroup(promptName, serverInfo.name, serverConfig);
-    const prompt = await findEnabledPromptOnServer(serverInfo, internalPromptName);
-    if (!prompt) {
-      continue;
-    }
-
-    const filteredPrompts = await filterPromptsByGroup(
-      lookupGroup,
-      serverInfo.name,
-      [prompt],
-      serverConfig,
-    );
-    if (filteredPrompts.length === 0) {
-      continue;
-    }
-
-    return { serverInfo, promptName: internalPromptName };
-  }
-
-  return undefined;
-}
-
-const projectToolForDownstream = (
-  serverName: string,
-  tool: Tool,
-  appsRouteContext: McpAppsRouteContext,
-  serverConfig?: IGroupServerConfig,
-  useRawName = false,
-): Tool | undefined => {
-  if (!appsRouteContext.enabled && isAppOnlyTool(tool)) {
-    return undefined;
-  }
-
-  const projectedTool = appsRouteContext.enabled ? tool : stripMcpAppsMetadata(tool);
-
-  // Naming follows the route, independently of Apps capabilities or connection state.
-  if (useRawName) {
-    return {
-      ...projectedTool,
-      name: normalizeToolNameForServer(serverName, projectedTool.name),
-    };
-  }
-
-  // Group and aggregate routes keep qualified names, including single-member groups.
-  return {
-    ...projectedTool,
-    name: projectGroupToolName(projectedTool.name, serverName, serverConfig, getNameSeparator()),
-  };
-};
-
-const listGroupTools = async (
-  group: string | undefined,
-  filteredServerInfos: ServerInfo[],
-  serverConfigsByName: Map<string, IGroupServerConfig>,
-  appsRouteContext: McpAppsRouteContext,
-): Promise<Tool[]> => {
-  // If the startup prime of an on-demand server is still in flight, wait for it
-  // so this list reflects the freshly cached tools instead of returning empty.
-  // No wake is triggered from list itself; the prime handles that. See #1029.
-  await Promise.allSettled(
-    filteredServerInfos
-      .filter(
-        (si) =>
-          si.config?.startOnDemand === true &&
-          si.tools.length === 0 &&
-          si.capabilityCache?.state !== 'fresh' &&
-          si.spawningPromise,
-      )
-      .map((si) => si.spawningPromise as Promise<void>),
-  );
-
-  const useRawName = !!group && !isSmartRoutingGroup(group) && !(await findRouteGroup(group));
-  const allTools = [];
-  for (const serverInfo of filteredServerInfos) {
-    if (serverInfo.tools && serverInfo.tools.length > 0) {
-      const groupServerConfig = serverConfigsByName.get(serverInfo.name);
-
-      // Filter tools based on server configuration
-      let tools = await filterToolsByConfig(serverInfo.name, serverInfo.tools);
-
-      // If this is a group request, apply group-level tool filtering
-      tools = await filterToolsByGroup(group, serverInfo.name, tools, groupServerConfig);
-
-      // Apply custom descriptions and hidden parameters from server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
-      const runtimeNames = serverInfo.tools.map((tool) => tool.name);
-      const toolsWithCustomDescriptions = tools.map((tool) => {
-        const toolConfig = findToolConfig(
-          serverConfig?.tools,
-          serverInfo.name,
-          tool.name,
-          runtimeNames,
-        );
-        return {
-          ...applyHiddenParams(tool, toolConfig),
-          description: resolveDescriptionOverride(tool.description, toolConfig),
-        };
-      });
-
-      allTools.push(
-        ...toolsWithCustomDescriptions.flatMap((tool) => {
-          const projectedTool = projectToolForDownstream(
-            serverInfo.name,
-            tool,
-            appsRouteContext,
-            groupServerConfig,
-            useRawName,
-          );
-          return projectedTool ? [projectedTool] : [];
-        }),
-      );
-    }
-  }
-
-  if ([...serverConfigsByName.values()].some((config) => config.preserveToolNames)) {
-    assertValidGroupToolNames(allTools);
-  }
-  return allTools;
-};
-
-// Names the call handler always routes to a meta-tool on a Smart Routing session,
-// whichever of them the current mode lists (see handleCallToolRequestImpl)
-const SMART_ROUTING_META_TOOL_NAMES = new Set(['search_tools', 'describe_tool', 'call_tool']);
-
-// Each member's pinnedTools, narrowed to its tools selection. Empty when the
-// route is not a $smart/<group> or the group pins nothing.
-const resolvePinnedSmartRoutingServers = async (group: string | undefined) => {
-  const lookupGroup = getGroupLookupName(group);
-  if (!lookupGroup) {
-    return undefined;
-  }
-
-  const { filteredServerInfos, serverConfigsByName } =
-    await getFilteredServerInfosForGroup(lookupGroup);
-  const pinnedConfigsByName = new Map<string, IGroupServerConfig>();
-  for (const [serverName, serverConfig] of serverConfigsByName) {
-    const selection = serverConfig.tools;
-    const pinnedTools = (serverConfig.pinnedTools ?? []).filter(
-      (toolName) => !Array.isArray(selection) || selection.includes(toolName),
-    );
-    if (pinnedTools.length > 0) {
-      pinnedConfigsByName.set(serverName, { ...serverConfig, tools: pinnedTools });
-    }
-  }
-  if (pinnedConfigsByName.size === 0) {
-    return undefined;
-  }
-
-  return {
-    lookupGroup,
-    pinnedServerInfos: filteredServerInfos.filter((serverInfo) =>
-      pinnedConfigsByName.has(serverInfo.name),
-    ),
-    pinnedConfigsByName,
-  };
-};
-
-// Tools a $smart/<group> lists next to its meta-tools: each member's pinnedTools,
-// narrowed to its tools selection and then run through the same filtering and
-// projection as a direct group listing.
-const getPinnedSmartRoutingTools = async (
-  group: string | undefined,
-  appsRouteContext: McpAppsRouteContext = { enabled: false },
-): Promise<Tool[]> => {
-  const pinned = await resolvePinnedSmartRoutingServers(group);
-  if (!pinned) {
-    return [];
-  }
-
-  return listGroupTools(
-    pinned.lookupGroup,
-    pinned.pinnedServerInfos,
-    pinned.pinnedConfigsByName,
-    appsRouteContext,
-  );
-};
-
 
 // ---------------------------------------------------------------------------
 // Hub file staging (#1056)
@@ -5545,9 +3925,7 @@ const handleHubStagingCall = async (request: any, extra: any) => {
         }
         return {
           downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
-          expiresAt: new Date(
-            Date.now() + settings.downloadTtlSeconds * 1000,
-          ).toISOString(),
+          expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),
         };
       },
     });
@@ -5556,1312 +3934,53 @@ const handleHubStagingCall = async (request: any, extra: any) => {
   }
 };
 
-const handleListToolsRequestImpl = async (_: any, extra: any) => {
-  const sessionId = extra.sessionId || '';
-  const group = getMcpRequestGroup(extra);
-  logger.log(`Handling ListToolsRequest for group: ${group}`);
-
-  // Special handling for $smart group to return smart routing tools
-  // Support both $smart and $smart/{group} patterns
-  if (isSmartRoutingGroup(group)) {
-    const smartRoutingTools = await getSmartRoutingTools(group);
-    let pinnedTools: Tool[] = [];
-    try {
-      const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-      // A pin named like a meta-tool (e.g. alias "describe" + separator "_" +
-      // tool "tool") would be intercepted by it on call, even in a mode that
-      // does not list that meta-tool, so it is not listed at all
-      pinnedTools = (await getPinnedSmartRoutingTools(group, appsRouteContext)).filter(
-        (tool) => !SMART_ROUTING_META_TOOL_NAMES.has(tool.name),
-      );
-    } catch (error) {
-      // Pins are an optimisation: failing to resolve them must not cost the meta-tools
-      logger.warn(`Failed to list pinned tools for ${group}; returning meta-tools only`, error);
-    }
-    return pinnedTools.length > 0
-      ? { tools: [...smartRoutingTools.tools, ...pinnedTools] }
-      : smartRoutingTools;
-  }
-
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(group);
-  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
-  const listed = await listGroupTools(
-    group,
-    filteredServerInfos,
-    serverConfigsByName,
-    appsRouteContext,
-  );
-  const tools = await withStagingTools(group, listed, extra);
-  // Hub tools are generated per route, not part of the upstream snapshot, so
-  // the list must not be cached across calls.
-  return tools.some((tool) => isReservedStagingName(tool.name))
-    ? { tools, stagingTools: true }
-    : { tools };
-};
-
-const handleCallToolRequestImpl = async (request: any, extra: any) => {
-  logger.log('Handling CallToolRequest for tool', summarizeToolRequestForLogging(request.params));
-  const startTime = Date.now();
-  const activityLogger = getActivityLoggingService();
-
-  // Opt-in fail-closed guard for high-confidence command-injection / SSRF /
-  // cloud-credential-theft payloads in tool call arguments. Disabled by
-  // default (TOOL_CALL_GUARD_ENABLED=true to enable); see
-  // src/middlewares/toolCallGuard.ts.
-  if (isToolCallGuardEnabled()) {
-    try {
-      assertToolCallArgumentsSafe(request?.params?.arguments);
-    } catch (guardError) {
-      if (guardError instanceof ToolCallBlockedError) {
-        logger.warn(
-          `Tool call blocked by guard: server/tool=${
-            request?.params?.name ?? 'unknown'
-          }, rule=${guardError.ruleId}`,
-        );
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${guardError.message}`,
-            },
-          ],
-          isError: true,
-          errorCode: -32001,
-        };
-      }
-      throw guardError;
-    }
-  }
-
-  // Get request context for activity logging
-  const requestContextService = RequestContextService.getInstance();
-  const bearerKeyContext = requestContextService.getBearerKeyContext();
-  const sessionId = extra.sessionId || '';
-
-  // For OpenAPI cookie-session isolation, use a real per-caller session id.
-  // Direct API controllers fall back to shared synthetic ids ('api-session' /
-  // 'openapi-session') when x-session-id is absent, which would leak cookies
-  // across callers, so only accept an explicitly-provided session header or a
-  // non-synthetic extra.sessionId. Fail-safe (undefined) otherwise.
-  const isSyntheticSessionFallback = (id: string) =>
-    id === 'api-session' || id === 'openapi-session';
-  const explicitXSessionId = extra?.headers?.['x-session-id'];
-  const cookieSessionId = [
-    requestContextService.getSessionId(),
-    typeof explicitXSessionId === 'string' ? explicitXSessionId : undefined,
-    typeof extra?.sessionId === 'string' ? extra.sessionId : undefined,
-  ].find(
-    (id): id is string =>
-      typeof id === 'string' && id.length > 0 && !isSyntheticSessionFallback(id),
-  );
-
-  // Extract group and key info from request context (set by SSE/HTTP handlers)
-  // Fallback to extra for backward compatibility (e.g., direct API calls)
-  const group = getMcpRequestGroup(extra);
-  const username =
-    requestContextService.getUsernameContext() ||
-    extra?.username ||
-    UserContextService.getInstance().getCurrentUser()?.username ||
-    (requestContextService.getKeyKindContext() === 'system' ? 'system' : undefined) ||
-    undefined;
-  let appsRouteContext: McpAppsRouteContext;
-  const keyId = bearerKeyContext.keyId || extra?.keyId || undefined;
-  const keyName = bearerKeyContext.keyName || extra?.keyName || undefined;
-  const sourceIp = requestContextService.getRequestContext()?.remoteAddress || undefined;
-  let policyAudit: ToolPolicyAudit | undefined;
-  let hostedReservation: HostedCreditReservation | null = null;
-  let releaseOnDemandToolCall: (() => void) | undefined;
-  let clientStateLease: ReturnType<typeof acquireClientState> | undefined;
-  const getToolStateId = (info: ServerInfo, legacyId: string | undefined): string | undefined => {
-    if (!requestContextService.getRequestContext()?.stateless) return legacyId;
-    clientStateLease ??= acquireClientState(info, request.params?._meta?.['openai/session']);
-    return clientStateLease.id;
-  };
-
-  const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
-    const policy = await getToolPolicy(group);
-    const decision = policy.authorize(serverName, toolName);
-    policyAudit = { ...decision, serverId: policy.serverId(serverName), groupId: policy.groupId };
-    logger.log('Tool policy decision', {
-      username,
-      callerId: keyId,
-      server: serverName,
-      tool: toolName,
-      ...policyAudit,
-    });
-    if (decision.decision === 'deny') {
-      throw new ToolUnavailableError(`Tool not available: ${toolName}`, decision.reason);
-    }
-    const hostedAuth = requestContextService.getHostedAuthContext();
-    assertHostedToolAllowed(hostedAuth, serverName, toolName);
-    hostedReservation = await reserveHostedToolCall(hostedAuth, serverName, toolName);
-  };
-
-  const settleHostedIfNeeded = async (input: {
-    success: boolean;
-    requestContent?: unknown;
-    responseContent?: unknown;
-  }) => {
-    const reservation = hostedReservation;
-    hostedReservation = null;
-    await settleHostedToolCall(reservation, {
-      success: input.success,
-      latencyMs: Date.now() - startTime,
-      requestContent: input.requestContent,
-      responseContent: input.responseContent,
-    });
-  };
-
-  try {
-    appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
-    const lookupRoute = getGroupLookupName(group);
-    // Direct routes own their listed raw names, even when a tool is disabled.
-    const upstreamOwnsMetaName =
-      SMART_ROUTING_META_TOOL_NAMES.has(request.params.name) &&
-      !!lookupRoute &&
-      !isSmartRoutingGroup(group) &&
-      !(await findRouteGroup(lookupRoute)) &&
-      getVisibleServerByName(lookupRoute)?.tools.some(
-        (tool) => normalizeToolNameForServer(lookupRoute, tool.name) === request.params.name,
-      );
-
-    // Special handling for smart routing tools
-    if (!upstreamOwnsMetaName && request.params.name === 'search_tools') {
-      const { query, limit = 10 } = request.params.arguments || {};
-      return await handleSearchToolsRequest(query, limit, sessionId, group);
-    }
-
-    // Special handling for describe_tool (progressive disclosure mode)
-    if (!upstreamOwnsMetaName && request.params.name === 'describe_tool') {
-      const { toolName } = request.params.arguments || {};
-      return await handleDescribeToolRequest(toolName, sessionId, group);
-    }
-
-    // Special handling for call_tool
-    if (!upstreamOwnsMetaName && request.params.name === 'call_tool') {
-      const { toolName } = request.params.arguments || {};
-      if (!toolName) {
-        throw new Error('toolName parameter is required');
-      }
-
-      const { arguments: toolArgs } = request.params.arguments || {};
-      // Preserve legacy raw aggregate calls; explicit routes use the shared
-      // resolver so cached names still obey group filtering.
-      const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
-      let targetServerInfo: ServerInfo | undefined;
-      let targetToolName = toolName;
-      let targetTool: Tool | undefined;
-      if (singleServerAppsRoute) {
-        targetServerInfo = appsRouteContext.serverInfo;
-      } else if (extra && extra.server) {
-        targetServerInfo = getVisibleServerByName(extra.server);
-      } else if (getGroupLookupName(group)) {
-        const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext);
-        if (groupTool) {
-          targetServerInfo = groupTool.serverInfo;
-          targetToolName = groupTool.toolName;
-          targetTool = groupTool.tool;
-        }
-      } else {
-        // Find the first server that has this tool.
-        // On-demand servers may be sleeping (disconnected) but still advertise
-        // their cached tool list — include them as candidates.
-        targetServerInfo = getVisibleServerInfos().find(
-          (serverInfo) =>
-            serverInfo.enabled !== false &&
-            (serverInfo.status === 'connected' || serverInfo.config?.startOnDemand === true) &&
-            serverInfo.tools.some((tool) => tool.name === toolName),
-        );
-      }
-
-      if (!targetServerInfo) {
-        throw new ToolUnavailableError(
-          `Tool not available: ${toolName}`,
-          classifyUnavailableReason(toolName),
-        );
-      }
-
-      setMetricsServer(targetServerInfo.name);
-
-      // If the target is an on-demand server that is not yet running, wake it up now.
-      // Concurrent callers are serialised via ensureServerReady's singleton promise.
-      releaseOnDemandToolCall = beginOnDemandToolCall(targetServerInfo);
-      if (targetServerInfo.config?.startOnDemand && targetServerInfo.status !== 'connected') {
-        await ensureServerReady(targetServerInfo);
-        // Re-read status from the mutated serverInfo after async spawn
-        // Routing may have captured a tool from the persisted directory before wake.
-        targetTool = undefined;
-        const freshStatus = (targetServerInfo as ServerInfo).status;
-        if (freshStatus !== 'connected') {
-          throw new Error(
-            `Failed to start on-demand server '${targetServerInfo.name}' — check server logs`,
-          );
-        }
-      }
-
-      // Record activity timestamp for on-demand servers
-      targetServerInfo.lastUsedAt = Date.now();
-
-      // Check if the tool exists on the server
-      const tool =
-        targetTool ?? findToolOnServer(targetServerInfo, targetToolName, singleServerAppsRoute);
-      if (!tool) {
-        throw new ToolUnavailableError(`Tool not available: ${toolName}`, 'tool-not-found');
-      }
-      assertToolAvailableForRoute(tool, appsRouteContext);
-
-      // Handle OpenAPI servers differently
-      if (targetServerInfo.openApiClient) {
-        // For OpenAPI servers, use the OpenAPI client
-        const openApiClient = targetServerInfo.openApiClient;
-
-        // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
-        const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
-
-        logger.log('Invoking OpenAPI tool', {
-          toolName: targetToolName,
-          serverName: targetServerInfo.name,
-          arguments: summarizeArgumentsForLogging(finalArgs),
-        });
-
-        // Remove server prefix from tool name if present
-        const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, tool.name);
-
-        // Extract passthrough headers from extra or request context
-        let passthroughHeaders: Record<string, string> | undefined;
-        let requestHeaders: Record<string, string | string[] | undefined> | null = null;
-
-        // Try to get headers from extra parameter first (if available)
-        if (extra?.headers) {
-          requestHeaders = extra.headers;
-        } else {
-          // Fallback to request context service
-          const requestContextService = RequestContextService.getInstance();
-          requestHeaders = requestContextService.getHeaders();
-        }
-
-        if (requestHeaders && targetServerInfo.config?.openapi?.passthroughHeaders) {
-          passthroughHeaders = {};
-          for (const headerName of targetServerInfo.config.openapi.passthroughHeaders) {
-            if (!isSafePassthroughHeader(headerName)) continue;
-            // Handle different header name cases (Express normalizes headers to lowercase)
-            const headerValue =
-              requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];
-            if (headerValue) {
-              passthroughHeaders[headerName] = Array.isArray(headerValue)
-                ? headerValue[0]
-                : String(headerValue);
-            }
-          }
-        }
-
-        const stateId = targetServerInfo.config?.openapi?.cookieSession
-          ? getToolStateId(targetServerInfo, cookieSessionId)
-          : cookieSessionId;
-        if (targetServerInfo.config?.openapi?.cookieSession && !stateId) {
-          throw new Error(
-            `OpenAPI server '${targetServerInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
-          );
-        }
-
-        await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
-        const result = await openApiClient.callTool(
-          cleanToolName,
-          withoutHiddenArguments(targetServerInfo, cleanToolName, finalArgs),
-          passthroughHeaders,
-          false,
-          stateId,
-        );
-        await settleHostedIfNeeded({
-          success: true,
-          requestContent: finalArgs,
-          responseContent: result,
-        });
-
-        logger.log('OpenAPI tool invocation result', {
-          serverName: targetServerInfo.name,
-          toolName: cleanToolName,
-          result: summarizeToolResultForLogging(result),
-        });
-
-        // Log successful activity
-        const duration = Date.now() - startTime;
-        await activityLogger.logToolCall({
-          policy: policyAudit,
-          server: targetServerInfo.name,
-          tool: cleanToolName,
-          duration,
-          status: 'success',
-          input: finalArgs,
-          output: result,
-          group,
-          username,
-          keyId,
-          keyName,
-          sourceIp,
-          hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
-        });
-
-        return await maybeCompressToolResult(
-          {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(result),
-              },
-            ],
-          },
-          {
-            serverName: targetServerInfo.name,
-            toolName: cleanToolName,
-            group,
-          },
-        );
-      }
-
-      // Call the tool on the target server (MCP servers)
-      // For servers with perSessionClient: true, use a per-session dedicated client
-      let isolatedCtx: IsolatedClientContext | undefined;
-      if (
-        targetServerInfo.config?.perSessionClient &&
-        !hasPersonalAuthentication(targetServerInfo.config)
-      ) {
-        const stateId = getToolStateId(targetServerInfo, sessionId);
-        if (!stateId) {
-          throw new Error(
-            `Server '${targetServerInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
-          );
-        }
-        const isolated = await getOrCreateIsolatedClient(
-          stateId,
-          targetServerInfo,
-          extra.mcpReq && !requestContextService.getRequestContext()?.stateless
-            ? servers[sessionId]
-            : undefined,
-        );
-        isolatedCtx = {
-          sessionId: stateId,
-          client: isolated.client,
-          transport: isolated.transport,
-        };
-      } else if (!targetServerInfo.client) {
-        throw new Error(`Client not found for server: ${targetServerInfo.name}`);
-      }
-
-      // Use toolArgs if it has properties, otherwise fallback to request.params.arguments
-      const finalArgs = toolArgs && typeof toolArgs === 'object' ? toolArgs : {};
-
-      logger.log('Invoking tool', {
-        toolName: targetToolName,
-        serverName: targetServerInfo.name,
-        arguments: summarizeArgumentsForLogging(finalArgs),
-        perSessionClient: !!targetServerInfo.config?.perSessionClient,
-      });
-
-      const cleanToolName = normalizeToolNameForServer(targetServerInfo.name, tool.name);
-      await reserveHostedIfNeeded(targetServerInfo.name, cleanToolName);
-      const result = await callToolWithReconnect(
-        targetServerInfo,
-        {
-          name: cleanToolName,
-          arguments: finalArgs,
-        },
-        targetServerInfo.options || {},
-        1,
-        isolatedCtx,
-        extra,
-      );
-      await settleHostedIfNeeded({
-        success: !result.isError,
-        requestContent: finalArgs,
-        responseContent: result,
-      });
-
-      logger.log('Tool invocation result', {
-        serverName: targetServerInfo.name,
-        toolName: cleanToolName,
-        result: summarizeToolResultForLogging(result),
-      });
-
-      // Log successful activity
-      const duration = Date.now() - startTime;
-      await activityLogger.logToolCall({
-        policy: policyAudit,
-        server: targetServerInfo.name,
-        tool: cleanToolName,
-        duration,
-        status: result.isError ? 'error' : 'success',
-        input: finalArgs,
-        output: result,
-        group,
-        username,
-        keyId,
-        keyName,
-        sourceIp,
-        hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
-        // A nested call forwards its inner arguments, which may carry a ref.
-        suppressPayload: containsStagingRef(finalArgs),
-        errorMessage: result.isError ? 'Tool returned error response' : undefined,
-      });
-
-      return await maybeCompressToolResult(result, {
-        serverName: targetServerInfo.name,
-        toolName: cleanToolName,
-        group,
-      });
-    }
-
-    // Regular tool handling
-    const lookupGroup = getGroupLookupName(group);
-    // Explicit routes share name resolution and group filtering regardless of
-    // Apps support; keep legacy raw aggregate calls compatible.
-    const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
-    const groupTool =
-      !singleServerAppsRoute && lookupGroup
-        ? await resolveToolInGroup(group, request.params.name, appsRouteContext)
-        : undefined;
-    const serverInfo = singleServerAppsRoute
-      ? appsRouteContext.serverInfo
-      : (groupTool?.serverInfo ?? (lookupGroup ? undefined : getServerByTool(request.params.name)));
-    const routeToolName = groupTool?.toolName ?? request.params.name;
-    let tool =
-      groupTool?.tool ??
-      (serverInfo ? findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute) : undefined);
-    if (!serverInfo || !tool) {
-      throw new ToolUnavailableError(
-        `Tool not available: ${request.params.name}`,
-        classifyUnavailableReason(request.params.name),
-      );
-    }
-    assertToolAvailableForRoute(tool, appsRouteContext);
-    setMetricsServer(serverInfo.name);
-
-    // Wake the on-demand server before invoking the tool. It may be asleep with
-    // a cached tool list (visible above) but no live client. Mirrors the
-    // $smart call_tool path. See #1029.
-    releaseOnDemandToolCall = beginOnDemandToolCall(serverInfo);
-    if (serverInfo.config?.startOnDemand && serverInfo.status !== 'connected') {
-      await ensureServerReady(serverInfo);
-      tool = findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute);
-      if (!tool)
-        throw new ToolUnavailableError(
-          `Tool not available: ${request.params.name}`,
-          'tool-not-found',
-        );
-      assertToolAvailableForRoute(tool, appsRouteContext);
-    }
-    serverInfo.lastUsedAt = Date.now();
-
-    // Handle OpenAPI servers differently
-    if (serverInfo.openApiClient) {
-      // For OpenAPI servers, use the OpenAPI client
-      const openApiClient = serverInfo.openApiClient;
-
-      // Remove server prefix from tool name if present
-      const cleanToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
-
-      logger.log('Invoking OpenAPI tool', {
-        toolName: cleanToolName,
-        serverName: serverInfo.name,
-        arguments: summarizeArgumentsForLogging(request.params.arguments),
-      });
-
-      // Extract passthrough headers from extra or request context
-      let passthroughHeaders: Record<string, string> | undefined;
-      let requestHeaders: Record<string, string | string[] | undefined> | null = null;
-
-      // Try to get headers from extra parameter first (if available)
-      if (extra?.headers) {
-        requestHeaders = extra.headers;
-      } else {
-        // Fallback to request context service
-        const requestContextService = RequestContextService.getInstance();
-        requestHeaders = requestContextService.getHeaders();
-      }
-
-      if (requestHeaders && serverInfo.config?.openapi?.passthroughHeaders) {
-        passthroughHeaders = {};
-        for (const headerName of serverInfo.config.openapi.passthroughHeaders) {
-          if (!isSafePassthroughHeader(headerName)) continue;
-          // Handle different header name cases (Express normalizes headers to lowercase)
-          const headerValue =
-            requestHeaders[headerName] || requestHeaders[headerName.toLowerCase()];
-          if (headerValue) {
-            passthroughHeaders[headerName] = Array.isArray(headerValue)
-              ? headerValue[0]
-              : String(headerValue);
-          }
-        }
-      }
-
-      const finalArgs = request.params.arguments || {};
-      const stateId = serverInfo.config?.openapi?.cookieSession
-        ? getToolStateId(serverInfo, cookieSessionId)
-        : cookieSessionId;
-      if (serverInfo.config?.openapi?.cookieSession && !stateId) {
-        throw new Error(
-          `OpenAPI server '${serverInfo.name}' requires cookie-session state and is not yet available on stateless MCP requests`,
-        );
-      }
-
-      await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
-      const result = await openApiClient.callTool(
-        cleanToolName,
-        withoutHiddenArguments(serverInfo, cleanToolName, finalArgs),
-        passthroughHeaders,
-        false,
-        stateId,
-      );
-      await settleHostedIfNeeded({
-        success: true,
-        requestContent: finalArgs,
-        responseContent: result,
-      });
-
-      logger.log('OpenAPI tool invocation result', {
-        serverName: serverInfo.name,
-        toolName: cleanToolName,
-        result: summarizeToolResultForLogging(result),
-      });
-
-      // Log successful activity
-      const duration = Date.now() - startTime;
-      await activityLogger.logToolCall({
-        policy: policyAudit,
-        server: serverInfo.name,
-        tool: cleanToolName,
-        duration,
-        status: 'success',
-        input: request.params.arguments,
-        output: result,
-        group,
-        username,
-        keyId,
-        keyName,
-        sourceIp,
-        hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
-      });
-
-      return await maybeCompressToolResult(
-        {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result),
-            },
-          ],
-        },
-        {
-          serverName: serverInfo.name,
-          toolName: cleanToolName,
-          group,
-        },
-      );
-    }
-
-    // Handle MCP servers
-    // For servers with perSessionClient: true, use a per-session dedicated client
-    let isolatedCtx: IsolatedClientContext | undefined;
-    if (serverInfo.config?.perSessionClient && !hasPersonalAuthentication(serverInfo.config)) {
-      const stateId = getToolStateId(serverInfo, sessionId);
-      if (!stateId) {
-        throw new Error(
-          `Server '${serverInfo.name}' requires per-session client isolation and is not yet available on stateless MCP requests`,
-        );
-      }
-      const isolated = await getOrCreateIsolatedClient(
-        stateId,
-        serverInfo,
-        extra.mcpReq && !requestContextService.getRequestContext()?.stateless
-          ? servers[sessionId]
-          : undefined,
-      );
-      isolatedCtx = { sessionId: stateId, client: isolated.client, transport: isolated.transport };
-    } else if (!serverInfo.client) {
-      throw new Error(`Client not found for server: ${serverInfo.name}`);
-    }
-
-    const cleanToolName = normalizeToolNameForServer(serverInfo.name, tool.name);
-    await reserveHostedIfNeeded(serverInfo.name, cleanToolName);
-    const result = await callToolWithReconnect(
-      serverInfo,
-      { ...request.params, name: cleanToolName },
-      serverInfo.options || {},
-      1,
-      isolatedCtx,
-      extra,
-    );
-    await settleHostedIfNeeded({
-      success: !result.isError,
-      requestContent: request.params.arguments,
-      responseContent: result,
-    });
-    logger.log('Tool call result', {
-      serverName: serverInfo.name,
-      toolName: cleanToolName,
-      result: summarizeToolResultForLogging(result),
-    });
-
-    // Log successful activity. A staged call carries refs and staging paths;
-    // the payload is suppressed (the ref is a download capability).
-    const duration = Date.now() - startTime;
-    await activityLogger.logToolCall({
-      policy: policyAudit,
-      server: serverInfo.name,
-      tool: cleanToolName,
-      duration,
-      status: result.isError ? 'error' : 'success',
-      input: request.params.arguments,
-      output: result,
-      group,
-      username,
-      keyId,
-      keyName,
-      sourceIp,
-      hasCredentialTemplate: hasPersonalAuthentication(serverInfo.config),
-      // A staged call carries refs and staging paths; the ref is a download
-      // capability, so it never enters the activity record.
-      suppressPayload: containsStagingRef(request.params.arguments),
-      errorMessage: result.isError ? 'Tool returned error response' : undefined,
-    });
-
-    return await maybeCompressToolResult(result, {
-      serverName: serverInfo.name,
-      toolName: cleanToolName,
-      group,
-    });
-  } catch (error) {
-    const unavailable =
-      error instanceof ToolUnavailableError
-        ? { message: error.message, reason: error.reason }
-        : undefined;
-    const activityToolName = getActivityToolNameFromRequest(request);
-    logger.error('Error handling CallToolRequest', {
-      group,
-      username,
-      callerId: keyId,
-      callerLabel: keyName,
-      toolName: activityToolName,
-      ...summarizeErrorForLogging(error),
-      ...(unavailable ? { decision: 'deny', reason: unavailable.reason } : {}),
-    });
-
-    // Log error activity
-    const duration = Date.now() - startTime;
-    await settleHostedIfNeeded({
-      success: false,
-      requestContent: getActivityInputFromToolRequest(request),
-      responseContent: { error: formatErrorForLogging(error) },
-    });
-    const serverInfo =
-      (typeof extra?.server === 'string' ? getServerByName(extra.server) : undefined) ||
-      getServerByTool(activityToolName);
-    const cleanToolName = stripToolServerPrefix(activityToolName, serverInfo?.name);
-
-    await activityLogger.logToolCall({
-      policy:
-        policyAudit ?? (unavailable ? { decision: 'deny', reason: unavailable.reason } : undefined),
-      server: serverInfo?.name || 'unknown',
-      tool: cleanToolName,
-      duration,
-      status: 'error',
-      input: getActivityInputFromToolRequest(request),
-      group,
-      username,
-      keyId,
-      keyName,
-      sourceIp,
-      hasCredentialTemplate: hasPersonalAuthentication(serverInfo?.config),
-      // An error path can still carry a ref (a staging call that failed after
-      // rewriting); the payload rule applies to it as well.
-      suppressPayload: containsStagingRef(request.params.arguments),
-      // The reason is an internal diagnostic; the caller-facing message stays
-      // identical for hidden and nonexistent targets.
-      errorMessage: unavailable
-        ? `${unavailable.message} (reason: ${unavailable.reason})`
-        : formatErrorForLogging(error),
-    });
-
-    // For unavailable-target errors, surface exactly the unified message (no
-    // error-class name, no reason) so hidden vs nonexistent is indistinguishable.
-    const safeErrorText = unavailable ? unavailable.message : formatErrorForLogging(error);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error: ${safeErrorText}`,
-        },
-      ],
-      isError: true,
-    };
-  } finally {
-    clientStateLease?.release();
-    releaseOnDemandToolCall?.();
-  }
-};
-
-const handleGetPromptRequestImpl = async (request: any, extra: any) => {
-  try {
-    const { name, arguments: promptArgs } = request.params;
-    const group = getMcpRequestGroup(extra);
-
-    // Check built-in prompts first
-    const builtinPrompt = !extra?.server && (await getBuiltinPromptDao().findByName(name));
-    if (builtinPrompt && builtinPrompt.enabled !== false) {
-      // Perform {{param}} template substitution
-      let content = builtinPrompt.template;
-      if (promptArgs) {
-        for (const [key, value] of Object.entries(promptArgs)) {
-          content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
-        }
-      }
-      return {
-        messages: [
-          {
-            role: 'user',
-            content: { type: 'text', text: content },
-          },
-        ],
-      };
-    }
-
-    let server: ServerInfo | undefined;
-    let promptNameForServer = name;
-    const lookupGroup = getGroupLookupName(group);
-    if (extra && extra.server) {
-      const candidate = getVisibleServerByName(extra.server);
-      const prompt = candidate && (await findEnabledPromptOnServer(candidate, name, true));
-      if (prompt) {
-        server = candidate;
-        promptNameForServer = prompt.name;
-      }
-    } else if (lookupGroup) {
-      const groupPrompt = await resolvePromptInGroup(lookupGroup, name);
-      if (groupPrompt) {
-        server = groupPrompt.serverInfo;
-        promptNameForServer = groupPrompt.promptName;
-      }
-    } else {
-      for (const candidate of getVisibleServerInfos()) {
-        const prompt = await findEnabledPromptOnServer(candidate, name);
-        if (prompt) {
-          server = candidate;
-          promptNameForServer = prompt.name;
-          break;
-        }
-      }
-    }
-    if (!server) {
-      throw new ToolUnavailableError(
-        `Prompt not available: ${name}`,
-        classifyUnavailableReason(name),
-      );
-    }
-
-    // Remove server prefix from prompt name if present
-    const separator = getNameSeparator();
-    const prefix = `${server.name}${separator}`;
-    const cleanPromptName = promptNameForServer.startsWith(prefix)
-      ? promptNameForServer.substring(prefix.length)
-      : promptNameForServer;
-
-    const promptParams = {
-      name: cleanPromptName || '',
-      arguments: promptArgs,
-    };
-    // Log the final promptParams
-    logger.log('Calling getPrompt with params', {
-      name: cleanPromptName || '',
-      arguments: summarizeArgumentsForLogging(promptArgs),
-    });
-    const prompt = await server.client?.getPrompt(promptParams);
-    logger.log('Received prompt', summarizePromptForLogging(prompt));
-    if (!prompt) {
-      throw new Error(`Prompt not found: ${cleanPromptName}`);
-    }
-
-    return prompt;
-  } catch (error) {
-    const unavailable =
-      error instanceof ToolUnavailableError
-        ? { message: error.message, reason: error.reason }
-        : undefined;
-    logger.error('Error handling GetPromptRequest', {
-      ...summarizeErrorForLogging(error),
-      ...(unavailable ? { reason: unavailable.reason } : {}),
-    });
-    // Surface exactly the unified message for unavailable targets (see #1103).
-    const safeErrorText = unavailable ? unavailable.message : formatErrorForLogging(error);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error: ${safeErrorText}`,
-        },
-      ],
-      isError: true,
-    };
-  }
-};
-
-const handleListPromptsRequestImpl = async (_: any, extra: any) => {
-  const group = getMcpRequestGroup(extra);
-  const lookupGroup = getGroupLookupName(group);
-  logger.log(`Handling ListPromptsRequest for group: ${group}`);
-
-  // Start with built-in prompts (only enabled ones)
-  const builtinPrompts = await getBuiltinPromptDao().findEnabled();
-  const allPrompts: any[] = builtinPrompts.map((bp) =>
-    normalizePromptForList({
-      name: bp.name,
-      title: bp.title,
-      description: bp.description,
-      arguments: bp.arguments,
-    }),
-  );
-
-  const { filteredServerInfos, serverConfigsByName } =
-    await getFilteredServerInfosForGroup(lookupGroup);
-
-  for (const serverInfo of filteredServerInfos) {
-    if (serverInfo.prompts && serverInfo.prompts.length > 0) {
-      const groupServerConfig = serverConfigsByName.get(serverInfo.name);
-
-      // Filter prompts based on server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
-
-      let enabledPrompts = serverInfo.prompts;
-      if (serverConfig && serverConfig.prompts) {
-        enabledPrompts = serverInfo.prompts.filter((prompt: any) => {
-          const promptConfig = findToolConfig(
-            serverConfig.prompts,
-            serverInfo.name,
-            prompt.name,
-            serverInfo.prompts.map((item) => item.name),
-          );
-          // If prompt is not in config, it's enabled by default
-          return promptConfig?.enabled !== false;
-        });
-      }
-
-      enabledPrompts = await filterPromptsByGroup(
-        lookupGroup,
-        serverInfo.name,
-        enabledPrompts,
-        groupServerConfig,
-      );
-
-      // Apply custom descriptions from server configuration
-      const promptsWithCustomDescriptions = enabledPrompts.map((prompt: any) => {
-        const promptConfig = serverConfig?.prompts?.[prompt.name];
-        return normalizePromptForList({
-          ...prompt,
-          name: projectNameForGroup(prompt.name, serverInfo.name, groupServerConfig),
-          description: promptConfig?.description || prompt.description, // Use custom description if available
-        });
-      });
-
-      allPrompts.push(...promptsWithCustomDescriptions);
-    }
-  }
-
-  return {
-    prompts: allPrompts,
-  };
-};
-
-const handleListResourcesRequestImpl = async (_: any, extra: any) => {
-  const sessionId = extra.sessionId || '';
-  const group = getMcpRequestGroup(extra);
-  const lookupGroup = getGroupLookupName(group);
-  logger.log(`Handling ListResourcesRequest for group: ${group}`);
-  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
-  // Start with built-in resources (only enabled ones)
-  const builtinResources = await getBuiltinResourceDao().findEnabled();
-  const allResources: any[] = builtinResources.map((br) =>
-    normalizeResourceForList({
-      uri: br.uri,
-      name: br.name,
-      description: br.description,
-      mimeType: br.mimeType,
-    }),
-  );
-
-  const { filteredServerInfos, serverConfigsByName } =
-    await getFilteredServerInfosForGroup(lookupGroup);
-
-  for (const serverInfo of filteredServerInfos) {
-    if (serverInfo.resources && serverInfo.resources.length > 0) {
-      // Filter resources based on server configuration
-      const serverConfig = await getServerDao().findById(serverInfo.name);
-
-      let enabledResources = serverInfo.resources;
-      if (serverConfig && serverConfig.resources) {
-        enabledResources = serverInfo.resources.filter((resource: any) => {
-          const resourceConfig = serverConfig.resources?.[resource.uri];
-          return resourceConfig?.enabled !== false;
-        });
-      }
-
-      enabledResources = await filterResourcesByGroup(
-        lookupGroup,
-        serverInfo.name,
-        enabledResources,
-        serverConfigsByName.get(serverInfo.name),
-      );
-
-      // Apply custom descriptions from server configuration
-      const resourcesWithCustomDescriptions = enabledResources.map((resource: any) => {
-        const resourceConfig = serverConfig?.resources?.[resource.uri];
-        const normalizedResource = normalizeResourceForList({
-          ...resource,
-          description: resourceConfig?.description || resource.description,
-        });
-        return appsRouteContext.enabled
-          ? normalizedResource
-          : stripMcpAppsMetadata(normalizedResource);
-      });
-
-      allResources.push(...resourcesWithCustomDescriptions);
-    }
-  }
-
-  return {
-    resources: allResources,
-  };
-};
-
-const handleListResourceTemplatesRequestImpl = async (_: any, extra: any) => {
-  const sessionId = extra.sessionId || '';
-  const group = getMcpRequestGroup(extra);
-  const lookupGroup = getGroupLookupName(group);
-  logger.log(`Handling ListResourceTemplatesRequest for group: ${group}`);
-  const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
-  const { filteredServerInfos, serverConfigsByName } = await getFilteredServerInfosForGroup(
-    lookupGroup,
-    {
-      requireClient: true,
-    },
-  );
-
-  // A self-connection mirrors this hub's aggregate resource list back into
-  // itself. Its capability cache is intentionally empty, but asking it for
-  // resource templates would still route the request through this same server
-  // and recurse until the request budget runs out. Skip the connection itself
-  // and only query real upstreams.
-  const templateServerInfos = filteredServerInfos.filter(
-    (serverInfo) => !serverInfo.client || !isHubSelfConnection(serverInfo.client),
-  );
-
-  const snapshots: object[] = [];
-  const results = await Promise.allSettled(
-    templateServerInfos.map(async (serverInfo) => {
-      if (!serverInfo.client?.listResourceTemplates) {
-        return [];
-      }
-
-      const client = serverInfo.client;
-      const templates = await client.listResourceTemplates({}, serverInfo.options || {});
-      snapshots.push(templates.resourceTemplates);
-      if (serverInfo.client === client) {
-        updateServerResourceTemplatesCache(serverInfo, templates.resourceTemplates);
-      }
-      const filteredTemplates = await filterResourceTemplatesByGroup(
-        lookupGroup,
-        serverInfo.name,
-        templates.resourceTemplates || [],
-        serverConfigsByName.get(serverInfo.name),
-      );
-      return appsRouteContext.enabled
-        ? filteredTemplates
-        : filteredTemplates.map((template) => stripMcpAppsMetadata(template));
-    }),
-  );
-
-  const resourceTemplates = results.flatMap((result) =>
-    result.status === 'fulfilled' ? result.value : [],
-  );
-  if (
-    results.every((result) => result.status === 'fulfilled') &&
-    snapshots.length === templateServerInfos.length
-  ) {
-    combineListFreshness(snapshots, resourceTemplates);
-  }
-  return { resourceTemplates };
-};
-
-const TEMPLATE_LIST_RETRY_MS = 60_000;
-const templateListFailedAt = new WeakMap<object, number>();
-
-const getReadableResourceTemplates = async (
-  serverInfo: ServerInfo,
-  uri: string,
-  lookupGroup: string | undefined,
-  groupServerConfig: IGroupServerConfig | undefined,
-): Promise<UpstreamResourceTemplate[]> => {
-  const serverConfig = await getServerDao().findById(serverInfo.name);
-  const groupConfig = await getGroupServerConfig(lookupGroup, serverInfo.name, groupServerConfig);
-  if (
-    serverConfig?.resources?.[uri]?.enabled === false ||
-    (Array.isArray(groupConfig?.resources) && groupConfig.resources.length === 0)
-  ) {
-    return [];
-  }
-  const client = serverInfo.client;
-  // Modern upstreams have no list-changed stream, so honor the templates' own TTL.
-  const modern = client?.getProtocolEra?.() === 'modern';
-  if (
-    (serverInfo.resourceTemplates === undefined || modern) &&
-    serverInfo.status === 'connected' &&
-    client &&
-    (templateListFailedAt.get(client) ?? -Infinity) < Date.now() - TEMPLATE_LIST_RETRY_MS
-  ) {
-    const refresh = async () => {
-      const listed = await refreshServerResourceTemplatesCache(
-        () => serverInfo,
-        client,
-        serverInfo.options,
-      );
-      if (listed === undefined) {
-        templateListFailedAt.set(client, Date.now());
-      }
-    };
-    await (modern ? revalidateUpstreamList(client, 'templates', refresh) : refresh());
-  }
-  const templates = serverInfo.resourceTemplates;
-  if (!templates?.length) {
-    return [];
-  }
-  const enabled = templates.filter(
-    (template) => serverConfig?.resources?.[template.uriTemplate]?.enabled !== false,
-  );
-  if (
-    !groupConfig ||
-    !Array.isArray(groupConfig.resources) ||
-    groupConfig.resources.includes(uri)
-  ) {
-    return enabled;
-  }
-  // Listing shows templates under any selected prefix; reading needs the template itself selected.
-  const selected = new Set(groupConfig.resources);
-  return enabled.filter((template) => selected.has(template.uriTemplate));
-};
-
-const findResourceTemplateServer = async (
-  uri: string,
-  lookupGroup: string | undefined,
-  filteredServerInfos: ServerInfo[],
-  serverConfigsByName: Map<string, IGroupServerConfig>,
-): Promise<ServerInfo | undefined> => {
-  for (const serverInfo of filteredServerInfos) {
-    // Idle on-demand servers keep cached templates; the read wakes them.
-    const idleOnDemand =
-      serverInfo.config?.startOnDemand === true &&
-      serverInfo.status === 'disconnected' &&
-      !serverInfo.client;
-    if (serverInfo.status !== 'connected' && !idleOnDemand) {
-      continue;
-    }
-    const templates = await getReadableResourceTemplates(
-      serverInfo,
-      uri,
-      lookupGroup,
-      serverConfigsByName.get(serverInfo.name),
-    );
-    if (templates.some((template) => uriMatchesResourceTemplate(template.uriTemplate, uri))) {
-      return serverInfo;
-    }
-  }
-  return undefined;
-};
-
-const handleReadResourceRequestImpl = async (request: any, extra: any) => {
-  try {
-    const { uri } = request.params;
-    const sessionId = extra.sessionId || '';
-    const group = getMcpRequestGroup(extra);
-    const lookupGroup = getGroupLookupName(group);
-    const appsRouteContext = await getMcpAppsRouteContext(sessionId, group);
-
-    // Check built-in resources first
-    const builtinResource = await getBuiltinResourceDao().findByUri(uri);
-    if (builtinResource && builtinResource.enabled !== false) {
-      return {
-        contents: [
-          {
-            uri: builtinResource.uri,
-            mimeType: builtinResource.mimeType || 'text/plain',
-            text: builtinResource.content,
-          },
-        ],
-      };
-    }
-
-    const { filteredServerInfos, serverConfigsByName } =
-      await getFilteredServerInfosForGroup(lookupGroup);
-
-    let server: ServerInfo | undefined;
-    for (const serverInfo of filteredServerInfos) {
-      if (serverInfo.status !== 'connected') {
-        continue;
-      }
-      const serverConfig = await getServerDao().findById(serverInfo.name);
-      let enabledResources = serverInfo.resources;
-      if (serverConfig?.resources) {
-        enabledResources = enabledResources.filter(
-          (resource) => serverConfig.resources?.[resource.uri]?.enabled !== false,
-        );
-      }
-      enabledResources = await filterResourcesByGroup(
-        lookupGroup,
-        serverInfo.name,
-        enabledResources,
-        serverConfigsByName.get(serverInfo.name),
-      );
-      if (enabledResources.some((resource) => resource.uri === uri)) {
-        server = serverInfo;
-        break;
-      }
-    }
-
-    let result: any;
-    // A cached SDK body carries its original TTL, not the remaining lifetime.
-    // Fetch modern reads afresh so forwarding the TTL cannot renew stale content.
-    const readOptions = RequestContextService.getInstance().getRequestContext()?.stateless
-      ? { cacheMode: 'bypass' as const }
-      : undefined;
-
-    if (server?.client) {
-      // A widget URI the upstream also lists in resources/list is read here, not in
-      // the fallback loop below, so it needs the same idle guard: otherwise an
-      // idle timer armed by an earlier read can close an on-demand upstream while
-      // this read is still in flight.
-      const releaseOnDemandRead = beginOnDemandToolCall(server);
-      try {
-        result = readOptions
-          ? await server.client.readResource({ uri }, readOptions)
-          : await server.client.readResource({ uri });
-      } finally {
-        releaseOnDemandRead?.();
-      }
-      if (!result || !Array.isArray(result.contents)) {
-        throw new Error(`Failed to read resource: ${uri}`);
-      }
-    } else if (appsRouteContext.enabled && uri.startsWith('ui://')) {
-      // Not pre-registered in resources/list — common for MCP Apps servers
-      // that generate ui:// resources dynamically at tool-call time. A
-      // single-server route goes straight to that server. A multi-server
-      // route has no way to know which upstream owns the URI up front, so
-      // probe each connected candidate in turn and use the first one that
-      // answers.
-      const candidates = appsRouteContext.serverInfo
-        ? [appsRouteContext.serverInfo]
-        : (appsRouteContext.serverInfos ?? []);
-
-      for (const candidate of candidates) {
-        const config = await getServerDao().findById(candidate.name);
-        if (config?.resources?.[uri]?.enabled === false) continue;
-        const allowed = await filterResourcesByGroup(
-          lookupGroup,
-          candidate.name,
-          [{ uri }],
-          serverConfigsByName.get(candidate.name),
-        );
-        if (allowed.length === 0) continue;
-        // An on-demand candidate may be idle yet still advertise its cached widget
-        // link, so a host can read the ui:// resource before any tool call has
-        // woken it. Hold off its idle shutdown for every read, awake or not, so an
-        // armed idle timer or an overlapping read cannot close the server mid-read,
-        // then wake it the same way the call path does if it is not running.
-        let releaseOnDemandRead: (() => void) | undefined;
-        try {
-          if (candidate.config?.startOnDemand && candidate.enabled !== false) {
-            releaseOnDemandRead = beginOnDemandToolCall(candidate);
-            if (!candidate.client) {
-              await ensureServerReady(candidate);
-            }
-            candidate.lastUsedAt = Date.now();
-          }
-          if (!candidate.client) {
-            continue;
-          }
-          const candidateResult = readOptions
-            ? await candidate.client.readResource({ uri }, readOptions)
-            : await candidate.client.readResource({ uri });
-          if (candidateResult && Array.isArray(candidateResult.contents)) {
-            result = candidateResult;
-            break;
-          }
-        } catch {
-          // This candidate doesn't own the resource (or failed to wake); try the next one.
-        } finally {
-          releaseOnDemandRead?.();
-        }
-      }
-
-      if (!result) {
-        throw new Error(`Resource not found: ${uri}`);
-      }
-    } else {
-      const templateServer = await findResourceTemplateServer(
-        uri,
-        lookupGroup,
-        filteredServerInfos,
-        serverConfigsByName,
-      );
-      if (!templateServer) {
-        throw new Error(`Resource not found: ${uri}`);
-      }
-      const releaseOnDemandRead = beginOnDemandToolCall(templateServer);
-      try {
-        if (templateServer.config?.startOnDemand) {
-          if (!templateServer.client) {
-            await ensureServerReady(templateServer);
-          }
-          templateServer.lastUsedAt = Date.now();
-        }
-        const client = templateServer.client;
-        if (!client) {
-          throw new Error(`Resource not found: ${uri}`);
-        }
-        result = readOptions
-          ? await client.readResource({ uri }, readOptions)
-          : await client.readResource({ uri });
-      } finally {
-        releaseOnDemandRead?.();
-      }
-      if (!result || !Array.isArray(result.contents)) {
-        throw new Error(`Failed to read resource: ${uri}`);
-      }
-    }
-
-    return appsRouteContext.enabled
-      ? result
-      : {
-          ...result,
-          contents: result.contents.map((content: { _meta?: Record<string, unknown> }) =>
-            stripMcpAppsMetadata(content),
-          ),
-        };
-  } catch (error) {
-    logger.error('Error handling ReadResourceRequest', summarizeErrorForLogging(error));
-    const safeErrorText = formatErrorForLogging(error);
-    return {
-      contents: [
-        {
-          uri: request.params?.uri || '',
-          mimeType: 'text/plain',
-          text: `Error: ${safeErrorText}`,
-        },
-      ],
-    };
-  }
-};
+const { handleListToolsRequestImpl, handleCallToolRequestImpl, resolvePinnedSmartRoutingServers } =
+  createToolHandlers({
+    getVisibleServerInfos,
+    getVisibleServerByName,
+    getServerByName: (...args) => getServerByName(...args),
+    getDownstreamServer: (sessionId) => servers[sessionId],
+    getMcpAppsRouteContext,
+    getFilteredServerInfosForGroup: (...args) => getFilteredServerInfosForGroup(...args),
+    findRouteGroup: (...args) => findRouteGroup(...args),
+    filterToolsByConfig,
+    filterToolsByGroup: (...args) => filterToolsByGroup(...args),
+    resolveDescriptionOverride,
+    classifyUnavailableReason,
+    beginOnDemandToolCall,
+    ensureServerReady,
+    acquireClientState,
+    getOrCreateIsolatedClient,
+    callToolWithReconnect,
+    withoutHiddenArguments,
+    withStagingTools,
+  });
+
+const { handleGetPromptRequestImpl, handleListPromptsRequestImpl } = createPromptHandlers({
+  getVisibleServerInfos,
+  getVisibleServerByName,
+  getFilteredServerInfosForGroup: (...args) => getFilteredServerInfosForGroup(...args),
+  filterPromptsByGroup: (...args) => filterPromptsByGroup(...args),
+  classifyUnavailableReason,
+});
+
+const {
+  handleListResourcesRequestImpl,
+  handleListResourceTemplatesRequestImpl,
+  handleReadResourceRequestImpl,
+} = createResourceHandlers({
+  getMcpAppsRouteContext,
+  getGroupLookupName,
+  getFilteredServerInfosForGroup: (...args) => getFilteredServerInfosForGroup(...args),
+  getGroupServerConfig: (...args) => getGroupServerConfig(...args),
+  filterResourcesByGroup,
+  filterResourceTemplatesByGroup,
+  isHubSelfConnection,
+  updateServerResourceTemplatesCache,
+  refreshServerResourceTemplatesCache,
+  beginOnDemandToolCall,
+  ensureServerReady,
+});
 
 // Preserve credential-safe errors for personal clients in every discovery scope.
 const personalClientMethods = new Set([
@@ -6977,11 +4096,7 @@ const createPrincipalRuntime = async (
         inputSchema: cleanInputSchema(tool.inputSchema),
       }));
     } else {
-      const transport = await createTransportFromConfig(
-        name,
-        resolvedConfig,
-        scope?.username,
-      );
+      const transport = await createTransportFromConfig(name, resolvedConfig, scope?.username);
       const client = new LegacyMcpClient(
         { name: `mcp-client-${name}`, version: '1.0.0' },
         {
@@ -7088,9 +4203,7 @@ const withModernLists =
   (handler: McpHandler, fields: Array<Exclude<UpstreamList, 'templates'>>): McpHandler =>
   async (request, extra) => {
     if (
-      !(principalServerScope.getStore() ?? serverInfos).some(
-        (info) => info.client?.getProtocolEra?.() === 'modern',
-      )
+      !getRequestServers(serverInfos).some((info) => info.client?.getProtocolEra?.() === 'modern')
     ) {
       return handler(request, extra);
     }
@@ -7129,9 +4242,7 @@ const withModernLists =
         .sort((a, b) => b.prefix.length - a.prefix.length);
       if (targets.length) selected = [targets[0].info];
     }
-    const scoped = new Map(
-      (principalServerScope.getStore() ?? serverInfos).map((info) => [info.name, info]),
-    );
+    const scoped = createRequestServerProjection(serverInfos);
     const requestClients: Client[] = [];
     try {
       await Promise.all(
@@ -7188,7 +4299,7 @@ const withModernLists =
           }
         }),
       );
-      return await principalServerScope.run([...scoped.values()], () => handler(request, extra));
+      return await withRequestServers([...scoped.values()], () => handler(request, extra));
     } finally {
       await Promise.all(
         [
@@ -7263,7 +4374,7 @@ const withPrincipalServers =
     if (!templated.length) return handler(request, extra);
     const user = UserContextService.getInstance().getCurrentUser() as RequestPrincipal | null;
     const releases: Array<() => void> = [];
-    const scoped = new Map(serverInfos.map((info) => [info.name, info]));
+    const scoped = createRequestServerProjection(serverInfos);
     const failures = new Map<string, Error>();
     try {
       await Promise.all(
@@ -7336,7 +4447,7 @@ const withPrincipalServers =
               : { ...request, params: { ...request.params, name: `${prefix}${requestedName}` } };
         }
       }
-      const result = await principalServerScope.run([...scoped.values()], () =>
+      const result = await withRequestServers([...scoped.values()], () =>
         handler(resolvedRequest, extra),
       );
       if (operation === 'tools-list' && result.tools?.length === 0) {
@@ -7590,7 +4701,7 @@ const withToolPolicy = async (
       isError: true,
     };
   }
-  return principalServerScope.run(eligible, () => handler(request, extra));
+  return withRequestServers(eligible, () => handler(request, extra));
 };
 
 export const handleListToolsRequest = async (request: any, extra: any) => {
@@ -7624,7 +4735,7 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   const byName = new Map<string, ServerConfigWithName>(
     definitions.map((server) => [server.name, server]),
   );
-  const visible = (principalServerScope.getStore() ?? serverInfos).flatMap((info) => {
+  const visible = getRequestServers(serverInfos).flatMap((info) => {
     const live = byName.get(info.name);
     if (!live || live.enabled === false) return [];
     if (hasPersonalAuthentication(live) !== hasPersonalAuthentication(info.config)) return [];
@@ -7652,7 +4763,7 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
       }),
     ];
   });
-  return context.runWithContext(() => principalServerScope.run(visible, action), user ?? null);
+  return context.runWithContext(() => withRequestServers(visible, action), user ?? null);
 };
 const handleOriginalToolCallRequest = (request: any, extra: any) => {
   // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
@@ -7661,9 +4772,7 @@ const handleOriginalToolCallRequest = (request: any, extra: any) => {
   if (isReservedStagingName(request?.params?.arguments?.toolName)) {
     return Promise.resolve({
       isError: true,
-      content: [
-        { type: 'text', text: 'Hub built-in tools cannot be called through call_tool' },
-      ],
+      content: [{ type: 'text', text: 'Hub built-in tools cannot be called through call_tool' }],
     });
   }
   // The reserved hub namespace is dispatched before replica/policy/principal
@@ -7672,9 +4781,7 @@ const handleOriginalToolCallRequest = (request: any, extra: any) => {
   return isReservedStagingName(request?.params?.name)
     ? handleHubStagingCall(request, extra)
     : observeToolCall(() =>
-        withReplicaServerScope(() =>
-          withToolPolicy(callToolWithPrincipal, request, extra, true),
-        ),
+        withReplicaServerScope(() => withToolPolicy(callToolWithPrincipal, request, extra, true)),
       );
 };
 export const handleCallToolRequest = async (request: any, extra: any) => {
@@ -7769,11 +4876,6 @@ export const createMcpServer = (
   server.setRequestHandler('resources/templates/list', handleListResourceTemplatesRequest);
   server.setRequestHandler('resources/read', handleReadResourceRequest);
   return server;
-};
-
-type FilteredGroupServersResult = {
-  filteredServerInfos: ServerInfo[];
-  serverConfigsByName: Map<string, IGroupServerConfig>;
 };
 
 // The group a route segment names: by name, or by id when it is a UUID.
