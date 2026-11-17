@@ -115,11 +115,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * (`invalid_grant: Invalid PKCE code_verifier`).
    */
   private withOAuthFlowLock<T>(action: () => Promise<T>): Promise<T> {
-    return withOAuthPendingAuthLock(
-      this.serverName,
-      this.personal?.username || 'shared',
-      action,
-    );
+    return withOAuthPendingAuthLock(this.serverName, this.personal?.username || 'shared', action);
   }
 
   async allowInsecureTokenEndpoint(endpoint: URL): Promise<boolean> {
@@ -372,12 +368,13 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
         // SDK issuer annotation re-saves tokens; do not turn remaining lifetime into a new expiry.
         const provider = new Proxy(this, {
           get: (target, property) => {
-            if (property === 'tokens') return () => {
-              const stored = this.storedTokens();
-              if (!stored) return undefined;
-              const { expires_in: _expiry, ...tokens } = stored;
-              return tokens;
-            };
+            if (property === 'tokens')
+              return () => {
+                const stored = this.storedTokens();
+                if (!stored) return undefined;
+                const { expires_in: _expiry, ...tokens } = stored;
+                return tokens;
+              };
             const value = Reflect.get(target, property);
             return typeof value === 'function' ? value.bind(target) : value;
           },
@@ -539,9 +536,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     // per-server OAuth lock until its callback's token exchange completes.
     await this.withOAuthFlowLock(async () => {
       try {
-        const pendingUpdate: Partial<
-          NonNullable<ServerConfig['oauth']>['pendingAuthorization']
-        > = {
+        const pendingUpdate: Partial<NonNullable<ServerConfig['oauth']>['pendingAuthorization']> = {
           authorizationUrl,
           discoveryState: this._discoveryState,
           issuer: this._issuer ?? this.serverConfig.oauth?.dynamicRegistration?.issuer,
@@ -662,6 +657,17 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
       }
       if (this._codeVerifier) {
         return this._codeVerifier;
+      }
+
+      // The provider's own flow was superseded by another one: the stored
+      // verifier belongs to the new state, so exchanging this provider's code
+      // with it would fail (or bind the wrong pair). Refuse instead of falling
+      // back to it. A provider with no state of its own (e.g. after a restart)
+      // may still recover the stored pair.
+      if (pending?.state && this._currentState && pending.state !== this._currentState) {
+        throw new Error(
+          `OAuth state for server ${this.serverName} was superseded by another authorization flow`,
+        );
       }
 
       const storedVerifier = pending?.codeVerifier;
@@ -875,7 +881,8 @@ const createOAuthProviderUnlocked = async (
 export const createOAuthProvider = (
   name: string,
   definition: ServerConfig,
-): Promise<OAuthClientProvider | undefined> => withReplicaLock(
-  JSON.stringify(['oauth', name, personalOAuthContexts.get(definition)?.username || 'shared']),
-  () => createOAuthProviderUnlocked(name, definition),
-);
+): Promise<OAuthClientProvider | undefined> =>
+  withReplicaLock(
+    JSON.stringify(['oauth', name, personalOAuthContexts.get(definition)?.username || 'shared']),
+    () => createOAuthProviderUnlocked(name, definition),
+  );

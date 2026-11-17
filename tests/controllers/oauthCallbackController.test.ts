@@ -354,6 +354,11 @@ describe('oauthCallbackController iss validation', () => {
     (getServerByOAuthState as jest.Mock).mockReturnValueOnce(undefined);
     (getServerByPendingOAuthState as jest.Mock).mockReturnValue(serverInfo);
 
+    (loadServerConfig as jest.Mock).mockResolvedValue({
+      url: 'https://upstream.example.com/mcp',
+      oauth: { pendingAuthorization: serverInfo.config.oauth.pendingAuthorization },
+    });
+
     const res = createResponse();
 
     await handleOAuthCallback(
