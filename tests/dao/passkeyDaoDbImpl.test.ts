@@ -1,4 +1,4 @@
-import { getMetadataArgsStorage } from 'typeorm';
+import { getMetadataArgsStorage, LessThan } from 'typeorm';
 import { Passkey } from '../../src/db/entities/Passkey.js';
 import type { UserPasskey } from '../../src/types/index.js';
 
@@ -81,8 +81,17 @@ test('records a sign-in with an update that never inserts a removed passkey', as
   expect(await dao.recordUse(row.id, use)).toBe(false);
   // Drivers that report no count are treated as no row updated
   expect(await dao.recordUse(row.id, use)).toBe(false);
-  expect(mockRepository.update).toHaveBeenCalledWith({ id: row.id }, use);
+  // The counter check is part of the UPDATE itself
+  expect(mockRepository.update).toHaveBeenCalledWith({ id: row.id, counter: LessThan(4) }, use);
   expect(mockRepository.save).not.toHaveBeenCalled();
+});
+
+test('matches only a zero stored counter for authenticators that report 0', async () => {
+  const dao = new PasskeyDaoDbImpl();
+  const use = { counter: 0, backedUp: true, lastUsedAt: null };
+  mockRepository.update.mockResolvedValueOnce({ affected: 1 });
+  expect(await dao.recordUse(row.id, use)).toBe(true);
+  expect(mockRepository.update).toHaveBeenCalledWith({ id: row.id, counter: 0 }, use);
 });
 
 test('reads signature counters stored as bigint strings back as numbers', () => {

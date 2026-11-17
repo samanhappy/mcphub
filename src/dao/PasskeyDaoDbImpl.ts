@@ -1,3 +1,4 @@
+import { LessThan } from 'typeorm';
 import { getAppDataSource } from '../db/connection.js';
 import { Passkey } from '../db/entities/Passkey.js';
 import type { UserPasskey } from '../types/index.js';
@@ -25,7 +26,10 @@ export class PasskeyDaoDbImpl implements PasskeyDao {
   }
 
   async recordUse(id: string, use: PasskeyUse): Promise<boolean> {
-    const result = await this.repository.update({ id }, use);
+    // One conditional UPDATE: the row lock makes a concurrent sign-in re-check the
+    // counter it would overwrite, so a lower counter can never replace a higher one.
+    const counter = use.counter === 0 ? 0 : LessThan(use.counter);
+    const result = await this.repository.update({ id, counter }, use);
     return (result.affected ?? 0) > 0;
   }
 

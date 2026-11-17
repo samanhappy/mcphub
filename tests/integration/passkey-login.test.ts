@@ -5,6 +5,7 @@ import express from 'express';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import { JsonFileDaoFactory, getPasskeyDao, setDaoFactory } from '../../src/dao/DaoFactory.js';
+import { PasskeyDaoImpl } from '../../src/dao/PasskeyDao.js';
 import { auth } from '../../src/middlewares/auth.js';
 import {
   createPasskeyLoginOptions,
@@ -220,6 +221,34 @@ describe('passkey sign-in', () => {
     ceremony = await loginOptions();
     const cloned = authenticator.authenticate(ceremony.options, { counter: 1 });
     expect((await passkeyLogin(ceremony.challengeToken, cloned)).status).toBe(401);
+  });
+
+  it('never moves the counter backwards when sign-ins finish out of order', async () => {
+    const token = await passwordLogin('alice', 'alice-pass-1!');
+    const { authenticator, passkey } = await registerPasskey(token, 'alice-pass-1!');
+    let ceremony = await loginOptions();
+    expect(
+      (
+        await passkeyLogin(
+          ceremony.challengeToken,
+          authenticator.authenticate(ceremony.options, { counter: 10 }),
+        )
+      ).status,
+    ).toBe(200);
+    // Both sign-ins read counter 10 before either stored its own
+    const snapshot = await getPasskeyDao().findById(passkey.id);
+    expect(snapshot?.counter).toBe(10);
+
+    ceremony = await loginOptions();
+    const first = authenticator.authenticate(ceremony.options, { counter: 12 });
+    expect((await passkeyLogin(ceremony.challengeToken, first)).status).toBe(200);
+
+    ceremony = await loginOptions();
+    jest.spyOn(PasskeyDaoImpl.prototype, 'findByCredentialId').mockResolvedValueOnce(snapshot);
+    const second = authenticator.authenticate(ceremony.options, { counter: 11 });
+    // 11 passes the check against the stale 10, but must not overwrite 12
+    expect((await passkeyLogin(ceremony.challengeToken, second)).status).toBe(401);
+    expect((await getPasskeyDao().findById(passkey.id))?.counter).toBe(12);
   });
 
   it('does not accept a credential under a host other than the one it was created for', async () => {

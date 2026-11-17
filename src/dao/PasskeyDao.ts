@@ -10,8 +10,12 @@ export interface PasskeyDao {
   findByUsername(username: string): Promise<UserPasskey[]>;
   save(passkey: UserPasskey): Promise<void>;
   /**
-   * Records a sign-in on an existing passkey. Never recreates a removed one;
-   * returns false when the passkey no longer exists.
+   * Records a sign-in on an existing passkey, atomically with the signature
+   * counter check: the stored counter only moves forward (see
+   * `isCounterAdvance`). Returns false, and changes nothing, when the passkey
+   * no longer exists or the counter does not advance, for example when a
+   * concurrent sign-in already stored a higher one. Never recreates a removed
+   * passkey.
    */
   recordUse(id: string, use: PasskeyUse): Promise<boolean>;
   delete(id: string): Promise<void>;
@@ -19,6 +23,13 @@ export interface PasskeyDao {
 }
 
 export type PasskeyUse = Pick<UserPasskey, 'counter' | 'backedUp' | 'lastUsedAt'>;
+
+/**
+ * WebAuthn counter rule: a nonzero counter must exceed the stored one, while an
+ * authenticator without counters (most synced passkeys) keeps reporting 0.
+ */
+export const isCounterAdvance = (stored: number, next: number): boolean =>
+  next === 0 ? stored === 0 : next > stored;
 
 export const getPasskeyStorePath = (): string => `${getSettingsPath()}.passkeys.json`;
 
@@ -72,7 +83,8 @@ export class PasskeyDaoImpl implements PasskeyDao {
   async recordUse(id: string, use: PasskeyUse): Promise<boolean> {
     const rows = this.read();
     const index = rows.findIndex((row) => row.id === id);
-    if (index === -1) return false;
+    // Check and write without yielding, so no other update interleaves in this process
+    if (index === -1 || !isCounterAdvance(rows[index].counter, use.counter)) return false;
     rows[index] = { ...rows[index], ...use };
     this.write(rows);
     return true;

@@ -344,11 +344,19 @@ export const finishPasskeyAuthentication = async (
   }
   if (!verification.verified) return null;
 
-  // Update-only: a passkey removed while this sign-in ran must stay removed.
+  // Update-only and counter-checked in the store: a passkey removed while this
+  // sign-in ran stays removed, and a concurrent sign-in that already stored a
+  // higher counter wins, so the counter never moves backwards.
   const recorded = await dao.recordUse(passkey.id, {
     counter: verification.authenticationInfo.newCounter,
     backedUp: verification.authenticationInfo.credentialBackedUp,
     lastUsedAt: new Date().toISOString(),
   });
-  return recorded ? user : null;
+  if (!recorded) {
+    logger.warn(
+      `Passkey sign-in refused for user "${user.username}": the passkey was removed or its signature counter did not advance`,
+    );
+    return null;
+  }
+  return user;
 };

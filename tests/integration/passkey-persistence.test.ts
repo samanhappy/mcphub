@@ -73,6 +73,40 @@ function persistenceContract(createDao: () => PasskeyDao) {
     expect(await createDao().findById(row.id)).toBeNull();
   });
 
+  it('only moves the signature counter forward', async () => {
+    const use = (counter: number) => ({
+      counter,
+      backedUp: true,
+      lastUsedAt: new Date().toISOString(),
+    });
+    const row = passkey('alice', { counter: 10 });
+    await createDao().save(row);
+    // Two sign-ins verified against counter 10 finish out of order
+    expect(await createDao().recordUse(row.id, use(12))).toBe(true);
+    expect(await createDao().recordUse(row.id, use(11))).toBe(false);
+    expect(await createDao().recordUse(row.id, use(12))).toBe(false);
+    // An authenticator that counts cannot fall back to 0
+    expect(await createDao().recordUse(row.id, use(0))).toBe(false);
+    expect((await createDao().findById(row.id))?.counter).toBe(12);
+
+    // The same holds beyond the 32-bit signed range
+    const high = passkey('alice', { counter: 4_000_000_000 });
+    await createDao().save(high);
+    expect(await createDao().recordUse(high.id, use(4_000_000_002))).toBe(true);
+    expect(await createDao().recordUse(high.id, use(4_000_000_001))).toBe(false);
+    expect((await createDao().findById(high.id))?.counter).toBe(4_000_000_002);
+  });
+
+  it('keeps accepting authenticators that always report a zero counter', async () => {
+    const use = (counter: number) => ({ counter, backedUp: true, lastUsedAt: null });
+    const row = passkey('alice', { counter: 0 });
+    await createDao().save(row);
+    expect(await createDao().recordUse(row.id, use(0))).toBe(true);
+    expect(await createDao().recordUse(row.id, use(0))).toBe(true);
+    expect(await createDao().recordUse(row.id, use(3))).toBe(true);
+    expect((await createDao().findById(row.id))?.counter).toBe(3);
+  });
+
   it('refuses to register one credential twice', async () => {
     const row = passkey();
     await createDao().save(row);
@@ -144,6 +178,22 @@ dbSuite('PostgreSQL passkey persistence', () => {
     }
   });
   persistenceContract(() => new PasskeyDaoDbImpl());
+
+  it('lets the higher counter win when concurrent sign-ins race', async () => {
+    const row = passkey('alice', { counter: 10 });
+    await new PasskeyDaoDbImpl().save(row);
+    for (let base = 10; base < 100; base += 10) {
+      const use = (counter: number) => ({ counter, backedUp: true, lastUsedAt: null });
+      // Both sign-ins were verified against `base`; either may commit first
+      const [higher] = await Promise.all([
+        new PasskeyDaoDbImpl().recordUse(row.id, use(base + 2)),
+        new PasskeyDaoDbImpl().recordUse(row.id, use(base + 1)),
+      ]);
+      expect(higher).toBe(true);
+      expect((await new PasskeyDaoDbImpl().findById(row.id))?.counter).toBe(base + 2);
+      await new PasskeyDaoDbImpl().save({ ...row, counter: base + 10 });
+    }
+  });
 
   it('matches the schema in docs/migrations/0008-passkeys.sql', async () => {
     const migration = fs.readFileSync(
