@@ -1,13 +1,16 @@
 import { Entity, Column, PrimaryColumn, Index } from 'typeorm';
 
-/** Short-lived OAuth state shared by replicas; bearer values are stored only as hashes. */
+/**
+ * Short-lived OAuth state shared by replicas; bearer values are stored only as hashes.
+ * Also records spent passkey challenges so each is accepted once across replicas.
+ */
 @Entity({ name: 'oauth_state' })
 export class OAuthState {
   @PrimaryColumn({ name: 'token_hash', type: 'varchar', length: 64 })
   tokenHash: string;
 
   @Column({ type: 'varchar', length: 32 })
-  kind: 'authorization_code' | 'registration';
+  kind: 'authorization_code' | 'registration' | 'passkey_challenge';
 
   @Column({ name: 'client_id', type: 'varchar' })
   clientId: string;

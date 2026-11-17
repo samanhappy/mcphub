@@ -3,10 +3,18 @@ import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { IUser, IOAuthToken, IGroup, ServerConfig, OAuthClientApproval } from '../../src/types/index.js';
+import {
+  IUser,
+  IOAuthToken,
+  IGroup,
+  ServerConfig,
+  OAuthClientApproval,
+  UserPasskey,
+} from '../../src/types/index.js';
 
 let users: IUser[];
 let approvals: OAuthClientApproval[];
+let passkeys: UserPasskey[];
 let tokens: IOAuthToken[];
 let groups: IGroup[];
 let servers: (ServerConfig & { name: string })[];
@@ -26,6 +34,11 @@ jest.mock('../../src/dao/index.js', () => ({
     findByUsername: async (username: string) => approvals.filter((row) => row.username === username),
     save: async (row: OAuthClientApproval) => { approvals.push(row); },
     deleteByUsername: async (username: string) => { approvals = approvals.filter((row) => row.username !== username); },
+  }),
+  getPasskeyDao: () => ({
+    deleteByUsername: async (username: string) => {
+      passkeys = passkeys.filter((row) => row.username !== username);
+    },
   }),
   getUserDao: () => ({
     findAll: async () => users,
@@ -130,6 +143,22 @@ describe('local user offboarding', () => {
     ];
     tokens = [];
     approvals = [];
+    passkeys = [
+      {
+        id: 'passkey-1',
+        username: 'victim',
+        credentialId: 'credential-1',
+        publicKey: 'public-key',
+        counter: 0,
+        userHandle: 'handle',
+        rpId: 'hub.example.test',
+        sessionVersion: 'version',
+        name: 'Laptop',
+        deviceType: 'multiDevice',
+        backedUp: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
     groups = [
       {
         id: 'g1',
@@ -222,6 +251,7 @@ describe('local user offboarding', () => {
     ).toBe(200);
     expect(tokens).toHaveLength(0);
     expect(approvals).toHaveLength(0);
+    expect(passkeys).toHaveLength(0);
     expect(groups[0].sharedWithUsers).toEqual(['other']);
     expect(servers[0].sharedWithUsers).toEqual(['other']);
     expect(await getAuthorizationCode(code)).toBeUndefined();

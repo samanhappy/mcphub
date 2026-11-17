@@ -35,7 +35,7 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 ### Contrôler les accès et les identifiants
 
 - **Identifiants personnels** ⭐ - Associez une clé par utilisateur à un serveur partagé, avec stockage chiffré et processus stdio isolés ([En savoir plus](docs/features/per-user-credentials.mdx))
-- **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys et la visibilité des serveurs ou groupes pour gérer les accès
+- **Authentification et contrôle d'accès** - Utilisez OAuth 2.0, des bearer keys, des clés d'accès (passkeys) et la visibilité des serveurs ou groupes pour gérer les accès
 - **Support OAuth 2.0** ⭐ - Modes client et serveur pour une authentification sécurisée ([En savoir plus](https://docs.mcphub.app/features/oauth))
 - **Connexion sociale** - Support de connexion GitHub et Google via Better Auth (nécessite le mode Base de données)
 - **Gestion des serveurs et des groupes** - Organisez les serveurs en groupes, gérez leur visibilité et contrôlez l'exposition des Tools, Prompts et Resources
@@ -164,7 +164,7 @@ Le développement local utilise `admin` / `admin123` et stocke sa copie de confi
 - **Backend** : Node.js, Express, TypeScript (ESM)
 - **Frontend** : React, Vite, Tailwind CSS
 - **Stockage** : `mcp_settings.json` (par défaut) ; PostgreSQL via TypeORM avec pgvector pour le Smart Routing
-- **Authentification** : JWT + bcrypt pour les comptes locaux ; bearer keys ; serveur OAuth 2.0 intégré (`@node-oauth/oauth2-server`) ; Better Auth optionnel pour GitHub/Google
+- **Authentification** : JWT + bcrypt pour les comptes locaux, avec clés d'accès (WebAuthn) optionnelles ; bearer keys ; serveur OAuth 2.0 intégré (`@node-oauth/oauth2-server`) ; Better Auth optionnel pour GitHub/Google
 - **Protocole** : Model Context Protocol SDK
 
 ## 👥 Contribuer

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Settings, LogOut, Info } from 'lucide-react';
+import { User, Settings, LogOut, Info, KeyRound } from 'lucide-react';
 import AboutDialog from './AboutDialog';
 import SponsorDialog from './SponsorDialog';
 import WeChatDialog from './WeChatDialog';
@@ -152,6 +152,16 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version })
           >
             <Settings className="h-4 w-4 mr-2" />
             {t('oauthApprovals.title')}
+          </button>
+          <button
+            onClick={() => {
+              navigate('/passkeys');
+              setIsOpen(false);
+            }}
+            className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <KeyRound className="h-4 w-4 mr-2" />
+            {t('passkeys.title')}
           </button>
           <button
             onClick={handleSettingsClick}

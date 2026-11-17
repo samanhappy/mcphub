@@ -109,7 +109,10 @@
     "passwordRequireLetter": "La contraseña debe contener al menos una letra",
     "passwordRequireNumber": "La contraseña debe contener al menos un número",
     "passwordRequireSpecial": "La contraseña debe contener al menos un carácter especial",
-    "passwordStrengthHint": "La contraseña debe tener al menos 8 caracteres y contener letras, números y caracteres especiales"
+    "passwordStrengthHint": "La contraseña debe tener al menos 8 caracteres y contener letras, números y caracteres especiales",
+    "loginWithPasskey": "Iniciar sesión con una llave de acceso",
+    "passkeyCancelled": "El inicio de sesión con llave de acceso se canceló o caducó.",
+    "passkeyLoginFailed": "No se pudo iniciar sesión con esta llave de acceso. Es posible que se haya eliminado de tu cuenta."
   },
   "server": {
     "protocolVersion": "Protocolo MCP",
@@ -1322,7 +1325,17 @@
       "failedToGetMarketTags": "Error al obtener las etiquetas del mercado",
       "failedToSearchMarketServers": "Error al buscar servidores del mercado",
       "failedToFilterMarketServers": "Error al filtrar servidores del mercado",
-      "failedToProcessMcpbFile": "Error al procesar el archivo MCPB"
+      "failedToProcessMcpbFile": "Error al procesar el archivo MCPB",
+      "passkey_unavailable": "Las llaves de acceso solo se pueden gestionar desde una cuenta local con sesión iniciada",
+      "passkey_password_invalid": "La contraseña actual es incorrecta",
+      "passkey_origin_invalid": "No se pudo determinar la dirección del sitio para las llaves de acceso",
+      "passkey_limit_reached": "Has alcanzado el número máximo de llaves de acceso",
+      "passkey_invalid_request": "Solicitud de llave de acceso no válida",
+      "passkey_challenge_invalid": "La solicitud de llave de acceso ha caducado. Inténtalo de nuevo",
+      "passkey_already_registered": "Esta llave de acceso ya está registrada",
+      "passkey_verification_failed": "No se pudo verificar la llave de acceso",
+      "passkey_not_found": "Llave de acceso no encontrada",
+      "passkey_login_failed": "Error al iniciar sesión con la llave de acceso"
     },
     "success": {
       "serverCreated": "Servidor creado correctamente",
@@ -1601,5 +1614,39 @@
     "lifetime": "Duración del consentimiento (segundos)",
     "lifetimeDescription": "Duración fija desde la aprobación: 1–31536000 segundos (por defecto 1209600, 14 días). Renovar tokens no la amplía.",
     "invalidLifetime": "Introduce un número entero entre 1 y 31536000 segundos."
+  },
+  "passkeys": {
+    "title": "Llaves de acceso",
+    "description": "Inicia sesión sin contraseña con la huella, el rostro o el bloqueo de pantalla de tu dispositivo, o con una llave de seguridad.",
+    "passwordChangeNote": "Como tus otras sesiones, las llaves de acceso dejan de funcionar al cambiar la contraseña. Vuelve a añadirlas después.",
+    "add": "Añadir llave de acceso",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "p. ej., Portátil del trabajo",
+    "currentPassword": "Contraseña actual",
+    "confirmHint": "Confirma tu contraseña y sigue las indicaciones del navegador para crear la llave de acceso.",
+    "create": "Crear llave de acceso",
+    "waiting": "Esperando a tu dispositivo…",
+    "cancel": "Cancelar",
+    "loading": "Cargando llaves de acceso…",
+    "empty": "Aún no tienes llaves de acceso. Añade una para iniciar sesión sin escribir tu contraseña.",
+    "synced": "Sincronizada",
+    "deviceBound": "Solo este dispositivo",
+    "site": "Sitio",
+    "createdAt": "Añadida",
+    "lastUsedAt": "Último uso",
+    "never": "Nunca",
+    "remove": "Eliminar",
+    "confirmRemove": "¿Eliminar la llave de acceso \"{{name}}\"? Ya no podrás iniciar sesión con ella.",
+    "confirmRemoveButton": "Eliminar llave de acceso",
+    "added": "Llave de acceso añadida. Ya puedes usarla para iniciar sesión.",
+    "removed": "Llave de acceso eliminada.",
+    "failed": "No se pudieron cargar tus llaves de acceso.",
+    "removeFailed": "No se pudo eliminar la llave de acceso.",
+    "registerFailed": "No se pudo crear la llave de acceso.",
+    "cancelled": "La creación de la llave de acceso se canceló o caducó.",
+    "alreadyRegistered": "Este dispositivo ya tiene una llave de acceso para tu cuenta.",
+    "insecureContext": "Las llaves de acceso requieren abrir el panel por su nombre de dominio mediante HTTPS (o en localhost).",
+    "unsupported": "Este navegador no admite llaves de acceso.",
+    "unavailable": "Las llaves de acceso no están disponibles porque esta instalación solo permite el inicio de sesión único."
   }
 }

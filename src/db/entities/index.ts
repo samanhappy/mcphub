@@ -1,4 +1,5 @@
 import { OAuthApproval } from './OAuthApproval.js';
+import { Passkey } from './Passkey.js';
 import { CapabilitySnapshot } from './CapabilitySnapshot.js';
 import { OAuthState } from './OAuthState.js';
 import { CredentialBindingImport } from './CredentialBindingImport.js';
@@ -21,6 +22,7 @@ import { FileStagingTokenEntity } from './FileStagingToken.js';
 // Export all entities
 export default [
   OAuthApproval,
+  Passkey,
   OAuthState,
   CapabilitySnapshot,
   CredentialBinding,
@@ -44,6 +46,7 @@ export default [
 // Export individual entities for direct use
 export {
   OAuthApproval,
+  Passkey,
   OAuthState,
   CapabilitySnapshot,
   CredentialBinding,

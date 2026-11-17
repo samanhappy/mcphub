@@ -23,6 +23,7 @@ const useCrumbs = (): string[] => {
     const root = dashboardTitle;
     if (path === '/') return [root, t('nav.dashboard')];
     if (path.startsWith('/oauth-applications')) return [root, t('oauthApprovals.title')];
+    if (path.startsWith('/passkeys')) return [root, t('passkeys.title')];
     if (path.startsWith('/credentials')) return [root, t('credentials.title')];
     if (path.startsWith('/servers')) return [root, t('nav.servers')];
     if (path.startsWith('/groups')) return [root, t('nav.groups')];

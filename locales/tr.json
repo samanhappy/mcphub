@@ -109,7 +109,10 @@
     "passwordRequireLetter": "Şifre en az bir harf içermelidir",
     "passwordRequireNumber": "Şifre en az bir rakam içermelidir",
     "passwordRequireSpecial": "Şifre en az bir özel karakter içermelidir",
-    "passwordStrengthHint": "Şifre en az 8 karakter olmalı ve harf, rakam ve özel karakter içermelidir"
+    "passwordStrengthHint": "Şifre en az 8 karakter olmalı ve harf, rakam ve özel karakter içermelidir",
+    "loginWithPasskey": "Geçiş anahtarıyla oturum aç",
+    "passkeyCancelled": "Geçiş anahtarıyla oturum açma iptal edildi veya zaman aşımına uğradı.",
+    "passkeyLoginFailed": "Bu geçiş anahtarıyla oturum açılamadı. Hesabınızdan kaldırılmış olabilir."
   },
   "server": {
     "protocolVersion": "MCP protokolü",
@@ -1319,7 +1322,17 @@
       "failedToGetMarketTags": "Market etiketleri alınamadı",
       "failedToSearchMarketServers": "Market sunucuları aranamadı",
       "failedToFilterMarketServers": "Market sunucuları filtrelenemedi",
-      "failedToProcessMcpbFile": "MCPB dosyası işlenemedi"
+      "failedToProcessMcpbFile": "MCPB dosyası işlenemedi",
+      "passkey_unavailable": "Geçiş anahtarları yalnızca oturum açmış bir yerel hesaptan yönetilebilir",
+      "passkey_password_invalid": "Mevcut parola yanlış",
+      "passkey_origin_invalid": "Geçiş anahtarları için site adresi belirlenemedi",
+      "passkey_limit_reached": "En fazla geçiş anahtarı sayısına ulaştınız",
+      "passkey_invalid_request": "Geçersiz geçiş anahtarı isteği",
+      "passkey_challenge_invalid": "Geçiş anahtarı isteğinin süresi doldu. Lütfen tekrar deneyin",
+      "passkey_already_registered": "Bu geçiş anahtarı zaten kayıtlı",
+      "passkey_verification_failed": "Geçiş anahtarı doğrulanamadı",
+      "passkey_not_found": "Geçiş anahtarı bulunamadı",
+      "passkey_login_failed": "Geçiş anahtarıyla oturum açılamadı"
     },
     "success": {
       "serverCreated": "Sunucu başarıyla oluşturuldu",
@@ -1598,5 +1611,39 @@
     "lifetime": "Onay süresi (saniye)",
     "lifetimeDescription": "Onaydan itibaren sabit süre: 1–31536000 saniye (varsayılan 1209600, 14 gün). Belirteç yenileme bu süreyi uzatmaz.",
     "invalidLifetime": "1 ile 31536000 saniye arasında bir tam sayı girin."
+  },
+  "passkeys": {
+    "title": "Geçiş anahtarları",
+    "description": "Cihazınızın parmak izi, yüz tanıma veya ekran kilidiyle ya da bir güvenlik anahtarıyla parola olmadan oturum açın.",
+    "passwordChangeNote": "Diğer oturumlarınız gibi geçiş anahtarları da parolanız değiştiğinde çalışmaz. Ardından yeniden ekleyin.",
+    "add": "Geçiş anahtarı ekle",
+    "nameLabel": "Ad",
+    "namePlaceholder": "ör. İş dizüstü bilgisayarı",
+    "currentPassword": "Mevcut parola",
+    "confirmHint": "Parolanızı doğrulayın, ardından geçiş anahtarını oluşturmak için tarayıcınızın yönergelerini izleyin.",
+    "create": "Geçiş anahtarı oluştur",
+    "waiting": "Cihazınız bekleniyor…",
+    "cancel": "İptal",
+    "loading": "Geçiş anahtarları yükleniyor…",
+    "empty": "Henüz geçiş anahtarınız yok. Parola yazmadan oturum açmak için bir tane ekleyin.",
+    "synced": "Eşitlenmiş",
+    "deviceBound": "Yalnızca bu cihaz",
+    "site": "Site",
+    "createdAt": "Eklenme",
+    "lastUsedAt": "Son kullanım",
+    "never": "Hiç",
+    "remove": "Kaldır",
+    "confirmRemove": "\"{{name}}\" geçiş anahtarı kaldırılsın mı? Artık bu anahtarla oturum açamayacaksınız.",
+    "confirmRemoveButton": "Geçiş anahtarını kaldır",
+    "added": "Geçiş anahtarı eklendi. Artık oturum açmak için kullanabilirsiniz.",
+    "removed": "Geçiş anahtarı kaldırıldı.",
+    "failed": "Geçiş anahtarlarınız yüklenemedi.",
+    "removeFailed": "Geçiş anahtarı kaldırılamadı.",
+    "registerFailed": "Geçiş anahtarı oluşturulamadı.",
+    "cancelled": "Geçiş anahtarı oluşturma iptal edildi veya zaman aşımına uğradı.",
+    "alreadyRegistered": "Bu cihazda hesabınız için zaten bir geçiş anahtarı var.",
+    "insecureContext": "Geçiş anahtarları, panelin alan adıyla HTTPS üzerinden (veya localhost’ta) açılmasını gerektirir.",
+    "unsupported": "Bu tarayıcı geçiş anahtarlarını desteklemiyor.",
+    "unavailable": "Bu kurulum yalnızca çoklu oturum açmaya (SSO) izin verdiğinden geçiş anahtarları kullanılamıyor."
   }
 }

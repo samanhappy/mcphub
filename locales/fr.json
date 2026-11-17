@@ -109,7 +109,10 @@
     "passwordRequireLetter": "Le mot de passe doit contenir au moins une lettre",
     "passwordRequireNumber": "Le mot de passe doit contenir au moins un chiffre",
     "passwordRequireSpecial": "Le mot de passe doit contenir au moins un caractère spécial",
-    "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux"
+    "passwordStrengthHint": "Le mot de passe doit contenir au moins 8 caractères et inclure des lettres, des chiffres et des caractères spéciaux",
+    "loginWithPasskey": "Se connecter avec une clé d'accès",
+    "passkeyCancelled": "La connexion par clé d'accès a été annulée ou a expiré.",
+    "passkeyLoginFailed": "Cette clé d'accès n'a pas permis de vous connecter. Elle a peut-être été retirée de votre compte."
   },
   "server": {
     "protocolVersion": "Protocole MCP",
@@ -1320,7 +1323,17 @@
       "failedToGetMarketTags": "Échec de la récupération des tags du marché",
       "failedToSearchMarketServers": "Échec de la recherche des serveurs du marché",
       "failedToFilterMarketServers": "Échec du filtrage des serveurs du marché",
-      "failedToProcessMcpbFile": "Échec du traitement du fichier MCPB"
+      "failedToProcessMcpbFile": "Échec du traitement du fichier MCPB",
+      "passkey_unavailable": "Les clés d'accès ne peuvent être gérées que depuis un compte local connecté",
+      "passkey_password_invalid": "Le mot de passe actuel est incorrect",
+      "passkey_origin_invalid": "Impossible de déterminer l'adresse du site pour les clés d'accès",
+      "passkey_limit_reached": "Vous avez atteint le nombre maximal de clés d'accès",
+      "passkey_invalid_request": "Requête de clé d'accès invalide",
+      "passkey_challenge_invalid": "La demande de clé d'accès a expiré. Veuillez réessayer",
+      "passkey_already_registered": "Cette clé d'accès est déjà enregistrée",
+      "passkey_verification_failed": "La clé d'accès n'a pas pu être vérifiée",
+      "passkey_not_found": "Clé d'accès introuvable",
+      "passkey_login_failed": "Échec de la connexion par clé d'accès"
     },
     "success": {
       "serverCreated": "Serveur créé avec succès",
@@ -1599,5 +1612,39 @@
     "lifetime": "Durée du consentement (secondes)",
     "lifetimeDescription": "Durée fixe depuis l’approbation : 1–31536000 secondes (par défaut 1209600, 14 jours). Le renouvellement des jetons ne la prolonge pas.",
     "invalidLifetime": "Saisissez un entier entre 1 et 31536000 secondes."
+  },
+  "passkeys": {
+    "title": "Clés d'accès",
+    "description": "Connectez-vous sans mot de passe grâce à l'empreinte, au visage ou au verrouillage d'écran de votre appareil, ou avec une clé de sécurité.",
+    "passwordChangeNote": "Comme vos autres sessions, les clés d'accès cessent de fonctionner quand votre mot de passe change. Ajoutez-les à nouveau ensuite.",
+    "add": "Ajouter une clé d'accès",
+    "nameLabel": "Nom",
+    "namePlaceholder": "ex. Ordinateur du bureau",
+    "currentPassword": "Mot de passe actuel",
+    "confirmHint": "Confirmez votre mot de passe, puis suivez les instructions du navigateur pour créer la clé d'accès.",
+    "create": "Créer la clé d'accès",
+    "waiting": "En attente de votre appareil…",
+    "cancel": "Annuler",
+    "loading": "Chargement des clés d'accès…",
+    "empty": "Vous n'avez encore aucune clé d'accès. Ajoutez-en une pour vous connecter sans saisir votre mot de passe.",
+    "synced": "Synchronisée",
+    "deviceBound": "Cet appareil uniquement",
+    "site": "Site",
+    "createdAt": "Ajoutée le",
+    "lastUsedAt": "Dernière utilisation",
+    "never": "Jamais",
+    "remove": "Retirer",
+    "confirmRemove": "Retirer la clé d'accès « {{name}} » ? Vous ne pourrez plus vous connecter avec elle.",
+    "confirmRemoveButton": "Retirer la clé d'accès",
+    "added": "Clé d'accès ajoutée. Vous pouvez désormais l'utiliser pour vous connecter.",
+    "removed": "Clé d'accès retirée.",
+    "failed": "Impossible de charger vos clés d'accès.",
+    "removeFailed": "Impossible de retirer la clé d'accès.",
+    "registerFailed": "La clé d'accès n'a pas pu être créée.",
+    "cancelled": "La création de la clé d'accès a été annulée ou a expiré.",
+    "alreadyRegistered": "Cet appareil possède déjà une clé d'accès pour votre compte.",
+    "insecureContext": "Les clés d'accès exigent d'ouvrir le tableau de bord par son nom de domaine en HTTPS (ou sur localhost).",
+    "unsupported": "Ce navigateur ne prend pas en charge les clés d'accès.",
+    "unavailable": "Les clés d'accès sont indisponibles car ce déploiement n'autorise que l'authentification unique."
   }
 }

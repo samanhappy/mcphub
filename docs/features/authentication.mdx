@@ -59,15 +59,29 @@ curl http://localhost:3000/api/servers \
 
 The JWT is signed with `JWT_SECRET`. If `JWT_SECRET` is not set, MCPHub generates an ephemeral random secret at startup; this is fine for development but means every restart invalidates outstanding tokens. **Set `JWT_SECRET` explicitly in production.**
 
-Issued JWTs expire after a fixed 24 hours (`TOKEN_EXPIRY` in `src/controllers/authController.ts`); the lifetime is not configurable via environment variables.
+Issued JWTs expire after a fixed 24 hours (`DASHBOARD_TOKEN_EXPIRY` in `src/utils/userSession.ts`); the lifetime is not configurable via environment variables.
 
-JWTs and MCPHub OAuth grants are bound to the user's current password hash. Deleting the local user or changing their password invalidates those credentials; recreating the same username does not restore them. JWT authorization reads the user's current administrator status. User deletion also removes OAuth tokens, pending authorization codes on the handling instance, and entries in server/group sharing lists.
+JWTs, [passkeys](#passkeys) and MCPHub OAuth grants are bound to the user's current password hash. Deleting the local user or changing their password invalidates those credentials; recreating the same username does not restore them. JWT authorization reads the user's current administrator status. User deletion also removes OAuth tokens, pending authorization codes on the handling instance, and entries in server/group sharing lists.
 
 Upgrading from credentials without a session version requires signing in again and reconnecting OAuth clients. Database deployments add a nullable `session_version` column to `oauth_tokens` through the normal startup schema synchronization. Restart every replica when upgrading.
 
 `POST /api/auth/register` follows the opt-in self-registration policy above and always creates a non-admin user. Use the administrator user-management API to assign roles.
 
 The first admin account is created at startup by `initializeDefaultUser()`. If no users exist, MCPHub creates `admin` and uses `ADMIN_PASSWORD` if set. When running through `pnpm dev`, it uses `admin123`; other starts generate a random password and print it to the server logs.
+
+## Passkeys
+
+Local accounts can sign in with a passkey (WebAuthn) instead of a password. A passkey is a discoverable credential held by the user's device, password manager, or security key, so the login page asks for no username: select **Sign in with a passkey** and confirm with the device's fingerprint, face, screen lock, or PIN.
+
+To add one, open the user menu → **Passkeys** → **Add passkey**, enter an optional name and the current password, then follow the browser prompt. The password confirms the session owner before a long-lived credential is added. The page lists each passkey with when it was added and last used and whether it is synced, and removes any of them after confirmation. An account can hold up to 20 passkeys.
+
+- **Secure context:** browsers offer passkeys only on HTTPS pages or on `localhost`, and only for a domain name, not an IP address.
+- **Bound to the host name:** a passkey belongs to the host name the dashboard was opened with when it was created (the WebAuthn relying-party ID). MCPHub takes it from the browser's `Origin`, stores it with the passkey, and accepts the passkey only under that host. Opening the dashboard under another host name requires a separate passkey there. Behind a reverse proxy, pass the original `Origin` (or `Host` and protocol) through to MCPHub.
+- **Session:** passkey sign-in issues the same 24-hour JWT as password login and requires user verification on the authenticator. Each challenge expires after five minutes and is accepted once; in [replica mode](/configuration/replicas) the spent challenge is recorded in the shared `oauth_state` table, so this holds across replicas. Signature counters reject a cloned authenticator that reports them. Challenges are signed with `JWT_SECRET`, so the two requests of a sign-in may reach different replicas.
+- **Policy:** passkeys are a local-account credential, so [SSO-only sign-in](#sso-only-sign-in) refuses passkey sign-in and registration as well; stored passkeys work again when password login is re-enabled. Bearer keys, forward-auth identities, and skip-auth mode cannot register passkeys, and users created by SSO keep signing in through their provider because they have no known local password.
+- **Lifecycle:** like JWTs and OAuth grants, passkeys are bound to the account's current password. Changing or resetting the password, or deleting and recreating the user, revokes them, and the user adds them again afterwards. Remove the passkey of a lost device from the Passkeys page; after an account compromise, reset the password to revoke every passkey.
+- **Storage:** file mode keeps passkeys in `<settings file>.passkeys.json` with owner-only permissions, outside `mcp_settings.json` and configuration exports. Database mode uses the `user_passkeys` table; with `DB_SYNCHRONIZE=false`, apply `docs/migrations/0008-passkeys.sql` before upgrading. Migrating from file to database mode copies passkeys with their users.
+- **Rate limits:** issuing sign-in challenges is capped by `PASSKEY_RATE_LIMIT_MAX` per `PASSKEY_RATE_LIMIT_WINDOW_MS` (default 100 per 15 minutes). Failed passkey sign-ins and failed password confirmations count against the login limiter (`AUTH_RATE_LIMIT_MAX`).
 
 ## Bearer keys
 
@@ -187,6 +201,7 @@ To allow sign-in only through the SSO providers, turn on **Disable password logi
 - **Recovery:** `BETTER_AUTH_DISABLE_PASSWORD_LOGIN` overrides the stored setting in both directions. If the identity provider is unavailable, set it to `false` and restart to sign in with a local password again. Keep a strong password on the local admin for that case.
 - **Scripts and the CLI** cannot use the password login while it is disabled. Use a system-level bearer key with access type `all`, which authenticates the management API (`mcphub config set-token <key> --bearer` for the CLI).
 - Tokens issued by earlier password logins stay valid until they expire. Changing a local password still works, so the recovery password can be rotated.
+- [Passkeys](#passkeys) are refused too while password login is disabled, because they sign in to local accounts.
 
 ## Forward auth (JWKS-verified gateway identity)
 

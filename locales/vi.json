@@ -109,7 +109,10 @@
     "passwordRequireLetter": "Mật khẩu phải chứa ít nhất một chữ cái",
     "passwordRequireNumber": "Mật khẩu phải chứa ít nhất một chữ số",
     "passwordRequireSpecial": "Mật khẩu phải chứa ít nhất một ký tự đặc biệt",
-    "passwordStrengthHint": "Mật khẩu phải dài ít nhất 8 ký tự và chứa chữ cái, chữ số, và ký tự đặc biệt"
+    "passwordStrengthHint": "Mật khẩu phải dài ít nhất 8 ký tự và chứa chữ cái, chữ số, và ký tự đặc biệt",
+    "loginWithPasskey": "Đăng nhập bằng passkey",
+    "passkeyCancelled": "Đăng nhập bằng passkey đã bị hủy hoặc hết thời gian chờ.",
+    "passkeyLoginFailed": "Không thể đăng nhập bằng passkey này. Có thể nó đã bị xóa khỏi tài khoản của bạn."
   },
   "server": {
     "protocolVersion": "Giao thức MCP",
@@ -1322,7 +1325,17 @@
       "failedToGetMarketTags": "Lấy thẻ chợ thất bại",
       "failedToSearchMarketServers": "Tìm kiếm máy chủ chợ thất bại",
       "failedToFilterMarketServers": "Lọc máy chủ chợ thất bại",
-      "failedToProcessMcpbFile": "Xử lý file MCPB thất bại"
+      "failedToProcessMcpbFile": "Xử lý file MCPB thất bại",
+      "passkey_unavailable": "Chỉ có thể quản lý passkey từ tài khoản cục bộ đã đăng nhập",
+      "passkey_password_invalid": "Mật khẩu hiện tại không đúng",
+      "passkey_origin_invalid": "Không xác định được địa chỉ trang cho passkey",
+      "passkey_limit_reached": "Bạn đã đạt số lượng passkey tối đa",
+      "passkey_invalid_request": "Yêu cầu passkey không hợp lệ",
+      "passkey_challenge_invalid": "Yêu cầu passkey đã hết hạn. Vui lòng thử lại",
+      "passkey_already_registered": "Passkey này đã được đăng ký",
+      "passkey_verification_failed": "Không thể xác minh passkey",
+      "passkey_not_found": "Không tìm thấy passkey",
+      "passkey_login_failed": "Đăng nhập bằng passkey thất bại"
     },
     "success": {
       "serverCreated": "Tạo máy chủ thành công",
@@ -1601,5 +1614,39 @@
     "lifetime": "Thời hạn chấp thuận (giây)",
     "lifetimeDescription": "Thời hạn cố định từ khi chấp thuận: 1–31536000 giây (mặc định 1209600, 14 ngày). Làm mới mã thông báo không kéo dài thời hạn.",
     "invalidLifetime": "Nhập số giây nguyên từ 1 đến 31536000."
+  },
+  "passkeys": {
+    "title": "Passkey",
+    "description": "Đăng nhập không cần mật khẩu bằng vân tay, khuôn mặt, khóa màn hình của thiết bị hoặc khóa bảo mật.",
+    "passwordChangeNote": "Giống các phiên đăng nhập khác, passkey sẽ hết hiệu lực khi bạn đổi mật khẩu. Hãy thêm lại sau đó.",
+    "add": "Thêm passkey",
+    "nameLabel": "Tên",
+    "namePlaceholder": "VD: Laptop công ty",
+    "currentPassword": "Mật khẩu hiện tại",
+    "confirmHint": "Xác nhận mật khẩu, sau đó làm theo hướng dẫn của trình duyệt để tạo passkey.",
+    "create": "Tạo passkey",
+    "waiting": "Đang chờ thiết bị của bạn…",
+    "cancel": "Hủy",
+    "loading": "Đang tải passkey…",
+    "empty": "Bạn chưa có passkey nào. Thêm một passkey để đăng nhập không cần nhập mật khẩu.",
+    "synced": "Đã đồng bộ",
+    "deviceBound": "Chỉ thiết bị này",
+    "site": "Trang",
+    "createdAt": "Ngày thêm",
+    "lastUsedAt": "Dùng lần cuối",
+    "never": "Chưa từng",
+    "remove": "Xóa",
+    "confirmRemove": "Xóa passkey \"{{name}}\"? Bạn sẽ không thể đăng nhập bằng passkey này nữa.",
+    "confirmRemoveButton": "Xóa passkey",
+    "added": "Đã thêm passkey. Giờ bạn có thể dùng nó để đăng nhập.",
+    "removed": "Đã xóa passkey.",
+    "failed": "Không thể tải danh sách passkey.",
+    "removeFailed": "Không thể xóa passkey.",
+    "registerFailed": "Không thể tạo passkey.",
+    "cancelled": "Việc tạo passkey đã bị hủy hoặc hết thời gian chờ.",
+    "alreadyRegistered": "Thiết bị này đã có passkey cho tài khoản của bạn.",
+    "insecureContext": "Passkey yêu cầu mở dashboard bằng tên miền qua HTTPS (hoặc trên localhost).",
+    "unsupported": "Trình duyệt này không hỗ trợ passkey.",
+    "unavailable": "Không thể dùng passkey vì hệ thống này chỉ cho phép đăng nhập một lần (SSO)."
   }
 }

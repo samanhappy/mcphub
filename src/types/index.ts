@@ -398,6 +398,35 @@ export interface OAuthClientApproval {
   expiresAt: string;
 }
 
+/**
+ * A WebAuthn credential (passkey) registered to a local dashboard user. Runtime
+ * state like OAuth approvals: kept out of declarative settings and exports.
+ */
+export interface UserPasskey {
+  id: string;
+  username: string;
+  /** Base64URL credential ID reported by the authenticator. */
+  credentialId: string;
+  /** Base64URL COSE public key. */
+  publicKey: string;
+  counter: number;
+  transports?: string[] | null;
+  /** Base64URL WebAuthn user handle, shared by all passkeys of one user. */
+  userHandle: string;
+  /** RP ID the credential is scoped to. */
+  rpId: string;
+  /**
+   * The owner's session version at registration. Like JWTs and OAuth grants, a
+   * passkey stops working when the password changes or the account is recreated.
+   */
+  sessionVersion: string;
+  name: string;
+  deviceType: 'singleDevice' | 'multiDevice';
+  backedUp: boolean;
+  createdAt: string;
+  lastUsedAt?: string | null;
+}
+
 // OAuth Authorization Code (for MCPHub's authorization server)
 export interface IOAuthAuthorizationCode {
   code: string; // Authorization code

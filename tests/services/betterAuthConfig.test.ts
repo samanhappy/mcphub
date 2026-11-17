@@ -572,6 +572,18 @@ describe('betterAuthConfig', () => {
       expect(isApiAuthExemptPath('/auth/login', { basePath: '/api/auth/better' })).toBe(true);
     });
 
+    it('exempts only the public passkey sign-in endpoints', async () => {
+      const isApiAuthExemptPath = await loadHelper();
+      const config = { basePath: '/api/auth/better' };
+
+      expect(isApiAuthExemptPath('/auth/passkey/options', config)).toBe(true);
+      expect(isApiAuthExemptPath('/auth/passkey/login', config)).toBe(true);
+      // Managing passkeys stays behind the session check
+      expect(isApiAuthExemptPath('/auth/passkeys', config)).toBe(false);
+      expect(isApiAuthExemptPath('/auth/passkeys/registration/options', config)).toBe(false);
+      expect(isApiAuthExemptPath('/auth/passkey/login/extra', config)).toBe(false);
+    });
+
     it('exempts better-auth paths mounted under /api using their base path', async () => {
       const isApiAuthExemptPath = await loadHelper();
 
