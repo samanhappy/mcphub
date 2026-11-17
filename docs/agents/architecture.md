@@ -5,7 +5,7 @@ Read this guide when changing runtime wiring, MCP connections, HTTP routing, aut
 ## Runtime map
 
 - `src/index.ts` starts the process and `src/server.ts` owns `AppServer` initialization, route registration, and shutdown.
-- `src/services/mcpService.ts` owns the lifecycle of upstream MCP clients.
+- `src/services/mcpService.ts` wires upstream clients and MCP request handlers. `mcpConnectionLifecycle.ts` manages runtime shutdown and on-demand wake/idle transitions; `mcpStdioLifecycle.ts` owns process-tree termination and draining. `mcpTools.ts`, `mcpPrompts.ts`, and `mcpResources.ts` handle tool, prompt, and resource requests. Authorization wrappers stay in `mcpService.ts`; `mcpRequestScope.ts` bounds request-local server projections.
 - `src/routes/` defines HTTP routes; `src/controllers/` implements resource handlers.
 - `src/dao/` provides file-backed persistence by default; `src/db/` provides the optional TypeORM/PostgreSQL backend.
 - `src/clients/` contains upstream MCP client wrappers.
