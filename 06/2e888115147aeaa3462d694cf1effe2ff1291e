@@ -1,0 +1,19 @@
+AGENTS.md
+  s_6656f4c3b0cf84::t_48721dba7e93bc 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "062e888115147aeaa3462d694cf1effe2ff1291e",
+  "prompts": {},
+  "sessions": {
+    "s_6656f4c3b0cf84": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ec1f-0183-7972-b3fb-230137bd7635",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
