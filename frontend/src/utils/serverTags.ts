@@ -79,3 +79,12 @@ export const buildTagFilterOptions = (
 
 export const isTagCommitKey = (key: string, isComposing: boolean): boolean =>
   !isComposing && (key === 'Enter' || key === ',');
+
+export const shouldClearTagFilter = (
+  selectedKey: string,
+  hasLoadedServers: boolean,
+  allTagOptions: readonly ServerTagOption[],
+): boolean =>
+  Boolean(selectedKey) &&
+  hasLoadedServers &&
+  !allTagOptions.some(({ tag }) => tagKey(tag) === selectedKey);

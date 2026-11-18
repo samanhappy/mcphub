@@ -5,6 +5,7 @@ import {
   getServerTagOptions,
   isTagCommitKey,
   serverHasTag,
+  shouldClearTagFilter,
 } from '../../frontend/src/utils/serverTags';
 
 const makeTool = (name: string): Tool => ({
@@ -224,5 +225,23 @@ describe('tag filter review fixes (#1506)', () => {
     expect(isTagCommitKey('Enter', false)).toBe(true);
     expect(isTagCommitKey(',', false)).toBe(true);
     expect(isTagCommitKey('a', false)).toBe(false);
+  });
+});
+
+describe('shouldClearTagFilter (#1506)', () => {
+  const options = [{ tag: 'DB', count: 1 }];
+
+  it('keeps a shared ?tag= link until the first successful list load', () => {
+    expect(shouldClearTagFilter('db', false, [])).toBe(false);
+  });
+
+  it('clears a stale tag after a successful load, including an empty list', () => {
+    expect(shouldClearTagFilter('db', true, [])).toBe(true);
+    expect(shouldClearTagFilter('missing', true, options)).toBe(true);
+  });
+
+  it('keeps a tag that still exists and ignores an empty selection', () => {
+    expect(shouldClearTagFilter('db', true, options)).toBe(false);
+    expect(shouldClearTagFilter('', true, [])).toBe(false);
   });
 });

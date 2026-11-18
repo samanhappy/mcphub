@@ -23,6 +23,7 @@ import {
   buildTagFilterOptions,
   getServerTagOptions,
   serverHasTag,
+  shouldClearTagFilter,
   tagKey,
 } from '@/utils/serverTags';
 
@@ -35,6 +36,7 @@ const ServersPage: React.FC = () => {
     error,
     setError,
     isLoading,
+    hasLoadedServers,
     currentPage,
     serversPerPage,
     setCurrentPage,
@@ -94,14 +96,10 @@ const ServersPage: React.FC = () => {
   const allTagOptions = useMemo(() => getServerTagOptions(allServers), [allServers]);
 
   useEffect(() => {
-    if (
-      tagFilter &&
-      allServers.length > 0 &&
-      !allTagOptions.some((option) => tagKey(option.tag) === tagFilter)
-    ) {
+    if (shouldClearTagFilter(tagFilter, hasLoadedServers, allTagOptions)) {
       setTagFilter('');
     }
-  }, [allServers.length, allTagOptions, tagFilter, setTagFilter]);
+  }, [hasLoadedServers, allTagOptions, tagFilter, setTagFilter]);
 
   // Filter against the full list and paginate the filtered result client-side,
   // so status filters reach servers that live on other pagination pages.

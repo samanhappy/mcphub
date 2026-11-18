@@ -47,6 +47,7 @@ interface ServerContextType {
   error: string | null;
   setError: (error: string | null) => void;
   isLoading: boolean;
+  hasLoadedServers: boolean;
   fetchAttempts: number;
   pagination: PaginationInfo | null;
   currentPage: number;
@@ -77,6 +78,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [hasLoadedServers, setHasLoadedServers] = useState(false);
   const [fetchAttempts, setFetchAttempts] = useState(0);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,6 +126,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setServers([]);
       setAllServers([]);
       setIsInitialLoading(false);
+      setHasLoadedServers(false);
       setError(null);
       return;
     }
@@ -156,6 +159,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastFetchTimeRef.current = Date.now();
         applyServerResponse(response);
         setIsInitialLoading(false);
+        setHasLoadedServers(true);
         setFetchAttempts(0);
         setError(null);
       } catch (err) {
@@ -439,6 +443,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     error,
     setError,
     isLoading: isInitialLoading,
+    hasLoadedServers,
     fetchAttempts,
     pagination,
     currentPage,
