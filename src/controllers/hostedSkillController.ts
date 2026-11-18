@@ -7,10 +7,10 @@ import {
   removeSkill,
   saveSkillSnapshot,
   SkillInputError,
+  skillsAvailable,
   updateSkillPublication,
 } from '../services/hostedSkillCatalog.js';
 import { importGitHubSkill, importSkillDirectory } from '../services/hostedSkillImport.js';
-import { skillsAvailable } from '../services/mcpSkills.js';
 import { logger } from '../utils/logger.js';
 
 const failure = (res: Response, status: number, message: string) =>

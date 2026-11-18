@@ -56,8 +56,8 @@ import {
 import { preserveListFreshness, remainingListTtl } from '../utils/listFreshness.js';
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
-import { isHostedSkillUri } from './hostedSkillCatalog.js';
-import { readHostedSkillResource, registerSkillHandlers, skillsAvailable } from './mcpSkills.js';
+import { isHostedSkillUri, skillsAvailable } from './hostedSkillCatalog.js';
+import { readHostedSkillResource, registerSkillHandlers } from './mcpSkills.js';
 import { revalidateUpstreamList, type UpstreamList } from './upstreamListRefresh.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import {

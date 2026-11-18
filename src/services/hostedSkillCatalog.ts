@@ -4,12 +4,16 @@ import fs from 'node:fs';
 import { extname } from 'node:path';
 import { CORE_SCHEMA, load } from 'js-yaml';
 import { getSettingsPath } from '../config/index.js';
+import { isReplicaMode } from '../utils/replicaMode.js';
+import { isHostedModeEnabled } from './hostedMode.js';
 import type {
   HostedSkill,
   HostedSkillSource,
   SkillEntry,
   SkillPublication,
 } from '../types/hostedSkill.js';
+
+export const skillsAvailable = () => !isReplicaMode() && !isHostedModeEnabled();
 
 export const MAX_SKILL_FILES = 512;
 export const MAX_SKILL_BYTES = 16 * 1024 * 1024;

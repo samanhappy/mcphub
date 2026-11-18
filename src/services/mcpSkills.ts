@@ -2,14 +2,16 @@ import { fromJsonSchema, ProtocolError, type Server } from '@modelcontextprotoco
 import { getGroupDao } from '../dao/DaoFactory.js';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
-import { isReplicaMode } from '../utils/replicaMode.js';
-import { isHostedModeEnabled } from './hostedMode.js';
 import { UserContextService } from './userContextService.js';
 import type { SkillPublication } from '../types/hostedSkill.js';
-import { findSkillSnapshot, listSkillSnapshots, readSkillFile } from './hostedSkillCatalog.js';
+import {
+  findSkillSnapshot,
+  listSkillSnapshots,
+  readSkillFile,
+  skillsAvailable,
+} from './hostedSkillCatalog.js';
 
 export const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
-export const skillsAvailable = () => !isReplicaMode() && !isHostedModeEnabled();
 
 const cache = { ttlMs: 0, cacheScope: 'private' as const };
 const unknownSkill = () => new ProtocolError(-32602, 'Unknown Skill or resource');
