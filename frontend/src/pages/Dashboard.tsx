@@ -40,7 +40,7 @@ const Stat: React.FC<{ label: string; value: React.ReactNode; tone?: 'ok' | 'war
           letterSpacing: '-0.02em',
           lineHeight: 1.1,
           marginTop: 8,
-          color: toneColor,
+          color: value === 0 ? 'var(--hub-ink)' : toneColor,
         }}
       >
         {value}

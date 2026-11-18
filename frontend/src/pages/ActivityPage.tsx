@@ -218,11 +218,13 @@ const ActivityPage: React.FC = () => {
                 marginTop: 6,
                 letterSpacing: '-0.02em',
                 color:
-                  s.tone === 'ok'
-                    ? 'oklch(0.4 0.13 145)'
-                    : s.tone === 'err'
-                      ? 'oklch(0.45 0.18 25)'
-                      : 'var(--hub-ink)',
+                  s.value === 0
+                    ? 'var(--hub-ink)'
+                    : s.tone === 'ok'
+                      ? 'oklch(0.4 0.13 145)'
+                      : s.tone === 'err'
+                        ? 'oklch(0.45 0.18 25)'
+                        : 'var(--hub-ink)',
               }}
             >
               {s.value}
