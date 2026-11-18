@@ -150,6 +150,8 @@ import { isReplicaMode } from '../utils/replicaMode.js';
 import { getBetterAuthUser } from '../controllers/betterAuthController.js';
 import {
   getOpenAPISpec,
+  getScopedOpenAPISpec,
+  executeScopedOpenAPITool,
   getOpenAPIServers,
   getOpenAPIStats,
   executeToolViaOpenAPI,
@@ -593,6 +595,17 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.get(`${config.basePath}/discovery/servers/:name/install`, getDiscoveryServerInstall);
   app.get(`${config.basePath}/discovery/categories`, listDiscoveryCategories);
   app.get(`${config.basePath}/discovery/tags`, listDiscoveryTags);
+
+  const openAPIPrefix = `${config.basePath}/openapi`;
+  const openAPISpecPaths = ['', '/:group'].flatMap((scope) =>
+    ['json', 'yaml'].map((format) => `${openAPIPrefix}${scope}/openapi.${format}`),
+  );
+  const openAPIToolPaths = ['', '/:group'].map(
+    (scope) => `${openAPIPrefix}${scope}/tools/:serverName/:toolName`,
+  );
+  app.get(openAPISpecPaths, mcpConnectionRateLimiter, getScopedOpenAPISpec);
+  app.get(openAPIToolPaths, mcpConnectionRateLimiter, executeScopedOpenAPITool);
+  app.post(openAPIToolPaths, mcpConnectionRateLimiter, executeScopedOpenAPITool);
 
   // OpenAPI generation endpoints
   app.get(`${config.basePath}/api/openapi.json`, getOpenAPISpec);

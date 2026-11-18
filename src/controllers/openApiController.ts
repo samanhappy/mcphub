@@ -1,18 +1,29 @@
-import { Request, Response } from 'express';
+import { Request, RequestHandler, Response } from 'express';
 import { dump as dumpYaml } from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
 import {
   generateOpenAPISpec,
   getAvailableServers,
   getToolStats,
+  getScopedOpenAPITools,
+  OpenAPIRouteScope,
   OpenAPIGenerationOptions,
 } from '../services/openApiGeneratorService.js';
-import { getServerByName } from '../services/mcpService.js';
+import { getServerByName, getServersInfo, handleCallToolRequest } from '../services/mcpService.js';
 import { getGroupByIdOrName } from '../services/groupService.js';
-import { getNameSeparator } from '../config/index.js';
+import config, { getNameSeparator } from '../config/index.js';
 import { convertParametersToTypes } from '../utils/parameterConversion.js';
 import { logger } from '../utils/logger.js';
 import { isReservedStagingName } from '../services/fileStaging/tools.js';
+import { getServerDao, getSystemConfigDao } from '../dao/index.js';
+import { findBearerScopeGroup, validateBearerAuth } from '../services/sseService.js';
+import { UserContextService } from '../services/userContextService.js';
+import { RequestContextService } from '../services/requestContextService.js';
+import { withRequestServers } from '../services/mcpRequestScope.js';
+import { getDataService } from '../services/services.js';
+import { canAccessGroupRoute } from '../utils/groupAccess.js';
+import { normalizeToolNameForServer } from '../utils/mcpRouteNames.js';
+import { getToolPolicy } from '../services/toolPolicyService.js';
 
 /**
  * Controller for OpenAPI generation endpoints
@@ -123,9 +134,6 @@ export const executeToolViaOpenAPI = async (req: Request, res: Response): Promis
     // Decode URL-encoded parameters to handle slashes in server/tool names
     const serverName = decodeURIComponent(req.params.serverName);
     let toolName = decodeURIComponent(req.params.toolName);
-
-    // Import handleCallToolRequest function
-    const { handleCallToolRequest } = await import('../services/mcpService.js');
 
     // Get the server info to access the tool's input schema
     const serverInfo = getServerByName(serverName);
@@ -259,3 +267,134 @@ export const getGroupOpenAPISpec = async (req: Request, res: Response): Promise<
     });
   }
 };
+
+const withOpenAPIRoute =
+  (
+    handler: (req: Request, res: Response, scope: OpenAPIRouteScope) => Promise<void>,
+  ): RequestHandler =>
+  async (req, res, next) => {
+    try {
+      res.setHeader('Cache-Control', 'private, no-store');
+      const routeName = req.params.group;
+      const group = routeName ? await findBearerScopeGroup(routeName) : null;
+      const auth = await validateBearerAuth(req, group);
+      if (!auth.valid) {
+        if (auth.reason === 'unavailable') res.setHeader('Retry-After', '30');
+        const status =
+          auth.reason === 'unavailable' ? 503 : auth.reason === 'forbidden' ? 403 : 401;
+        res.status(status).json({ error: 'OpenAPI authentication failed' });
+        return;
+      }
+
+      const routing = (await getSystemConfigDao().get())?.routing;
+      if (!routeName && routing?.enableGlobalRoute === false) {
+        res.status(403).json({ error: 'Global routes are disabled' });
+        return;
+      }
+      if (
+        group &&
+        (!canAccessGroupRoute(group, auth.user) ||
+          (group.id !== routeName && routing?.enableGroupNameRoute === false))
+      ) {
+        res.status(403).json({ error: 'Group access denied' });
+        return;
+      }
+
+      const members =
+        group &&
+        new Set(group.servers.map((entry) => (typeof entry === 'string' ? entry : entry.name)));
+      const excluded = new Set(auth.excludedServerNames);
+      const visible = getDataService().filterData(await getServerDao().findAll(), auth.user);
+      const serverNames = new Set<string>(
+        visible
+          .filter(
+            (server) =>
+              server.enabled !== false &&
+              !excluded.has(server.name) &&
+              (members ? members.has(server.name) : !routeName || server.name === routeName),
+          )
+          .map((server) => server.name),
+      );
+      if (routeName && !group && !serverNames.has(routeName)) {
+        res.status(404).json({ error: 'Server not found' });
+        return;
+      }
+
+      const contexts = RequestContextService.getInstance();
+      await UserContextService.getInstance().runWithContext(
+        () =>
+          contexts.runWithRequestContext(req, async () => {
+            contexts.setBearerKeyContext(auth.keyId, auth.keyName);
+            contexts.setKeyKindContext(auth.kind);
+            contexts.setBearerKeyExclusions(auth.excludedServerNames);
+            contexts.setHostedAuthContext(auth.hostedAuth);
+            contexts.setUsernameContext(auth.user?.username);
+            // REST requests never inherit a route or session from the MCP transport.
+            contexts.setGroupContext('');
+            const context = contexts.getRequestContext()!;
+            context.stateless = true;
+            context.sessionId = undefined;
+            const policy = await getToolPolicy(undefined, group?.id);
+            await handler(req, res, { serverNames, group, routeName, policy });
+          }),
+        auth.user ?? null,
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+export const getScopedOpenAPISpec = withOpenAPIRoute(async (req, res, scope) => {
+  const routeLabel = scope.group?.name ?? scope.routeName;
+  const options: OpenAPIGenerationOptions = {
+    scope,
+    title:
+      typeof req.query.title === 'string'
+        ? req.query.title
+        : routeLabel
+          ? `${routeLabel} MCP API`
+          : undefined,
+    description: typeof req.query.description === 'string' ? req.query.description : undefined,
+    version: typeof req.query.version === 'string' ? req.query.version : undefined,
+    serverUrl: typeof req.query.serverUrl === 'string' ? req.query.serverUrl : undefined,
+    serverFilter: typeof req.query.servers === 'string' ? req.query.servers.split(',') : undefined,
+  };
+  if (!scope.routeName && typeof req.query.group === 'string') {
+    options.groupFilter = req.query.group;
+  }
+  sendOpenAPISpec(req, res, await generateOpenAPISpec(options));
+});
+
+export const executeScopedOpenAPITool = withOpenAPIRoute(async (req, res, scope) => {
+  // Express also dispatches HEAD to GET handlers unless a HEAD route matches first.
+  if (req.method === 'HEAD') {
+    res.setHeader('Allow', 'GET, POST');
+    res.sendStatus(405);
+    return;
+  }
+  if (config.readonly && req.method === 'POST') {
+    res.status(403).json({ error: 'POST is disabled in read-only mode' });
+    return;
+  }
+  const { serverName, toolName } = req.params;
+  const runtime = scope.serverNames.has(serverName) ? getServerByName(serverName) : undefined;
+  const server = runtime && (await getServersInfo()).find((info) => info.name === serverName);
+  const tools = server ? getScopedOpenAPITools(scope, serverName, server.tools) : [];
+  const tool = tools.find(
+    (entry) => normalizeToolNameForServer(serverName, entry.name) === toolName,
+  );
+  if (!runtime || !tool) {
+    res.status(404).json({ error: 'Tool not found' });
+    return;
+  }
+
+  const args = req.method === 'GET' ? req.query : req.body || {};
+  const result = await withRequestServers([runtime], () =>
+    handleCallToolRequest(
+      { params: { name: tool.name, arguments: convertParametersToTypes(args, tool.inputSchema) } },
+      { server: serverName, headers: req.headers },
+      scope.group?.id,
+    ),
+  );
+  res.json(result);
+});

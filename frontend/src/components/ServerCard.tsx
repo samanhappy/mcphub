@@ -456,7 +456,7 @@ const ServerCard = ({
   })();
 
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
-  const serverOpenApiEndpoint = `${baseUrl}/api/${server.name}`;
+  const serverOpenApiEndpoint = `${baseUrl}/openapi/${encodeURIComponent(server.name)}`;
 
   const copyEndpoint = async (value: string) => {
     const ok = await copyText(value);
@@ -1011,7 +1011,7 @@ const ServerCard = ({
                   </button>
                 </div>
                 <div className="hub-endpoint" style={{ height: 26 }}>
-                  <div className="hub-endpoint-label">/api/</div>
+                  <div className="hub-endpoint-label">/openapi/</div>
                   <div
                     className="hub-endpoint-url"
                     title={serverOpenApiEndpoint}

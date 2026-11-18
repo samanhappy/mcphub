@@ -4621,9 +4621,10 @@ const withToolPolicy = async (
   request: any,
   extra: any,
   invocation: boolean,
+  policyGroupId?: string,
 ) => {
   const group = getMcpRequestGroup(extra);
-  const policy = await getToolPolicy(group);
+  const policy = await getToolPolicy(group, policyGroupId);
   if (!policy.active) return handler(request, extra);
   const { filteredServerInfos: candidates, serverConfigsByName } =
     await getFilteredServerInfosForGroup(getGroupLookupName(group));
@@ -4792,7 +4793,7 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   });
   return context.runWithContext(() => withRequestServers(visible, action), user ?? null);
 };
-const handleOriginalToolCallRequest = (request: any, extra: any) => {
+const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?: string) => {
   // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
   // past the outer dispatch, and the hub namespace is never reachable from a
   // non-MCP caller (the OpenAPI controller rejects it as well).
@@ -4808,15 +4809,17 @@ const handleOriginalToolCallRequest = (request: any, extra: any) => {
   return isReservedStagingName(request?.params?.name)
     ? handleHubStagingCall(request, extra)
     : observeToolCall(() =>
-        withReplicaServerScope(() => withToolPolicy(callToolWithPrincipal, request, extra, true)),
+        withReplicaServerScope(() =>
+          withToolPolicy(callToolWithPrincipal, request, extra, true, policyGroupId),
+        ),
       );
 };
-export const handleCallToolRequest = async (request: any, extra: any) => {
+export const handleCallToolRequest = async (request: any, extra: any, policyGroupId?: string) => {
   if (
     isReservedStagingName(request?.params?.name) ||
     isReservedStagingName(request?.params?.arguments?.toolName)
   ) {
-    return handleOriginalToolCallRequest(request, extra);
+    return handleOriginalToolCallRequest(request, extra, policyGroupId);
   }
   if ((await getSystemConfigDao().get())?.normalizeToolNames === true && !extra?.server) {
     // Resolve through the caller's current catalog; never retain aliases across principals.
@@ -4827,7 +4830,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       request = { ...request, params: { ...request.params, name: original } };
     }
   }
-  return handleOriginalToolCallRequest(request, extra);
+  return handleOriginalToolCallRequest(request, extra, policyGroupId);
 };
 
 export const handleGetPromptRequest = withPrincipalServers(
