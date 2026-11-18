@@ -25,7 +25,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import {
   auth,
-  exchangeAuthorization,
+  fetchToken,
   refreshAuthorization,
   startAuthorization,
 } from '../clients/mcpSdkClient.js';
@@ -141,6 +141,13 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Get redirect URL for OAuth callback
    */
   get redirectUrl(): string {
+    const pendingUrl = this.serverConfig.oauth?.pendingAuthorization?.authorizationUrl;
+    if (this.serverConfig.type === 'openapi' && pendingUrl) {
+      // Redeem the code with the redirect URI used to start this flow.
+      const redirectUri = new URL(pendingUrl).searchParams.get('redirect_uri');
+      if (!redirectUri) throw new Error('Missing OpenAPI authorization redirect URI');
+      return redirectUri;
+    }
     return (
       resolvePreferredRedirectUris(this.serverConfig, this.getSystemInstallBaseUrl())[0] ??
       DEFAULT_OAUTH_REDIRECT_URI
@@ -400,15 +407,12 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     const pending = this.serverConfig.oauth?.pendingAuthorization;
     if (!pending?.codeVerifier || !pending.authorizationUrl)
       throw new Error('Missing OpenAPI authorization session');
-    const redirectUri = new URL(pending.authorizationUrl).searchParams.get('redirect_uri');
-    if (!redirectUri) throw new Error('Missing OpenAPI authorization redirect URI');
     await this.saveTokens(
-      await exchangeAuthorization(parameters.metadata.issuer, {
-        ...parameters,
+      await fetchToken(this, parameters.metadata.issuer, {
+        metadata: parameters.metadata,
+        resource: parameters.resource,
         authorizationCode: code,
         iss,
-        codeVerifier: pending.codeVerifier,
-        redirectUri,
         fetchFn: await createOAuthFetch(this.serverConfig, true),
       }),
     );
@@ -450,6 +454,7 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
             await refreshAuthorization(parameters.metadata.issuer, {
               ...parameters,
               refreshToken: oauth.refreshToken!,
+              allowInsecureTokenEndpoint: this.allowInsecureTokenEndpoint.bind(this),
               fetchFn: await createOAuthFetch(this.serverConfig, true),
             }),
           );

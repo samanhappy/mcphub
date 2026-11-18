@@ -913,3 +913,56 @@ test('OpenAPI personal OAuth exchanges PKCE codes and uses isolated, rotated tok
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test.each([true, false])(
+  'OpenAPI code exchange and refresh honor the non-loopback HTTP exception (%s)',
+  async (allowInsecureTokenEndpoint) => {
+    const originalDefinition = structuredClone(mockDefinition);
+    try {
+      Object.assign(mockDefinition, {
+        type: 'openapi',
+        url: undefined,
+        openapi: { url: 'https://api.example.com/openapi.json' },
+        oauth: {
+          identityMode: 'personal',
+          clientId: 'client',
+          authorizationEndpoint: issuer + '/authorize',
+          tokenEndpoint: issuer + '/token',
+          allowInsecureTokenEndpoint,
+        },
+      });
+      const alice = await provider('alice');
+      await alice.provider.startOpenApiAuthorization();
+      const callback = await provider('alice');
+      const exchange = callback.provider.finishOpenApiAuthorization('alice');
+      if (allowInsecureTokenEndpoint) {
+        await expect(exchange).resolves.toBeUndefined();
+        expect(tokenRequests[0].get('grant_type')).toBe('authorization_code');
+      } else {
+        await expect(exchange).rejects.toThrow('Refusing to send credentials');
+        expect(tokenRequests).toHaveLength(0);
+      }
+
+      const seed = await provider('alice');
+      await seed.context.persistTokens('gitlab', {
+        accessToken: 'expired',
+        accessTokenExpiresAt: Date.now() - 1000,
+        refreshToken: 'refresh-alice',
+      });
+      const refresh = (await provider('alice')).provider.openApiAccessToken();
+      if (allowInsecureTokenEndpoint) {
+        await expect(refresh).resolves.toBe('token-alice');
+        expect(tokenRequests.map((body) => body.get('grant_type'))).toEqual([
+          'authorization_code',
+          'refresh_token',
+        ]);
+      } else {
+        await expect(refresh).rejects.toThrow('Refusing to send credentials');
+        expect(tokenRequests).toHaveLength(0);
+      }
+    } finally {
+      delete mockDefinition.openapi;
+      Object.assign(mockDefinition, originalDefinition);
+    }
+  },
+);
