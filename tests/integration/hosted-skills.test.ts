@@ -16,13 +16,17 @@ import {
   uploadSkillDirectory,
 } from '../../src/controllers/hostedSkillController.js';
 import { requireAdminMiddleware } from '../../src/utils/requireAdmin.js';
+import {
+  authenticatedRouteRateLimiter,
+  mcpConnectionRateLimiter,
+} from '../../src/utils/rateLimit.js';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
 
 const app = express();
 let server: ReturnType<typeof app.listen>;
 app.use(express.json());
-app.post('/mcp/:group?', sseUserContextMiddleware, handleMcpPostRequest);
-app.use('/api', (req, _res, next) => {
+app.post('/mcp/:group?', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
+app.use('/api', authenticatedRouteRateLimiter, (req, _res, next) => {
   Object.assign(req, { user: { isAdmin: req.get('X-Test-Admin') === 'yes' } });
   next();
 });
@@ -339,3 +343,34 @@ it.each(['100644', '120000'])(
     }
   },
 );
+
+const itWithFileSymlinks = process.platform === 'win32' ? it.skip : it;
+
+itWithFileSymlinks('ignores linked snapshots in the catalog', async () => {
+  const created = (await importDirectory([['SKILL.md', manifest]]).expect(201)).body.data;
+  await request(server)
+    .put(`/api/skills/${created.id}`)
+    .set('X-Test-Admin', 'yes')
+    .send({ enabled: true, global: true, groupIds: [] })
+    .expect(200);
+
+  const sidecar = path.join(directory, 'settings.json.skills', `${created.id}.json`);
+  const fixture = path.join(directory, 'linked-snapshot.json');
+  fs.renameSync(sidecar, fixture);
+  fs.symlinkSync(fixture, sidecar, 'file');
+  try {
+    const result = (await rpc('skills/list').expect(200)).body.result;
+    expect(result.skills.map(({ uri }: { uri: string }) => uri)).not.toContain(
+      created.files[0].uri,
+    );
+    expect((await rpc('skills/get', { uri: created.files[0].uri })).body.error.code).toBe(-32602);
+    await request(server)
+      .delete(`/api/skills/${created.id}`)
+      .set('X-Test-Admin', 'yes')
+      .expect(404);
+    expect(fs.existsSync(fixture)).toBe(true);
+  } finally {
+    fs.unlinkSync(sidecar);
+    fs.unlinkSync(fixture);
+  }
+});

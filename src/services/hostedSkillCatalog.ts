@@ -1,7 +1,7 @@
 import { isUtf8 } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import { extname } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { CORE_SCHEMA, load } from 'js-yaml';
 import { getSettingsPath } from '../config/index.js';
 import { isReplicaMode } from '../utils/replicaMode.js';
@@ -148,22 +148,38 @@ export function buildSkillSnapshot(
   };
 }
 
-const storePath = () => `${getSettingsPath()}.skills`;
-const snapshotPath = (id: string) => `${storePath()}/${id}.json`;
+const storePath = () => resolve(`${getSettingsPath()}.skills`);
+
+function snapshotPath(root: string, id: string): string | undefined {
+  if (!skillIdPattern.test(id)) return;
+  const file = resolve(root, `${id}.json`);
+  if (file.startsWith(root + sep)) return file;
+}
 
 const readSnapshot = (id: string): Snapshot | undefined => {
-  if (!skillIdPattern.test(id)) return;
+  const file = snapshotPath(storePath(), id);
+  if (!file) return;
   try {
-    return JSON.parse(fs.readFileSync(snapshotPath(id), 'utf8'));
+    if (!fs.lstatSync(file).isFile()) return;
+    const flag = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0);
+    const fd = fs.openSync(file, flag);
+    try {
+      return JSON.parse(fs.readFileSync(fd, 'utf8'));
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && code !== 'ELOOP') throw error;
   }
 };
 
 const writeSnapshot = (snapshot: Snapshot) => {
-  fs.mkdirSync(storePath(), { recursive: true, mode: 0o700 });
-  const target = snapshotPath(snapshot.skill.id);
-  const temporary = `${target}.${randomUUID()}.tmp`;
+  const root = storePath();
+  const target = snapshotPath(root, snapshot.skill.id);
+  if (!target) throw new SkillInputError('Invalid Skill snapshot ID');
+  fs.mkdirSync(root, { recursive: true, mode: 0o700 });
+  const temporary = join(root, `${randomUUID()}.tmp`);
   try {
     fs.writeFileSync(temporary, JSON.stringify(snapshot), { flag: 'wx', mode: 0o600 });
     fs.renameSync(temporary, target);
@@ -217,8 +233,9 @@ export function updateSkillPublication(
 }
 
 export function removeSkill(id: string): boolean {
-  if (!readSnapshot(id)) return false;
-  fs.unlinkSync(snapshotPath(id));
+  const file = snapshotPath(storePath(), id);
+  if (!file || !readSnapshot(id)) return false;
+  fs.unlinkSync(file);
   return true;
 }
 
