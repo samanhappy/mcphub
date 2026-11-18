@@ -169,7 +169,11 @@ const buildOpenApiConfig = (formData: ServerFormData): NonNullable<ServerConfig[
     }
   }
 
-  if (formData.openapi?.securityType && formData.openapi.securityType !== 'none') {
+  if (
+    formData.oauth?.identityMode !== 'personal' &&
+    formData.openapi?.securityType &&
+    formData.openapi.securityType !== 'none'
+  ) {
     openapi.security = {
       type: formData.openapi.securityType,
       ...(formData.openapi.securityType === 'apiKey' && {

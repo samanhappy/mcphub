@@ -249,6 +249,7 @@
       "securityApiKey": "API Anahtarı",
       "securityHttp": "HTTP Kimlik Doğrulaması",
       "securityOAuth2": "OAuth 2.0",
+      "securityPersonalOAuth": "Kişisel OAuth",
       "securityOpenIdConnect": "OpenID Connect",
       "securityDetect": "Spec'ten algıla",
       "securityDetecting": "Algılanıyor…",

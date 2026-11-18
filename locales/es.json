@@ -249,6 +249,7 @@
       "securityApiKey": "Clave de API",
       "securityHttp": "Autenticación HTTP",
       "securityOAuth2": "OAuth 2.0",
+      "securityPersonalOAuth": "OAuth personal",
       "securityOpenIdConnect": "OpenID Connect",
       "securityDetect": "Detectar desde la especificación",
       "securityDetecting": "Detectando…",

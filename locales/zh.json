@@ -249,6 +249,7 @@
       "securityApiKey": "API 密钥",
       "securityHttp": "HTTP 认证",
       "securityOAuth2": "OAuth 2.0",
+      "securityPersonalOAuth": "个人 OAuth",
       "securityOpenIdConnect": "OpenID Connect",
       "securityDetect": "从规范检测",
       "securityDetecting": "检测中…",
