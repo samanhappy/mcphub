@@ -1,0 +1,56 @@
+src/services/mcpService.ts
+  s_8bad91a49a8750::t_f39ac309e417f5 4812,4814
+  s_8bad91a49a8750::t_05c5d2c12f1d7e 4624,4627,4796,4813,4817,4822,4833
+docs/development/architecture.mdx
+  s_8bad91a49a8750::t_f39ac309e417f5 94,111
+  s_8bad91a49a8750::t_d99651113fada1 112
+docs/api-reference/servers.mdx
+  s_8bad91a49a8750::t_f39ac309e417f5 360
+src/controllers/openApiController.ts
+  s_8bad91a49a8750::t_011b1b8243dbf5 1,8-9,12,14,18-26,270,288,302,322,346-350,357-382,386-395,397-400
+  s_8bad91a49a8750::t_f39ac309e417f5 271-287,289-301,303-321,323-336,338-345,351-356,383-385
+  s_8bad91a49a8750::t_2a330a49d79e2c 337,396
+frontend/src/components/ServerCard.tsx
+  s_8bad91a49a8750::t_f39ac309e417f5 459,1014
+docs/api-reference/openapi.mdx
+  s_8bad91a49a8750::t_b8d436b267b6fa 284
+  s_8bad91a49a8750::t_f39ac309e417f5 16,25-26,29-30,34,67-68,71-72,76,91,151-152,155-156,163,189-190,204,207,224,247-249
+src/services/openApiGeneratorService.ts
+  s_8bad91a49a8750::t_a7efc8178a12dc 2,9-12,29,32-35,37-38,40-42,44,47-59,64-65,218,258,260,266,316-320
+  s_8bad91a49a8750::t_011b1b8243dbf5 6,13,36,39,43,259,311-315
+  s_8bad91a49a8750::t_f39ac309e417f5 45-46,60-63
+src/services/sseService.ts
+  s_8bad91a49a8750::t_f39ac309e417f5 296-297,317-318
+  s_8bad91a49a8750::t_011b1b8243dbf5 290,475-476,479,567,578,620
+  s_8bad91a49a8750::t_a7efc8178a12dc 28,282-289,291,477-478,480,579-580
+frontend/src/components/GroupCard.tsx
+  s_8bad91a49a8750::t_f39ac309e417f5 49,86-87,341-342
+docs/zh/api-reference/openapi.mdx
+  s_8bad91a49a8750::t_f39ac309e417f5 25-26,29-30,34,67-68,71-72,76,151-152,155-156,163,185-186,200,203,220,243-245
+  s_8bad91a49a8750::t_b8d436b267b6fa 16,91,280
+src/routes/index.ts
+  s_8bad91a49a8750::t_f39ac309e417f5 153-154,599-608
+  s_8bad91a49a8750::t_13a478fbdbd2cd 609
+tests/integration/bearer-exclude-scope.test.ts
+  s_8bad91a49a8750::t_d7f17d7800a061 10,35-36,41,57,71,76-77,84-85,87,95-96,105-106,122,249,292-301,309-315,319-321,333-337,353-356
+  s_8bad91a49a8750::t_f39ac309e417f5 11,74-75,78-83,88-94,97-104,107-121,254-291,302-308,316-318,322-332,338-352
+  s_8bad91a49a8750::t_becc033283fb0f 23-24,168-170,245-248,250-253
+src/services/toolPolicyService.ts
+  s_8bad91a49a8750::t_55c560c471f2ca 9,25,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8af08def25d135d7253c5f5ddb46037c8b01adad",
+  "prompts": {},
+  "sessions": {
+    "s_8bad91a49a8750": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1eee1-b875-74e1-a3a2-9109cd5005b9",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
