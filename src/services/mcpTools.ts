@@ -566,7 +566,7 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     };
 
     const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
-      const policy = await getToolPolicy(group);
+      const policy = await getToolPolicy(group, extra?.policyGroupId);
       const decision = policy.authorize(serverName, toolName);
       policyAudit = { ...decision, serverId: policy.serverId(serverName), groupId: policy.groupId };
       logger.log('Tool policy decision', {

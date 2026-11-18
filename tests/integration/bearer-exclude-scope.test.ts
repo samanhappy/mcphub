@@ -139,6 +139,15 @@ beforeAll(async () => {
         skipAuth: false,
       },
       oauthServer: { enabled: false },
+      toolPolicies: [
+        {
+          id: 'team-identity',
+          effect: 'allow',
+          keyId: 'group-key',
+          groupId: 'team',
+          tool: 'identity',
+        },
+      ],
     },
   };
   fs.writeFileSync(process.env.MCPHUB_SETTING_PATH, JSON.stringify(settings));

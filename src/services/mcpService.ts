@@ -4810,7 +4810,13 @@ const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?:
     ? handleHubStagingCall(request, extra)
     : observeToolCall(() =>
         withReplicaServerScope(() =>
-          withToolPolicy(callToolWithPrincipal, request, extra, true, policyGroupId),
+          withToolPolicy(
+            callToolWithPrincipal,
+            request,
+            policyGroupId === undefined ? extra : { ...extra, policyGroupId },
+            true,
+            policyGroupId,
+          ),
         ),
       );
 };
