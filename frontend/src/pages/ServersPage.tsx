@@ -12,8 +12,14 @@ import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
 import { serverCostRevision } from '@/utils/costRevision';
 import { useCostData } from '@/hooks/useCostData';
-import { selectServerPage, getServerFilterCounts, type ServerFilter } from '@/utils/serverFilters';
+import {
+  filterServers,
+  selectServerPage,
+  getServerFilterCounts,
+  type ServerFilter,
+} from '@/utils/serverFilters';
 import { resolveDuplicateResponse } from '@/utils/serverDuplicate';
+import { getServerTagOptions, serverHasTag } from '@/utils/serverTags';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -49,14 +55,36 @@ const ServersPage: React.FC = () => {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [filter, setFilter] = useState<ServerFilter>('all');
   const [search, setSearch] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
 
   const counts = useMemo(() => getServerFilterCounts(allServers), [allServers]);
+  const tabCounts = useMemo(
+    () =>
+      tagFilter
+        ? getServerFilterCounts(allServers.filter((server) => serverHasTag(server, tagFilter)))
+        : counts,
+    [allServers, tagFilter, counts],
+  );
+  const tagOptions = useMemo(
+    () => getServerTagOptions(filterServers(allServers, filter)),
+    [allServers, filter],
+  );
+  const allTagOptions = useMemo(() => getServerTagOptions(allServers), [allServers]);
+
+  useEffect(() => {
+    if (
+      tagFilter &&
+      !allTagOptions.some((option) => option.tag.toLowerCase() === tagFilter.toLowerCase())
+    ) {
+      setTagFilter('');
+    }
+  }, [allTagOptions, tagFilter]);
 
   // Filter against the full list and paginate the filtered result client-side,
   // so status filters reach servers that live on other pagination pages.
   const { servers: visibleServers, pagination: clientPagination } = useMemo(
-    () => selectServerPage(allServers, filter, search, currentPage, serversPerPage),
-    [allServers, filter, search, currentPage, serversPerPage],
+    () => selectServerPage(allServers, filter, search, currentPage, serversPerPage, tagFilter),
+    [allServers, filter, search, currentPage, serversPerPage, tagFilter],
   );
 
   // Sync currentPage when client-side pagination clamps it (filter/search narrows results).
@@ -220,10 +248,10 @@ const ServersPage: React.FC = () => {
         >
           {(
             [
-              ['all', t('common.all') || 'All', counts.all],
-              ['online', t('status.online'), counts.online],
-              ['issues', t('common.inactive') || 'Issues', counts.issues],
-              ['disabled', t('pages.dashboard.disabledServers') || 'Disabled', counts.disabled],
+              ['all', t('common.all') || 'All', tabCounts.all],
+              ['online', t('status.online'), tabCounts.online],
+              ['issues', t('common.inactive') || 'Issues', tabCounts.issues],
+              ['disabled', t('pages.dashboard.disabledServers') || 'Disabled', tabCounts.disabled],
             ] as [ServerFilter, string, number][]
           ).map(([k, l, n]) => (
             <button
@@ -246,6 +274,32 @@ const ServersPage: React.FC = () => {
           ))}
         </div>
 
+        {allTagOptions.length > 0 && (
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            aria-label={t('server.tagFilter')}
+            className="hub-card px-2 text-[12px] outline-none"
+            style={{
+              height: 30,
+              maxWidth: 200,
+              background: 'var(--hub-surface)',
+              color: tagFilter ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
+            }}
+          >
+            <option value="">{t('server.allTags')}</option>
+            {tagOptions.map(({ tag, count }) => (
+              <option key={tag.toLowerCase()} value={tag}>
+                {tag} ({count})
+              </option>
+            ))}
+            {tagFilter &&
+              !tagOptions.some(
+                (option) => option.tag.toLowerCase() === tagFilter.toLowerCase(),
+              ) && <option value={tagFilter}>{tagFilter} (0)</option>}
+          </select>
+        )}
+
         <div
           className="hub-card flex items-center gap-2 px-2.5 flex-1"
           style={{ height: 30, background: 'var(--hub-surface)', maxWidth: 360 }}
@@ -256,7 +310,7 @@ const ServersPage: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 bg-transparent outline-none text-[13px]"
             style={{ color: 'var(--hub-ink)' }}
-            placeholder={t('market.searchPlaceholder') || 'Search…'}
+            placeholder={t('server.searchPlaceholder') || 'Search…'}
           />
           {search && (
             <button onClick={() => setSearch('')} className="hub-icon-btn sm">

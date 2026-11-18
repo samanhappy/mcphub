@@ -44,6 +44,37 @@ const normalizeStringArray = (value?: string[]): string[] | undefined => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
+export const SERVER_TAG_MAX_LENGTH = 64;
+
+export const normalizeServerTags = (value: unknown): string[] | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value) || !value.every((tag) => typeof tag === 'string')) {
+    throw new ServerConfigValidationError('tags must be an array of strings');
+  }
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const raw of value as string[]) {
+    const tag = raw.trim().replace(/\s+/g, ' ');
+    if (!tag) {
+      continue;
+    }
+    if (tag.length > SERVER_TAG_MAX_LENGTH) {
+      throw new ServerConfigValidationError(
+        `tags must be at most ${SERVER_TAG_MAX_LENGTH} characters`,
+      );
+    }
+    const key = tag.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      tags.push(tag);
+    }
+  }
+  return tags.length > 0 ? tags : undefined;
+};
+
 const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
   const normalized = normalizeStringArray(value);
   return normalized ? Array.from(new Set(normalized)) : undefined;
@@ -388,6 +419,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const normalizedType = inferServerType(config);
   resolveUpstreamProtocolMode({ ...config, type: normalizedType });
   const description = trimToUndefined(config.description);
+  const tags = normalizeServerTags(config.tags);
   const owner = trimToUndefined(config.owner) ?? config.owner;
   const url = trimToUndefined(config.url);
   const command = trimToUndefined(config.command);
@@ -457,6 +489,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     protocolNegotiation: config.protocolNegotiation ?? undefined,
     credentialTemplate: validateCredentialTemplate({ ...config, type: normalizedType }),
     description,
+    tags,
     owner,
     visibility,
     sharedWithUsers,

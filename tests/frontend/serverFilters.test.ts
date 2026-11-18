@@ -1,5 +1,6 @@
 import { filterServers, getServerFilterCounts, selectServerPage } from '../../frontend/src/utils/serverFilters';
 import type { Server, Tool } from '../../frontend/src/types';
+import { getServerTagOptions } from '../../frontend/src/utils/serverTags';
 
 const makeTool = (name: string): Tool => ({
   name,
@@ -124,5 +125,55 @@ describe('selectServerPage', () => {
     expect(servers).toEqual([]);
     expect(pagination.total).toBe(0);
     expect(pagination.totalPages).toBe(1);
+  });
+});
+
+describe('server tag filtering (#1506)', () => {
+  const tagged = (
+    name: string,
+    tags: string[] | undefined,
+    status: Server['status'] = 'connected',
+  ): Server => ({ name, status, enabled: true, config: tags ? { tags } : {} });
+
+  const servers: Server[] = [
+    tagged('mongo-test', ['DB', 'test']),
+    tagged('mongo-prod', ['db', 'prod'], 'disconnected'),
+    tagged('github', ['dev-tools']),
+    tagged('plain', undefined),
+  ];
+
+  it('matches the tag filter case-insensitively and combines it with the status filter', () => {
+    expect(filterServers(servers, 'all', '', 'db').map((s) => s.name)).toEqual([
+      'mongo-test',
+      'mongo-prod',
+    ]);
+    expect(filterServers(servers, 'online', '', 'DB').map((s) => s.name)).toEqual(['mongo-test']);
+    expect(filterServers(servers, 'all', 'prod', 'db').map((s) => s.name)).toEqual(['mongo-prod']);
+  });
+
+  it('finds servers by tag text in the search box', () => {
+    expect(filterServers(servers, 'all', 'dev-tools').map((s) => s.name)).toEqual(['github']);
+    expect(filterServers(servers, 'all', 'TEST').map((s) => s.name)).toEqual(['mongo-test']);
+  });
+
+  it('applies the tag filter before pagination', () => {
+    const many = Array.from({ length: 12 }, (_, index) =>
+      tagged(`server-${index}`, index % 3 === 0 ? ['db'] : ['other']),
+    );
+
+    const { servers: page, pagination } = selectServerPage(many, 'all', '', 1, 5, 'db');
+
+    expect(page.map((s) => s.name)).toEqual(['server-0', 'server-3', 'server-6', 'server-9']);
+    expect(pagination.total).toBe(4);
+    expect(pagination.totalPages).toBe(1);
+  });
+
+  it('lists every tag once with its server count, ignoring case', () => {
+    expect(getServerTagOptions(servers)).toEqual([
+      { tag: 'DB', count: 2 },
+      { tag: 'dev-tools', count: 1 },
+      { tag: 'prod', count: 1 },
+      { tag: 'test', count: 1 },
+    ]);
   });
 });

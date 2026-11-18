@@ -207,6 +207,76 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
     expect(mockClientConnect).toHaveBeenCalledTimes(1);
   });
 
+  it('applies a tags-only change from another replica without reconnecting (#1506)', async () => {
+    const base = { name: 'test-server', enabled: true, command: 'node', args: ['server.js'] };
+    setServerInfosForTest([
+      {
+        name: 'test-server',
+        enabled: true,
+        status: 'connected',
+        error: null,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: 1,
+        config: {
+          ...base,
+          tags: ['db'],
+          owner: undefined,
+          visibility: undefined,
+          sharedWithUsers: undefined,
+          sharedWithUserGroups: undefined,
+        },
+      } as any,
+    ]);
+
+    await reconcileReplicaServers([{ ...base, tags: ['db', 'prod'] }]);
+
+    expect(mockClientConnect).not.toHaveBeenCalled();
+    expect(getServerByName('test-server')?.status).toBe('connected');
+    expect(getServerByName('test-server')?.config?.tags).toEqual(['db', 'prod']);
+
+    await reconcileReplicaServers([{ ...base, tags: ['db', 'prod'] }]);
+    expect(mockClientConnect).not.toHaveBeenCalled();
+  });
+
+  it('treats null database columns like absent fields when reconciling (#1506)', async () => {
+    const base = { name: 'test-server', enabled: true, command: 'node', args: ['server.js'] };
+    setServerInfosForTest([
+      {
+        name: 'test-server',
+        enabled: true,
+        status: 'connected',
+        error: null,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: 1,
+        config: {
+          ...base,
+          tags: ['db'],
+          visibility: 'private',
+          sharedWithUsers: undefined,
+          sharedWithUserGroups: undefined,
+        },
+      } as any,
+    ]);
+
+    await reconcileReplicaServers([
+      {
+        ...base,
+        tags: ['db', 'prod'],
+        visibility: 'private',
+        sharedWithUsers: null,
+        sharedWithUserGroups: null,
+        env: null,
+      } as any,
+    ]);
+
+    expect(mockClientConnect).not.toHaveBeenCalled();
+    expect(getServerByName('test-server')?.config?.tags).toEqual(['db', 'prod']);
+  });
+
   it('does not reconnect a server with an in-flight OAuth authorization during full reload', async () => {
     setServerInfosForTest([
       {

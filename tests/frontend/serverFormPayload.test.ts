@@ -629,3 +629,33 @@ test('round-trips stored tools and staging so an edit cannot silently drop them 
   expect(payload.config.tools).toEqual(tools);
   expect(payload.config.staging).toEqual(staging);
 });
+
+describe('buildServerPayload tags (#1506)', () => {
+  it('sends normalized tags and an empty list when tags were cleared', () => {
+    const formData = {
+      name: 'mongo',
+      url: '',
+      command: 'npx',
+      arguments: '',
+      args: ['-y', 'mongodb-mcp-server'],
+      env: [],
+      headers: [],
+    };
+
+    const tagged = buildServerPayload({
+      formData: { ...formData, tags: [' db ', 'DB', 'test'] },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+    const cleared = buildServerPayload({
+      formData: { ...formData, tags: [] },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(tagged.config.tags).toEqual(['db', 'test']);
+    expect(cleared.config.tags).toEqual([]);
+  });
+});

@@ -100,6 +100,7 @@ Adds a new MCP server to the configuration.
     - `enabled` (boolean): Defaults to `true`. Disabled servers stay in the configuration but are not connected.
     - `owner` (string): The owner of the server. Defaults to the current user or `'admin'`.
     - `passthroughHeaders` (string[]): Inbound HTTP header names that should be forwarded to the upstream server.
+    - `tags` (string[]): Labels for organizing the dashboard server list. Metadata only; see [MCP Settings](/configuration/mcp-settings).
     - `oauth`, `proxy`, `options`, `description`: Optional advanced settings — see [MCP Settings](/configuration/mcp-settings).
 
 ---

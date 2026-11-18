@@ -122,6 +122,7 @@ describe('buildServerPayload', () => {
       config: {
         type: 'openapi',
         description: '',
+        tags: [],
         visibility: 'private',
         options: {},
         headers: {},

@@ -48,6 +48,7 @@ const declarationSchema = z.object({
           env: z.record(z.string(), z.string()).optional(),
           headers: z.record(z.string(), z.string()).optional(),
           description: z.string().optional(),
+          tags: z.array(z.string()).optional(),
           owner: z.string().optional(),
           sharedWithUserGroups: z.array(z.string()).optional(),
           sharedWithUsers: z.array(z.string()).optional(),

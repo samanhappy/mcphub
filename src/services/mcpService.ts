@@ -210,6 +210,7 @@ import {
   UpstreamRequestError,
 } from '../utils/upstreamError.js';
 import { logger } from '../utils/logger.js';
+import { stripNullishDeep } from '../utils/connectionRelevantConfig.js';
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -2880,11 +2881,20 @@ export const reconcileReplicaServers = async (
     validateMaxBufferSize(resolved.options?.maxBufferSize);
     expanded.set(declaration.name, resolved);
   }
+  const comparable = (config: ServerConfig | undefined) => {
+    if (!config) return config;
+    const { tags: _tags, ...rest } = config;
+    return stripNullishDeep(rest);
+  };
   const changed = serverInfos.filter(
     (info) =>
-      !isDeepStrictEqual(info.config, expanded.get(info.name)) ||
+      !isDeepStrictEqual(comparable(info.config), comparable(expanded.get(info.name))) ||
       (info.enabled !== false) !== (expanded.get(info.name)?.enabled !== false),
   );
+  for (const info of serverInfos) {
+    const next = expanded.get(info.name);
+    if (next && !changed.includes(info)) info.config = next;
+  }
   for (const info of changed) closeServer(info.name);
   serverInfos = serverInfos.filter((info) => !changed.includes(info));
   await initializeClientsFromSettings(false, undefined, { declarations, preserveExisting: true });
@@ -3116,7 +3126,10 @@ export const getServersInfo = async (
                 }
               : undefined,
           config:
-            resolvedType || serverConfig?.description || serverConfig?.command
+            resolvedType ||
+            serverConfig?.description ||
+            serverConfig?.tags?.length ||
+            serverConfig?.command
               ? {
                   ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
@@ -3127,6 +3140,7 @@ export const getServersInfo = async (
                     ? { oauth: { identityMode: 'personal' as const } }
                     : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
+                  ...(serverConfig?.tags?.length ? { tags: [...serverConfig.tags] } : {}),
                   // Expose command so the frontend can determine if reinstall is
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").

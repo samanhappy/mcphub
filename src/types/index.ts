@@ -580,6 +580,7 @@ export interface ServerConfig {
   staging?: ServerStagingConfig; // Server-level file staging trust (#1056); adapter required, shared is admin-only.
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   description?: string; // Optional server note/description for management UI
+  tags?: string[];
   url?: string; // URL for SSE or streamable HTTP servers
   command?: string; // Command to execute for stdio-based servers
   args?: string[]; // Arguments for the command

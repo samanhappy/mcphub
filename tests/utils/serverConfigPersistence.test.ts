@@ -1,5 +1,6 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
+import { hasConnectionRelevantChange } from '../../src/utils/connectionRelevantConfig.js';
 
 describe('normalizeServerConfigForPersistence', () => {
   it('preserves absolute OAuth expiry alongside its shared access token', () => {
@@ -536,4 +537,43 @@ it('preserves a personal OAuth app on an OpenAPI server', () => {
       oauth,
     }).oauth,
   ).toMatchObject(oauth);
+});
+
+describe('server tags (#1506)', () => {
+  const base: ServerConfig = { type: 'stdio', command: 'npx', args: ['-y', 'pkg'] };
+
+  it('trims, collapses whitespace and de-duplicates tags case-insensitively', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      ...base,
+      tags: ['  Database ', 'database', 'test   env', '', 'DB'],
+    });
+
+    expect(normalized.tags).toEqual(['Database', 'test env', 'DB']);
+  });
+
+  it('drops an empty tag list so clearing tags clears the stored value', () => {
+    const normalized = normalizeServerConfigForPersistence({ ...base, tags: ['  ', ''] });
+
+    expect(normalized.tags).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(normalized, 'tags')).toBe(true);
+  });
+
+  it('rejects malformed and overlong tags', () => {
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, tags: 'db' as unknown as string[] }),
+    ).toThrow('tags must be an array of strings');
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, tags: [1] as unknown as string[] }),
+    ).toThrow('tags must be an array of strings');
+    expect(() => normalizeServerConfigForPersistence({ ...base, tags: ['x'.repeat(65)] })).toThrow(
+      'tags must be at most 64 characters',
+    );
+  });
+
+  it('treats a tags-only edit as metadata that needs no reconnect', () => {
+    const existing = { name: 'mongo', ...base, tags: ['db'] };
+
+    expect(hasConnectionRelevantChange(existing, { ...base, tags: ['db', 'test'] })).toBe(false);
+    expect(hasConnectionRelevantChange(existing, { ...base })).toBe(false);
+  });
 });

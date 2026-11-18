@@ -63,3 +63,41 @@ describe('protocol negotiation JSON import', () => {
     expect(result.issues[0].message).toContain('streamable-http');
   });
 });
+
+describe('normalizeImportedServers tags (#1506)', () => {
+  it('imports and normalizes server tags', () => {
+    const { servers, issues } = normalizeImportedServers({
+      mcpServers: {
+        mongo: { command: 'npx', tags: [' db ', 'DB', 'test'] },
+      },
+    });
+
+    expect(issues).toEqual([]);
+    expect(servers[0].config.tags).toEqual(['db', 'test']);
+  });
+
+  it('reports tags longer than 64 characters instead of truncating them', () => {
+    const longTag = 'x'.repeat(65);
+    const { servers, issues } = normalizeImportedServers({
+      mcpServers: {
+        mongo: { command: 'npx', tags: ['db', longTag] },
+      },
+    });
+
+    expect(servers).toEqual([]);
+    expect(issues).toEqual([
+      { name: 'mongo', message: `tag "${longTag}" is longer than 64 characters.` },
+    ]);
+  });
+
+  it('reports tags that are not an array of strings', () => {
+    const { servers, issues } = normalizeImportedServers({
+      mcpServers: {
+        mongo: { command: 'npx', tags: 'db' as unknown as string[] },
+      },
+    });
+
+    expect(servers).toEqual([]);
+    expect(issues).toEqual([{ name: 'mongo', message: '"tags" must be an array of strings.' }]);
+  });
+});

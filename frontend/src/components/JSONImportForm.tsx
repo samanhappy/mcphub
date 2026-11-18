@@ -215,6 +215,11 @@ All servers will be imported in a single efficient batch operation.`;
                                 {Object.keys(server.config.headers).join(', ')}
                               </div>
                             )}
+                          {server.config.tags && server.config.tags.length > 0 && (
+                            <div>
+                              <strong>{t('server.tags')}:</strong> {server.config.tags.join(', ')}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

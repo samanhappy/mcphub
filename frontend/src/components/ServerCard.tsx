@@ -632,6 +632,15 @@ const ServerCard = ({
                   {server.config.description}
                 </div>
               )}
+              {!!server.config?.tags?.length && (
+                <div className="flex flex-wrap gap-1" style={{ marginTop: 3 }}>
+                  {server.config.tags.map((tag) => (
+                    <span key={tag} className="hub-tag text-[11px]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
