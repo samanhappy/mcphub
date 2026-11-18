@@ -805,19 +805,19 @@ test('OpenAPI personal OAuth exchanges PKCE codes and uses isolated, rotated tok
       expires_in: 3600,
     });
   });
-  app.post('/personal/:name', (req, res) => {
+  app.post('/personal/:name', authenticatedRouteRateLimiter, (req, res) => {
     Object.assign(req, { user: { username: req.header('x-test-user') } });
     return managePersonalOAuth(req, res);
   });
-  app.get('/oauth/callback', async (req, res) => {
+  app.get('/oauth/callback', mcpConnectionRateLimiter, async (req, res) => {
     try {
       const completed = await completePersonalOAuth(
         String(req.query.state),
         String(req.query.code),
       );
       res.sendStatus(completed ? 200 : 400);
-    } catch (error) {
-      res.status(500).send(String(error));
+    } catch {
+      res.sendStatus(500);
     }
   });
   app.get('/me', (req, res) => {
@@ -868,8 +868,7 @@ test('OpenAPI personal OAuth exchanges PKCE codes and uses isolated, rotated tok
       url.searchParams.set('user', username);
       const authorized = await http.get(url.pathname + url.search).expect(302);
       const callback = new URL(authorized.headers.location);
-      const result = await http.get(callback.pathname + callback.search);
-      if (result.status !== 200) throw new Error(result.text);
+      await http.get(callback.pathname + callback.search).expect(200);
       await http.get(callback.pathname + callback.search).expect(400);
 
       const auth = await provider(username);

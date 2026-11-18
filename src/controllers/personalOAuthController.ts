@@ -9,7 +9,6 @@ import {
   findPersonalOAuthFlow,
   disconnectPersonalOAuth,
 } from '../services/personalOAuthService.js';
-import { MCPHubOAuthProvider } from '../services/mcpOAuthProvider.js';
 import { createTransportFromConfig } from '../services/mcpService.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
@@ -79,6 +78,7 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
       });
       const config = context.config;
       if (config.type === 'openapi') {
+        const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
         const provider = await MCPHubOAuthProvider.create(definition.name, config);
         await provider.startOpenApiAuthorization();
       } else {
@@ -145,6 +145,7 @@ export const completePersonalOAuth = async (
   });
   const config = context.config;
   if (config.type === 'openapi') {
+    const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
     const provider = await MCPHubOAuthProvider.create(context.serverName, config);
     await provider.finishOpenApiAuthorization(code, iss);
     credentialBindingEvents.emit('invalidate', {
