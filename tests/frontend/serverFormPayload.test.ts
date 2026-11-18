@@ -303,6 +303,39 @@ describe('buildServerPayload', () => {
     },
   });
 
+  it('uses personal OAuth for OpenAPI calls and keeps the specification auth separate', () => {
+    const formData = buildSseForm({
+      identityMode: 'personal',
+      clientId: 'api-client',
+      clientSecret: 'api-secret',
+      authorizationEndpoint: 'https://login.example.com/authorize',
+      tokenEndpoint: 'https://login.example.com/token',
+      scopes: 'read offline_access',
+    });
+    formData.openapi = {
+      ...formData.openapi!,
+      url: 'https://api.example.com/openapi.json',
+      securityType: 'oauth2',
+      oauth2Token: 'old-shared-token',
+      specSecurityType: 'apiKey',
+      specApiKeyName: 'X-Spec-Key',
+      specApiKeyValue: 'spec-only',
+    };
+    const build = () => buildServerPayload({ formData, serverType: 'openapi', envVars: [], headerVars: [] });
+    expect(build().config).toMatchObject({
+      oauth: {
+        ...formData.oauth,
+        scopes: ['read', 'offline_access'],
+      },
+      openapi: { specSecurity: { type: 'apiKey', apiKey: { value: 'spec-only' } } },
+    });
+    expect(build().config.openapi?.security).toBeUndefined();
+
+    formData.oauth!.identityMode = 'shared';
+    expect(build().config.oauth).toBeUndefined();
+    expect(build().config.openapi?.security?.oauth2?.token).toBe('old-shared-token');
+  });
+
   it('preserves a full dynamicRegistration sub-object verbatim (deep equal)', () => {
     const payload = buildServerPayload({
       formData: buildSseForm({

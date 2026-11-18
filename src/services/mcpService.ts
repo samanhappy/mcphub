@@ -176,7 +176,7 @@ import {
   ServerConfigWithName,
 } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
-import { createOAuthProvider } from './mcpOAuthProvider.js';
+import { createOAuthProvider, MCPHubOAuthProvider } from './mcpOAuthProvider.js';
 import { initSmartRoutingService, isSmartRoutingGroup } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
 import { filterHostedTools } from './hostedAuthService.js';
@@ -4094,7 +4094,13 @@ const createPrincipalRuntime = async (
   }
   try {
     if (resolvedConfig.type === 'openapi') {
-      const client = new OpenAPIClient(resolvedConfig);
+      const personal = personalOAuthContexts.get(resolvedConfig);
+      const provider = personal
+        ? await MCPHubOAuthProvider.create(name, resolvedConfig)
+        : undefined;
+      const client = new OpenAPIClient(resolvedConfig, {
+        getPersonalAccessToken: provider?.openApiAccessToken.bind(provider),
+      });
       await client.initialize();
       info.openApiClient = protectPersonalClient(client, info, resolvedConfig);
       info.tools = client.getTools().map((tool) => ({

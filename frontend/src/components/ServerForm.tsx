@@ -544,6 +544,7 @@ const ServerForm = ({
 
   const openApiSource = getOpenApiSource(formData);
   const openApiSourcePresent = serverType === 'openapi' && isOpenApiSourceReady(openApiSource);
+  const openApiPersonalOAuth = formData.oauth?.identityMode === 'personal';
 
   useEffect(() => {
     openApiStatsRequestId.current += 1;
@@ -928,14 +929,14 @@ const ServerForm = ({
                 {/* Security Configuration */}
                 <div className="mb-4" onChange={markOpenApiSecurityTouched}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-[var(--hub-ink-2)]">
+                    <label htmlFor="openApiSecurityType" className="block text-sm font-medium text-[var(--hub-ink-2)]">
                       {t('server.openapi.security')}
                     </label>
                     <button
                       type="button"
                       onClick={() => void detectOpenApiSecurity()}
                       disabled={
-                        securityDetectionLoading || openApiStatsLoading || !openApiSourcePresent
+                        openApiPersonalOAuth || securityDetectionLoading || openApiStatsLoading || !openApiSourcePresent
                       }
                       className="hub-btn text-xs !h-7 !px-2"
                     >
@@ -945,26 +946,31 @@ const ServerForm = ({
                     </button>
                   </div>
                   <select
-                    value={formData.openapi?.securityType || 'none'}
-                    onChange={(e) =>
-                      setFormData((prev) => {
-                        setOpenApiSecurityNotice(null);
-                        return {
-                          ...prev,
-                          openapi: {
-                            ...prev.openapi,
-                            securityType: e.target.value as any,
-                            url: prev.openapi?.url || '',
-                          },
-                        };
-                      })
-                    }
+                    id="openApiSecurityType"
+                    value={openApiPersonalOAuth ? 'personalOAuth' : formData.openapi?.securityType || 'none'}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const personal = value === 'personalOAuth';
+                      setOpenApiSecurityNotice(null);
+                      setFormData((prev) => ({
+                        ...prev,
+                        oauth: { ...prev.oauth, identityMode: personal ? 'personal' : 'shared' },
+                        openapi: {
+                          ...prev.openapi,
+                          securityType: personal
+                            ? 'none'
+                            : (value as NonNullable<ServerFormData['openapi']>['securityType']),
+                          url: prev.openapi?.url || '',
+                        },
+                      }));
+                    }}
                     className="w-full py-2 px-3 form-input"
                   >
                     <option value="none">{t('server.openapi.securityNone')}</option>
                     <option value="apiKey">{t('server.openapi.securityApiKey')}</option>
                     <option value="http">{t('server.openapi.securityHttp')}</option>
                     <option value="oauth2">{t('server.openapi.securityOAuth2')}</option>
+                    <option value="personalOAuth">{t('server.openapi.securityPersonalOAuth')}</option>
                     <option value="openIdConnect">
                       {t('server.openapi.securityOpenIdConnect')}
                     </option>
@@ -986,7 +992,7 @@ const ServerForm = ({
                 </div>
 
                 {/* API Key Configuration */}
-                {formData.openapi?.securityType === 'apiKey' && (
+                {!openApiPersonalOAuth && formData.openapi?.securityType === 'apiKey' && (
                   <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                     <h4 className="text-sm font-medium mb-3 text-[var(--hub-ink-2)]">
                       {t('server.openapi.apiKeyConfig')}
@@ -1062,7 +1068,7 @@ const ServerForm = ({
                 )}
 
                 {/* HTTP Authentication Configuration */}
-                {formData.openapi?.securityType === 'http' && (
+                {!openApiPersonalOAuth && formData.openapi?.securityType === 'http' && (
                   <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                     <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                       {t('server.openapi.httpAuthConfig')}
@@ -1126,7 +1132,7 @@ const ServerForm = ({
                 )}
 
                 {/* OpenID Connect Configuration */}
-                {formData.openapi?.securityType === 'openIdConnect' && (
+                {!openApiPersonalOAuth && formData.openapi?.securityType === 'openIdConnect' && (
                   <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                     <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                       {t('server.openapi.openIdConnectConfig')}
@@ -1178,8 +1184,51 @@ const ServerForm = ({
                   </div>
                 )}
 
+                {openApiPersonalOAuth && (
+                  <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
+                    <p className="mb-3 text-xs text-[var(--hub-ink-3)]">
+                      {t('server.oauth.personalIdentityHelp')}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {([
+                        { field: 'clientId', type: 'text', required: true },
+                        { field: 'clientSecret', type: 'password' },
+                        { field: 'authorizationEndpoint', type: 'url', required: true, metadataField: 'authorization_endpoint' },
+                        { field: 'tokenEndpoint', type: 'url', required: true, metadataField: 'token_endpoint' },
+                        { field: 'scopes', type: 'text' },
+                      ] as const).map(({ field, type, ...options }) => {
+                        const metadata = formData.oauth?.authorizationServerMetadata;
+                        const metadataField = 'metadataField' in options ? options.metadataField : undefined;
+                        return (
+                          <label key={field} className="block text-xs text-gray-600">
+                            {t(`server.oauth.${field}`)}
+                            <input
+                              type={type}
+                              value={(metadataField && metadata?.[metadataField]) ?? formData.oauth?.[field] ?? ''}
+                              required={'required' in options}
+                              autoComplete={type === 'password' ? 'new-password' : undefined}
+                              placeholder={field === 'scopes' ? t('server.oauth.scopesPlaceholder') : undefined}
+                              onChange={(e) => {
+                                if (metadataField && metadata) {
+                                  handleOAuthChange('authorizationServerMetadata', {
+                                    ...metadata,
+                                    [metadataField]: e.target.value,
+                                  });
+                                } else {
+                                  handleOAuthChange(field, e.target.value);
+                                }
+                              }}
+                              className="mt-1 w-full border rounded px-2 py-1 text-sm form-input"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* OAuth2 Configuration */}
-                {formData.openapi?.securityType === 'oauth2' && (
+                {!openApiPersonalOAuth && formData.openapi?.securityType === 'oauth2' && (
                   <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800">
                     <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
                       {t('server.openapi.oauth2Config')}

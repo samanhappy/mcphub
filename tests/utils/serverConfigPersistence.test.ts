@@ -521,3 +521,19 @@ describe('file staging (#1056)', () => {
     expect(normalized.tools?.upload).toEqual({ enabled: true });
   });
 });
+
+it('preserves a personal OAuth app on an OpenAPI server', () => {
+  const oauth = {
+    identityMode: 'personal' as const,
+    clientId: 'api-client',
+    authorizationEndpoint: 'https://login.example.com/authorize',
+    tokenEndpoint: 'https://login.example.com/token',
+  };
+  expect(
+    normalizeServerConfigForPersistence({
+      type: 'openapi',
+      openapi: { url: 'https://api.example.com/openapi.json' },
+      oauth,
+    }).oauth,
+  ).toMatchObject(oauth);
+});

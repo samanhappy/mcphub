@@ -102,6 +102,27 @@ MCPHub 使用几个配置文件：
 受保护的 `openapi.url` 会通过 MCPHub 的已认证客户端下载，因此配置的 `headers` 与 OpenAPI `security` 凭证（HTTP Basic/Bearer、API Key、OAuth2 令牌）会用于该次拉取的认证。凭证仅作用于文档所在源，不会转发给外部 `$ref` 解析或跨源重定向。若受保护的文档引用了同样需要认证的外部 `$ref`，请改用 `openapi.schema` 内联文档。
 </Note>
 
+#### OpenAPI 个人 OAuth
+
+在 API 提供方注册支持授权码流程的客户端，并登记 MCPHub 回调地址（例如 `https://hub.example.com/oauth/callback`）。在 OpenAPI 服务器表单的认证选项中选择 **个人 OAuth** 并填写客户端信息，也可以通过 JSON 或服务器 API 配置。保存后，每位用户在 **仪表盘 → 服务器** 中为该服务器选择 **连接**。如果提供方要求特定 scope 才会签发刷新令牌，请一并配置，例如 `offline_access`。
+
+MCPHub 按用户保存令牌，在令牌过期时刷新，或在上游返回 401 时刷新并重试一次。个人令牌用于工具调用。若下载 OpenAPI 文档也需要认证，请配置 `openapi.specSecurity`。使用远程文档时，工具请求默认只能访问文档 URL 的同源地址。若 API 位于另一个源，请将 `oauth.resource` 设为 API 的资源 URL。MCPHub 也会将该 URL 作为 OAuth resource 参数发送，因此提供方需支持该参数。内联文档默认使用自身的服务器 URL。
+
+```json
+{
+  "type": "openapi",
+  "openapi": { "url": "https://api.example.com/openapi.json" },
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "api-client",
+    "clientSecret": "your-client-secret",
+    "authorizationEndpoint": "https://login.example.com/authorize",
+    "tokenEndpoint": "https://login.example.com/token",
+    "scopes": ["api.read", "offline_access"]
+  }
+}
+```
+
 ## 常见 MCP 服务器示例
 
 ### Web 和 API 服务器

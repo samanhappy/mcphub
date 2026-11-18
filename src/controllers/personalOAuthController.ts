@@ -77,16 +77,22 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
         username: user.username,
       });
       const config = context.config;
-      const transport = await createTransportFromConfig(definition.name, config);
-      const client = new LegacyMcpClient({ name: 'mcphub-personal-oauth', version: '1.0.0' });
-      try {
-        await client.connect(transport);
-      } catch {
-        if (!context.config.oauth.pendingAuthorization?.authorizationUrl)
-          throw new Error('Authorization discovery failed');
-      } finally {
-        await client.close().catch(() => undefined);
-        await transport.close().catch(() => undefined);
+      if (config.type === 'openapi') {
+        const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
+        const provider = await MCPHubOAuthProvider.create(definition.name, config);
+        await provider.startOpenApiAuthorization();
+      } else {
+        const transport = await createTransportFromConfig(definition.name, config);
+        const client = new LegacyMcpClient({ name: 'mcphub-personal-oauth', version: '1.0.0' });
+        try {
+          await client.connect(transport);
+        } catch {
+          if (!context.config.oauth.pendingAuthorization?.authorizationUrl)
+            throw new Error('Authorization discovery failed');
+        } finally {
+          await client.close().catch(() => undefined);
+          await transport.close().catch(() => undefined);
+        }
       }
     }
     let authorizationUrl = context.authorizationUrl;
@@ -138,6 +144,16 @@ export const completePersonalOAuth = async (
     delete oauth.pendingAuthorization!.state;
   });
   const config = context.config;
+  if (config.type === 'openapi') {
+    const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
+    const provider = await MCPHubOAuthProvider.create(context.serverName, config);
+    await provider.finishOpenApiAuthorization(code, iss);
+    credentialBindingEvents.emit('invalidate', {
+      serverName: context.serverName,
+      username: context.username,
+    });
+    return true;
+  }
   const transport = await createTransportFromConfig(context.serverName, config);
   try {
     if (!('finishAuth' in transport)) throw new Error('OAuth transport required');

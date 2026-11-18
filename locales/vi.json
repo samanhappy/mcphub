@@ -249,6 +249,7 @@
       "securityApiKey": "Khóa API (API Key)",
       "securityHttp": "Xác thực HTTP",
       "securityOAuth2": "OAuth 2.0",
+      "securityPersonalOAuth": "OAuth cá nhân",
       "securityOpenIdConnect": "OpenID Connect",
       "securityDetect": "Phát hiện từ thông số (spec)",
       "securityDetecting": "Đang phát hiện…",

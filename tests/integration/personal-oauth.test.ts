@@ -13,8 +13,9 @@ import { createTransportFromConfig } from '../../src/services/mcpService.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { auth, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { OpenAPIClient } from '../../src/clients/openapi.js';
 import { LegacyMcpClient } from '../../src/clients/legacyMcpClient.js';
 import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import { createOAuthFetch } from '../../src/services/oauthClientRegistration.js';
@@ -30,7 +31,13 @@ import { logger } from '../../src/utils/logger.js';
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import type { ServerConfigWithName } from '../../src/types/index.js';
 
-jest.mock('../../src/dao/index.js', () => ({ getServerDao: jest.fn() }));
+jest.mock('../../src/dao/index.js', () => ({
+  getServerDao: jest.fn(),
+  getUserDao: () => ({
+    findByUsername: async (username: string) => ({ username, isAdmin: username === 'admin' }),
+  }),
+  getSystemConfigDao: () => ({ get: async () => ({}) }),
+}));
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getCredentialBindingDao: () =>
     new (jest.requireActual('../../src/dao/CredentialBindingDao.js').CredentialBindingDaoImpl)(),
@@ -39,13 +46,14 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
     findAll: async () => [mockDefinition],
   }),
   getUserDao: () => ({
-    findByUsername: async (username: string) => ({ username, isAdmin: false }),
+    findByUsername: async (username: string) => ({ username, isAdmin: username === 'admin' }),
   }),
 }));
 jest.mock('../../src/services/mcpService.js', () => ({
   getServerByName: jest.fn(),
   createTransportFromConfig: jest.fn(),
 }));
+jest.mock('openid-client', () => ({}));
 jest.mock('../../src/services/oauthClientRegistration.js', () => ({
   getRegisteredClient: jest.fn(),
   removeRegisteredClient: jest.fn(),
@@ -759,3 +767,202 @@ test('#1432 invalid_grant clears rejected credentials and prepares authorization
   expect(restored.context.config.oauth.refreshToken).toBeUndefined();
   expect(restored.context.authorizationUrl).toBeDefined();
 });
+
+test('OpenAPI personal OAuth exchanges PKCE codes and uses isolated, rotated tokens over HTTP', async () => {
+  const originalDefinition = structuredClone(mockDefinition);
+  const app = express();
+  const challenges = new Map<string, string>();
+  const refreshes: string[] = [];
+  app.get('/authorize', (req, res) => {
+    const username = String(req.query.user);
+    challenges.set(username, String(req.query.code_challenge));
+    const callback = new URL(String(req.query.redirect_uri));
+    callback.searchParams.set('state', String(req.query.state));
+    callback.searchParams.set('code', username);
+    res.redirect(callback.href);
+  });
+  app.post('/token', express.urlencoded({ extended: false }), (req, res) => {
+    const { code, code_verifier, grant_type, refresh_token } = req.body;
+    if (grant_type === 'authorization_code') {
+      if (createHash('sha256').update(code_verifier).digest('base64url') !== challenges.get(code)) {
+        res.status(400).json({ error: 'invalid_grant' });
+        return;
+      }
+      res.json({
+        access_token: 'initial-' + code,
+        refresh_token: 'refresh-' + code,
+        token_type: 'Bearer',
+        ...(code === 'alice' ? { expires_in: 1 } : {}),
+      });
+      return;
+    }
+    refreshes.push(refresh_token);
+    const username = refresh_token.slice('refresh-'.length);
+    res.json({
+      access_token: 'renewed-' + username,
+      ...(username === 'alice' ? { refresh_token: 'rotated-alice' } : {}),
+      token_type: 'Bearer',
+      expires_in: 3600,
+    });
+  });
+  app.post('/personal/:name', authenticatedRouteRateLimiter, (req, res) => {
+    Object.assign(req, { user: { username: req.header('x-test-user') } });
+    return managePersonalOAuth(req, res);
+  });
+  app.get('/oauth/callback', mcpConnectionRateLimiter, async (req, res) => {
+    try {
+      const completed = await completePersonalOAuth(
+        String(req.query.state),
+        String(req.query.code),
+      );
+      res.sendStatus(completed ? 200 : 400);
+    } catch {
+      res.sendStatus(500);
+    }
+  });
+  app.get('/me', (req, res) => {
+    const authorization = req.header('authorization');
+    if (authorization === 'Bearer initial-bob') return res.sendStatus(401);
+    res.json({ authorization });
+  });
+  app.get('/openapi.json', (req, res) => {
+    if (req.header('authorization')) return res.sendStatus(400);
+    res.json({
+      openapi: '3.0.3',
+      info: { title: 'Test API', version: '1' },
+      paths: { '/me': { get: { operationId: 'me', responses: { 200: { description: 'OK' } } } } },
+    });
+  });
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise<void>((resolve, reject) =>
+      server.once('listening', resolve).once('error', reject),
+    );
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing test server address');
+    const origin = `http://127.0.0.1:${address.port}`;
+    Object.assign(mockDefinition, {
+      type: 'openapi',
+      url: undefined,
+      owner: 'admin',
+      openapi: { url: origin + '/openapi.json' },
+      oauth: {
+        identityMode: 'personal',
+        clientId: 'test-client',
+        authorizationEndpoint: origin + '/authorize',
+        tokenEndpoint: origin + '/token',
+        redirectUri: origin + '/oauth/callback',
+      },
+    });
+    jest
+      .mocked(createOAuthFetch)
+      .mockImplementation(
+        jest.requireActual('../../src/services/oauthClientRegistration.js').createOAuthFetch,
+      );
+    const http = request(server);
+    const clients = [];
+    for (const username of ['alice', 'bob']) {
+      const started = await http.post('/personal/gitlab').set('x-test-user', username).expect(200);
+      const url = new URL(started.body.data.authorizationUrl);
+      expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+      url.searchParams.set('user', username);
+      const authorized = await http.get(url.pathname + url.search).expect(302);
+      const callback = new URL(authorized.headers.location);
+      await http.get(callback.pathname + callback.search).expect(200);
+      await http.get(callback.pathname + callback.search).expect(400);
+
+      const auth = await provider(username);
+      const client = new OpenAPIClient(auth.context.config, {
+        getPersonalAccessToken: auth.provider.openApiAccessToken.bind(auth.provider),
+      });
+      await client.initialize();
+      clients.push(client);
+    }
+    const alice = await provider('alice');
+    jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(alice.context.config.oauth.accessTokenExpiresAt! + 1000);
+    await expect(
+      Promise.all([
+        clients[0].callTool('me', {}),
+        clients[0].callTool('me', {}),
+        clients[1].callTool('me', {}),
+      ]),
+    ).resolves.toEqual([
+      { authorization: 'Bearer renewed-alice' },
+      { authorization: 'Bearer renewed-alice' },
+      { authorization: 'Bearer renewed-bob' },
+    ]);
+    expect(refreshes.sort()).toEqual(['refresh-alice', 'refresh-bob']);
+    expect((await provider('alice')).context.config.oauth.refreshToken).toBe('rotated-alice');
+    expect((await provider('bob')).context.config.oauth.refreshToken).toBe('refresh-bob');
+
+    const getPersonalAccessToken = jest.fn();
+    const client = new OpenAPIClient(
+      { ...mockDefinition, oauth: { ...mockDefinition.oauth, resource: 'https://other.example' } },
+      { getPersonalAccessToken },
+    );
+    await client.initialize();
+    await expect(client.callTool('me', {})).rejects.toThrow(
+      'outside the personal OAuth API origin',
+    );
+    expect(getPersonalAccessToken).not.toHaveBeenCalled();
+  } finally {
+    delete mockDefinition.openapi;
+    Object.assign(mockDefinition, originalDefinition);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test.each([true, false])(
+  'OpenAPI code exchange and refresh honor the non-loopback HTTP exception (%s)',
+  async (allowInsecureTokenEndpoint) => {
+    const originalDefinition = structuredClone(mockDefinition);
+    try {
+      Object.assign(mockDefinition, {
+        type: 'openapi',
+        url: undefined,
+        openapi: { url: 'https://api.example.com/openapi.json' },
+        oauth: {
+          identityMode: 'personal',
+          clientId: 'client',
+          authorizationEndpoint: issuer + '/authorize',
+          tokenEndpoint: issuer + '/token',
+          allowInsecureTokenEndpoint,
+        },
+      });
+      const alice = await provider('alice');
+      await alice.provider.startOpenApiAuthorization();
+      const callback = await provider('alice');
+      const exchange = callback.provider.finishOpenApiAuthorization('alice');
+      if (allowInsecureTokenEndpoint) {
+        await expect(exchange).resolves.toBeUndefined();
+        expect(tokenRequests[0].get('grant_type')).toBe('authorization_code');
+      } else {
+        await expect(exchange).rejects.toThrow('Refusing to send credentials');
+        expect(tokenRequests).toHaveLength(0);
+      }
+
+      const seed = await provider('alice');
+      await seed.context.persistTokens('gitlab', {
+        accessToken: 'expired',
+        accessTokenExpiresAt: Date.now() - 1000,
+        refreshToken: 'refresh-alice',
+      });
+      const refresh = (await provider('alice')).provider.openApiAccessToken();
+      if (allowInsecureTokenEndpoint) {
+        await expect(refresh).resolves.toBe('token-alice');
+        expect(tokenRequests.map((body) => body.get('grant_type'))).toEqual([
+          'authorization_code',
+          'refresh_token',
+        ]);
+      } else {
+        await expect(refresh).rejects.toThrow('Refusing to send credentials');
+        expect(tokenRequests).toHaveLength(0);
+      }
+    } finally {
+      delete mockDefinition.openapi;
+      Object.assign(mockDefinition, originalDefinition);
+    }
+  },
+);
