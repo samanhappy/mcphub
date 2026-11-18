@@ -216,6 +216,7 @@ export interface ServerConfig {
   credentialTemplate?: CredentialSlot[];
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi';
   description?: string;
+  tags?: string[];
   url?: string;
   command?: string;
   args?: string[];
@@ -415,6 +416,7 @@ export interface ServerFormData {
   credentialTemplate?: CredentialSlot[];
   name: string;
   description?: string;
+  tags?: string[];
   url: string;
   command: string;
   arguments: string;

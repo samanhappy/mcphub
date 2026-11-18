@@ -113,6 +113,14 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       });
     });
 
+    it('keeps server tags in the shared-user view', () => {
+      const raw = { ...buildRawServerConfig(), tags: ['search', 'prod'] };
+
+      const presented = presentServerForPrincipal(raw, alice);
+
+      expect((presented.data as Record<string, unknown>).tags).toEqual(['search', 'prod']);
+    });
+
     it('withholds url, command and every other raw config field from shared users', () => {
       const body = JSON.stringify(presentServerForPrincipal(buildRawServerConfig(), alice));
       for (const withheld of [

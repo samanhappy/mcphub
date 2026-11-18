@@ -24,6 +24,9 @@ export class Server {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'simple-json', nullable: true })
+  tags?: string[];
+
   @Column({ type: 'text', nullable: true })
   url?: string;
 

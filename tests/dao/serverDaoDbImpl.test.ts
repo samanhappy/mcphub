@@ -409,3 +409,63 @@ describe('protocolNegotiation database persistence', () => {
     expect(mockRepository.update).toHaveBeenLastCalledWith('remote', { protocolNegotiation: null });
   });
 });
+
+describe('server tags database persistence (#1506)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('persists tags on create and maps them back', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.create.mockResolvedValue({
+      name: 'mongo',
+      type: 'stdio',
+      command: 'npx',
+      enabled: true,
+      tags: ['db', 'test'],
+    });
+
+    const result = await dao.create({
+      name: 'mongo',
+      type: 'stdio',
+      command: 'npx',
+      tags: ['db', 'test'],
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'mongo', tags: ['db', 'test'] }),
+    );
+    expect(result.tags).toEqual(['db', 'test']);
+  });
+
+  it('writes null when tags are cleared and maps a null column to undefined', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.update.mockResolvedValue({ name: 'mongo', enabled: true, tags: null });
+
+    const result = await dao.update('mongo', { tags: undefined });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('mongo', { tags: null });
+    expect(result?.tags).toBeUndefined();
+  });
+
+  it('drops malformed stored tags when reading a row', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.findByName.mockResolvedValue({
+      name: 'mongo',
+      enabled: true,
+      tags: [123, 'db'],
+    });
+
+    expect((await dao.findById('mongo'))?.tags).toEqual(['db']);
+  });
+
+  it('leaves stored tags untouched when an update does not mention them', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.update.mockResolvedValue({ name: 'mongo', enabled: false, tags: ['db'] });
+
+    const result = await dao.update('mongo', { enabled: false });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('mongo', { enabled: false });
+    expect(result?.tags).toEqual(['db']);
+  });
+});

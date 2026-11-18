@@ -169,6 +169,19 @@ describe('templateService', () => {
       expect(template.servers.s1.oauth?.authorizationRelay).toEqual({ allowedRedirectOrigins: ['https://login.example.com'] });
     });
 
+    it('exports server tags and omits an empty tag list (#1506)', async () => {
+      mockServerDao.findAll.mockResolvedValue([
+        { name: 's1', command: 'npx', tags: ['db', 'prod'] },
+        { name: 's2', command: 'npx', tags: [] },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([{ id: 'g1', name: 'G', servers: ['s1', 's2'] }]);
+
+      const template = await exportTemplate({ name: 'Test' });
+
+      expect(template.servers.s1.tags).toEqual(['db', 'prod']);
+      expect(template.servers.s2).not.toHaveProperty('tags');
+    });
+
     it('should preserve existing ${PLACEHOLDER} patterns', async () => {
       mockServerDao.findAll.mockResolvedValue([
         { name: 's1', command: 'npx', env: { TOKEN: '${MY_TOKEN}', REGION: 'us-east-1' } },

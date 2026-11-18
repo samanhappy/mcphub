@@ -1,4 +1,5 @@
 import { Server } from '@/types';
+import { getServerTagList, serverHasTag } from './serverTags';
 
 export type ServerFilter = 'all' | 'online' | 'issues' | 'disabled';
 
@@ -22,6 +23,7 @@ export const filterServers = (
   servers: Server[],
   filter: ServerFilter,
   search = '',
+  tag = '',
 ): Server[] => {
   const query = search.trim().toLowerCase();
 
@@ -29,12 +31,15 @@ export const filterServers = (
     if (filter === 'online' && server.status !== 'connected') return false;
     if (filter === 'issues' && (server.status === 'connected' || server.enabled === false)) return false;
     if (filter === 'disabled' && server.enabled !== false) return false;
+    if (!serverHasTag(server, tag)) return false;
     if (!query) return true;
 
     const haystack = (
       server.name +
       ' ' +
       (server.config?.description || '') +
+      ' ' +
+      getServerTagList(server).join(' ') +
       ' ' +
       (server.tools?.map((tool) => tool.name).join(' ') || '')
     ).toLowerCase();
@@ -52,8 +57,9 @@ export const selectServerPage = (
   search: string,
   page: number,
   limit: number,
+  tag = '',
 ): { servers: Server[]; pagination: ServerPageInfo } => {
-  const filtered = filterServers(allServers, filter, search);
+  const filtered = filterServers(allServers, filter, search, tag);
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(Math.max(1, page), totalPages);

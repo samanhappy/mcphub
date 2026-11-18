@@ -1,4 +1,5 @@
 import type { EnvVar, ServerConfig, ServerFormData } from '../types';
+import { normalizeTags } from './serverTags';
 
 type ServerType = NonNullable<ServerConfig['type']>;
 
@@ -260,6 +261,7 @@ export const buildServerPayload = ({
   const config: Partial<ServerConfig> = {
     type: serverType,
     description,
+    tags: normalizeTags(formData.tags),
     options,
     visibility: formData.visibility ?? 'private',
     sharedWithUserGroups:

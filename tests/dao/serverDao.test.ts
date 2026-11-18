@@ -23,6 +23,27 @@ describe('ServerDaoImpl', () => {
     expect(recreated.id).not.toBe(original?.id);
   });
 
+  it('drops malformed hand-edited tags for that server only (#1506)', async () => {
+    const dao = new ServerDaoImpl();
+    jest.spyOn(dao as any, 'loadSettings').mockResolvedValue({
+      mcpServers: {
+        mixed: { command: 'node', tags: [123, ' db ', 'x'.repeat(65)] },
+        scalar: { command: 'node', tags: 'db' },
+        valid: { command: 'node', tags: ['prod'] },
+        untagged: { command: 'node' },
+      },
+    });
+
+    const servers = Object.fromEntries(
+      (await dao.findAll()).map((server) => [server.name, server]),
+    );
+
+    expect(servers.mixed.tags).toEqual(['db']);
+    expect(servers.scalar.tags).toBeUndefined();
+    expect(servers.valid.tags).toEqual(['prod']);
+    expect(servers.untagged).not.toHaveProperty('tags');
+  });
+
   it('includes explicitly shared group servers in paginated user results', async () => {
     const dao = new ServerDaoImpl();
     jest.spyOn(dao as any, 'getAll').mockResolvedValue([

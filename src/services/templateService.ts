@@ -360,6 +360,7 @@ function serverConfigToTemplate(config: ServerConfig): {
 
   if (config.type) templateConfig.type = config.type;
   if (config.description) templateConfig.description = config.description;
+  if (config.tags?.length) templateConfig.tags = [...config.tags];
   if (config.url) templateConfig.url = config.url;
   if (config.command) templateConfig.command = config.command;
   if (config.args) templateConfig.args = [...config.args];

@@ -1,4 +1,5 @@
 import type { ServerConfig } from '../types';
+import { normalizeTags, SERVER_TAG_MAX_LENGTH } from './serverTags';
 
 export interface ImportJsonFormat {
   mcpServers: Record<string, ServerConfig>;
@@ -46,6 +47,7 @@ const KNOWN_KEYS = new Set<keyof ServerConfig | string>([
   'prompts',
   'passthroughHeaders',
   'proxy',
+  'tags',
 ]);
 
 /**
@@ -142,6 +144,25 @@ export const normalizeImportedServers = (parsed: ImportJsonFormat): NormalizeRes
         message: `unsupported type "${config.type}".${suggestion}`,
       });
       continue;
+    }
+
+    if (config.tags !== undefined) {
+      if (!Array.isArray(config.tags) || !config.tags.every((tag) => typeof tag === 'string')) {
+        issues.push({ name, message: `"tags" must be an array of strings.` });
+        continue;
+      }
+      const tags = normalizeTags(config.tags);
+      const tooLong = tags.find((tag) => tag.length > SERVER_TAG_MAX_LENGTH);
+      if (tooLong) {
+        issues.push({
+          name,
+          message: `tag "${tooLong}" is longer than ${SERVER_TAG_MAX_LENGTH} characters.`,
+        });
+        continue;
+      }
+      if (tags.length > 0) {
+        normalizedConfig.tags = tags;
+      }
     }
 
     servers.push({ name, config: normalizedConfig });
