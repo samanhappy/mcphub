@@ -277,6 +277,27 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
     expect(getServerByName('test-server')?.config?.tags).toEqual(['db', 'prod']);
   });
 
+  it('drops a runtime whose server another replica deleted, even with tags (#1506)', async () => {
+    setServerInfosForTest([
+      {
+        name: 'deleted-server',
+        enabled: true,
+        status: 'connected',
+        error: null,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: 1,
+        config: { name: 'deleted-server', command: 'node', args: ['server.js'], tags: ['db'] },
+      } as any,
+    ]);
+
+    await reconcileReplicaServers([]);
+
+    expect(getServerByName('deleted-server')).toBeUndefined();
+    expect(mockClientConnect).not.toHaveBeenCalled();
+  });
+
   it('does not reconnect a server with an in-flight OAuth authorization during full reload', async () => {
     setServerInfosForTest([
       {
