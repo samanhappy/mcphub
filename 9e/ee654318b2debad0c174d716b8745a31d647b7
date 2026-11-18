@@ -1,0 +1,26 @@
+src/services/hostedSkillCatalog.ts
+  s_4ef744778b6bbc::t_f556ec6484698f 7-8,16
+  s_4ef744778b6bbc::t_f1b6df60eb6e4e 17
+src/services/mcpSkills.ts
+  s_4ef744778b6bbc::t_f556ec6484698f 7-12
+src/services/mcpService.ts
+  s_4ef744778b6bbc::t_f556ec6484698f 59-60
+src/controllers/hostedSkillController.ts
+  s_4ef744778b6bbc::t_f556ec6484698f 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9eee654318b2debad0c174d716b8745a31d647b7",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
