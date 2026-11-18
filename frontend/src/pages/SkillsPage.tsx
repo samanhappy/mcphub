@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -145,15 +146,21 @@ function SkillManager() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="hub-h1">{t('skills.title')}</h1>
-      <form ref={importForm} onSubmit={submitImport} className="hub-card space-y-3 p-4">
-        <h2 className="font-semibold">
+    <div>
+      <header className="mb-6">
+        <h1 className="hub-h1">{t('skills.title')}</h1>
+      </header>
+      <form
+        ref={importForm}
+        onSubmit={submitImport}
+        className="hub-card hub-card-pad mb-4 space-y-3"
+      >
+        <h2 className="hub-card-title">
           {replacement ? t('skills.replaceTitle', { name: replacement.name }) : t('skills.import')}
         </h2>
         <fieldset disabled={busy || loading} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
-            {t('skills.source')}
+            <span className="hub-sect">{t('skills.source')}</span>
             <select
               className="hub-input"
               value={source}
@@ -167,9 +174,9 @@ function SkillManager() {
           </label>
           {source === 'directory' ? (
             <label className="flex min-w-0 flex-col gap-1">
-              {t('skills.directory')}
+              <span className="hub-sect">{t('skills.directory')}</span>
               <input
-                className="hub-input max-w-full"
+                className="hub-input min-w-0 cursor-pointer pl-0! file:mr-2.5 file:h-full file:cursor-pointer file:border-r file:border-[var(--hub-line)] file:bg-[var(--hub-bg-2)] file:px-2.5 file:font-medium file:text-[var(--hub-ink)]"
                 ref={(input) => {
                   input?.setAttribute('webkitdirectory', '');
                 }}
@@ -180,8 +187,8 @@ function SkillManager() {
               />
             </label>
           ) : (
-            <label className="flex min-w-0 flex-1 flex-col gap-1">
-              {t('skills.githubUrl')}
+            <label className="flex min-w-0 grow basis-full flex-col gap-1 sm:basis-64">
+              <span className="hub-sect">{t('skills.githubUrl')}</span>
               <input
                 className="hub-input w-full"
                 type="url"
@@ -203,19 +210,27 @@ function SkillManager() {
         </fieldset>
       </form>
       {error && (
-        <p className="text-red-600" role="alert">
+        <p className="mb-4 text-[13px] text-[var(--hub-err)]" role="alert">
           {error}
         </p>
       )}
-      {loading && <p role="status">{t('common.loading')}</p>}
-      {!loading && !skills.length && !error && <p>{t('skills.empty')}</p>}
+      {loading && (
+        <p className="hub-card p-10 text-center text-[13px] text-[var(--hub-ink-3)]" role="status">
+          {t('common.loading')}
+        </p>
+      )}
+      {!loading && !skills.length && !error && (
+        <p className="hub-card p-10 text-center text-[13px] text-[var(--hub-ink-3)]">
+          {t('skills.empty')}
+        </p>
+      )}
       {skills.map((skill) => (
-        <section key={skill.id} className="hub-card space-y-3 p-4">
+        <section key={skill.id} className="hub-card hub-card-pad mb-4 space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="break-words font-semibold">{skill.name}</h2>
-              <p className="break-words text-sm">{skill.description}</p>
-              <p className="break-all text-sm">
+              <h2 className="hub-card-title break-words">{skill.name}</h2>
+              <p className="hub-sub break-words">{skill.description}</p>
+              <p className="mt-1 break-all text-xs text-[var(--hub-ink-3)]">
                 {skill.source.type === 'github'
                   ? `${skill.source.url} · ${skill.source.commit.slice(0, 12)}`
                   : t('skills.directory')}
@@ -246,24 +261,26 @@ function SkillManager() {
               </button>
             </div>
           </div>
-          <details>
-            <summary className="cursor-pointer">
+          <details className="group hub-border-t pt-3">
+            <summary className="hub-sect flex w-fit cursor-pointer items-center gap-1.5 [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={12} aria-hidden="true" className="group-open:rotate-90" />
               {t('skills.files', { count: skill.files.length })}
             </summary>
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="hub-mono mt-2 space-y-1 pl-[18px] text-xs text-[var(--hub-ink-2)]">
               {skill.files.map((file) => (
-                <li key={file.uri} className="break-all font-mono">
+                <li key={file.uri} className="break-all">
                   {file.path}
                 </li>
               ))}
             </ul>
           </details>
           <form
+            className="hub-border-t pt-3 text-[13px] text-[var(--hub-ink-2)] [&_input]:accent-[var(--hub-ink-2)]"
             key={JSON.stringify([skill.enabled, skill.global, skill.groupIds])}
             onSubmit={(event) => publish(event, skill.id)}
           >
             <fieldset disabled={busy || groupsLoading || !!groupsError} className="space-y-2">
-              <legend className="font-medium">{t('skills.publication')}</legend>
+              <legend className="hub-sect mb-2">{t('skills.publication')}</legend>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <label className="flex items-center gap-2">
                   <input name="enabled" type="checkbox" defaultChecked={skill.enabled} />
