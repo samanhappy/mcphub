@@ -3,6 +3,7 @@ import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
 import { ServerConfig } from '../types/index.js';
 import {
+  readStoredServerTags,
   unpackStartOnDemandOptions,
   mirrorStartOnDemandIntoOptions,
 } from '../utils/serverConfigPersistence.js';
@@ -336,7 +337,7 @@ export class ServerDaoDbImpl implements ServerDao {
       name: server.name,
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
       description: server.description,
-      tags: server.tags ?? undefined,
+      tags: readStoredServerTags(server.name, server.tags),
       url: server.url,
       command: server.command,
       args: server.args,

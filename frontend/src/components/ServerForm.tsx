@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useServerContext } from '../contexts/ServerContext';
 import TagInput from './ui/TagInput';
-import { getServerTagOptions } from '../utils/serverTags';
+import { getServerTagOptions, normalizeTags } from '../utils/serverTags';
 import { getServerConfigPermissionError } from '../utils/serverPermissions.js';
 import { X } from 'lucide-react';
 import { Server, EnvVar, ServerFormData, OpenApiToolStats } from '@/types';
@@ -140,7 +140,7 @@ const ServerForm = ({
   const [formData, setFormData] = useState<ServerFormData>({
     name: (initialData && initialData.name) || '',
     description: (initialData && initialData.config && initialData.config.description) || '',
-    tags: initialData?.config?.tags ?? [],
+    tags: normalizeTags(initialData?.config?.tags),
     url: (initialData && initialData.config && initialData.config.url) || '',
     command: (initialData && initialData.config && initialData.config.command) || '',
     arguments: '',

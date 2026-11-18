@@ -1,6 +1,8 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 import { hasConnectionRelevantChange } from '../../src/utils/connectionRelevantConfig.js';
+import { readStoredServerTags } from '../../src/utils/serverConfigPersistence.js';
+import { logger } from '../../src/utils/logger.js';
 
 describe('normalizeServerConfigForPersistence', () => {
   it('preserves absolute OAuth expiry alongside its shared access token', () => {
@@ -575,5 +577,31 @@ describe('server tags (#1506)', () => {
 
     expect(hasConnectionRelevantChange(existing, { ...base, tags: ['db', 'test'] })).toBe(false);
     expect(hasConnectionRelevantChange(existing, { ...base })).toBe(false);
+  });
+});
+
+describe('readStoredServerTags (#1506)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('keeps valid tags without warning', () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+    expect(readStoredServerTags('valid', [' db ', 'DB', 'prod'])).toEqual(['db', 'prod']);
+    expect(readStoredServerTags('valid', undefined)).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('drops malformed entries and warns once per server and value', () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+    expect(readStoredServerTags('hand-edited', [123, 'db', 'x'.repeat(65)])).toEqual(['db']);
+    expect(readStoredServerTags('hand-edited', [123, 'db', 'x'.repeat(65)])).toEqual(['db']);
+    expect(readStoredServerTags('scalar-tags', 'db')).toBeUndefined();
+
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toContain('"hand-edited"');
+    expect(warn.mock.calls[1][0]).toContain('"scalar-tags"');
   });
 });

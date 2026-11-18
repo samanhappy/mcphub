@@ -1,6 +1,11 @@
 import { filterServers, getServerFilterCounts, selectServerPage } from '../../frontend/src/utils/serverFilters';
 import type { Server, Tool } from '../../frontend/src/types';
-import { getServerTagOptions } from '../../frontend/src/utils/serverTags';
+import {
+  buildTagFilterOptions,
+  getServerTagOptions,
+  isTagCommitKey,
+  serverHasTag,
+} from '../../frontend/src/utils/serverTags';
 
 const makeTool = (name: string): Tool => ({
   name,
@@ -175,5 +180,49 @@ describe('server tag filtering (#1506)', () => {
       { tag: 'prod', count: 1 },
       { tag: 'test', count: 1 },
     ]);
+  });
+});
+
+describe('tag filter review fixes (#1506)', () => {
+  const server = (name: string, tags: unknown, status: Server['status'] = 'connected'): Server =>
+    ({ name, status, enabled: true, config: { tags } }) as Server;
+
+  it('keeps the selected tag when its spelling differs between status tabs', () => {
+    const online = server('online', ['DB']);
+    const inactive = server('inactive', ['db'], 'disconnected');
+    const all = [online, inactive];
+
+    const inactiveOptions = buildTagFilterOptions(filterServers(all, 'issues'), all, 'db');
+
+    expect(inactiveOptions).toEqual([{ value: 'db', label: 'db', count: 1 }]);
+    expect(filterServers(all, 'issues', '', 'db').map((s) => s.name)).toEqual(['inactive']);
+  });
+
+  it('keeps a selected tag that is missing from the current tab with its original spelling', () => {
+    const all = [server('online', ['DB']), server('other', ['web'], 'disconnected')];
+
+    const options = buildTagFilterOptions(filterServers(all, 'issues'), all, 'db');
+
+    expect(options).toEqual([
+      { value: 'web', label: 'web', count: 1 },
+      { value: 'db', label: 'DB', count: 0 },
+    ]);
+  });
+
+  it('ignores malformed tags instead of breaking the page', () => {
+    const all = [server('numbers', [123, 'db']), server('scalar', 'db'), server('none', undefined)];
+
+    expect(() => filterServers(all, 'all', 'db', 'db')).not.toThrow();
+    expect(filterServers(all, 'all', '', 'db').map((s) => s.name)).toEqual(['numbers']);
+    expect(serverHasTag(all[1], 'db')).toBe(false);
+    expect(getServerTagOptions(all)).toEqual([{ tag: 'db', count: 1 }]);
+  });
+
+  it('does not commit a tag while an IME composition is active', () => {
+    expect(isTagCommitKey('Enter', true)).toBe(false);
+    expect(isTagCommitKey(',', true)).toBe(false);
+    expect(isTagCommitKey('Enter', false)).toBe(true);
+    expect(isTagCommitKey(',', false)).toBe(true);
+    expect(isTagCommitKey('a', false)).toBe(false);
   });
 });

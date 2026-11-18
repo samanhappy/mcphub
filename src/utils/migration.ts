@@ -1,4 +1,7 @@
-import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
+import {
+  normalizeServerConfigForPersistence,
+  readStoredServerTags,
+} from './serverConfigPersistence.js';
 import { isReplicaMode } from './replicaMode.js';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -153,6 +156,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
           // not persist an adapter-less shared declaration or a staged tool.
           const normalized = normalizeServerConfigForPersistence({
             ...config,
+            tags: readStoredServerTags(name, config.tags),
             type: config.type ?? (config.url ? 'sse' : 'stdio'),
           });
           await serverRepo.create({

@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { normalizeTags, SERVER_TAG_MAX_LENGTH } from '../../utils/serverTags';
+import { normalizeTags, SERVER_TAG_MAX_LENGTH, isTagCommitKey } from '../../utils/serverTags';
 
 interface TagInputProps {
   id?: string;
@@ -36,17 +36,19 @@ const TagInput: React.FC<TagInputProps> = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
+    const isComposing = event.nativeEvent.isComposing || event.keyCode === 229;
+    if (isTagCommitKey(event.key, isComposing)) {
       event.preventDefault();
       commit(draft);
-    } else if (event.key === 'Backspace' && draft === '' && value.length > 0) {
+    } else if (!isComposing && event.key === 'Backspace' && draft === '' && value.length > 0) {
       onChange(value.slice(0, -1));
     }
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = event.target.value;
-    if (next.includes(',')) {
+    const isComposing = (event.nativeEvent as InputEvent).isComposing === true;
+    if (!isComposing && next.includes(',')) {
       commit(next);
     } else {
       setDraft(next);

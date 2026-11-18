@@ -1,5 +1,5 @@
 import { Server } from '@/types';
-import { serverHasTag } from './serverTags';
+import { getServerTagList, serverHasTag } from './serverTags';
 
 export type ServerFilter = 'all' | 'online' | 'issues' | 'disabled';
 
@@ -39,7 +39,7 @@ export const filterServers = (
       ' ' +
       (server.config?.description || '') +
       ' ' +
-      (server.config?.tags?.join(' ') || '') +
+      getServerTagList(server).join(' ') +
       ' ' +
       (server.tools?.map((tool) => tool.name).join(' ') || '')
     ).toLowerCase();

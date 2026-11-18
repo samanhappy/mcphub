@@ -448,6 +448,17 @@ describe('server tags database persistence (#1506)', () => {
     expect(result?.tags).toBeUndefined();
   });
 
+  it('drops malformed stored tags when reading a row', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.findByName.mockResolvedValue({
+      name: 'mongo',
+      enabled: true,
+      tags: [123, 'db'],
+    });
+
+    expect((await dao.findById('mongo'))?.tags).toEqual(['db']);
+  });
+
   it('leaves stored tags untouched when an update does not mention them', async () => {
     const dao = new ServerDaoDbImpl();
     mockRepository.update.mockResolvedValue({ name: 'mongo', enabled: false, tags: ['db'] });

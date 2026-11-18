@@ -3,7 +3,10 @@ import { assertSmartRoutingNameAvailable } from '../utils/smartRoutingPath.js';
 import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
-import { unpackStartOnDemandOptions } from '../utils/serverConfigPersistence.js';
+import {
+  readStoredServerTags,
+  unpackStartOnDemandOptions,
+} from '../utils/serverConfigPersistence.js';
 import { randomUUID } from 'node:crypto';
 
 import { remapServerIdReferences } from '../utils/serverIdReferences.js';
@@ -134,6 +137,7 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
         name,
         ...config,
         id: config.id ?? legacyServerId(name),
+        ...(config.tags !== undefined ? { tags: readStoredServerTags(name, config.tags) } : {}),
         options,
         ...(startOnDemand !== undefined ? { startOnDemand } : {}),
         ...(idleTimeoutMs !== undefined ? { idleTimeoutMs } : {}),

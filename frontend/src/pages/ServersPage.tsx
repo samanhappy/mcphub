@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, RefreshCw, Search, Upload, FileCode, AlertCircle, X } from 'lucide-react';
 import { Server } from '@/types';
 import ServerCard from '@/components/ServerCard';
@@ -19,7 +19,12 @@ import {
   type ServerFilter,
 } from '@/utils/serverFilters';
 import { resolveDuplicateResponse } from '@/utils/serverDuplicate';
-import { getServerTagOptions, serverHasTag } from '@/utils/serverTags';
+import {
+  buildTagFilterOptions,
+  getServerTagOptions,
+  serverHasTag,
+  tagKey,
+} from '@/utils/serverTags';
 
 const ServersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -55,7 +60,24 @@ const ServersPage: React.FC = () => {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [filter, setFilter] = useState<ServerFilter>('all');
   const [search, setSearch] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tagFilter = tagKey(searchParams.get('tag') ?? '');
+  const setTagFilter = useCallback(
+    (value: string) =>
+      setSearchParams(
+        (previous) => {
+          const next = new URLSearchParams(previous);
+          if (value) {
+            next.set('tag', value);
+          } else {
+            next.delete('tag');
+          }
+          return next;
+        },
+        { replace: true },
+      ),
+    [setSearchParams],
+  );
 
   const counts = useMemo(() => getServerFilterCounts(allServers), [allServers]);
   const tabCounts = useMemo(
@@ -66,19 +88,20 @@ const ServersPage: React.FC = () => {
     [allServers, tagFilter, counts],
   );
   const tagOptions = useMemo(
-    () => getServerTagOptions(filterServers(allServers, filter)),
-    [allServers, filter],
+    () => buildTagFilterOptions(filterServers(allServers, filter), allServers, tagFilter),
+    [allServers, filter, tagFilter],
   );
   const allTagOptions = useMemo(() => getServerTagOptions(allServers), [allServers]);
 
   useEffect(() => {
     if (
       tagFilter &&
-      !allTagOptions.some((option) => option.tag.toLowerCase() === tagFilter.toLowerCase())
+      allServers.length > 0 &&
+      !allTagOptions.some((option) => tagKey(option.tag) === tagFilter)
     ) {
       setTagFilter('');
     }
-  }, [allTagOptions, tagFilter]);
+  }, [allServers.length, allTagOptions, tagFilter, setTagFilter]);
 
   // Filter against the full list and paginate the filtered result client-side,
   // so status filters reach servers that live on other pagination pages.
@@ -288,15 +311,11 @@ const ServersPage: React.FC = () => {
             }}
           >
             <option value="">{t('server.allTags')}</option>
-            {tagOptions.map(({ tag, count }) => (
-              <option key={tag.toLowerCase()} value={tag}>
-                {tag} ({count})
+            {tagOptions.map(({ value, label, count }) => (
+              <option key={value} value={value}>
+                {label} ({count})
               </option>
             ))}
-            {tagFilter &&
-              !tagOptions.some(
-                (option) => option.tag.toLowerCase() === tagFilter.toLowerCase(),
-              ) && <option value={tagFilter}>{tagFilter} (0)</option>}
           </select>
         )}
 

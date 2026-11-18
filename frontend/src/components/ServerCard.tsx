@@ -36,6 +36,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageServer } from '@/utils/serverPermissions';
+import { getServerTagList } from '@/utils/serverTags';
 import {
   getServerVisibilityDisplay,
   getServerVisibilityOptions,
@@ -632,9 +633,9 @@ const ServerCard = ({
                   {server.config.description}
                 </div>
               )}
-              {!!server.config?.tags?.length && (
+              {getServerTagList(server).length > 0 && (
                 <div className="flex flex-wrap gap-1" style={{ marginTop: 3 }}>
-                  {server.config.tags.map((tag) => (
+                  {getServerTagList(server).map((tag) => (
                     <span key={tag} className="hub-tag text-[11px]">
                       {tag}
                     </span>

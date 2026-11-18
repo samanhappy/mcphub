@@ -13,6 +13,7 @@ import {
 // disabled (#1056, R12).
 import { STAGING_TOOL_PREFIX } from '../services/fileStaging/tools.js';
 import { ServerConfig } from '../types/index.js';
+import { logger } from './logger.js';
 
 const trimToUndefined = (value?: string): string | undefined => {
   if (typeof value !== 'string') {
@@ -46,6 +47,8 @@ const normalizeStringArray = (value?: string[]): string[] | undefined => {
 
 export const SERVER_TAG_MAX_LENGTH = 64;
 
+const normalizeTagText = (tag: string): string => tag.trim().replace(/\s+/g, ' ');
+
 export const normalizeServerTags = (value: unknown): string[] | undefined => {
   if (value === undefined || value === null) {
     return undefined;
@@ -57,7 +60,7 @@ export const normalizeServerTags = (value: unknown): string[] | undefined => {
   const seen = new Set<string>();
   const tags: string[] = [];
   for (const raw of value as string[]) {
-    const tag = raw.trim().replace(/\s+/g, ' ');
+    const tag = normalizeTagText(raw);
     if (!tag) {
       continue;
     }
@@ -73,6 +76,30 @@ export const normalizeServerTags = (value: unknown): string[] | undefined => {
     }
   }
   return tags.length > 0 ? tags : undefined;
+};
+
+const warnedStoredTags = new Set<string>();
+
+export const readStoredServerTags = (serverName: string, value: unknown): string[] | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const entries: unknown[] = Array.isArray(value) ? value : [];
+  const valid = entries.filter(
+    (tag): tag is string =>
+      typeof tag === 'string' && normalizeTagText(tag).length <= SERVER_TAG_MAX_LENGTH,
+  );
+  if (!Array.isArray(value) || valid.length !== entries.length) {
+    const warningKey = `${serverName}\u0000${JSON.stringify(value)}`;
+    if (!warnedStoredTags.has(warningKey)) {
+      warnedStoredTags.add(warningKey);
+      logger.warn(
+        `Ignoring invalid tags for server "${serverName}": tags must be an array of strings of at most ${SERVER_TAG_MAX_LENGTH} characters`,
+      );
+    }
+  }
+  return normalizeServerTags(valid);
 };
 
 const normalizeSharedUsers = (value?: string[]): string[] | undefined => {
