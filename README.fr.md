@@ -30,6 +30,7 @@ MCPHub offre une manière unifiée de connecter et de gérer plusieurs serveurs 
 - **Alias et routage des serveurs** - Définissez des alias et routez les clients vers tous les serveurs, des groupes, un serveur individuel ou le routage intelligent
 - **Prise en charge SSE / Streamable HTTP / stdio** - Connectez des serveurs MCP locaux et distants via les transports pris en charge
 - **Mise en attente de fichiers** - Permet aux outils stdio de recevoir une copie téléversée d'un fichier client ou d'écrire un résultat que le hub sert en téléchargement à usage unique ([En savoir plus](docs/features/file-staging.mdx))
+- **Compétences via MCP** - Importez des compétences dans le tableau de bord et publiez-les pour les clients MCP compatibles ([En savoir plus](docs/features/skills.mdx))
 - **Configuration à chaud** - Ajoutez, supprimez ou mettez à jour les serveurs sans temps d'arrêt
 
 ### Contrôler les accès et les identifiants

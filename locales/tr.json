@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "Beceriler",
+    "import": "Beceri içe aktar",
+    "source": "Kaynak",
+    "directory": "Yerel klasör",
+    "githubUrl": "GitHub klasör URL’si",
+    "replace": "Dosyaları değiştir",
+    "replaceTitle": "{{name}} dosyalarını değiştir",
+    "empty": "İçe aktarılan beceri yok.",
+    "files": "Dosyalar ({{count}})",
+    "publication": "Yayınlama",
+    "enabled": "Etkin",
+    "global": "Genel uç nokta",
+    "requestFailed": "Beceri isteği başarısız oldu.",
+    "invalidDirectory": "En fazla 512 dosya ve 16 MiB içeren bir klasör seçin.",
+    "removeConfirm": "{{name}} ve dosyaları silinsin mi?"
+  },
   "app": {
     "title": "MCPHub Kontrol Paneli",
     "error": "Hata",

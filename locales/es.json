@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "Habilidades",
+    "import": "Importar habilidad",
+    "source": "Origen",
+    "directory": "Carpeta local",
+    "githubUrl": "URL de la carpeta de GitHub",
+    "replace": "Reemplazar archivos",
+    "replaceTitle": "Reemplazar archivos de {{name}}",
+    "empty": "No hay habilidades importadas.",
+    "files": "Archivos ({{count}})",
+    "publication": "Publicación",
+    "enabled": "Habilitada",
+    "global": "Endpoint global",
+    "requestFailed": "La solicitud de habilidad falló.",
+    "invalidDirectory": "Selecciona una carpeta con un máximo de 512 archivos y 16 MiB.",
+    "removeConfirm": "¿Eliminar {{name}} y sus archivos?"
+  },
   "app": {
     "title": "Panel de MCPHub",
     "error": "Error",

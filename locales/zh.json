@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "技能",
+    "import": "导入技能",
+    "source": "来源",
+    "directory": "本地文件夹",
+    "githubUrl": "GitHub 文件夹 URL",
+    "replace": "替换文件",
+    "replaceTitle": "替换 {{name}} 的文件",
+    "empty": "暂无已导入的技能。",
+    "files": "文件（{{count}}）",
+    "publication": "发布范围",
+    "enabled": "启用",
+    "global": "全局端点",
+    "requestFailed": "技能请求失败。",
+    "invalidDirectory": "请选择一个最多包含 512 个文件、总大小不超过 16 MiB 的文件夹。",
+    "removeConfirm": "删除 {{name}} 及其文件？"
+  },
   "app": {
     "title": "MCPHub 控制面板",
     "error": "错误",

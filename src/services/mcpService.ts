@@ -56,6 +56,8 @@ import {
 import { preserveListFreshness, remainingListTtl } from '../utils/listFreshness.js';
 import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
+import { isHostedSkillUri } from './hostedSkillCatalog.js';
+import { readHostedSkillResource, registerSkillHandlers, skillsAvailable } from './mcpSkills.js';
 import { revalidateUpstreamList, type UpstreamList } from './upstreamListRefresh.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import {
@@ -4887,7 +4889,16 @@ export const createMcpServer = (
   server.setRequestHandler('prompts/list', handleListPromptsRequest);
   server.setRequestHandler('resources/list', handleListResourcesRequest);
   server.setRequestHandler('resources/templates/list', handleListResourceTemplatesRequest);
-  server.setRequestHandler('resources/read', handleReadResourceRequest);
+  if (skillsAvailable() && RequestContextService.getInstance().getRequestContext()?.stateless) {
+    registerSkillHandlers(server);
+    server.setRequestHandler('resources/read', (request, extra) =>
+      isHostedSkillUri(request.params.uri)
+        ? readHostedSkillResource(request.params.uri)
+        : handleReadResourceRequest(request, extra),
+    );
+  } else {
+    server.setRequestHandler('resources/read', handleReadResourceRequest);
+  }
   return server;
 };
 

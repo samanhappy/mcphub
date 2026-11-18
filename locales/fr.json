@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "Compétences",
+    "import": "Importer une compétence",
+    "source": "Source",
+    "directory": "Dossier local",
+    "githubUrl": "URL du dossier GitHub",
+    "replace": "Remplacer les fichiers",
+    "replaceTitle": "Remplacer les fichiers de {{name}}",
+    "empty": "Aucune compétence importée.",
+    "files": "Fichiers ({{count}})",
+    "publication": "Publication",
+    "enabled": "Activée",
+    "global": "Point de terminaison global",
+    "requestFailed": "La requête a échoué.",
+    "invalidDirectory": "Choisissez un dossier contenant au plus 512 fichiers et 16 Mio.",
+    "removeConfirm": "Supprimer {{name}} et ses fichiers ?"
+  },
   "app": {
     "title": "Tableau de bord MCPHub",
     "error": "Erreur",

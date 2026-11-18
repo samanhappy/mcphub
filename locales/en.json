@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "Skills",
+    "import": "Import Skill",
+    "source": "Source",
+    "directory": "Local directory",
+    "githubUrl": "GitHub directory URL",
+    "replace": "Replace files",
+    "replaceTitle": "Replace files for {{name}}",
+    "empty": "No Skills imported.",
+    "files": "Files ({{count}})",
+    "publication": "Publication",
+    "enabled": "Enabled",
+    "global": "Global endpoint",
+    "requestFailed": "Skill request failed.",
+    "invalidDirectory": "Choose one directory with up to 512 files and 16 MiB.",
+    "removeConfirm": "Remove {{name}} and its files?"
+  },
   "app": {
     "title": "MCPHub Dashboard",
     "error": "Error",

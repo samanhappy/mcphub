@@ -1,4 +1,21 @@
 {
+  "skills": {
+    "title": "Kỹ năng",
+    "import": "Nhập kỹ năng",
+    "source": "Nguồn",
+    "directory": "Thư mục cục bộ",
+    "githubUrl": "URL thư mục GitHub",
+    "replace": "Thay thế tệp",
+    "replaceTitle": "Thay thế tệp của {{name}}",
+    "empty": "Chưa nhập kỹ năng nào.",
+    "files": "Tệp ({{count}})",
+    "publication": "Phạm vi công bố",
+    "enabled": "Đã bật",
+    "global": "Điểm cuối toàn cục",
+    "requestFailed": "Yêu cầu kỹ năng thất bại.",
+    "invalidDirectory": "Chọn một thư mục có tối đa 512 tệp và 16 MiB.",
+    "removeConfirm": "Xóa {{name}} cùng các tệp của kỹ năng này?"
+  },
   "app": {
     "title": "Bảng điều khiển MCPHub",
     "error": "Lỗi",

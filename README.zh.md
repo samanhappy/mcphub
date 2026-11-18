@@ -32,6 +32,7 @@ MCPHub 是 AI 客户端与 MCP 服务器之间的统一控制点。一次连接�
 - **服务器别名与路由** - 设置别名，并将客户端路由到所有服务器、指定分组、单个服务器或智能路由
 - **SSE / Streamable HTTP / stdio 支持** - 通过支持的传输方式连接本地和远程 MCP 服务器
 - **文件暂存** - 让 stdio 工具接收客户端文件的上传副本，或把结果写出来由 hub 以一次性下载链接提供 ([了解更多](docs/zh/features/file-staging.mdx))
+- **通过 MCP 发布技能** - 在控制台导入 Agent Skills 并发布给兼容的 MCP 客户端 ([了解更多](docs/zh/features/skills.mdx))
 - **热插拔配置** - 无需停机即可添加、移除或更新服务器
 
 ### 管控访问与凭据
