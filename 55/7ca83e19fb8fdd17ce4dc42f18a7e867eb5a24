@@ -1,0 +1,21 @@
+frontend/src/pages/SkillsPage.tsx
+  s_4ef744778b6bbc::t_e7b414afff55dc 2,149-152,158,163,177,191,213,222,226,228,231-233,264-266,269,271,278,283
+  s_4ef744778b6bbc::t_70dd4e9ef3d07e 153-157,217-221,223-225
+  s_4ef744778b6bbc::t_ccf8f36289eb82 179,190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "557ca83e19fb8fdd17ce4dc42f18a7e867eb5a24",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
