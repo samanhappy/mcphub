@@ -40,11 +40,26 @@ interface RegisteredClientInfo {
 const registeredClients = new Map<string, RegisteredClientInfo>();
 const pendingRegistrations = new Map<string, Promise<RegisteredClientInfo>>();
 
-export const createOAuthFetch = async (serverConfig?: ServerConfig): Promise<FetchLike> => {
+export const createOAuthFetch = async (
+  serverConfig?: ServerConfig,
+  rejectRedirects = false,
+): Promise<FetchLike> => {
   const ownerUser = serverConfig?.owner
     ? await getUserDao().findByUsername(serverConfig.owner)
     : undefined;
-  return createRedirectValidatingFetch(fetch, ownerUser?.isAdmin === true);
+  const fetchToken: FetchLike = async (url, init) => {
+    const response = await fetch(url, {
+      ...init,
+      signal: init?.signal ?? AbortSignal.timeout(serverConfig?.options?.timeout || 30_000),
+    });
+    if (response.status >= 300 && response.status < 400)
+      throw new Error('OAuth token endpoint redirected');
+    return response;
+  };
+  return createRedirectValidatingFetch(
+    rejectRedirects ? fetchToken : fetch,
+    ownerUser?.isAdmin === true,
+  );
 };
 
 const toOpenIdClientFetch =

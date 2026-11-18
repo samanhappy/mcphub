@@ -57,6 +57,7 @@ interface MappedSecurityScheme {
 }
 
 interface OpenAPIClientOptions {
+  getPersonalAccessToken?: (rejectedToken?: string) => Promise<string>;
   persistOAuth2Token?: (oauth2: OpenAPISecurityConfig['oauth2']) => Promise<void> | void;
 }
 
@@ -139,6 +140,7 @@ export class OpenAPIClient {
   private tools: OpenAPIToolInfo[] = [];
   private baseUrl: string;
   private securityConfig?: OpenAPISecurityConfig;
+  private readonly getPersonalAccessToken?: (rejectedToken?: string) => Promise<string>;
   private readonly persistOAuth2Token?: OpenAPIClientOptions['persistOAuth2Token'];
   private oauth2TokenRequest?: Promise<string | undefined>;
   // Per-session cookie jars for the dynamic Set-Cookie login flow. Keyed by
@@ -177,7 +179,8 @@ export class OpenAPIClient {
     // user-derived default baseURL must not taint this.httpClient — CodeQL
     // tracks a client's default baseURL as the host of every request it makes.
     this.baseUrl = config.openapi?.url ? this.extractBaseUrl(config.openapi.url) : '';
-    this.securityConfig = config.openapi.security;
+    this.getPersonalAccessToken = options.getPersonalAccessToken;
+    this.securityConfig = options.getPersonalAccessToken ? undefined : config.openapi.security;
     this.persistOAuth2Token = options.persistOAuth2Token;
 
     this.httpClient = this.createHttpClient(config);
@@ -879,6 +882,7 @@ export class OpenAPIClient {
 
     let attemptedUpstreamRequest = false;
     let authorizationUsedForRequest: string | undefined;
+    let personalAccessToken: string | undefined;
     let resolvedTarget: URL | null = null;
 
     try {
@@ -1068,6 +1072,18 @@ export class OpenAPIClient {
         }
         requestConfig.headers = headers;
       }
+      if (this.getPersonalAccessToken) {
+        // A remote specification cannot redirect personal tokens to another origin.
+        const apiOrigin = new URL(
+          this.config.oauth?.resource ?? this.config.openapi?.url ?? this.baseUrl,
+        ).origin;
+        if (resolvedTarget?.origin !== apiOrigin)
+          throw new Error('OpenAPI operation is outside the personal OAuth API origin');
+        const headers = AxiosHeaders.from(requestConfig.headers as Record<string, string>);
+        personalAccessToken = await this.getPersonalAccessToken();
+        headers.set('Authorization', 'Bearer ' + personalAccessToken);
+        requestConfig.headers = headers;
+      }
       authorizationUsedForRequest = this.getDefaultAuthorizationHeader();
       attemptedUpstreamRequest = true;
       Object.assign(requestConfig, ssrfConnectionOptions(this.allowInternalNetworks));
@@ -1086,6 +1102,16 @@ export class OpenAPIClient {
         // current and the 401-retry path can re-inject updated cookies.
         if (this.isCookieSessionEnabled(sessionId) && resolvedTarget && error.response) {
           this.captureResponseCookies(error.response, resolvedTarget.href, sessionId);
+        }
+        if (
+          attemptedUpstreamRequest &&
+          error.response?.status === 401 &&
+          !hasRetriedAfterUnauthorized &&
+          personalAccessToken &&
+          this.getPersonalAccessToken
+        ) {
+          await this.getPersonalAccessToken(personalAccessToken);
+          return this.callTool(toolName, args, passthroughHeaders, true, sessionId);
         }
         if (
           !isReplicaMode() && attemptedUpstreamRequest &&

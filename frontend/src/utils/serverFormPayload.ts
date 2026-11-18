@@ -294,6 +294,8 @@ export const buildServerPayload = ({
   if (serverType === 'openapi') {
     config.headers = headers;
     config.openapi = buildOpenApiConfig(formData);
+    if (formData.oauth?.identityMode === 'personal')
+      config.oauth = buildOAuthConfig(formData.oauth);
   } else if (serverType === 'sse' || serverType === 'streamable-http') {
     const keepAliveEnabled = formData.keepAlive?.enabled === true;
 

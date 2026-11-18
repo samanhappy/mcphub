@@ -23,7 +23,12 @@ import {
  */
 
 import { randomBytes } from 'node:crypto';
-import { auth } from '../clients/mcpSdkClient.js';
+import {
+  auth,
+  exchangeAuthorization,
+  refreshAuthorization,
+  startAuthorization,
+} from '../clients/mcpSdkClient.js';
 import type {
   OAuthClientProvider,
   OAuthDiscoveryState,
@@ -346,7 +351,80 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     };
   }
 
-  async tokens(): Promise<OAuthTokens | undefined> {
+  private openApiOAuthParameters() {
+    const oauth = this.serverConfig.oauth;
+    const clientInformation = this.clientInformation();
+    if (!oauth || !clientInformation || !this.personal)
+      throw new Error('OpenAPI personal OAuth requires a configured client');
+    const authorizationEndpoint = oauth.authorizationEndpoint;
+    const metadata = oauthServerMetadataSchema.parse(
+      oauth.authorizationServerMetadata ?? {
+        issuer:
+          oauth.dynamicRegistration?.issuer ??
+          (authorizationEndpoint && new URL(authorizationEndpoint).origin),
+        authorization_endpoint: authorizationEndpoint,
+        token_endpoint: oauth.tokenEndpoint,
+        response_types_supported: ['code'],
+      },
+    );
+    return {
+      metadata,
+      clientInformation,
+      ...(oauth.resource ? { resource: oauth.resource } : {}),
+    };
+  }
+
+  async startOpenApiAuthorization(): Promise<void> {
+    const parameters = this.openApiOAuthParameters();
+    const state = await this.state();
+    const { authorizationUrl, codeVerifier } = await startAuthorization(
+      parameters.metadata.issuer,
+      {
+        ...parameters,
+        redirectUrl: this.redirectUrl,
+        scope: this.serverConfig.oauth?.scopes?.join(' '),
+        state,
+      },
+    );
+    await this.settings.updatePendingAuthorization(this.serverName, {
+      state,
+      codeVerifier,
+      authorizationUrl: authorizationUrl.href,
+      issuer: parameters.metadata.issuer,
+      issRequired: parameters.metadata.authorization_response_iss_parameter_supported === true,
+    });
+  }
+
+  async finishOpenApiAuthorization(code: string, iss?: string): Promise<void> {
+    const parameters = this.openApiOAuthParameters();
+    const pending = this.serverConfig.oauth?.pendingAuthorization;
+    if (!pending?.codeVerifier || !pending.authorizationUrl)
+      throw new Error('Missing OpenAPI authorization session');
+    const redirectUri = new URL(pending.authorizationUrl).searchParams.get('redirect_uri');
+    if (!redirectUri) throw new Error('Missing OpenAPI authorization redirect URI');
+    await this.saveTokens(
+      await exchangeAuthorization(parameters.metadata.issuer, {
+        ...parameters,
+        authorizationCode: code,
+        iss,
+        codeVerifier: pending.codeVerifier,
+        redirectUri,
+        fetchFn: await createOAuthFetch(this.serverConfig, true),
+      }),
+    );
+  }
+
+  tokens(): Promise<OAuthTokens | undefined> {
+    return this.getTokens();
+  }
+
+  async openApiAccessToken(rejectedAccessToken?: string): Promise<string> {
+    const token = (await this.getTokens(rejectedAccessToken))?.access_token;
+    if (!token) throw personalAuthorizationRequired(this.serverName);
+    return token;
+  }
+
+  private async getTokens(rejectedAccessToken?: string): Promise<OAuthTokens | undefined> {
     if (isReplicaMode()) {
       const latest = await this.settings.loadServerConfig(this.serverName);
       if (!latest) return undefined;
@@ -355,15 +433,28 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
     const oauth = this.serverConfig.oauth;
     if (
       !oauth?.accessToken ||
-      oauth.accessTokenExpiresAt === undefined ||
-      oauth.accessTokenExpiresAt > Date.now()
+      (oauth.accessToken !== rejectedAccessToken &&
+        (oauth.accessTokenExpiresAt === undefined || oauth.accessTokenExpiresAt > Date.now()))
     )
       return this.storedTokens();
     if (!oauth.refreshToken) {
+      if (this.serverConfig.type === 'openapi')
+        throw personalAuthorizationRequired(this.serverName);
       throw new Error('OAuth access token expired; reconnect');
     }
     if (!this.renewal) {
       const renew = async () => {
+        if (this.serverConfig.type === 'openapi') {
+          const parameters = this.openApiOAuthParameters();
+          await this.saveTokens(
+            await refreshAuthorization(parameters.metadata.issuer, {
+              ...parameters,
+              refreshToken: oauth.refreshToken!,
+              fetchFn: await createOAuthFetch(this.serverConfig, true),
+            }),
+          );
+          return;
+        }
         if (!this.serverConfig.url) throw new Error('Missing OAuth resource URL');
         // SDK issuer annotation re-saves tokens; do not turn remaining lifetime into a new expiry.
         const provider = new Proxy(this, {
@@ -415,6 +506,8 @@ export class MCPHubOAuthProvider implements OAuthClientProvider {
    * Called by SDK after successful token exchange or refresh
    */
   async saveTokens(tokens: OAuthTokens): Promise<void> {
+    if (this.serverConfig.type === 'openapi' && tokens.token_type.toLowerCase() !== 'bearer')
+      throw new Error('OpenAPI personal OAuth requires a Bearer access token');
     if (
       tokens.expires_in !== undefined &&
       (!Number.isFinite(tokens.expires_in) || tokens.expires_in < 0)

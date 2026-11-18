@@ -83,7 +83,11 @@ const canonicalJson = (value: unknown): string => {
 };
 const fingerprint = (expanded: ServerConfig): string =>
   // URL-only MCP declarations use SSE; dashboard saves make that default explicit.
-  canonicalJson([expanded.type ?? 'sse', expanded.url, declarationOAuth(expanded.oauth)]);
+  canonicalJson([
+    expanded.type ?? 'sse',
+    expanded.type === 'openapi' ? [expanded.openapi?.url, expanded.openapi?.schema] : expanded.url,
+    declarationOAuth(expanded.oauth),
+  ]);
 // Bindings persisted before #1362 stored the whole declaration:
 // JSON.stringify([declaration, expanded.url, expanded.oauth]). Normalize such a stored
 // value to the current destination-only format so an upgrade does not orphan every

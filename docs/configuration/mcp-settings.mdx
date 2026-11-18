@@ -120,6 +120,27 @@ protected document references external `$ref`s that also require auth, inline th
 via `openapi.schema` instead.
 </Note>
 
+#### Personal OAuth for OpenAPI
+
+Register an authorization-code client with your API provider and allow the MCPHub callback URL (for example, `https://hub.example.com/oauth/callback`). Configure the client in the server's JSON declaration or server API, then have each user select **Connect** on that server in **Dashboard → Servers**. Request any scope your provider requires to issue a refresh token, such as `offline_access`.
+
+MCPHub stores tokens per user and refreshes them on expiry or once after an upstream 401. Personal tokens authenticate tool calls. Use `openapi.specSecurity` if the document itself requires credentials. For a downloaded spec, tool requests must target the spec URL's origin by default. If your API uses a separate origin, set `oauth.resource` to the API's resource URL. MCPHub also sends that URL as an OAuth resource indicator, so the provider must support it. An inline spec uses its server URL by default.
+
+```json
+{
+  "type": "openapi",
+  "openapi": { "url": "https://api.example.com/openapi.json" },
+  "oauth": {
+    "identityMode": "personal",
+    "clientId": "api-client",
+    "clientSecret": "your-client-secret",
+    "authorizationEndpoint": "https://login.example.com/authorize",
+    "tokenEndpoint": "https://login.example.com/token",
+    "scopes": ["api.read", "offline_access"]
+  }
+}
+```
+
 ## Common MCP Server Examples
 
 ### Web and API Servers

@@ -403,17 +403,31 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   const oauth = normalizeOAuth(config.oauth);
   if (
     oauth?.identityMode === 'personal' &&
-    (!['sse', 'streamable-http'].includes(normalizedType || '') ||
+    (!['sse', 'streamable-http', 'openapi'].includes(normalizedType || '') ||
       oauth.accessToken ||
       oauth.refreshToken ||
       oauth.pendingAuthorization ||
       config.credentialTemplate?.length)
   ) {
     throw new ServerConfigValidationError(
-      'Personal OAuth requires an HTTP MCP server without shared tokens, pending authorization or credential slots',
+      'Personal OAuth requires an HTTP MCP or OpenAPI server without shared tokens, pending authorization or credential slots',
     );
   }
   const openapi = normalizeOpenApi(config.openapi);
+  if (normalizedType === 'openapi' && oauth?.identityMode === 'personal') {
+    if (
+      !oauth.clientId ||
+      (!oauth.authorizationServerMetadata && !(oauth.authorizationEndpoint && oauth.tokenEndpoint))
+    ) {
+      throw new ServerConfigValidationError(
+        'OpenAPI personal OAuth requires a client ID and authorization and token endpoints',
+      );
+    }
+    if (openapi?.security && openapi.security.type !== 'none')
+      throw new ServerConfigValidationError(
+        'OpenAPI personal OAuth requires no shared API security',
+      );
+  }
   const tools = normalizeToolsConfig(config.tools);
   const staging = normalizeServerStaging(config.staging);
 
@@ -494,7 +508,7 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     normalized.env = undefined;
     normalized.headers = headers;
     normalized.passthroughHeaders = undefined;
-    normalized.oauth = undefined;
+    normalized.oauth = oauth?.identityMode === 'personal' ? oauth : undefined;
     normalized.enableKeepAlive = undefined;
     normalized.keepAliveInterval = undefined;
     normalized.openapi = openapi;
