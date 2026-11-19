@@ -303,6 +303,7 @@ describe('hub staging tools at the public MCP entry points', () => {
   it('does not resolve a non-credential server before it reports a version', async () => {
     const createReadyRef = enableStaging();
     const server = makeSshStagingServer(undefined);
+    server.name = 'plain-ssh';
     server.visibility = 'private';
     server.owner = 'alice';
     server.config.visibility = 'private';

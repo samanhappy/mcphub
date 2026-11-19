@@ -266,6 +266,7 @@ describe('staging dispatch seam', () => {
     );
     expect(rejected.isError).toBe(true);
     expect(rejected.content[0].text).toMatch(/not allowed/i);
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 
   it('disables staging on a replica without blocking normal calls', async () => {
