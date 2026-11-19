@@ -7,6 +7,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const mockGetSystemConfig = jest.fn(async () => ({ normalizeToolNames: true }));
+const mockAliceUser = {
+  username: 'alice',
+  isAdmin: false,
+  id: '11111111-1111-1111-1111-111111111111',
+};
 const mockCallTool = jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'upstream' }] });
 const mockGetFileStagingSettings = jest.fn(async () => ({ enabled: false }));
 const mockGetStagingStateStore = jest.fn(async () => ({}));
@@ -24,13 +29,22 @@ jest.mock('../../src/dao/index.js', () => ({
   getBuiltinPromptDao: jest.fn(() => ({ findEnabled: jest.fn(async () => []) })),
   getBuiltinResourceDao: jest.fn(() => ({ findEnabled: jest.fn(async () => []) })),
   getUserDao: jest.fn(() => ({
-    findByUsername: jest.fn(async () => ({ username: 'alice', isAdmin: false })),
+    findByUsername: jest.fn(async () => mockAliceUser),
   })),
+}));
+
+jest.mock('../../src/dao/DaoFactory.js', () => ({
+  getUserDao: jest.fn(() => ({
+    findByUsername: jest.fn(async () => mockAliceUser),
+  })),
+  getServerDao: jest.fn(() => ({ findAll: jest.fn(async () => []), findById: jest.fn(async () => undefined) })),
+  getSystemConfigDao: jest.fn(() => ({ get: jest.fn(async () => ({})) })),
 }));
 
 jest.mock('../../src/services/fileStaging/settings.js', () => ({
   getFileStagingSettings: (...args: unknown[]) => mockGetFileStagingSettings(...(args as [])),
   getStagingStateStore: (...args: unknown[]) => mockGetStagingStateStore(...(args as [])),
+  isStagingRuntimeSupported: () => true,
 }));
 
 jest.mock('../../src/services/services.js', () => ({
@@ -141,10 +155,94 @@ import * as mcpService from '../../src/services/mcpService.js';
 
 const textOf = (result: any): string => result?.content?.[0]?.text ?? '';
 
+const makeSharedCredentialServer = (version: string | undefined): any => ({
+  name: 'shared-cred',
+  owner: 'admin',
+  visibility: 'public',
+  status: 'connected',
+  enabled: true,
+  error: null,
+  version,
+  tools: [
+    {
+      name: 'shared-cred-upload',
+      description: 'upload',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          localPath: { type: 'string' },
+          remotePath: { type: 'string' },
+        },
+      },
+    },
+  ],
+  prompts: [],
+  resources: [],
+  config: {
+    id: '22222222-2222-2222-2222-222222222222',
+    type: 'stdio',
+    command: 'npx',
+    args: [
+      '-y',
+      '@fangjunjie/ssh-mcp-server@1.11.0',
+      '--host', '{{args.ssh_host}}',
+      '--port', '{{args.ssh_port}}',
+      '--username', '{{args.ssh_user}}',
+      '--privateKey', '{{args.ssh_key}}',
+    ],
+    enabled: true,
+    visibility: 'public',
+    staging: { adapter: 'ssh', shared: true },
+    credentialTemplate: [
+      { target: 'args', name: 'ssh_host' },
+      { target: 'args', name: 'ssh_port' },
+      { target: 'args', name: 'ssh_user' },
+      { target: 'args', name: 'ssh_key' },
+    ],
+    tools: {
+      upload: {
+        enabled: true,
+        fileStaging: { enabled: true, inputParams: ['localPath'] },
+      },
+    },
+  },
+});
+
+const enableStaging = () => {
+  mockGetFileStagingSettings.mockResolvedValue({
+    enabled: true,
+    maxFileBytes: 104857600,
+    inlineMaxBytes: 1048576,
+    perUserQuotaBytes: 1073741824,
+  } as any);
+  const createReadyRef = jest.fn(async () => ({
+    ref: 'mcpfile://aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    state: 'ready',
+    size: 1,
+  }));
+  mockGetStagingStateStore.mockResolvedValue({ createReadyRef } as any);
+  return createReadyRef;
+};
+
+const callUpload = () =>
+  mcpService.handleCallToolRequest(
+    {
+      params: {
+        name: 'mcphub_file_upload',
+        arguments: { filename: 'a.txt', content_base64: 'YQ==' },
+      },
+    },
+    { sessionId: 's1' },
+  );
+
 describe('hub staging tools at the public MCP entry points', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetFileStagingSettings.mockResolvedValue({ enabled: false } as any);
+  });
+
+  afterEach(() => {
+    mcpService.setServerInfosForTest([]);
   });
 
   it('answers a reserved hub name without touching an upstream client', async () => {
@@ -177,5 +275,46 @@ describe('hub staging tools at the public MCP entry points', () => {
   it('does not advertise hub tools on a $smart route when staging is disabled', async () => {
     const listed = await mcpService.handleListToolsRequest({}, { sessionId: 's1' });
     expect(listed.tools.some((tool: any) => tool.name.startsWith('mcphub_file_'))).toBe(false);
+  });
+
+  it('resolves a shared credential server before its per-user runtime reports a version', async () => {
+    const createReadyRef = enableStaging();
+    mcpService.setServerInfosForTest([makeSharedCredentialServer(undefined)]);
+
+    const result = await callUpload();
+
+    expect(result.isError).toBeFalsy();
+    expect(textOf(result)).toContain('mcpfile://');
+    expect(createReadyRef).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resolve a connected shared server whose reported version is not pinned', async () => {
+    // Target resolution only; dispatch.test.ts covers the call-time version check.
+    const createReadyRef = enableStaging();
+    mcpService.setServerInfosForTest([makeSharedCredentialServer('1.11.1')]);
+
+    const result = await callUpload();
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/no staging-enabled/i);
+    expect(createReadyRef).not.toHaveBeenCalled();
+  });
+
+  it('does not resolve a non-credential server before it reports a version', async () => {
+    const createReadyRef = enableStaging();
+    const server = makeSharedCredentialServer(undefined);
+    server.visibility = 'private';
+    server.owner = 'alice';
+    server.config.visibility = 'private';
+    server.config.staging = { adapter: 'ssh' };
+    server.config.credentialTemplate = undefined;
+    server.config.startOnDemand = true;
+    mcpService.setServerInfosForTest([server]);
+
+    const result = await callUpload();
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/no staging-enabled/i);
+    expect(createReadyRef).not.toHaveBeenCalled();
   });
 });

@@ -3778,7 +3778,23 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
       );
       continue;
     }
-    if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
+    // A credential-template server never connects globally, so its
+    // `ServerInfo.version` is undefined until a per-user runtime exists. The
+    // config already pins the exact package, and the actual staged call is
+    // checked again against the connected runtime in dispatchStagedToolCall;
+    // rejecting here would make shared staging unusable before the first call.
+    // Other servers keep the original fail-closed behavior until they report.
+    if (serverInfo.version === undefined) {
+      if (!hasCredentialTemplate(config)) {
+        logger.warn(
+          `[staging] ${serverInfo.name} has not reported a version yet; only credential-template servers resolve before their runtime connects`,
+        );
+        continue;
+      }
+      logger.warn(
+        `[staging] ${serverInfo.name} has no version before its per-user runtime; deferring the pinned-version check to the staged call`,
+      );
+    } else if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
       logger.warn(
         `[staging] ${serverInfo.name} reports version ${serverInfo.version}; expected the pinned staging profile`,
       );
