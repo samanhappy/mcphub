@@ -3,7 +3,7 @@ import { IGroup, Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config, { getNameSeparator } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
-import { getDefaultInstallBaseUrl, resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
+import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { filterModelVisibleTools } from '../utils/mcpApps.js';
 import { applyHiddenParams } from '../utils/toolConfig.js';
 import { filterHostedTools } from './hostedAuthService.js';
@@ -209,13 +209,14 @@ function generateOperationFromTool(tool: Tool, serverName: string): OpenAPIV3.Op
 export async function generateOpenAPISpec(
   options: OpenAPIGenerationOptions = {},
 ): Promise<OpenAPIV3.Document> {
-  const serverInfos = await getServersInfo();
+  const serverInfos = options.scope
+    ? await getServersInfo(undefined, undefined, undefined, options.scope.serverNames)
+    : await getServersInfo();
 
   // Filter servers based on options
   let filteredServers = serverInfos.filter(
     (server) =>
       server.status === 'connected' &&
-      (!options.scope || options.scope.serverNames.has(server.name)) &&
       (!options.serverFilter || options.serverFilter.includes(server.name)),
   );
 
@@ -283,7 +284,8 @@ export async function generateOpenAPISpec(
 
   for (const { tool, serverName } of allTools) {
     const operation = generateOperationFromTool(tool, serverName);
-    const { requestBody } = convertToolSchemaToOpenAPI(tool);
+    const method = operation.requestBody ? 'post' : 'get';
+    if (options.scope && config.readonly && method === 'post') continue;
 
     // Extract the tool name without server prefix
     // Tool names are in format: serverName + separator + toolName
@@ -295,7 +297,6 @@ export async function generateOpenAPISpec(
     // Create path for the tool with URL-encoded server and tool names
     // This handles cases where names contain slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const pathName = `/tools/${encodeURIComponent(serverName)}/${encodeURIComponent(toolNameOnly)}`;
-    const method = requestBody ? 'post' : 'get';
 
     if (!paths[pathName]) {
       paths[pathName] = {};
@@ -311,8 +312,9 @@ export async function generateOpenAPISpec(
     options.serverUrl ||
     resolveInstallBaseUrl(
       systemConfig,
-      options.scope ? getDefaultInstallBaseUrl() : `http://localhost:${config.port}`,
-    );
+      options.scope ? undefined : `http://localhost:${config.port}`,
+    ) ||
+    '';
   const routeName = options.scope?.routeName;
   const serverPath = options.scope
     ? `/openapi${routeName ? `/${encodeURIComponent(routeName)}` : ''}`

@@ -378,7 +378,9 @@ export const executeScopedOpenAPITool = withOpenAPIRoute(async (req, res, scope)
   }
   const { serverName, toolName } = req.params;
   const runtime = scope.serverNames.has(serverName) ? getServerByName(serverName) : undefined;
-  const server = runtime && (await getServersInfo()).find((info) => info.name === serverName);
+  const [server] = runtime
+    ? await getServersInfo(undefined, undefined, undefined, new Set([serverName]))
+    : [];
   const tools = server ? getScopedOpenAPITools(scope, serverName, server.tools) : [];
   const tool = tools.find(
     (entry) => normalizeToolNameForServer(serverName, entry.name) === toolName,

@@ -2917,6 +2917,7 @@ export const getServersInfo = async (
   page?: number,
   limit?: number,
   user?: any,
+  serverNames?: ReadonlySet<string>,
 ): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
   const dataService = getDataService();
   const isNonAdminUser = Boolean(user && !user.isAdmin);
@@ -2979,8 +2980,11 @@ export const getServersInfo = async (
 
   const principal = (user ||
     UserContextService.getInstance().getCurrentUser()) as RequestPrincipal | null;
+  const scopedInfos = serverNames
+    ? filterServerInfos.filter((info) => serverNames.has(info.name))
+    : filterServerInfos;
   const presentedInfos = await Promise.all(
-    filterServerInfos.map(async (info) => {
+    scopedInfos.map(async (info) => {
       if (
         !hasPersonalAuthentication(info.config) ||
         info.enabled === false ||

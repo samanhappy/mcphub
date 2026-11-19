@@ -19,7 +19,8 @@ import {
   getServerByName,
   initializeClientsFromSettings,
 } from '../../src/services/mcpService.js';
-import { clearSettingsCache } from '../../src/config/index.js';
+import config, { clearSettingsCache } from '../../src/config/index.js';
+import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
 import { initRoutes } from '../../src/routes/index.js';
 import { initMiddlewares } from '../../src/middlewares/index.js';
 import type { McpSettings } from '../../src/types/index.js';
@@ -256,8 +257,12 @@ it('uses the scoped OpenAPI document to call an authorized tool', async () => {
   const auth = 'Bearer group-token';
   const spec = await request(app).get('/openapi/team/openapi.json').set('Authorization', auth);
   expect(spec.status).toBe(200);
-  const route = new URL(spec.body.servers[0].url, baseUrl).pathname;
-  expect(route).toBe('/openapi/team');
+  const advertisedUrl = new URL(
+    spec.body.servers[0].url,
+    'https://hub.example/openapi/team/openapi.json',
+  );
+  expect(advertisedUrl.href).toBe('https://hub.example/openapi/team');
+  const route = advertisedUrl.pathname;
   const tool = '/tools/visible/identity';
   expect(spec.body.paths[tool]).toBeDefined();
   const call = await request(app)
@@ -289,6 +294,32 @@ it('uses the scoped OpenAPI document to call an authorized tool', async () => {
   ).toBe(404);
 });
 
+it('omits POST tools from the scoped spec in read-only mode', async () => {
+  const tool = getServerByName('visible')!.tools[0];
+  const originalSchema = tool.inputSchema;
+  const originalReadonly = config.readonly;
+  const specPath = '/openapi/team/openapi.json';
+  const toolPath = '/tools/visible/identity';
+  const auth = 'Bearer group-token';
+  try {
+    tool.inputSchema = { type: 'object', properties: { text: { type: 'string' } } };
+    const writable = await request(app).get(specPath).set('Authorization', auth);
+    expect(writable.body.paths[toolPath].post).toBeDefined();
+
+    config.readonly = true;
+    const readonly = await request(app).get(specPath).set('Authorization', auth);
+    expect(readonly.status).toBe(200);
+    expect(readonly.body.paths[toolPath]).toBeUndefined();
+    const call = await request(app)
+      .post('/openapi/team' + toolPath)
+      .set('Authorization', auth);
+    expect(call.status).toBe(403);
+  } finally {
+    tool.inputSchema = originalSchema;
+    config.readonly = originalReadonly;
+  }
+});
+
 it('applies global exclusions to the OpenAPI document and execution', async () => {
   const auth = `Bearer ${token}`;
   const spec = await request(app).get('/openapi/openapi.json').set('Authorization', auth);
@@ -317,6 +348,29 @@ it('serves YAML on a direct server route and preserves legacy access for all-acc
     .set('Authorization', 'Bearer all-token');
   expect(legacy.status).toBe(200);
   expect(new URL(legacy.body.servers[0].url).pathname).toBe('/api');
+});
+
+it('does not prepare an out-of-scope personal server for a spec or tool call', async () => {
+  const unrelated = getServerByName('secret')!.config!;
+  const originalTemplate = unrelated.credentialTemplate;
+  const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+  const auth = 'Bearer personal-token';
+  try {
+    unrelated.credentialTemplate = [{ target: 'env', name: 'PERSONAL_KEY' }];
+    const spec = await request(app).get('/openapi/shared/openapi.json').set('Authorization', auth);
+    expect(spec.status).toBe(200);
+    expect(spec.body.paths['/tools/visible/identity']).toBeDefined();
+
+    const call = await request(app)
+      .get('/openapi/shared/tools/visible/identity')
+      .set('Authorization', auth);
+    expect(call.status).toBe(200);
+    expect(call.body.isError).not.toBe(true);
+    expect(acquire).not.toHaveBeenCalled();
+  } finally {
+    unrelated.credentialTemplate = originalTemplate;
+    acquire.mockRestore();
+  }
 });
 
 it('enforces the personal key owner’s live server visibility and group access', async () => {
