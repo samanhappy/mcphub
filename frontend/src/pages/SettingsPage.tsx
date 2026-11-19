@@ -661,6 +661,18 @@ const SettingsPage: React.FC = () => {
     strategy: 'auto',
   });
 
+  const [tempFileStagingConfig, setTempFileStagingConfig] = useState({
+    maxFileMiB: '100',
+    inlineMaxMiB: '1',
+    perUserQuotaMiB: '1024',
+    globalQuotaMiB: '10240',
+    ttlHours: '24',
+    downloadTtlSeconds: '300',
+    uploadTtlSeconds: '900',
+    maxFilesPerUser: '100',
+    cleanupIntervalMinutes: '15',
+  });
+
   const [tempMCPRouterConfig, setTempMCPRouterConfig] = useState<{
     apiKey: string;
     referer: string;
@@ -747,6 +759,7 @@ const SettingsPage: React.FC = () => {
     installConfig: savedInstallConfig,
     smartRoutingConfig,
     toolResultCompressionConfig,
+    fileStagingConfig,
     mcpRouterConfig,
     oauthServerConfig,
     allowRegistration,
@@ -773,6 +786,7 @@ const SettingsPage: React.FC = () => {
     updateSmartRoutingConfigBatch,
     updateToolResultCompressionConfig,
     updateToolResultCompressionConfigBatch,
+    updateFileStagingConfigBatch,
     updateMCPRouterConfig,
     updateOAuthServerConfig,
     updateBetterAuthConfigBatch,
@@ -880,6 +894,22 @@ const SettingsPage: React.FC = () => {
     }
   }, [toolResultCompressionConfig]);
 
+  useEffect(() => {
+    if (fileStagingConfig) {
+      setTempFileStagingConfig({
+        maxFileMiB: String(fileStagingConfig.maxFileBytes / (1024 * 1024)),
+        inlineMaxMiB: String(fileStagingConfig.inlineMaxBytes / (1024 * 1024)),
+        perUserQuotaMiB: String(fileStagingConfig.perUserQuotaBytes / (1024 * 1024)),
+        globalQuotaMiB: String(fileStagingConfig.globalQuotaBytes / (1024 * 1024)),
+        ttlHours: String(fileStagingConfig.ttlHours),
+        downloadTtlSeconds: String(fileStagingConfig.downloadTtlSeconds),
+        uploadTtlSeconds: String(fileStagingConfig.uploadTtlSeconds),
+        maxFilesPerUser: String(fileStagingConfig.maxFilesPerUser),
+        cleanupIntervalMinutes: String(fileStagingConfig.cleanupIntervalMinutes),
+      });
+    }
+  }, [fileStagingConfig]);
+
   // Update local tempMCPRouterConfig when mcpRouterConfig changes
   useEffect(() => {
     if (mcpRouterConfig) {
@@ -978,6 +1008,7 @@ const SettingsPage: React.FC = () => {
     installConfig: false,
     smartRoutingConfig: false,
     toolResultCompressionConfig: false,
+    fileStagingConfig: false,
     oauthServerConfig: false,
     betterAuthConfig: false,
     mcpRouterConfig: false,
@@ -993,6 +1024,7 @@ const SettingsPage: React.FC = () => {
       | 'installConfig'
       | 'smartRoutingConfig'
       | 'toolResultCompressionConfig'
+      | 'fileStagingConfig'
       | 'oauthServerConfig'
       | 'betterAuthConfig'
       | 'mcpRouterConfig'
@@ -1693,6 +1725,103 @@ const SettingsPage: React.FC = () => {
 
     if (Object.keys(updates).length > 0) {
       await updateToolResultCompressionConfigBatch(updates);
+    } else {
+      showToast(t('settings.noChanges') || 'No changes to save', 'info');
+    }
+  };
+
+  type FileStagingNumericField =
+    | 'maxFileBytes'
+    | 'inlineMaxBytes'
+    | 'perUserQuotaBytes'
+    | 'globalQuotaBytes'
+    | 'ttlHours'
+    | 'downloadTtlSeconds'
+    | 'uploadTtlSeconds'
+    | 'maxFilesPerUser'
+    | 'cleanupIntervalMinutes';
+
+  const handleFileStagingConfigChange = (key: keyof typeof tempFileStagingConfig, value: string) => {
+    setTempFileStagingConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleFileStagingEnabledChange = async (value: boolean) => {
+    await updateFileStagingConfigBatch({ enabled: value });
+  };
+
+  const handleSaveFileStagingConfig = async () => {
+    const pending: Array<{ field: FileStagingNumericField; value: string; label: string; unit: number }> = [
+      {
+        field: 'maxFileBytes',
+        value: tempFileStagingConfig.maxFileMiB,
+        label: t('settings.fileStagingMaxFileSize') || 'Maximum file size',
+        unit: 1024 * 1024,
+      },
+      {
+        field: 'inlineMaxBytes',
+        value: tempFileStagingConfig.inlineMaxMiB,
+        label: t('settings.fileStagingInlineMaxSize') || 'Inline limit',
+        unit: 1024 * 1024,
+      },
+      {
+        field: 'perUserQuotaBytes',
+        value: tempFileStagingConfig.perUserQuotaMiB,
+        label: t('settings.fileStagingPerUserQuota') || 'Per-user quota',
+        unit: 1024 * 1024,
+      },
+      {
+        field: 'globalQuotaBytes',
+        value: tempFileStagingConfig.globalQuotaMiB,
+        label: t('settings.fileStagingGlobalQuota') || 'Global quota',
+        unit: 1024 * 1024,
+      },
+      {
+        field: 'ttlHours',
+        value: tempFileStagingConfig.ttlHours,
+        label: t('settings.fileStagingTtlHours') || 'Retention (hours)',
+        unit: 1,
+      },
+      {
+        field: 'downloadTtlSeconds',
+        value: tempFileStagingConfig.downloadTtlSeconds,
+        label: t('settings.fileStagingDownloadTtl') || 'Download link lifetime (seconds)',
+        unit: 1,
+      },
+      {
+        field: 'uploadTtlSeconds',
+        value: tempFileStagingConfig.uploadTtlSeconds,
+        label: t('settings.fileStagingUploadTtl') || 'Upload link lifetime (seconds)',
+        unit: 1,
+      },
+      {
+        field: 'maxFilesPerUser',
+        value: tempFileStagingConfig.maxFilesPerUser,
+        label: t('settings.fileStagingMaxFilesPerUser') || 'Max files per user',
+        unit: 1,
+      },
+      {
+        field: 'cleanupIntervalMinutes',
+        value: tempFileStagingConfig.cleanupIntervalMinutes,
+        label: t('settings.fileStagingCleanupInterval') || 'Cleanup interval (minutes)',
+        unit: 1,
+      },
+    ];
+
+    const updates: Partial<typeof fileStagingConfig> = {};
+    for (const { field, value, label, unit } of pending) {
+      const parsed = parsePositiveIntegerSetting(value, label);
+      if (parsed === null) return;
+      const next = parsed * unit;
+      if (next !== fileStagingConfig[field]) {
+        updates[field] = next;
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateFileStagingConfigBatch(updates);
     } else {
       showToast(t('settings.noChanges') || 'No changes to save', 'info');
     }
@@ -3446,6 +3575,263 @@ const SettingsPage: React.FC = () => {
                   className="hub-btn primary"
                 >
                   {t('common.save')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </PermissionChecker>
+
+      {/* File Staging Settings */}
+      <PermissionChecker permissions={PERMISSIONS.SETTINGS_SYSTEM_CONFIG}>
+        <div className="hub-card mb-6 overflow-hidden">
+          <div
+            className="flex justify-between items-center cursor-pointer transition-colors hover:bg-[var(--hub-surface-hover)] px-6 py-3"
+            onClick={() => toggleSection('fileStagingConfig')}
+          >
+            <div className="flex items-center gap-2.5">
+              <Package size={15} className="text-[var(--hub-ink-2)]" />
+              <h2 className="font-medium text-[var(--hub-ink)]">
+                {t('settings.fileStagingTitle') || 'File Staging'}
+              </h2>
+              <span className="hub-status ml-2" data-state={fileStagingConfig.enabled ? 'on' : 'off'}>
+                <span
+                  className="hub-dot"
+                  style={{
+                    background: fileStagingConfig.enabled ? 'var(--hub-ok)' : 'var(--hub-ink-3)',
+                    boxShadow: fileStagingConfig.enabled
+                      ? '0 0 0 3px oklch(0.66 0.15 145 / 0.15)'
+                      : 'none',
+                  }}
+                />
+                <span
+                  style={{
+                    color: fileStagingConfig.enabled ? 'oklch(0.4 0.13 145)' : 'var(--hub-ink-3)',
+                    fontSize: 12,
+                  }}
+                >
+                  {fileStagingConfig.enabled ? t('common.active') : t('common.inactive')}
+                </span>
+              </span>
+            </div>
+            <span className="text-[var(--hub-ink-3)]">
+              {sectionsVisible.fileStagingConfig ? '−' : '+'}
+            </span>
+          </div>
+
+          {sectionsVisible.fileStagingConfig && (
+            <div className="px-6 py-5 border-t border-[var(--hub-line-2)]">
+              <div
+                className="flex items-center justify-between mb-4"
+                style={{
+                  padding: '12px 14px',
+                  border: '1px solid var(--hub-line)',
+                  borderRadius: 8,
+                  background: 'var(--hub-bg-2)',
+                }}
+              >
+                <div>
+                  <h3 className="font-medium" style={{ color: 'var(--hub-ink)', fontSize: 13 }}>
+                    {t('settings.fileStagingEnable') || 'Enable file staging'}
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'var(--hub-ink-3)' }}>
+                    {t('settings.fileStagingDescription') ||
+                      'Let tools exchange files through the hub instead of passing large payloads inline. Staging is opt-in per tool; the hub stores staged files under its data volume.'}
+                  </p>
+                </div>
+                <Switch
+                  disabled={loading}
+                  checked={fileStagingConfig.enabled}
+                  onCheckedChange={(checked) => handleFileStagingEnabledChange(checked)}
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingMaxFileSize') || 'Maximum file size'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingMaxFileSizeDescription') || 'Largest single file a tool may stage, in MiB.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.maxFileMiB}
+                      onChange={(e) => handleFileStagingConfigChange('maxFileMiB', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingInlineMaxSize') || 'Inline limit'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingInlineMaxSizeDescription') || 'Files up to this size are inlined instead of written to storage, in MiB.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.inlineMaxMiB}
+                      onChange={(e) => handleFileStagingConfigChange('inlineMaxMiB', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingPerUserQuota') || 'Per-user quota'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingPerUserQuotaDescription') || 'Total staged bytes each user may keep, in MiB.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.perUserQuotaMiB}
+                      onChange={(e) => handleFileStagingConfigChange('perUserQuotaMiB', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingGlobalQuota') || 'Global quota'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingGlobalQuotaDescription') || 'Total staged bytes across all users, in MiB.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.globalQuotaMiB}
+                      onChange={(e) => handleFileStagingConfigChange('globalQuotaMiB', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingTtlHours') || 'Retention (hours)'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingTtlHoursDescription') || 'How long staged files are kept before cleanup.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.ttlHours}
+                      onChange={(e) => handleFileStagingConfigChange('ttlHours', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingDownloadTtl') || 'Download link lifetime (seconds)'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingDownloadTtlDescription') || 'Validity of a one-time download link, in seconds.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="10"
+                      step="1"
+                      value={tempFileStagingConfig.downloadTtlSeconds}
+                      onChange={(e) => handleFileStagingConfigChange('downloadTtlSeconds', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingUploadTtl') || 'Upload link lifetime (seconds)'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingUploadTtlDescription') || 'Validity of a one-time upload link, in seconds.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="60"
+                      step="1"
+                      value={tempFileStagingConfig.uploadTtlSeconds}
+                      onChange={(e) => handleFileStagingConfigChange('uploadTtlSeconds', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingMaxFilesPerUser') || 'Max files per user'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingMaxFilesPerUserDescription') || 'Maximum number of staged files each user may keep.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.maxFilesPerUser}
+                      onChange={(e) => handleFileStagingConfigChange('maxFilesPerUser', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <div className="mb-2">
+                      <h3 className="font-medium text-gray-700">
+                        {t('settings.fileStagingCleanupInterval') || 'Cleanup interval (minutes)'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('settings.fileStagingCleanupIntervalDescription') || 'How often expired and over-quota files are purged.'}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={tempFileStagingConfig.cleanupIntervalMinutes}
+                      onChange={(e) => handleFileStagingConfigChange('cleanupIntervalMinutes', e.target.value)}
+                      className="flex-1 mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm form-input"
+                      disabled={loading}
+                    />
+                  </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3">
+                {t('settings.fileStagingHelper') ||
+                  'Staging is opt-in per tool. Upload and download links are one-time only, and the hub stores staged files under its data volume.'}
+              </p>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleSaveFileStagingConfig}
+                  disabled={loading}
+                  className="hub-btn primary"
+                >
+                  {t('settings.fileStagingSave') || t('common.save')}
                 </button>
               </div>
             </div>

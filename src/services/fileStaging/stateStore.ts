@@ -66,6 +66,16 @@ export interface StagingStateStore {
   unpinRef(ref: string): Promise<void>;
   createDownloadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
   consumeDownloadToken(token: string): Promise<StagingTokenRecord>;
+  /** Mint a one-time browser-upload link for a reserved ref (#1056 PR2). */
+  createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
+  /** Peek an upload token without consuming it, so a model can poll status. */
+  getUploadToken(token: string): Promise<StagingTokenRecord>;
+  /** Consume the token and finalize the reserved ref with the uploaded bytes. */
+  uploadWithToken(
+    token: string,
+    data: Buffer,
+    settings: FileStagingSettings,
+  ): Promise<StagingRefRecord>;
   cleanup(settings: FileStagingSettings): Promise<number>;
   usageBytes(ownerHash?: string): Promise<number>;
 }
@@ -571,6 +581,100 @@ export class FileStagingStateStore implements StagingStateStore {
         throw new StagingError('expired', 'Staging reference has expired');
       }
       record.usedAt = new Date(this.now()).toISOString();
+      await this.persist();
+      return record;
+    });
+  }
+
+  async createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = this.requireRef(ref);
+      if (record.ownerHash !== ownerHash) {
+        throw new StagingError('not-found', 'Staging reference not found');
+      }
+      if (record.state !== 'reserved') {
+        throw new StagingError('not-ready', 'Upload destination is not writable');
+      }
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
+      const token = randomBytes(32).toString('base64url');
+      const tokenHash = sha256(token);
+      this.state.tokens[tokenHash] = {
+        tokenHash,
+        kind: 'upload',
+        ref: record.ref,
+        ownerHash,
+        version: 0,
+        contentHash: '',
+        expiresAt: new Date(this.now() + ttlSeconds * 1000).toISOString(),
+      };
+      await this.persist();
+      return token;
+    });
+  }
+
+  async getUploadToken(token: string): Promise<StagingTokenRecord> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = this.state.tokens[sha256(token)];
+      if (!record || record.kind !== 'upload') {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Upload link has expired');
+      }
+      return record;
+    });
+  }
+
+  async uploadWithToken(
+    token: string,
+    data: Buffer,
+    settings: FileStagingSettings,
+  ): Promise<StagingRefRecord> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const nowIso = new Date(this.now()).toISOString();
+      const tokenRecord = this.state.tokens[sha256(token)];
+      if (!tokenRecord || tokenRecord.kind !== 'upload' || tokenRecord.usedAt) {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (tokenRecord.expiresAt <= nowIso) {
+        throw new StagingError('expired', 'Upload link has expired');
+      }
+      const record = this.state.refs[tokenRecord.ref];
+      if (!record || record.ownerHash !== tokenRecord.ownerHash) {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (record.state !== 'reserved' || record.leaseId) {
+        throw new StagingError('not-ready', 'Upload destination is not writable');
+      }
+      if (record.expiresAt <= nowIso) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
+      if (data.length > settings.maxFileBytes) {
+        throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
+      }
+      if (data.length === 0 && !record.allowZeroByte) {
+        throw new StagingError('not-ready', 'Empty files are not accepted');
+      }
+      if (this.quotaUsage(record.ownerHash) + data.length > settings.perUserQuotaBytes) {
+        throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+      }
+      if (this.quotaUsage() + data.length > settings.globalQuotaBytes) {
+        throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+      }
+      const file = path.join(refDir(this.rootDir, record.ownerHash, record.id), 'content');
+      await writeFileAtomic(file, data);
+      const digest = await digestFile(file);
+      record.size = digest.size;
+      record.sha256 = digest.sha256;
+      record.version = 1;
+      record.state = 'ready';
+      tokenRecord.usedAt = nowIso;
+      await this.writeMeta(record);
       await this.persist();
       return record;
     });

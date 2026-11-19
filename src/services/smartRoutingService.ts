@@ -26,6 +26,7 @@ import { canServeToolRequests } from '../utils/serverAvailability.js';
 import { getNameSeparator } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { applyHiddenParams, findToolConfig } from '../utils/toolConfig.js';
+import { STAGING_TOOL_DEFINITIONS } from './fileStaging/tools.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -736,6 +737,21 @@ export const handleDescribeToolRequest = async (
 ): Promise<any> => {
   if (!toolName || typeof toolName !== 'string') {
     throw new Error('toolName parameter is required and must be a string');
+  }
+
+  // Hub built-ins are not in the vector index: describe them from their static
+  // definition instead of reporting "not found" (#1056 PR3).
+  const builtin = STAGING_TOOL_DEFINITIONS.find((tool) => tool.name === toolName);
+  if (builtin) {
+    return {
+      tool: {
+        name: builtin.name,
+        title: builtin.title,
+        description: builtin.description,
+        inputSchema: builtin.inputSchema,
+        server: 'mcphub',
+      },
+    };
   }
 
   logger.log(`Handling describe_tool request for: ${toolName}`);

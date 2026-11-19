@@ -463,9 +463,14 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
         // Pins are an optimisation: failing to resolve them must not cost the meta-tools
         logger.warn(`Failed to list pinned tools for ${group}; returning meta-tools only`, error);
       }
-      return pinnedTools.length > 0
-        ? { tools: [...smartRoutingTools.tools, ...pinnedTools] }
-        : smartRoutingTools;
+      // A $smart route still needs the hub's virtual staging tools: the model
+      // calls them directly, and the meta-tools cannot reach a hub built-in.
+      const stagingTools = await withStagingTools(group, [], extra);
+      // Nothing to add: return the generator's own object, so callers that
+      // compare the response by identity keep working.
+      if (pinnedTools.length === 0 && stagingTools.length === 0) return smartRoutingTools;
+      const tools = [...smartRoutingTools.tools, ...pinnedTools, ...stagingTools];
+      return stagingTools.length > 0 ? { tools, stagingTools: true } : { tools };
     }
 
     const { filteredServerInfos, serverConfigsByName } =

@@ -17,6 +17,7 @@ const settings: FileStagingSettings = {
   globalQuotaBytes: 262144,
   ttlHours: 1,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 10,
   cleanupIntervalMinutes: 15,
 };
@@ -36,6 +37,10 @@ describe('hub staging virtual tools', () => {
     createDownloadUrl: async (ref: string) => ({
       downloadUrl: `https://hub.example/api/staging/download/${ref.slice(-8)}`,
       expiresAt: new Date(Date.now() + 300_000).toISOString(),
+    }),
+    createUploadUrl: async (ref: string, token: string) => ({
+      uploadUrl: `https://hub.example/staging/upload/${token}`,
+      expiresAt: new Date(Date.now() + 900_000).toISOString(),
     }),
   });
 
@@ -126,5 +131,55 @@ describe('hub staging virtual tools', () => {
     );
     expect(oversized.isError).toBe(true);
     expect(oversized.content[0].text).toBe('File staging quota exceeded');
+  });
+
+  it('creates a browser upload link for a reserved ref', async () => {
+    const result = await executeStagingTool(
+      'mcphub_file_request_upload',
+      { filename: 'report.pdf', size_hint: 2048 },
+      context() as any,
+    );
+    const payload = text(result);
+    expect(payload.uploadUrl).toMatch(/^https:\/\/hub\.example\/staging\/upload\//);
+    expect(payload.uploadToken).toEqual(expect.any(String));
+    expect(payload.state).toBe('reserved');
+    expect(payload.maxBytes).toBe(2048);
+
+    // The returned token is live and points at the reserved ref.
+    const request = await store.getUploadToken(String(payload.uploadToken));
+    expect(request.ref).toBe(payload.ref);
+  });
+
+  it('reports an upload in progress and then ready through the status tool', async () => {
+    const created = await executeStagingTool(
+      'mcphub_file_request_upload',
+      { filename: 'notes.txt' },
+      context() as any,
+    );
+    const payload = text(created);
+    const pending = await executeStagingTool(
+      'mcphub_file_status',
+      { upload_token: payload.uploadToken },
+      context() as any,
+    );
+    expect(text(pending).state).toBe('reserved');
+
+    await store.uploadWithToken(String(payload.uploadToken), Buffer.from('hello'), settings);
+    const ready = await executeStagingTool(
+      'mcphub_file_status',
+      { upload_token: payload.uploadToken },
+      context() as any,
+    );
+    expect(text(ready)).toMatchObject({ ref: payload.ref, state: 'ready', size: 5 });
+  });
+
+  it('rejects a size hint above the configured limit', async () => {
+    const result = await executeStagingTool(
+      'mcphub_file_request_upload',
+      { filename: 'big.bin', size_hint: 999_999 },
+      context() as any,
+    );
+    expect(result.isError).toBe(true);
+    expect(String(result.content[0].text)).toMatch(/quota|limit/i);
   });
 });

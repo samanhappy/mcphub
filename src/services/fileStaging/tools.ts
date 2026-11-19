@@ -19,6 +19,11 @@ export interface StagingToolContext {
   store: StagingStateStore;
   /** Mint a one-time download URL for a ready ref. */
   createDownloadUrl(ref: string): Promise<{ downloadUrl: string; expiresAt: string }>;
+  /** Mint a one-time browser upload URL for a reserved ref. */
+  createUploadUrl(
+    ref: string,
+    token: string,
+  ): Promise<{ uploadUrl: string; expiresAt: string }>;
 }
 
 export const STAGING_TOOL_DEFINITIONS = [
@@ -52,13 +57,38 @@ export const STAGING_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: 'mcphub_file_status',
-    title: 'Check a staged file',
-    description: 'Report the state, size, hash and expiry of a staged file reference.',
+    name: 'mcphub_file_request_upload',
+    title: 'Create a browser upload link',
+    description:
+      'Create a short-lived link for a person to upload a file from their own machine into the hub. Send the link to the user, then poll mcphub_file_status with upload_token until it is ready and pass the returned mcpfile:// reference to a tool parameter.',
     inputSchema: {
       type: 'object',
-      properties: { ref: { type: 'string', description: 'mcpfile:// reference' } },
-      required: ['ref'],
+      properties: {
+        filename: { type: 'string', description: 'Display name only; never a path.' },
+        size_hint: {
+          type: 'number',
+          description: 'Expected size in bytes; rejected if the actual upload is larger.',
+        },
+        server: {
+          type: 'string',
+          description: 'Staging-enabled server name; required when the route has more than one.',
+        },
+      },
+      required: ['filename'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'mcphub_file_status',
+    title: 'Check a staged file',
+    description:
+      'Report the state, size, hash and expiry of a staged file, by mcpfile:// reference or by an upload token.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ref: { type: 'string', description: 'mcpfile:// reference' },
+        upload_token: { type: 'string', description: 'Token from mcphub_file_request_upload' },
+      },
       additionalProperties: false,
     },
   },
@@ -195,11 +225,55 @@ export const executeStagingTool = async (
       return ok({ ref: record.ref, state: record.state });
     }
 
-    if (name === 'mcphub_file_status') {
-      const record = await context.store.getOwnedRef(
-        String(args?.ref ?? ''),
+    if (name === 'mcphub_file_request_upload') {
+      const target = selectTarget(context.targets, args?.server);
+      const filename = sanitizeFilename(args?.filename);
+      const sizeHint = args?.size_hint;
+      if (sizeHint !== undefined) {
+        if (
+          typeof sizeHint !== 'number' ||
+          !Number.isFinite(sizeHint) ||
+          sizeHint <= 0 ||
+          sizeHint > context.settings.maxFileBytes
+        ) {
+          throw new StagingError('quota-exceeded', 'size_hint exceeds the staging limit');
+        }
+      }
+      const record = await context.store.createReservedRef({
+        principal: context.principal,
+        serverId: target.serverId,
+        serverName: target.serverName,
+        filename,
+        allowZeroByte: false,
+        settings: context.settings,
+      });
+      const token = await context.store.createUploadToken(
+        record.ref,
         context.principal.ownerHash,
+        context.settings.uploadTtlSeconds,
       );
+      const { uploadUrl, expiresAt } = await context.createUploadUrl(record.ref, token);
+      return ok({
+        ref: record.ref,
+        state: record.state,
+        uploadUrl,
+        uploadToken: token,
+        expiresAt,
+        maxBytes: Math.min(
+          context.settings.maxFileBytes,
+          typeof sizeHint === 'number' ? sizeHint : context.settings.maxFileBytes,
+        ),
+      });
+    }
+
+    if (name === 'mcphub_file_status') {
+      const token = args?.upload_token;
+      let ref = String(args?.ref ?? '');
+      if (!ref && typeof token === 'string' && token) {
+        const request = await context.store.getUploadToken(token);
+        ref = request.ref;
+      }
+      const record = await context.store.getOwnedRef(ref, context.principal.ownerHash);
       return ok({
         ref: record.ref,
         state: record.state,

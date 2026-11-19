@@ -41,7 +41,11 @@ export interface StagingRefRecord {
 
 export interface StagingTokenRecord {
   tokenHash: string;
-  kind: 'download';
+  /**
+   * `download` links a ready ref to a one-time GET; `upload` links a reserved
+   * ref to a one-time browser POST that finalizes it (#1056 PR2).
+   */
+  kind: 'download' | 'upload';
   ref: string;
   ownerHash: string;
   version: number;

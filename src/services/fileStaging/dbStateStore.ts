@@ -82,7 +82,7 @@ const toRow = (record: StagingRefRecord): FileStagingRefEntity => ({
 
 const toToken = (row: FileStagingTokenEntity): StagingTokenRecord => ({
   tokenHash: row.tokenHash,
-  kind: 'download',
+  kind: row.kind === 'upload' ? 'upload' : 'download',
   ref: row.ref,
   ownerHash: row.ownerHash,
   version: row.version,
@@ -521,6 +521,118 @@ export class DbStagingStateStore implements StagingStateStore {
       await this.repository.saveToken(manager, row);
       return toToken(row);
     });
+  }
+
+  async createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string> {
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = sha256(token);
+    await this.repository.transaction(async (manager) => {
+      const row = await this.repository.findRef(manager, ref);
+      if (!row || row.ownerHash !== ownerHash) {
+        throw new StagingError('not-found', 'Staging reference not found');
+      }
+      if (row.state !== 'reserved') {
+        throw new StagingError('not-ready', 'Upload destination is not writable');
+      }
+      if (new Date(row.expiresAt).toISOString() <= this.nowIso()) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
+      await this.repository.saveToken(manager, {
+        tokenHash,
+        kind: 'upload',
+        ref: row.ref,
+        ownerHash,
+        version: 0,
+        contentHash: '',
+        expiresAt: new Date(this.now() + ttlSeconds * 1000),
+        usedAt: null,
+      });
+    });
+    return token;
+  }
+
+  async getUploadToken(token: string): Promise<StagingTokenRecord> {
+    return this.repository.transaction(async (manager) => {
+      const row = await this.repository.findToken(manager, sha256(token));
+      if (!row || row.kind !== 'upload') {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (new Date(row.expiresAt).toISOString() <= this.nowIso()) {
+        throw new StagingError('expired', 'Upload link has expired');
+      }
+      return toToken(row);
+    });
+  }
+
+  async uploadWithToken(
+    token: string,
+    data: Buffer,
+    settings: FileStagingSettings,
+  ): Promise<StagingRefRecord> {
+    const tokenHash = sha256(token);
+    const tokenRow = await this.repository.transaction(async (manager) =>
+      this.repository.findToken(manager, tokenHash),
+    );
+    if (!tokenRow || tokenRow.kind !== 'upload' || tokenRow.usedAt) {
+      throw new StagingError('not-found', 'Upload link is not valid');
+    }
+    if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
+      throw new StagingError('expired', 'Upload link has expired');
+    }
+    if (data.length > settings.maxFileBytes) {
+      throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
+    }
+    const record = await this.getOwnedRef(tokenRow.ref, tokenRow.ownerHash);
+    if (record.state !== 'reserved' || record.leaseId) {
+      throw new StagingError('not-ready', 'Upload destination is not writable');
+    }
+    if (record.expiresAt <= this.nowIso()) {
+      throw new StagingError('expired', 'Staging reference has expired');
+    }
+    if (data.length === 0 && !record.allowZeroByte) {
+      throw new StagingError('not-ready', 'Empty files are not accepted');
+    }
+    const target = contentPath(this.rootDir, record.ownerHash, record.id);
+    await assertNoSymlinkComponents(this.rootDir, target);
+    await writeFileAtomic(target, data);
+    const digest = await digestFile(target);
+    try {
+      return await this.repository.transaction(async (manager) => {
+        const refRow = await this.repository.findRef(manager, record.ref, true);
+        const lockedToken = await this.repository.findToken(manager, tokenHash, true);
+        if (
+          !refRow ||
+          refRow.state !== 'reserved' ||
+          refRow.leaseId ||
+          !lockedToken ||
+          lockedToken.usedAt
+        ) {
+          throw new StagingError('not-ready', 'Upload destination is not writable');
+        }
+        await this.repository.lockQuota(manager);
+        const usage = await this.usage(manager);
+        const ownerUsage = await this.usage(manager, record.ownerHash);
+        if (ownerUsage + digest.size > settings.perUserQuotaBytes) {
+          throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+        }
+        if (usage + digest.size > settings.globalQuotaBytes) {
+          throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+        }
+        refRow.size = digest.size;
+        refRow.sha256 = digest.sha256;
+        refRow.version = 1;
+        refRow.state = 'ready';
+        refRow.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000);
+        lockedToken.usedAt = new Date(this.now());
+        await this.repository.saveRef(manager, refRow);
+        await this.repository.saveToken(manager, lockedToken);
+        return toRecord(refRow);
+      });
+    } catch (error) {
+      // The ledger is still `reserved`; drop the bytes so a retry starts clean.
+      await removeIfExists(target);
+      throw error;
+    }
   }
 
   async cleanup(settings: FileStagingSettings): Promise<number> {

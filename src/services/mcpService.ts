@@ -3906,6 +3906,23 @@ const withStagingTools = async (
   return [...injected, ...tools.filter((tool) => !isReservedStagingName(tool.name))];
 };
 
+/**
+ * A remote client cannot resolve the hub's localhost, so staging links require
+ * the configured install base URL (design §8.1). The dashboard default is
+ * localhost:3000, which no remote MCP client can reach.
+ */
+const requireStagingBaseUrl = async (kind: 'Downloads' | 'Uploads'): Promise<string> => {
+  const systemConfig = await getSystemConfigDao().get();
+  const baseUrl = resolveInstallBaseUrl(systemConfig)?.replace(/\/$/, '');
+  if (!baseUrl || baseUrl === DEFAULT_INSTALL_BASE_URL) {
+    throw new StagingError(
+      'invalid-ref',
+      `${kind} require a configured install.baseUrl (the localhost default is not reachable by clients)`,
+    );
+  }
+  return baseUrl;
+};
+
 const handleHubStagingCall = async (request: any, extra: any) => {
   const name = request?.params?.name;
   if (!isStagingToolName(name)) {
@@ -3923,7 +3940,10 @@ const handleHubStagingCall = async (request: any, extra: any) => {
   try {
     const principal = await resolveStagingPrincipal(username);
     const targets = await resolveStagingTargets(group);
-    if (name === 'mcphub_file_upload' && targets.length === 0) {
+    if (
+      (name === 'mcphub_file_upload' || name === 'mcphub_file_request_upload') &&
+      targets.length === 0
+    ) {
       return {
         isError: true,
         content: [{ type: 'text', text: 'This route has no staging-enabled stdio server' }],
@@ -3954,21 +3974,20 @@ const handleHubStagingCall = async (request: any, extra: any) => {
           principal.ownerHash,
           settings.downloadTtlSeconds,
         );
-        const systemConfig = await getSystemConfigDao().get();
-        // A remote client cannot resolve the hub's localhost: staging links
-        // require the configured install base URL (design §8.1).
-        const baseUrl = resolveInstallBaseUrl(systemConfig);
-        // The dashboard default is localhost:3000, which no remote MCP client
-        // can resolve; minting a link on it fails later and silently.
-        if (!baseUrl || baseUrl.replace(/\/$/, '') === DEFAULT_INSTALL_BASE_URL) {
-          throw new StagingError(
-            'invalid-ref',
-            'Downloads require a configured install.baseUrl (the localhost default is not reachable by clients)',
-          );
-        }
+        const baseUrl = await requireStagingBaseUrl('Downloads');
         return {
-          downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
+          downloadUrl: `${baseUrl}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),
+        };
+      },
+      createUploadUrl: async (ref, token) => {
+        // The reserved ref is the destination; the token is the only authority
+        // a browser needs, so it never has to hold a hub session.
+        void ref;
+        const baseUrl = await requireStagingBaseUrl('Uploads');
+        return {
+          uploadUrl: `${baseUrl}${config.basePath}/staging/upload/${token}`,
+          expiresAt: new Date(Date.now() + settings.uploadTtlSeconds * 1000).toISOString(),
         };
       },
     });

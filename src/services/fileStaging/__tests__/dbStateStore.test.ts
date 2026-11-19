@@ -310,4 +310,46 @@ describe('DbStagingStateStore', () => {
     });
     await expect(second.init()).rejects.toMatchObject({ code: 'locked' });
   });
+
+  it('finalizes a reserved ref from a one-time upload token', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, {
+      rootDir,
+      stateDir,
+      disableLock: true,
+    });
+    await store.init();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    expect((await store.getUploadToken(token)).ref).toBe(reserved.ref);
+
+    const record = await store.uploadWithToken(token, Buffer.from('browser bytes'), settings());
+    expect(record.state).toBe('ready');
+    expect(record.size).toBe(13);
+    expect(await fs.readFile(path.join(rootDir, ownerHash, record.id, 'content'), 'utf8')).toBe(
+      'browser bytes',
+    );
+
+    await expect(
+      store.uploadWithToken(token, Buffer.from('again'), settings()),
+    ).rejects.toMatchObject({ code: 'not-found' });
+    await expect(store.createUploadToken(record.ref, ownerHash, 900)).rejects.toMatchObject({
+      code: 'not-ready',
+    });
+  });
+
+  it('rejects an oversized browser upload without consuming the link', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, { rootDir, stateDir, disableLock: true });
+    await store.init();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    await expect(
+      store.uploadWithToken(token, Buffer.alloc(5000), settings({ maxFileBytes: 4096 })),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+    const record = await store.uploadWithToken(token, Buffer.from('ok'), settings());
+    expect(record.state).toBe('ready');
+  });
 });

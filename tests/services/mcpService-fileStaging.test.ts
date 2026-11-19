@@ -318,4 +318,18 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(textOf(result)).toMatch(/no staging-enabled/i);
     expect(createReadyRef).not.toHaveBeenCalled();
   });
+
+  it('lists the hub tools on a $smart route when a staging target exists', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+
+    const listed = await mcpService.handleListToolsRequest({}, { sessionId: 's1' });
+    const names = listed.tools.map((tool: any) => tool.name);
+
+    // The route is a $smart route in this harness, so the meta-tools and the
+    // hub built-ins must both be present.
+    expect(names).toContain('mcphub_file_upload');
+    expect(names).toContain('mcphub_file_request_upload');
+    expect((listed as { stagingTools?: boolean }).stagingTools).toBe(true);
+  });
 });

@@ -398,4 +398,59 @@ describe('FileStagingStateStore', () => {
     clock += 2 * 3600_000;
     await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'expired' });
   });
+
+  it('finalizes a reserved ref from a one-time upload token', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+
+    // Peeking must not consume the link; the browser may reload the page.
+    const peeked = await store.getUploadToken(token);
+    expect(peeked.ref).toBe(reserved.ref);
+    expect(peeked.kind).toBe('upload');
+
+    const record = await store.uploadWithToken(token, Buffer.from('browser bytes'), settings());
+    expect(record.state).toBe('ready');
+    expect(record.size).toBe(13);
+    expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const content = path.join(rootDir, ownerHash, record.id, 'content');
+    expect(await fs.readFile(content, 'utf8')).toBe('browser bytes');
+
+    // The link is single use, and the ref is no longer writable.
+    await expect(
+      store.uploadWithToken(token, Buffer.from('again'), settings()),
+    ).rejects.toMatchObject({ code: 'not-found' });
+    await expect(
+      store.createUploadToken(record.ref, ownerHash, 900),
+    ).rejects.toMatchObject({ code: 'not-ready' });
+  });
+
+  it('rejects an upload token that outlived its link', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(
+      reserved.ref,
+      input(rootDir).principal.ownerHash,
+      900,
+    );
+    clock += 901_000;
+    await expect(
+      store.uploadWithToken(token, Buffer.from('late'), settings()),
+    ).rejects.toMatchObject({ code: 'expired' });
+  });
+
+  it('rejects an upload larger than the configured limit and leaves the ref writable', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    await expect(
+      store.uploadWithToken(token, Buffer.alloc(5000), settings({ maxFileBytes: 4096 })),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+    // Nothing was consumed: a smaller retry still succeeds.
+    const record = await store.uploadWithToken(token, Buffer.from('ok'), settings());
+    expect(record.state).toBe('ready');
+  });
 });

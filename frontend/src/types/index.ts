@@ -107,6 +107,20 @@ export interface CloudServerTool {
   inputSchema: Record<string, any>;
 }
 
+// Hub-wide file staging settings (#1056)
+export interface FileStagingConfig {
+  enabled: boolean;
+  maxFileBytes: number;
+  inlineMaxBytes: number;
+  perUserQuotaBytes: number;
+  globalQuotaBytes: number;
+  ttlHours: number;
+  downloadTtlSeconds: number;
+  uploadTtlSeconds: number;
+  maxFilesPerUser: number;
+  cleanupIntervalMinutes: number;
+}
+
 // Tool input schema types
 export interface ToolInputSchema {
   type: string;

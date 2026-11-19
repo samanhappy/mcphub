@@ -142,7 +142,12 @@ import {
   readResource,
 } from '../controllers/builtinResourceController.js';
 import { uploadMcpbFile, uploadMiddleware } from '../controllers/mcpbController.js';
-import { downloadStagedFile } from '../controllers/fileStagingController.js';
+import {
+  downloadStagedFile,
+  rawStagingUploadBody,
+  receiveStagedUpload,
+  showStagingUploadPage,
+} from '../controllers/fileStagingController.js';
 import { healthCheck, livenessCheck, readinessCheck } from '../controllers/healthController.js';
 import { replicaConfiguration } from '../middlewares/replicaConfig.js';
 import { replicaStatus } from '../services/replicaService.js';
@@ -250,6 +255,20 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     `${config.basePath}/staging/download/:token`,
     stagingDownloadRateLimiter,
     downloadStagedFile,
+  );
+
+  // One-time browser upload (#1056 PR2). Same capability model as the download
+  // link: the unguessable token is the authority, so the page needs no session.
+  app.get(
+    `${config.basePath}/staging/upload/:token`,
+    stagingDownloadRateLimiter,
+    showStagingUploadPage,
+  );
+  app.post(
+    `${config.basePath}/staging/upload/:token`,
+    stagingDownloadRateLimiter,
+    rawStagingUploadBody,
+    receiveStagedUpload,
   );
 
   // Health check endpoint (no auth required, accessible at /health)

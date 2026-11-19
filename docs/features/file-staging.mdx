@@ -153,14 +153,36 @@ mcphub_file_download { ref: "mcpfile://8a2e..." }
 
 The client-visible tool names carry the server name and the configured name separator (`ssh-upload` for the server `ssh`); the `tools` keys are the bare tool names (`upload`, `download`).
 
+### Browser upload: let a person send a file from their own machine
+
+A model cannot read the user's disk, so a file that only exists on the person's laptop needs a link the person can open:
+
+```text
+mcphub_file_request_upload { filename: "report.pdf", size_hint: 2048000 }
+  -> { "ref": "mcpfile://c4d1...", "state": "reserved",
+       "uploadUrl": "https://hub.example/staging/upload/<token>",
+       "uploadToken": "<token>", "expiresAt": "...", "maxBytes": 2048000 }
+
+# the person opens uploadUrl, picks the file, presses Upload
+# the page shows the mcpfile:// reference and the model polls:
+
+mcphub_file_status { upload_token: "<token>" }
+  -> { "ref": "mcpfile://c4d1...", "state": "ready", "size": 1834201, "sha256": "..." }
+
+ssh-upload { localPath: "mcpfile://c4d1...", remotePath: "/srv/in/report.pdf" }
+```
+
+The upload page is served by the hub and needs no dashboard session: the token in the URL is the whole capability. It is single-use, expires after `uploadTtlSeconds`, and only accepts a body for the reserved reference it was minted for. The page itself loads no third-party assets and runs under a nonce-scoped CSP.
+
 ## Hub tools
 
-The hub injects three virtual tools into a route that exposes at least one staging-enabled server, when the caller resolves to a real user:
+The hub injects four virtual tools into a route that exposes at least one staging-enabled server, when the caller resolves to a real user:
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `mcphub_file_upload` | `filename` (required), `content_base64`, `server`, `allow_zero_byte` | With content: `{ ref, state: "ready", size }`. Without content: `{ ref, state: "reserved" }`. |
-| `mcphub_file_status` | `ref` (required) | `{ ref, state, size, sha256, expiresAt }` (`sha256` is present once the file is ready). |
+| `mcphub_file_request_upload` | `filename` (required), `size_hint`, `server` | `{ ref, state: "reserved", uploadUrl, uploadToken, expiresAt, maxBytes }` |
+| `mcphub_file_status` | `ref` or `upload_token` | `{ ref, state, size, sha256, expiresAt }` (`sha256` is present once the file is ready). |
 | `mcphub_file_download` | `ref` (required) | `{ ref, downloadUrl, expiresAt }` for a ready file. |
 
 - `filename` is display metadata only, never a path. Directory components, NUL, CR, LF, quotes and backslashes are removed, and the name is cut to 255 UTF-8 bytes.
@@ -169,7 +191,9 @@ The hub injects three virtual tools into a route that exposes at least one stagi
 - `allow_zero_byte` (default `false`) permits a zero-byte tool output to become ready. It applies only to an output reference.
 - `status` and `download` only see references owned by the calling user; a foreign or missing reference returns the same not-found error.
 - `download` requires a `ready` reference; a reserved, failed or expired reference is refused. The returned link is single-use and short-lived; a retry needs a new `mcphub_file_download` call.
-- The tools are listed only on routes with a staging target, and they are not exposed through `$smart` routing.
+- `request_upload` creates a reserved reference plus a one-time browser link. `size_hint` narrows the accepted size; the real ceiling is still `maxFileBytes`.
+- `status` accepts either a `mcpfile://` reference or the `uploadToken` from `request_upload`, so a model can poll a browser upload without knowing the reference.
+- The tools are listed on every route with a staging target, including `$smart` routes. On a `$smart` route they are called directly by name; `call_tool` still refuses them, and `describe_tool` answers for them from their static definition.
 
 ### Reserved namespace
 
@@ -221,6 +245,7 @@ Settings live under `systemConfig.fileStaging` and are written through `PUT /api
 | `globalQuotaBytes` | 10 GiB | Quota for the whole hub. |
 | `ttlHours` | 24 | Lifetime of a reference and its content; 1 to 8760 hours. |
 | `downloadTtlSeconds` | 300 | Download link lifetime; 10 to 3600 seconds. |
+| `uploadTtlSeconds` | 900 | Browser upload link lifetime; 60 to 3600 seconds. |
 | `maxFilesPerUser` | 100 | Maximum live references per user. |
 | `cleanupIntervalMinutes` | 15 | Expired-reference sweep interval; 1 to 1440 minutes. |
 
@@ -237,7 +262,7 @@ A staging call must resolve to a real user account. The following callers are re
 - users flagged `credentialEligible: false`, and users that no longer exist;
 - replica-mode requests.
 
-References are owned by that user. Another user gets the same not-found error as for a reference that never existed. The download route is the exception: it authenticates with the one-time token rather than a session, because the client that fetches the file may not hold a dashboard session.
+References are owned by that user. Another user gets the same not-found error as for a reference that never existed. The download and upload routes are the exception: they authenticate with the one-time token rather than a session, because the browser that moves the file may not hold a dashboard session.
 
 ## Security boundary
 
@@ -251,4 +276,4 @@ Staging makes the hub copy a file; it does not grant the client filesystem acces
 
 ## Not included
 
-Staging does not yet provide browser upload pages, S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, `$smart` exposure of the virtual tools, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee. There is also no dashboard editor for staging in this phase; configuration goes through the PATCH routes described above.
+Staging does not yet provide S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee. The dashboard edits the global settings under **Settings → File Staging**; per-server staging and per-tool opt-in still go through the PATCH routes described above.
