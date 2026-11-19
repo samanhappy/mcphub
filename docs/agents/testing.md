@@ -18,6 +18,7 @@ pnpm exec jest \
   tests/controllers/serverController-fileStaging.test.ts \
   tests/controllers/stagingConnectionChange.test.ts \
   tests/dao/serverDaoStagingId.test.ts \
+  tests/services/mcpService-fileStaging.test.ts \
   --runInBand
 ```
 
