@@ -98,3 +98,36 @@ export const decideFinalize = (
   }
   return { size: digest.size, sha256: digest.sha256 };
 };
+
+export interface UploadQuotaUsage {
+  ownerUsed: number;
+  globalUsed: number;
+}
+
+/**
+ * Validate a browser upload against the reserved ref it was minted for. Both
+ * ledgers call this so the ceiling, empty-file and quota rules cannot drift.
+ */
+export const decideUpload = (
+  record: StagingRefRecord,
+  dataLength: number,
+  settings: FileStagingSettings,
+  usage: UploadQuotaUsage,
+): void => {
+  if (record.state !== 'reserved' || record.leaseId) {
+    throw new StagingError('not-ready', 'Upload destination is not writable');
+  }
+  // A link may announce a tighter ceiling than the global limit.
+  if (dataLength > (record.reservedBytes ?? settings.maxFileBytes)) {
+    throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
+  }
+  if (dataLength === 0 && !record.allowZeroByte) {
+    throw new StagingError('not-ready', 'Empty files are not accepted');
+  }
+  if (usage.ownerUsed + dataLength > settings.perUserQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+  }
+  if (usage.globalUsed + dataLength > settings.globalQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+  }
+};

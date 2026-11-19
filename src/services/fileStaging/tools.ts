@@ -262,10 +262,7 @@ export const executeStagingTool = async (
         uploadUrl,
         uploadToken: token,
         expiresAt,
-        maxBytes: Math.min(
-          context.settings.maxFileBytes,
-          typeof sizeHint === 'number' ? sizeHint : context.settings.maxFileBytes,
-        ),
+        maxBytes: typeof sizeHint === 'number' ? sizeHint : context.settings.maxFileBytes,
       });
     }
 

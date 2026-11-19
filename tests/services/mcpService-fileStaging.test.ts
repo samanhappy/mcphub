@@ -88,7 +88,17 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
 jest.mock('../../src/services/smartRoutingService.js', () => ({
   initSmartRoutingService: jest.fn(),
   getSmartRoutingTools: jest.fn(async () => ({ tools: [] })),
-  handleSearchToolsRequest: jest.fn(),
+  handleSearchToolsRequest: jest.fn(async () => ({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          tools: [{ name: 'ssh-upload', description: 'upload', serverName: 'ssh' }],
+          metadata: { query: 'upload a file', totalResults: 1 },
+        }),
+      },
+    ],
+  })),
   handleDescribeToolRequest: jest.fn(),
   isSmartRoutingGroup: jest.fn(() => true),
 }));
@@ -331,5 +341,20 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(names).toContain('mcphub_file_upload');
     expect(names).toContain('mcphub_file_request_upload');
     expect((listed as { stagingTools?: boolean }).stagingTools).toBe(true);
+  });
+
+  it('surfaces the hub tools in a $smart search_tools answer', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'search_tools', arguments: { query: 'upload a file' } } },
+      { sessionId: 's1' },
+    );
+    const payload = JSON.parse(result.content[0].text);
+
+    const names = payload.tools.map((tool: any) => tool.name);
+    expect(names).toContain('mcphub_file_upload');
+    expect(payload.metadata.stagingTools).toBe(true);
   });
 });

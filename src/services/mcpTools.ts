@@ -491,6 +491,43 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       : { tools };
   };
 
+  /**
+   * Add the hub built-ins to a `search_tools` answer. The model must be able to
+   * find them by name through discovery, not only see them in `tools/list`.
+   */
+  const appendStagingToolsToSearchResult = (result: any, stagingTools: Tool[]): any => {
+    const [block] = result?.content ?? [];
+    if (!block || block.type !== 'text') return result;
+    let parsed: any;
+    try {
+      parsed = JSON.parse(block.text);
+    } catch {
+      return result;
+    }
+    const listed = Array.isArray(parsed.tools) ? parsed.tools : [];
+    const names = new Set(listed.map((tool: any) => tool.name));
+    const added = stagingTools.filter((tool) => !names.has(tool.name));
+    if (added.length === 0) return result;
+    const tools = [...listed, ...added];
+    return {
+      ...result,
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            ...parsed,
+            tools,
+            metadata: {
+              ...(parsed.metadata ?? {}),
+              totalResults: tools.length,
+              stagingTools: true,
+            },
+          }),
+        },
+      ],
+    };
+  };
+
   const handleCallToolRequestImpl = async (request: any, extra: any) => {
     logger.log('Handling CallToolRequest for tool', summarizeToolRequestForLogging(request.params));
     const startTime = Date.now();
@@ -621,7 +658,12 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       // Special handling for smart routing tools
       if (!upstreamOwnsMetaName && request.params.name === 'search_tools') {
         const { query, limit = 10 } = request.params.arguments || {};
-        return await handleSearchToolsRequest(query, limit, sessionId, group);
+        const result = await handleSearchToolsRequest(query, limit, sessionId, group);
+        // Hub built-ins are not in the vector index, so a $smart client would
+        // never discover the staging tools from search alone (#1056 PR3).
+        const stagingTools = await withStagingTools(group, [], extra);
+        if (stagingTools.length === 0) return result;
+        return appendStagingToolsToSearchResult(result, stagingTools);
       }
 
       // Special handling for describe_tool (progressive disclosure mode)

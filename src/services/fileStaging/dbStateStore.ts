@@ -21,7 +21,7 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
-import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
+import { assertLeaseQuota, assertRefsLeasable, decideFinalize, decideUpload } from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import type { StagingStateStore } from './stateStore.js';
 import {
@@ -586,27 +586,14 @@ export class DbStagingStateStore implements StagingStateStore {
       if (!refRow || refRow.ownerHash !== tokenRow.ownerHash) {
         throw new StagingError('not-found', 'Upload link is not valid');
       }
-      if (refRow.state !== 'reserved' || refRow.leaseId) {
-        throw new StagingError('not-ready', 'Upload destination is not writable');
-      }
       if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
         throw new StagingError('expired', 'Staging reference has expired');
       }
-      if (data.length > (refRow.reservedBytes ?? settings.maxFileBytes)) {
-        throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
-      }
-      if (data.length === 0 && !refRow.allowZeroByte) {
-        throw new StagingError('not-ready', 'Empty files are not accepted');
-      }
       await this.repository.lockQuota(manager);
-      const usage = await this.usage(manager);
-      const ownerUsage = await this.usage(manager, refRow.ownerHash);
-      if (ownerUsage + data.length > settings.perUserQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
-      }
-      if (usage + data.length > settings.globalQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
-      }
+      decideUpload(toRecord(refRow), data.length, settings, {
+        ownerUsed: await this.usage(manager, refRow.ownerHash),
+        globalUsed: await this.usage(manager),
+      });
       const target = contentPath(this.rootDir, refRow.ownerHash, refRow.id);
       await assertNoSymlinkComponents(this.rootDir, target);
       await writeFileAtomic(target, data);

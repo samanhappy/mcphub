@@ -22,7 +22,7 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
-import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
+import { assertLeaseQuota, assertRefsLeasable, decideFinalize, decideUpload } from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import {
   type CreateRefInput,
@@ -649,25 +649,13 @@ export class FileStagingStateStore implements StagingStateStore {
       if (!record || record.ownerHash !== tokenRecord.ownerHash) {
         throw new StagingError('not-found', 'Upload link is not valid');
       }
-      if (record.state !== 'reserved' || record.leaseId) {
-        throw new StagingError('not-ready', 'Upload destination is not writable');
-      }
       if (record.expiresAt <= nowIso) {
         throw new StagingError('expired', 'Staging reference has expired');
       }
-      // A browser link may announce a tighter ceiling than the global limit.
-      if (data.length > (record.reservedBytes ?? settings.maxFileBytes)) {
-        throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
-      }
-      if (data.length === 0 && !record.allowZeroByte) {
-        throw new StagingError('not-ready', 'Empty files are not accepted');
-      }
-      if (this.quotaUsage(record.ownerHash) + data.length > settings.perUserQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
-      }
-      if (this.quotaUsage() + data.length > settings.globalQuotaBytes) {
-        throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
-      }
+      decideUpload(record, data.length, settings, {
+        ownerUsed: this.quotaUsage(record.ownerHash),
+        globalUsed: this.quotaUsage(),
+      });
       const file = path.join(refDir(this.rootDir, record.ownerHash, record.id), 'content');
       await writeFileAtomic(file, data);
       const digest = await digestFile(file);

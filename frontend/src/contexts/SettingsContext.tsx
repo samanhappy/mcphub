@@ -7,7 +7,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiResponse, BearerKey } from '@/types';
+import { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
@@ -72,19 +72,6 @@ interface ToolResultCompressionConfig {
   minTokens: number;
   maxOutputTokens: number;
   strategy: ToolResultCompressionStrategy;
-}
-
-interface FileStagingConfig {
-  enabled: boolean;
-  maxFileBytes: number;
-  inlineMaxBytes: number;
-  perUserQuotaBytes: number;
-  globalQuotaBytes: number;
-  ttlHours: number;
-  downloadTtlSeconds: number;
-  uploadTtlSeconds: number;
-  maxFilesPerUser: number;
-  cleanupIntervalMinutes: number;
 }
 
 interface MCPRouterConfig {

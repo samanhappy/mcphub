@@ -1753,67 +1753,98 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleSaveFileStagingConfig = async () => {
-    const pending: Array<{ field: FileStagingNumericField; value: string; label: string; unit: number }> = [
+    const pending: Array<{
+      field: FileStagingNumericField;
+      value: string;
+      label: string;
+      unit: number;
+      min: number;
+      max: number;
+    }> = [
       {
         field: 'maxFileBytes',
         value: tempFileStagingConfig.maxFileMiB,
         label: t('settings.fileStagingMaxFileSize') || 'Maximum file size',
         unit: 1024 * 1024,
+        min: 1,
+        max: 2048,
       },
       {
         field: 'inlineMaxBytes',
         value: tempFileStagingConfig.inlineMaxMiB,
         label: t('settings.fileStagingInlineMaxSize') || 'Inline limit',
         unit: 1024 * 1024,
+        min: 1,
+        max: 2048,
       },
       {
         field: 'perUserQuotaBytes',
         value: tempFileStagingConfig.perUserQuotaMiB,
         label: t('settings.fileStagingPerUserQuota') || 'Per-user quota',
         unit: 1024 * 1024,
+        min: 1,
+        max: 2048,
       },
       {
         field: 'globalQuotaBytes',
         value: tempFileStagingConfig.globalQuotaMiB,
         label: t('settings.fileStagingGlobalQuota') || 'Global quota',
         unit: 1024 * 1024,
+        min: 1,
+        max: 2048,
       },
       {
         field: 'ttlHours',
         value: tempFileStagingConfig.ttlHours,
         label: t('settings.fileStagingTtlHours') || 'Retention (hours)',
         unit: 1,
+        min: 1,
+        max: 8760,
       },
       {
         field: 'downloadTtlSeconds',
         value: tempFileStagingConfig.downloadTtlSeconds,
         label: t('settings.fileStagingDownloadTtl') || 'Download link lifetime (seconds)',
         unit: 1,
+        min: 10,
+        max: 3600,
       },
       {
         field: 'uploadTtlSeconds',
         value: tempFileStagingConfig.uploadTtlSeconds,
         label: t('settings.fileStagingUploadTtl') || 'Upload link lifetime (seconds)',
         unit: 1,
+        min: 60,
+        max: 3600,
       },
       {
         field: 'maxFilesPerUser',
         value: tempFileStagingConfig.maxFilesPerUser,
         label: t('settings.fileStagingMaxFilesPerUser') || 'Max files per user',
         unit: 1,
+        min: 1,
+        max: 2147483647,
       },
       {
         field: 'cleanupIntervalMinutes',
         value: tempFileStagingConfig.cleanupIntervalMinutes,
         label: t('settings.fileStagingCleanupInterval') || 'Cleanup interval (minutes)',
         unit: 1,
+        min: 1,
+        max: 1440,
       },
     ];
 
     const updates: Partial<typeof fileStagingConfig> = {};
-    for (const { field, value, label, unit } of pending) {
+    for (const { field, value, label, unit, min, max } of pending) {
       const parsed = parsePositiveIntegerSetting(value, label);
       if (parsed === null) return;
+      if (parsed < min || parsed > max) {
+        // The server clamps out-of-range values silently; refuse them here so
+        // the saved number is the number the operator typed.
+        showToast(`${label} must be between ${min} and ${max}`, 'error');
+        return;
+      }
       const next = parsed * unit;
       if (next !== fileStagingConfig[field]) {
         updates[field] = next;
