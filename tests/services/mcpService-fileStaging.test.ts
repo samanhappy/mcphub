@@ -4,7 +4,7 @@
  * upstream client call. These tests pin that boundary at the public entry
  * points rather than at the dispatch seam (which has its own suite).
  */
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const mockGetSystemConfig = jest.fn(async () => ({ normalizeToolNames: true }));
 const mockAliceUser = {
@@ -155,7 +155,7 @@ import * as mcpService from '../../src/services/mcpService.js';
 
 const textOf = (result: any): string => result?.content?.[0]?.text ?? '';
 
-const makeSharedCredentialServer = (version: string | undefined): any => ({
+const makeSshStagingServer = (version: string | undefined): any => ({
   name: 'shared-cred',
   owner: 'admin',
   visibility: 'public',
@@ -279,7 +279,7 @@ describe('hub staging tools at the public MCP entry points', () => {
 
   it('resolves a shared credential server before its per-user runtime reports a version', async () => {
     const createReadyRef = enableStaging();
-    mcpService.setServerInfosForTest([makeSharedCredentialServer(undefined)]);
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
 
     const result = await callUpload();
 
@@ -291,7 +291,7 @@ describe('hub staging tools at the public MCP entry points', () => {
   it('does not resolve a connected shared server whose reported version is not pinned', async () => {
     // Target resolution only; dispatch.test.ts covers the call-time version check.
     const createReadyRef = enableStaging();
-    mcpService.setServerInfosForTest([makeSharedCredentialServer('1.11.1')]);
+    mcpService.setServerInfosForTest([makeSshStagingServer('1.11.1')]);
 
     const result = await callUpload();
 
@@ -302,7 +302,7 @@ describe('hub staging tools at the public MCP entry points', () => {
 
   it('does not resolve a non-credential server before it reports a version', async () => {
     const createReadyRef = enableStaging();
-    const server = makeSharedCredentialServer(undefined);
+    const server = makeSshStagingServer(undefined);
     server.visibility = 'private';
     server.owner = 'alice';
     server.config.visibility = 'private';

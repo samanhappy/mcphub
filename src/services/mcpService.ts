@@ -3783,6 +3783,8 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
     // config already pins the exact package, and the actual staged call is
     // checked again against the connected runtime in dispatchStagedToolCall;
     // rejecting here would make shared staging unusable before the first call.
+    // `hasCredentialTemplate` intentionally also covers private per-user
+    // credential servers: they have the same missing global runtime.
     // Other servers keep the original fail-closed behavior until they report.
     if (serverInfo.version === undefined) {
       if (!hasCredentialTemplate(config)) {
@@ -3791,7 +3793,7 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
         );
         continue;
       }
-      logger.warn(
+      logger.debug(
         `[staging] ${serverInfo.name} has no version before its per-user runtime; deferring the pinned-version check to the staged call`,
       );
     } else if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
