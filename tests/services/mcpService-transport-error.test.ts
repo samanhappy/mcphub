@@ -133,4 +133,25 @@ describe('initializeClientsFromSettings transport failures', () => {
     // ...and every other server is still present rather than vanishing.
     expect(getServerByName('good')).toBeDefined();
   });
+
+  it('retries a remote server whose transport cannot be created', async () => {
+    mockServerDao.findAll.mockResolvedValue([
+      { name: 'flaky', enabled: true, type: 'streamable-http', url: 'dd' },
+    ]);
+    mockServerDao.findById.mockResolvedValue({ name: 'flaky', enabled: true });
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+    await initializeClientsFromSettings(true);
+
+    const retry = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 30_000);
+    expect(retry).toBeDefined();
+    expect(mockServerDao.findById).not.toHaveBeenCalled();
+
+    (retry![0] as () => void)();
+    for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
+
+    expect(mockServerDao.findById).toHaveBeenCalledWith('flaky');
+    expect(setTimeoutSpy.mock.calls.some(([, delay]) => delay === 60_000)).toBe(true);
+    setTimeoutSpy.mockRestore();
+  });
 });

@@ -271,9 +271,13 @@ it('limits smart search, describe and invocation to the permitted group capabili
     arguments: { query: 'identity' },
   });
   expect(searched).not.toHaveProperty('isError', true);
-  expect(searchToolsByVector).toHaveBeenLastCalledWith('identity', 10, expect.any(Number), [
-    'visible',
-  ]);
+  expect(searchToolsByVector).toHaveBeenLastCalledWith(
+    'identity',
+    10,
+    expect.any(Number),
+    ['visible'],
+    ['visible:visible-identity'],
+  );
   for (const toolName of ['outside-identity', 'hidden-identity', 'visible-rotate_identity']) {
     expect(
       (await client.callTool({ name: 'describe_tool', arguments: { toolName } })).isError,

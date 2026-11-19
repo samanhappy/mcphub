@@ -2509,6 +2509,7 @@ export const initializeClientsFromSettings = async (
       } else {
         try {
           transport = await createTransportFromConfig(name, expandedConf);
+          clearTransportRetry(name);
         } catch (error) {
           // Fail this server only. Letting the error escape the loop hits the
           // outer catch, which restores `serverInfos` to its previous value -
@@ -2535,6 +2536,7 @@ export const initializeClientsFromSettings = async (
             enabled: true,
             config: expandedConf,
           });
+          if (expandedConf.url && !isReplicaMode()) scheduleTransportRetry(name);
           continue;
         }
       }
@@ -3063,6 +3065,34 @@ export const getServersInfo = async (
     );
   // Sorting is now handled at DAO layer for consistent pagination results
   return infos;
+};
+
+// Remote servers whose transport could not be created (DNS blip, SSRF lookup
+// failure) get no client or keep-alive, so retry them with capped backoff.
+const transportRetries = new Map<string, { attempt: number; timer: NodeJS.Timeout }>();
+const TRANSPORT_RETRY_BASE_MS = 30_000;
+const TRANSPORT_RETRY_MAX_MS = 300_000;
+
+const scheduleTransportRetry = (serverName: string): void => {
+  const previous = transportRetries.get(serverName);
+  if (previous) clearTimeout(previous.timer);
+  const attempt = (previous?.attempt ?? 0) + 1;
+  const delay = Math.min(TRANSPORT_RETRY_BASE_MS * 2 ** (attempt - 1), TRANSPORT_RETRY_MAX_MS);
+  const timer = setTimeout(() => {
+    reconnectServer(serverName).catch((error) => {
+      logger.warn('Transport retry failed', { serverName, error: summarizeErrorForLogging(error) });
+    });
+  }, delay);
+  timer.unref?.();
+  transportRetries.set(serverName, { attempt, timer });
+  logger.log('Scheduled transport retry', { serverName, attempt, delayMs: delay });
+};
+
+const clearTransportRetry = (serverName: string): void => {
+  const pending = transportRetries.get(serverName);
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  transportRetries.delete(serverName);
 };
 
 // Get server by name

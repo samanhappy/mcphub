@@ -106,6 +106,27 @@ describe('smartRoutingService search_tools results', () => {
     );
   });
 
+  it('keeps disabled tools out of ranking/top-k without a policy', async () => {
+    mockGetServersInGroup.mockResolvedValue(['chat']);
+    initSmartRoutingService(
+      () => [{ name: 'chat', status: 'connected', enabled: true, tools: chatTools }] as any,
+      jest.fn(async (_serverName, tools: any[]) =>
+        tools.filter((tool) => tool.name !== 'chat::send_message'),
+      ),
+      jest.fn(async (_group, _serverName, tools) => tools),
+    );
+
+    await search();
+
+    expect(mockSearchToolsByVector).toHaveBeenCalledWith(
+      expect.any(String),
+      10,
+      expect.any(Number),
+      ['chat'],
+      ['chat:chat::list_messages', 'chat:chat::search_chats'],
+    );
+  });
+
   it('sends only canonical policy-eligible candidates into ranking/top-k', async () => {
     mockGetPolicyConfig.mockResolvedValue({
       toolPolicies: [
@@ -384,6 +405,7 @@ describe('smartRoutingService search_tools results', () => {
         10,
         expect.any(Number),
         ['chat', 'notes'],
+        expect.arrayContaining(['notes:notes::find_note']),
       );
     });
 

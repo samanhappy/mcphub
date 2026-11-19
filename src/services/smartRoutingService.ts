@@ -543,9 +543,12 @@ export const handleSearchToolsRequest = async (
     );
   }
 
+  // Scope the vector query to tools the caller can use, so disabled tools do
+  // not fill the top-N and leave nothing after filtering. Without a policy, a
+  // server with no cached tools keeps the unscoped search (stored rows only).
   const policy = await getToolPolicy(group);
   let allowedToolIds: string[] | undefined;
-  if (policy.active) {
+  if (policy.active || availableServers.every((server) => server.tools.length > 0)) {
     allowedToolIds = [];
     for (const server of availableServers) {
       const configured = await filterToolsByConfigFn(
@@ -553,9 +556,8 @@ export const handleSearchToolsRequest = async (
         server.tools.filter((tool) => !isAppOnlyTool(tool)),
       );
       const selected = await filterToolsByGroupFn(targetGroup, server.name, configured);
-      allowedToolIds.push(
-        ...policy.filterTools(server.name, selected).map((tool) => `${server.name}:${tool.name}`),
-      );
+      const visible = policy.active ? policy.filterTools(server.name, selected) : selected;
+      allowedToolIds.push(...visible.map((tool) => `${server.name}:${tool.name}`));
     }
   }
   const searchResults =
