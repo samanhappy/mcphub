@@ -191,7 +191,7 @@ The hub injects four virtual tools into a route that exposes at least one stagin
 - `allow_zero_byte` (default `false`) permits a zero-byte tool output to become ready. It applies only to an output reference.
 - `status` and `download` only see references owned by the calling user; a foreign or missing reference returns the same not-found error.
 - `download` requires a `ready` reference; a reserved, failed or expired reference is refused. The returned link is single-use and short-lived; a retry needs a new `mcphub_file_download` call.
-- `request_upload` creates a reserved reference plus a one-time browser link. `size_hint` narrows the accepted size; the real ceiling is still `maxFileBytes`.
+- `request_upload` creates a reserved reference plus a one-time browser link. `size_hint` sets the ceiling the link enforces; without it the ceiling is `maxFileBytes`. The hub checks the announced `Content-Length` before buffering the body and re-checks the real size when the upload finalizes.
 - `status` accepts either a `mcpfile://` reference or the `uploadToken` from `request_upload`, so a model can poll a browser upload without knowing the reference.
 - The tools are listed on every route with a staging target, including `$smart` routes. On a `$smart` route they are called directly by name; `call_tool` still refuses them, and `describe_tool` answers for them from their static definition.
 

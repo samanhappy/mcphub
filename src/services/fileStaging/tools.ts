@@ -245,6 +245,9 @@ export const executeStagingTool = async (
         serverName: target.serverName,
         filename,
         allowZeroByte: false,
+        // The announced ceiling is enforced when the upload finalizes, not
+        // just in the page's own check.
+        maxBytes: typeof sizeHint === 'number' ? sizeHint : undefined,
         settings: context.settings,
       });
       const token = await context.store.createUploadToken(

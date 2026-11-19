@@ -278,6 +278,7 @@ export class FileStagingStateStore implements StagingStateStore {
       size: 0,
       version: 0,
       allowZeroByte: input.allowZeroByte === true,
+      reservedBytes: input.maxBytes,
       createdAt,
       expiresAt,
       pinCount: 0,
@@ -654,7 +655,8 @@ export class FileStagingStateStore implements StagingStateStore {
       if (record.expiresAt <= nowIso) {
         throw new StagingError('expired', 'Staging reference has expired');
       }
-      if (data.length > settings.maxFileBytes) {
+      // A browser link may announce a tighter ceiling than the global limit.
+      if (data.length > (record.reservedBytes ?? settings.maxFileBytes)) {
         throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
       }
       if (data.length === 0 && !record.allowZeroByte) {
@@ -673,8 +675,14 @@ export class FileStagingStateStore implements StagingStateStore {
       record.sha256 = digest.sha256;
       record.version = 1;
       record.state = 'ready';
+      record.reservedBytes = undefined;
+      // Same lifetime rule as the DB store: a finished upload is a normal
+      // reference and expires on the reference TTL, not on the link TTL.
+      record.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
       tokenRecord.usedAt = nowIso;
-      await this.writeMeta(record);
+      // `meta.json` is only a cache; a failure there must not leave the
+      // authoritative ledger behind the in-memory record.
+      await this.writeMeta(record).catch(() => undefined);
       await this.persist();
       return record;
     });

@@ -71,6 +71,8 @@ export interface CreateRefInput {
   serverName: string;
   filename?: string;
   allowZeroByte?: boolean;
+  /** Ceiling announced to the browser; enforced when the upload finalizes. */
+  maxBytes?: number;
   settings: FileStagingSettings;
 }
 

@@ -148,6 +148,17 @@ describe('hub staging virtual tools', () => {
     // The returned token is live and points at the reserved ref.
     const request = await store.getUploadToken(String(payload.uploadToken));
     expect(request.ref).toBe(payload.ref);
+
+    // The announced ceiling is enforced by the ledger, not only by the page.
+    await expect(
+      store.uploadWithToken(String(payload.uploadToken), Buffer.alloc(2049), settings),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+    const record = await store.uploadWithToken(
+      String(payload.uploadToken),
+      Buffer.alloc(2048),
+      settings,
+    );
+    expect(record.size).toBe(2048);
   });
 
   it('reports an upload in progress and then ready through the status tool', async () => {

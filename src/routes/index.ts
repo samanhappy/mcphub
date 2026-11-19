@@ -143,6 +143,7 @@ import {
 } from '../controllers/builtinResourceController.js';
 import { uploadMcpbFile, uploadMiddleware } from '../controllers/mcpbController.js';
 import {
+  assertStagingUploadLink,
   downloadStagedFile,
   rawStagingUploadBody,
   receiveStagedUpload,
@@ -267,6 +268,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   app.post(
     `${config.basePath}/staging/upload/:token`,
     stagingDownloadRateLimiter,
+    assertStagingUploadLink,
     rawStagingUploadBody,
     receiveStagedUpload,
   );

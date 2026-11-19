@@ -29,7 +29,20 @@ class FakeRepository extends FileStagingRepository {
   tokens = new Map<string, FileStagingTokenEntity>();
   private view?: { refs: Map<string, FileStagingRefEntity>; tokens: Map<string, FileStagingTokenEntity> };
 
+  /**
+   * Real PostgreSQL serializes two transactions that lock the same row with
+   * `pessimistic_write`. The fake has no row locks, so it serializes the whole
+   * transaction instead; that is the same guarantee for a single-token test.
+   */
+  private queue: Promise<unknown> = Promise.resolve();
+
   override async transaction<T>(run: (manager: EntityManager) => Promise<T>): Promise<T> {
+    const next = this.queue.then(() => this.runTransaction(run));
+    this.queue = next.catch(() => undefined);
+    return next;
+  }
+
+  private async runTransaction<T>(run: (manager: EntityManager) => Promise<T>): Promise<T> {
     const refs = new Map(
       [...this.refs].map(([key, value]) => [key, structuredClone(value)] as const),
     );
@@ -351,5 +364,32 @@ describe('DbStagingStateStore', () => {
     ).rejects.toMatchObject({ code: 'quota-exceeded' });
     const record = await store.uploadWithToken(token, Buffer.from('ok'), settings());
     expect(record.state).toBe('ready');
+  });
+
+  it('lets only one of two concurrent uploads win the link', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, { rootDir, stateDir, disableLock: true });
+    await store.init();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+
+    const results = await Promise.allSettled([
+      store.uploadWithToken(token, Buffer.from('first'), settings()),
+      store.uploadWithToken(token, Buffer.from('second'), settings()),
+    ]);
+
+    const fulfilled = results.filter((result) => result.status === 'fulfilled');
+    const rejected = results.filter((result) => result.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ code: 'not-found' });
+
+    // The committed bytes are the winner's, and the row matches them.
+    const record = await store.getOwnedRef(reserved.ref, ownerHash);
+    expect(record.state).toBe('ready');
+    const content = await fs.readFile(path.join(rootDir, ownerHash, record.id, 'content'), 'utf8');
+    expect(['first', 'second']).toContain(content);
+    expect(record.size).toBe(content.length);
   });
 });

@@ -257,6 +257,41 @@ export const showStagingUploadPage = async (req: Request, res: Response): Promis
 };
 
 /**
+ * Reject an unusable upload link before the body is buffered.
+ *
+ * `express.raw` allocates up to the limit for every request, so a route that
+ * parsed first and checked the token afterwards would let anyone pull
+ * `maxFileBytes` per request against an unknown token.
+ */
+export const assertStagingUploadLink = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const token = typeof req.params.token === 'string' ? req.params.token : '';
+  try {
+    if (!isStagingRuntimeSupported()) throw new Error('unsupported');
+    const settings = await getFileStagingSettings();
+    if (!settings.enabled) throw new Error('disabled');
+    const store = await getStagingStateStore();
+    const request = await store.getUploadToken(token);
+    const ref = await store.getOwnedRef(request.ref, request.ownerHash);
+    if (ref.state !== 'reserved') throw new Error('not writable');
+    const limit = ref.reservedBytes ?? settings.maxFileBytes;
+    const declared = Number(req.headers['content-length']);
+    if (Number.isFinite(declared) && declared > limit) {
+      res.status(413).json({ success: false, message: 'The file exceeds the staging limit.' });
+      return;
+    }
+    // The parser and the ledger must agree on the ceiling for this link.
+    (req as Request & { stagingUploadLimit?: number }).stagingUploadLimit = limit;
+    next();
+  } catch {
+    res.status(404).json({ success: false, message: 'Upload link is not valid' });
+  }
+};
+
+/**
  * Consume the token and finalize the reserved ref with the uploaded bytes.
  *
  * The body limit is per-request: it follows the live setting, so a large
@@ -269,7 +304,10 @@ export const rawStagingUploadBody = async (
 ): Promise<void> => {
   try {
     const settings = await getFileStagingSettings();
-    const parser = express.raw({ type: () => true, limit: settings.maxFileBytes });
+    const limit =
+      (req as Request & { stagingUploadLimit?: number }).stagingUploadLimit ??
+      settings.maxFileBytes;
+    const parser = express.raw({ type: () => true, limit });
     parser(req, res, (error?: unknown) => {
       if (error) {
         const status = (error as { status?: number }).status === 413 ? 413 : 400;
