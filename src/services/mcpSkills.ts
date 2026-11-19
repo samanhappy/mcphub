@@ -5,6 +5,7 @@ import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { UserContextService } from './userContextService.js';
 import type { SkillPublication } from '../types/hostedSkill.js';
 import {
+  describeSkillEntry,
   findSkillSnapshot,
   listSkillSnapshots,
   readSkillFile,
@@ -57,12 +58,14 @@ export function registerSkillHandlers(server: Server) {
   server.setRequestHandler('skills/list', { params: listParams }, async ({ cursor }) => {
     const allowed = await getPublicationFilter();
     const entries = listSkillSnapshots((snapshot) =>
-      allowed(snapshot.skill) ? snapshot.entries : [],
+      allowed(snapshot.skill) ? snapshot.entries.map((entry) => ({ snapshot, entry })) : [],
     )
       .flat()
-      .filter(({ uri }) => !cursor || uri > cursor)
-      .sort((a, b) => (a.uri < b.uri ? -1 : 1));
-    const skills = entries.slice(0, 20);
+      .filter(({ entry }) => !cursor || entry.uri > cursor)
+      .sort((a, b) => (a.entry.uri < b.entry.uri ? -1 : 1));
+    const skills = entries
+      .slice(0, 20)
+      .map(({ snapshot, entry }) => describeSkillEntry(snapshot, entry));
     return {
       resultType: 'complete',
       skills,
@@ -74,7 +77,7 @@ export function registerSkillHandlers(server: Server) {
     const snapshot = await getVisibleSnapshot(uri);
     const skill = snapshot.entries.find((entry) => entry.uri === uri);
     if (!skill) throw unknownSkill();
-    return { resultType: 'complete', skill, ...cache };
+    return { resultType: 'complete', skill: describeSkillEntry(snapshot, skill), ...cache };
   });
 }
 

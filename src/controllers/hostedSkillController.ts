@@ -7,6 +7,7 @@ import {
   removeSkill,
   saveSkillSnapshot,
   SkillInputError,
+  SkillNameConflict,
   skillsAvailable,
   updateSkillPublication,
 } from '../services/hostedSkillCatalog.js';
@@ -26,6 +27,10 @@ export const withSkillsApi =
     try {
       await handle(req, res);
     } catch (error) {
+      if (error instanceof SkillNameConflict) {
+        failure(res, 409, error.message);
+        return;
+      }
       if (error instanceof SkillInputError) {
         failure(res, 400, error.message);
         return;

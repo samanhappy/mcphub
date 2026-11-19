@@ -12,12 +12,14 @@ Administrators can publish [Agent Skills](https://agentskills.io/specification) 
 3. Select **Enabled** and choose the publication scope. **Global endpoint** publishes to `/mcp` if global routing is enabled. Selected groups publish to their group endpoints and apply the existing route authentication and group visibility.
 4. Connect a compatible client to the published endpoint. It discovers Skills via `skills/list`, fetches their manifests via `skills/get`, and reads individual files via `resources/read`.
 
-The directory name must match the `name` in `SKILL.md`. Import supports up to 512 regular files and 16 MiB of file content per Skill. GitHub imports resolve the source to a commit at import time. **Replace files** imports a new snapshot under the same Skill URI and publication scope. Turn off **Enabled** or delete the Skill to take it off the published endpoints.
+The directory name must match the `name` in `SKILL.md` and be unique in the catalog. Import supports up to 512 regular files and 16 MiB of file content per Skill. GitHub imports resolve the source to a commit at import time. To update an existing Skill, use **Replace files** to preserve its ID, URI, and publication scope. Turn off **Enabled** or delete the Skill to take it off the published endpoints.
 
 For the TypeScript SDK, create the client with `versionNegotiation: { mode: "auto" }` so it discovers the 2026-07-28 endpoint.
 
 ## Storage and compatibility
 
-Skill snapshots are stored next to the settings file in its `.skills` sidecar directory. Include the sidecar in backups and mount the parent directory for Docker persistence. The catalog is available in single-instance self-hosted deployments with either settings backend.
+Each Skill is stored under `data/skills/<skill-name>/` relative to the MCPHub working directory. The directory contains the original `SKILL.md` and attachments at their original relative paths, plus the reserved `.mcphub.json` catalog metadata file. Use **Replace files** to update content and refresh its digests. Include `data/skills/` in backups. In Docker, mount `/app/data` to persist these directories. The catalog supports either settings backend in single-instance self-hosted deployments.
+
+On first catalog access, MCPHub migrates preview JSON snapshots from `data/skills/` and `<settings-file>.skills/`, preserving IDs and publication settings. If multiple snapshots share a name, the existing directory or first migrated snapshot keeps the name. MCPHub retains the others as `.conflict` files in their original directory for manual recovery.
 
 Both the manifest and its SHA-256 digests describe the original UTF-8 or binary file bytes. If a Skill changes between fetching a manifest and reading a file, clients can refresh the manifest and verify the new file. Existing tools, prompts, and resources remain available through their usual methods.

@@ -72,6 +72,7 @@ const manifest = Buffer.from(
   '\uFEFF---\r\nname: team-guide\r\ndescription: Team workflow\r\nmetadata:\r\n  flag: yes\r\n---\r\n[Guide](references/guide.txt)\r\n',
 );
 const attachment = Buffer.from([0xff, 0x00, 0x80]);
+const idForLegacySnapshot = '33333333-3333-4333-8333-333333333333';
 const directoryUpload = (body: Array<[string, Buffer]>) =>
   Buffer.from(
     JSON.stringify({
@@ -150,7 +151,17 @@ afterAll(async () => {
   if (previousPath === undefined) delete process.env.MCPHUB_SETTING_PATH;
   else process.env.MCPHUB_SETTING_PATH = previousPath;
 });
-afterEach(() => jest.restoreAllMocks());
+beforeEach(() => {
+  jest.spyOn(process, 'cwd').mockReturnValue(directory);
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+  fs.rmSync(path.join(directory, 'data'), { recursive: true, force: true });
+  fs.rmSync(path.join(directory, 'settings.json.skills'), { recursive: true, force: true });
+});
+
+const catalogPath = () => path.join(directory, 'data', 'skills');
+const skillPath = () => path.join(catalogPath(), 'team-guide');
 
 it('advertises the extension, without the optional directory method', async () => {
   const discovery = await rpc('server/discover').expect(200);
@@ -196,13 +207,24 @@ it('imports directories, restricts all reads by publication scope, and replaces 
     ['SKILL.md', manifest],
     ['../outside.txt', Buffer.from('x')],
   ]).expect(400);
+  await importDirectory([
+    ['SKILL.md', manifest],
+    ['references/guide.txt:stream', attachment],
+  ]).expect(400);
+  await importDirectory([
+    ['SKILL.md', manifest],
+    ['.MCPHUB.json', attachment],
+  ]).expect(400);
   const fixtures: Array<[string, Buffer]> = [
     ['SKILL.md', manifest],
     ['references/guide.txt', attachment],
+    ['references/remove.txt', Buffer.from('obsolete')],
   ];
   const created = (await importDirectory(fixtures).expect(201)).body.data;
-  const duplicate = (await importDirectory(fixtures).expect(201)).body.data;
-  expect(duplicate.files[0].uri).not.toBe(created.files[0].uri);
+  expect(fs.readFileSync(path.join(skillPath(), 'SKILL.md'))).toEqual(manifest);
+  expect(fs.readFileSync(path.join(skillPath(), 'references/guide.txt'))).toEqual(attachment);
+  await importDirectory([['SKILL.md', manifest]]).expect(409);
+  expect(fs.readFileSync(path.join(skillPath(), 'references/guide.txt'))).toEqual(attachment);
   expect(created).toMatchObject({ enabled: false, global: false, groupIds: [] });
   const uri = created.files.find((file: { path: string }) => file.path === 'SKILL.md').uri;
   const fileUri = created.files.find(
@@ -265,6 +287,8 @@ it('imports directories, restricts all reads by publication scope, and replaces 
   ).body.data;
   expect(updated).toMatchObject({ id: created.id, enabled: true, groupIds: [team] });
   expect(updated.version).not.toBe(created.version);
+  expect(fs.readFileSync(path.join(skillPath(), 'references/guide.txt'))).toEqual(newBytes);
+  expect(fs.existsSync(path.join(skillPath(), 'references/remove.txt'))).toBe(false);
   expect((await groupCall('resources/read', { uri: fileUri })).body.result.contents[0].text).toBe(
     newBytes.toString(),
   );
@@ -287,7 +311,8 @@ it('imports directories, restricts all reads by publication scope, and replaces 
     .get('/api/skills')
     .set('X-Test-Admin', 'yes')
     .expect(200);
-  expect(management.body.data.map(({ id }: { id: string }) => id)).toEqual([duplicate.id]);
+  expect(management.body.data).toEqual([]);
+  expect(fs.existsSync(skillPath())).toBe(false);
 });
 
 it.each(['100644', '120000'])(
@@ -346,18 +371,33 @@ it.each(['100644', '120000'])(
 
 const itWithFileSymlinks = process.platform === 'win32' ? it.skip : it;
 
-itWithFileSymlinks('ignores linked snapshots in the catalog', async () => {
-  const created = (await importDirectory([['SKILL.md', manifest]]).expect(201)).body.data;
+itWithFileSymlinks('ignores linked Skill directories and linked resource parents', async () => {
+  const created = (
+    await importDirectory([
+      ['SKILL.md', manifest],
+      ['references/guide.txt', attachment],
+    ]).expect(201)
+  ).body.data;
   await request(server)
     .put(`/api/skills/${created.id}`)
     .set('X-Test-Admin', 'yes')
     .send({ enabled: true, global: true, groupIds: [] })
     .expect(200);
 
-  const sidecar = path.join(directory, 'settings.json.skills', `${created.id}.json`);
-  const fixture = path.join(directory, 'linked-snapshot.json');
-  fs.renameSync(sidecar, fixture);
-  fs.symlinkSync(fixture, sidecar, 'file');
+  const resourceDir = path.join(skillPath(), 'references');
+  const resourceTarget = path.join(directory, 'linked-references');
+  fs.renameSync(resourceDir, resourceTarget);
+  fs.symlinkSync(resourceTarget, resourceDir, 'dir');
+  const resourceUri = created.files.find(
+    (file: { path: string }) => file.path === 'references/guide.txt',
+  ).uri;
+  expect((await rpc('resources/read', { uri: resourceUri })).body.error.code).toBe(-32602);
+  fs.unlinkSync(resourceDir);
+  fs.renameSync(resourceTarget, resourceDir);
+
+  const fixture = path.join(directory, 'linked-skill');
+  fs.renameSync(skillPath(), fixture);
+  fs.symlinkSync(fixture, skillPath(), 'dir');
   try {
     const result = (await rpc('skills/list').expect(200)).body.result;
     expect(result.skills.map(({ uri }: { uri: string }) => uri)).not.toContain(
@@ -370,7 +410,85 @@ itWithFileSymlinks('ignores linked snapshots in the catalog', async () => {
       .expect(404);
     expect(fs.existsSync(fixture)).toBe(true);
   } finally {
-    fs.unlinkSync(sidecar);
-    fs.unlinkSync(fixture);
+    fs.unlinkSync(skillPath());
+    fs.rmSync(fixture, { recursive: true });
   }
+});
+
+it('publishes only the nested Skill subtree in its manifest', async () => {
+  const nested = Buffer.from('---\nname: nested\ndescription: Nested workflow\n---\n');
+  const created = (
+    await importDirectory([
+      ['SKILL.md', manifest],
+      ['nested/SKILL.md', nested],
+      ['nested/guide.txt', attachment],
+    ]).expect(201)
+  ).body.data;
+  await request(server)
+    .put(`/api/skills/${created.id}`)
+    .set('X-Test-Admin', 'yes')
+    .send({ enabled: true, global: true, groupIds: [] })
+    .expect(200);
+
+  const { uri } = created.files.find((file: { path: string }) => file.path === 'nested/SKILL.md');
+  const listing = (await rpc('skills/list').expect(200)).body.result.skills;
+  const entry = (await rpc('skills/get', { uri }).expect(200)).body.result.skill;
+  expect(listing).toContainEqual(entry);
+  expect(entry.resources.map((file: { uri: string }) => file.uri)).toEqual([
+    uri,
+    uri.replace('SKILL.md', 'guide.txt'),
+  ]);
+});
+
+it('restores the previous Skill when a replacement is interrupted', async () => {
+  const created = (await importDirectory([['SKILL.md', manifest]]).expect(201)).body.data;
+  fs.renameSync(skillPath(), path.join(catalogPath(), '.backup-team-guide'));
+
+  const management = await request(server)
+    .get('/api/skills')
+    .set('X-Test-Admin', 'yes')
+    .expect(200);
+  expect(management.body.data).toEqual([created]);
+  expect(fs.readFileSync(path.join(skillPath(), 'SKILL.md'))).toEqual(manifest);
+});
+
+it('migrates preview snapshots and retains conflicting copies outside the catalog', async () => {
+  const legacyPath = path.join(directory, 'settings.json.skills');
+  fs.mkdirSync(legacyPath);
+  fs.mkdirSync(catalogPath(), { recursive: true });
+  const secondId = '44444444-4444-4444-8444-444444444444';
+  for (const [root, id] of [
+    [catalogPath(), idForLegacySnapshot],
+    [legacyPath, secondId],
+  ]) {
+    fs.writeFileSync(
+      path.join(root, `${id}.json`),
+      JSON.stringify({
+        skill: {
+          id,
+          name: 'team-guide',
+          source: { type: 'directory', name: 'team-guide' },
+          files: [{ path: 'SKILL.md' }],
+          enabled: true,
+          global: true,
+          groupIds: [],
+        },
+        contents: [manifest.toString('base64')],
+      }),
+    );
+  }
+
+  const uri = `skill://mcphub/${idForLegacySnapshot}/team-guide/SKILL.md`;
+  const result = (await rpc('resources/read', { uri }).expect(200)).body.result;
+  expect(result.contents[0].text).toBe(manifest.toString('utf8'));
+  expect(fs.readFileSync(path.join(skillPath(), 'SKILL.md'))).toEqual(manifest);
+  expect(fs.existsSync(path.join(catalogPath(), `${idForLegacySnapshot}.json`))).toBe(false);
+  expect(fs.readdirSync(legacyPath)).toEqual([
+    expect.stringMatching(/^44444444.*\.json\..*\.conflict$/),
+  ]);
+  await request(server)
+    .delete(`/api/skills/${idForLegacySnapshot}`)
+    .set('X-Test-Admin', 'yes')
+    .expect(200);
+  expect((await rpc('skills/list').expect(200)).body.result.skills).toEqual([]);
 });
