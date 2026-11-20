@@ -85,6 +85,7 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   removeServerToolEmbeddings: jest.fn(),
   saveToolsAsVectorEmbeddings: jest.fn(),
 }));
+const mockDescribeTool = jest.fn();
 jest.mock('../../src/services/smartRoutingService.js', () => ({
   initSmartRoutingService: jest.fn(),
   getSmartRoutingTools: jest.fn(async () => ({ tools: [] })),
@@ -99,7 +100,7 @@ jest.mock('../../src/services/smartRoutingService.js', () => ({
       },
     ],
   })),
-  handleDescribeToolRequest: jest.fn(),
+  handleDescribeToolRequest: (...args: unknown[]) => mockDescribeTool(...args),
   isSmartRoutingGroup: jest.fn(() => true),
 }));
 jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
@@ -280,6 +281,21 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(textOf(result)).toMatch(/cannot be called through call_tool/i);
     expect(mockGetSystemConfig).not.toHaveBeenCalled();
     expect(mockCallTool).not.toHaveBeenCalled();
+  });
+
+  it('lets describe_tool answer for a hub name on a $smart route', async () => {
+    enableStaging();
+    mockDescribeTool.mockResolvedValue({
+      content: [{ type: 'text', text: JSON.stringify({ tool: { name: 'mcphub_file_upload' } }) }],
+    });
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'describe_tool', arguments: { toolName: 'mcphub_file_upload' } } },
+      { sessionId: 's1' },
+    );
+
+    expect(textOf(result)).not.toMatch(/cannot be called through call_tool/i);
+    expect(mockDescribeTool).toHaveBeenCalled();
   });
 
   it('does not advertise hub tools on a $smart route when staging is disabled', async () => {

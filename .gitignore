@@ -50,3 +50,6 @@ temp-test-config/
 
 # Local design drafts and review scratch space
 .scratch/
+
+# Local transfer staging (never commit)
+.tmp-transfer/

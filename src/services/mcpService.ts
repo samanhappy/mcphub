@@ -4834,10 +4834,15 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   return context.runWithContext(() => withRequestServers(visible, action), user ?? null);
 };
 const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?: string) => {
-  // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
-  // past the outer dispatch, and the hub namespace is never reachable from a
-  // non-MCP caller (the OpenAPI controller rejects it as well).
-  if (isReservedStagingName(request?.params?.arguments?.toolName)) {
+  // A nested `call_tool` must not smuggle a reserved hub name past the outer
+  // dispatch, and the hub namespace is never reachable from a non-MCP caller
+  // (the OpenAPI controller rejects it as well). `describe_tool` is the one
+  // exception: describing a hub built-in is how a $smart client learns its
+  // schema, and it never executes anything.
+  if (
+    isReservedStagingName(request?.params?.arguments?.toolName) &&
+    request?.params?.name !== 'describe_tool'
+  ) {
     return Promise.resolve({
       isError: true,
       content: [{ type: 'text', text: 'Hub built-in tools cannot be called through call_tool' }],
