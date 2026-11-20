@@ -670,7 +670,10 @@ export class FileStagingStateStore implements StagingStateStore {
         ownerUsed: this.quotaUsage(record.ownerHash),
         globalUsed: this.quotaUsage(),
       });
-      const file = path.join(refDir(this.rootDir, record.ownerHash, record.id), 'content');
+      const file = contentPath(this.rootDir, record.ownerHash, record.id);
+      // Same guard as every other write: a tool sharing this UID could swap the
+      // ref directory for a symlink between mint and upload.
+      await assertNoSymlinkComponents(this.rootDir, file);
       await writeFileAtomic(file, data);
       const digest = await digestFile(file);
       record.size = digest.size;

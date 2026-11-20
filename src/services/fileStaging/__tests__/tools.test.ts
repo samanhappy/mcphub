@@ -38,7 +38,7 @@ describe('hub staging virtual tools', () => {
       downloadUrl: `https://hub.example/api/staging/download/${ref.slice(-8)}`,
       expiresAt: new Date(Date.now() + 300_000).toISOString(),
     }),
-    createUploadUrl: async (ref: string, token: string) => ({
+    createUploadUrl: async (token: string) => ({
       uploadUrl: `https://hub.example/staging/upload/${token}`,
       expiresAt: new Date(Date.now() + 900_000).toISOString(),
     }),

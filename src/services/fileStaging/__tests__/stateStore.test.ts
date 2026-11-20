@@ -484,4 +484,23 @@ describe('FileStagingStateStore', () => {
       store.createReservedRef({ ...input(rootDir), maxBytes: 2000, settings: tight }),
     ).rejects.toMatchObject({ code: 'quota-exceeded' });
   });
+
+  it('refuses a browser upload through a ref directory replaced by a symlink', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+
+    // A tool shares this process's UID and can replace its own ref directory.
+    const outside = path.join(path.dirname(rootDir), 'outside-upload');
+    await fs.mkdir(outside, { recursive: true });
+    const refDirectory = path.join(rootDir, ownerHash, reserved.id);
+    await fs.rename(refDirectory, path.join(path.dirname(rootDir), 'moved-upload'));
+    await fs.symlink(outside, refDirectory);
+
+    await expect(
+      store.uploadWithToken(token, Buffer.from('escape'), settings()),
+    ).rejects.toThrow(/symlinked path component/i);
+    await expect(fs.stat(path.join(outside, 'content'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
 });

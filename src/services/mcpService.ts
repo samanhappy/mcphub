@@ -3980,10 +3980,9 @@ const handleHubStagingCall = async (request: any, extra: any) => {
           expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),
         };
       },
-      createUploadUrl: async (ref, token) => {
-        // The reserved ref is the destination; the token is the only authority
-        // a browser needs, so it never has to hold a hub session.
-        void ref;
+      createUploadUrl: async (token) => {
+        // The token is the only authority a browser needs, so it never has to
+        // hold a hub session.
         const baseUrl = await requireStagingBaseUrl('Uploads');
         return {
           uploadUrl: `${baseUrl}${config.basePath}/staging/upload/${token}`,

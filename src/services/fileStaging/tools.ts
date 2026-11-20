@@ -20,10 +20,7 @@ export interface StagingToolContext {
   /** Mint a one-time download URL for a ready ref. */
   createDownloadUrl(ref: string): Promise<{ downloadUrl: string; expiresAt: string }>;
   /** Mint a one-time browser upload URL for a reserved ref. */
-  createUploadUrl(
-    ref: string,
-    token: string,
-  ): Promise<{ uploadUrl: string; expiresAt: string }>;
+  createUploadUrl(token: string): Promise<{ uploadUrl: string; expiresAt: string }>;
 }
 
 export const STAGING_TOOL_DEFINITIONS = [
@@ -255,7 +252,7 @@ export const executeStagingTool = async (
         context.principal.ownerHash,
         context.settings.uploadTtlSeconds,
       );
-      const { uploadUrl, expiresAt } = await context.createUploadUrl(record.ref, token);
+      const { uploadUrl, expiresAt } = await context.createUploadUrl(token);
       return ok({
         ref: record.ref,
         state: record.state,

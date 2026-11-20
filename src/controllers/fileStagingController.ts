@@ -112,6 +112,8 @@ export const downloadStagedFile = async (req: Request, res: Response): Promise<v
 };
 
 
+type StagingUploadRequest = Request & { stagingUploadLimit?: number };
+
 const escapeHtml = (value: string): string =>
   value.replace(
     /[&<>"']/g,
@@ -286,7 +288,7 @@ export const assertStagingUploadLink = async (
       return;
     }
     // The parser and the ledger must agree on the ceiling for this link.
-    (req as Request & { stagingUploadLimit?: number }).stagingUploadLimit = limit;
+    (req as StagingUploadRequest).stagingUploadLimit = limit;
     next();
   } catch {
     res.status(404).json({ success: false, message: 'Upload link is not valid' });
@@ -306,9 +308,7 @@ export const rawStagingUploadBody = async (
 ): Promise<void> => {
   try {
     const settings = await getFileStagingSettings();
-    const limit =
-      (req as Request & { stagingUploadLimit?: number }).stagingUploadLimit ??
-      settings.maxFileBytes;
+    const limit = (req as StagingUploadRequest).stagingUploadLimit ?? settings.maxFileBytes;
     const parser = express.raw({ type: () => true, limit });
     parser(req, res, (error?: unknown) => {
       if (error) {
