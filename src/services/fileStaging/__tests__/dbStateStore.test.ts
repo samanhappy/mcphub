@@ -462,6 +462,26 @@ describe('DbStagingStateStore', () => {
     ).rejects.toMatchObject({ code: 'quota-exceeded' });
   });
 
+  it('does not resurrect an expired reserved ref while releasing its reservation', async () => {
+    let clock = Date.now();
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, {
+      rootDir,
+      stateDir,
+      disableLock: true,
+      now: () => clock,
+    });
+    await store.init();
+    const short = settings({ ttlHours: 0.001, perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const minted = await store.createReservedRef({ ...input(rootDir), maxBytes: 3000, settings: short });
+
+    clock += 60_000;
+    expect(await store.cleanup(short)).toBe(1);
+    await expect(store.getOwnedRef(minted.ref, input(rootDir).principal.ownerHash)).rejects.toMatchObject({
+      code: 'not-found',
+    });
+  });
+
   it('releases the reservation once an unused upload link is gone', async () => {
     let clock = Date.now();
     const repository = new FakeRepository();

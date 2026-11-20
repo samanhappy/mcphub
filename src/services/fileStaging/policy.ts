@@ -138,10 +138,25 @@ export const decideUpload = (
   if (dataLength === 0 && !record.allowZeroByte) {
     throw new StagingError('not-ready', 'Empty files are not accepted');
   }
-  if (usage.ownerUsed + dataLength > settings.perUserQuotaBytes) {
+  // Usage counts this ref's own reservation, but the upload replaces it with
+  // the bytes on disk, so comparing `usage + dataLength` would charge the
+  // reservation twice.
+  const selfReserved = record.reservedBytes ?? 0;
+  if (usage.ownerUsed - selfReserved + dataLength > settings.perUserQuotaBytes) {
     throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
   }
-  if (usage.globalUsed + dataLength > settings.globalQuotaBytes) {
+  if (usage.globalUsed - selfReserved + dataLength > settings.globalQuotaBytes) {
     throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
   }
 };
+
+/**
+ * An abandoned upload link must not hold quota for the whole reference TTL:
+ * once the ref has no live upload token left, its reservation is released
+ * (the ref itself stays until its own TTL).
+ */
+export const shouldReleaseReservation = (
+  record: StagingRefRecord,
+  hasLiveUploadToken: boolean,
+): boolean =>
+  record.state === 'reserved' && (record.reservedBytes ?? 0) > 0 && !hasLiveUploadToken;

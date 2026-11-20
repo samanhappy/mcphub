@@ -29,6 +29,7 @@ import {
   assertRefsLeasable,
   decideFinalize,
   decideUpload,
+  shouldReleaseReservation,
 } from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import type { StagingStateStore } from './stateStore.js';
@@ -635,12 +636,9 @@ export class DbStagingStateStore implements StagingStateStore {
           throw new StagingError('expired', 'Staging reference has expired');
         }
         await this.repository.lockQuota(manager);
-        // `usage` already counts this ref's reservation; the check compares what
-        // the ledger would hold after the upload, so subtract it first.
-        const selfReserved = refRow.reservedBytes ?? 0;
         decideUpload(toRecord(refRow), digest.size, settings, {
-          ownerUsed: (await this.usage(manager, refRow.ownerHash)) - selfReserved,
-          globalUsed: (await this.usage(manager)) - selfReserved,
+          ownerUsed: await this.usage(manager, refRow.ownerHash),
+          globalUsed: await this.usage(manager),
         });
         await publishFileTemp(temp, target);
         refRow.size = digest.size;
@@ -665,12 +663,14 @@ export class DbStagingStateStore implements StagingStateStore {
     void settings;
     const nowIso = this.nowIso();
     const sweep: StagingRefRecord[] = [];
+    const swept = new Set<string>();
     await this.repository.transaction(async (manager) => {
       const rows = await this.repository.listRefs(manager);
       for (const row of rows) {
         const record = toRecord(row);
         if (!isSweepable(record, nowIso)) continue;
         await this.repository.deleteRef(manager, row.ref);
+        swept.add(row.ref);
         sweep.push(record);
       }
       const liveUploadRefs = new Set<string>();
@@ -682,10 +682,10 @@ export class DbStagingStateStore implements StagingStateStore {
         }
         if (token.kind === 'upload') liveUploadRefs.add(token.ref);
       }
-      // An abandoned link must not hold quota for the whole reference TTL.
       for (const row of rows) {
-        if (row.state !== 'reserved' || row.reservedBytes == null) continue;
-        if (liveUploadRefs.has(row.ref)) continue;
+        // A swept ref was already deleted; saving it here would resurrect it.
+        if (swept.has(row.ref)) continue;
+        if (!shouldReleaseReservation(toRecord(row), liveUploadRefs.has(row.ref))) continue;
         row.reservedBytes = null;
         await this.repository.saveRef(manager, row);
       }
