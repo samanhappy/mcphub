@@ -283,7 +283,7 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(mockCallTool).not.toHaveBeenCalled();
   });
 
-  it('lets describe_tool answer for a hub name on a $smart route', async () => {
+  it('lets describe_tool answer for a hub name instead of refusing it', async () => {
     enableStaging();
     mockDescribeTool.mockResolvedValue({
       content: [{ type: 'text', text: JSON.stringify({ tool: { name: 'mcphub_file_upload' } }) }],
@@ -294,6 +294,7 @@ describe('hub staging tools at the public MCP entry points', () => {
       { sessionId: 's1' },
     );
 
+    // The guard exists to block call_tool, not describe_tool (#1056 PR3).
     expect(textOf(result)).not.toMatch(/cannot be called through call_tool/i);
     expect(mockDescribeTool).toHaveBeenCalled();
   });

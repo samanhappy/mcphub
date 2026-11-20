@@ -495,7 +495,15 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
    * Add the hub built-ins to a `search_tools` answer. The model must be able to
    * find them by name through discovery, not only see them in `tools/list`.
    */
-  const appendStagingToolsToSearchResult = (result: any, stagingTools: Tool[]): any => {
+  type SearchToolsResult = {
+    content: Array<{ type: string; text: string }>;
+    [key: string]: unknown;
+  };
+
+  const appendStagingToolsToSearchResult = <T extends SearchToolsResult>(
+    result: T,
+    stagingTools: Tool[],
+  ): T => {
     const [block] = result?.content ?? [];
     if (!block || block.type !== 'text') return result;
     let parsed: {

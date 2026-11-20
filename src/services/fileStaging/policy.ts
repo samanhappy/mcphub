@@ -53,6 +53,20 @@ export const assertRefsLeasable = (
  * adjusted at finalize. The check is a real reservation, not post-hoc
  * accounting, so concurrent calls cannot both pass it.
  */
+export const assertMintReservation = (
+  ownerUsed: number,
+  globalUsed: number,
+  maxBytes: number,
+  settings: FileStagingSettings,
+): void => {
+  if (ownerUsed + maxBytes > settings.perUserQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+  }
+  if (globalUsed + maxBytes > settings.globalQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+  }
+};
+
 export const assertLeaseQuota = (
   ownerUsed: number,
   globalUsed: number,

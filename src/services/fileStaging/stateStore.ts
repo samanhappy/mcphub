@@ -22,7 +22,13 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
-import { assertLeaseQuota, assertRefsLeasable, decideFinalize, decideUpload } from './policy.js';
+import {
+  assertLeaseQuota,
+  assertMintReservation,
+  assertRefsLeasable,
+  decideFinalize,
+  decideUpload,
+} from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import {
   type CreateRefInput,
@@ -353,11 +359,11 @@ export class FileStagingStateStore implements StagingStateStore {
       // A reserved destination with an announced ceiling holds that much quota
       // until it is finalized or swept, so links cannot be minted past budget.
       if (input.maxBytes !== undefined) {
-        assertLeaseQuota(
+        assertMintReservation(
           this.quotaUsage(input.principal.ownerHash),
           this.quotaUsage(),
-          1,
-          { ...input.settings, maxFileBytes: input.maxBytes },
+          input.maxBytes,
+          input.settings,
         );
       }
       this.assertFileCount(input.principal.ownerHash, 1, input.settings);

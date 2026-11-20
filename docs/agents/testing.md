@@ -19,6 +19,7 @@ pnpm exec jest \
   tests/controllers/stagingConnectionChange.test.ts \
   tests/dao/serverDaoStagingId.test.ts \
   tests/services/mcpService-fileStaging.test.ts \
+  tests/services/smartRouting-staging.test.ts \
   --runInBand
 ```
 

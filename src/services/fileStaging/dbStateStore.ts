@@ -21,7 +21,13 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
-import { assertLeaseQuota, assertRefsLeasable, decideFinalize, decideUpload } from './policy.js';
+import {
+  assertLeaseQuota,
+  assertMintReservation,
+  assertRefsLeasable,
+  decideFinalize,
+  decideUpload,
+} from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import type { StagingStateStore } from './stateStore.js';
 import {
@@ -292,11 +298,11 @@ export class DbStagingStateStore implements StagingStateStore {
       await this.repository.transaction(async (manager) => {
         await this.repository.lockQuota(manager);
         if (input.maxBytes !== undefined) {
-          assertLeaseQuota(
+          assertMintReservation(
             await this.usage(manager, record.ownerHash),
             await this.usage(manager),
-            1,
-            { ...input.settings, maxFileBytes: input.maxBytes },
+            input.maxBytes,
+            input.settings,
           );
         }
         await this.assertFileCount(manager, record.ownerHash, 1, input.settings);
