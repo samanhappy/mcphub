@@ -498,14 +498,18 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
   const appendStagingToolsToSearchResult = (result: any, stagingTools: Tool[]): any => {
     const [block] = result?.content ?? [];
     if (!block || block.type !== 'text') return result;
-    let parsed: any;
+    let parsed: {
+      tools?: Array<{ name?: string }>;
+      metadata?: Record<string, unknown>;
+      [key: string]: unknown;
+    };
     try {
       parsed = JSON.parse(block.text);
     } catch {
       return result;
     }
     const listed = Array.isArray(parsed.tools) ? parsed.tools : [];
-    const names = new Set(listed.map((tool: any) => tool.name));
+    const names = new Set(listed.map((tool) => tool.name));
     const added = stagingTools.filter((tool) => !names.has(tool.name));
     if (added.length === 0) return result;
     const tools = [...listed, ...added];

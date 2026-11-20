@@ -350,6 +350,16 @@ export class FileStagingStateStore implements StagingStateStore {
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
     this.assertInit();
     return this.exclusive(async () => {
+      // A reserved destination with an announced ceiling holds that much quota
+      // until it is finalized or swept, so links cannot be minted past budget.
+      if (input.maxBytes !== undefined) {
+        assertLeaseQuota(
+          this.quotaUsage(input.principal.ownerHash),
+          this.quotaUsage(),
+          1,
+          { ...input.settings, maxFileBytes: input.maxBytes },
+        );
+      }
       this.assertFileCount(input.principal.ownerHash, 1, input.settings);
       await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
       const record = await this.createRecord(input, 'reserved');

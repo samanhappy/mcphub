@@ -19,7 +19,7 @@ The maintainer also asked to keep the global heuristic path guard out of the fir
 ### 1. Scope and PR split
 
 - **PR1 (backend/API only):** owner-only staging and shared staging through a trusted `ssh` server; three MCP tools (`mcphub_file_upload`, `mcphub_file_status`, `mcphub_file_download`); exact `mcpfile://<uuid>` request rewrite; storage, refs, auth, download, limits, and negative tests.
-- **PR2:** browser upload endpoint/page, `mcphub_file_request_upload`, server/tool/settings UI, i18n.
+- **PR2:** browser upload endpoint/page, `mcphub_file_request_upload`, global settings UI, i18n. Per-server `staging` and per-tool `fileStaging` editing stay on the PATCH routes until a dashboard editor lands.
 - **PR3 (later):** `$smart` listing/call/describe, `filesystem` adapter, optional scoped path guard or OS isolation, S3/multi-node only with a new design.
 
 Out of scope for PR1: response-path detection, S3/MinIO, multi-node, replica/hosted staging, directory refs, OS-level isolation, and any claim of transparent access to the client filesystem.

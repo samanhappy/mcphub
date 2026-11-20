@@ -740,17 +740,28 @@ export const handleDescribeToolRequest = async (
   }
 
   // Hub built-ins are not in the vector index: describe them from their static
-  // definition instead of reporting "not found" (#1056 PR3).
+  // definition instead of reporting "not found" (#1056 PR3). The envelope must
+  // match the ordinary path or MCP clients cannot read the answer.
   const builtin = STAGING_TOOL_DEFINITIONS.find((tool) => tool.name === toolName);
   if (builtin) {
     return {
-      tool: {
-        name: builtin.name,
-        title: builtin.title,
-        description: builtin.description,
-        inputSchema: builtin.inputSchema,
-        server: 'mcphub',
-      },
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            tool: {
+              name: builtin.name,
+              title: builtin.title,
+              description: builtin.description,
+              inputSchema: builtin.inputSchema,
+              server: 'mcphub',
+            },
+            metadata: {
+              message: `Full schema for hub tool '${builtin.name}'. Call it directly by name; it is not reachable through call_tool.`,
+            },
+          }),
+        },
+      ],
     };
   }
 

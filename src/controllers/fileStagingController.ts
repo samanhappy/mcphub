@@ -240,6 +240,8 @@ export const showStagingUploadPage = async (req: Request, res: Response): Promis
     const store = await getStagingStateStore();
     const request = await store.getUploadToken(token);
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
+    // Advertise what this link actually accepts, not the global maximum.
+    const limit = ref.reservedBytes ?? settings.maxFileBytes;
     const nonce = randomBytes(16).toString('base64');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Security-Policy', cspForPage(nonce));
@@ -248,7 +250,7 @@ export const showStagingUploadPage = async (req: Request, res: Response): Promis
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.status(200).send(
-      uploadPage(token, ref.filename ?? 'file', settings.maxFileBytes).split('__NONCE__').join(nonce),
+      uploadPage(token, ref.filename ?? 'file', limit).split('__NONCE__').join(nonce),
     );
   } catch {
     // Invalid, used and expired links look the same to the browser.
@@ -276,7 +278,7 @@ export const assertStagingUploadLink = async (
     const store = await getStagingStateStore();
     const request = await store.getUploadToken(token);
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
-    if (ref.state !== 'reserved') throw new Error('not writable');
+    if (ref.state !== 'reserved' || ref.leaseId) throw new Error('not writable');
     const limit = ref.reservedBytes ?? settings.maxFileBytes;
     const declared = Number(req.headers['content-length']);
     if (Number.isFinite(declared) && declared > limit) {

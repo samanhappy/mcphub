@@ -1767,7 +1767,7 @@ const SettingsPage: React.FC = () => {
         label: t('settings.fileStagingMaxFileSize') || 'Maximum file size',
         unit: 1024 * 1024,
         min: 1,
-        max: 2048,
+        max: 2047,
       },
       {
         field: 'inlineMaxBytes',
@@ -1775,7 +1775,7 @@ const SettingsPage: React.FC = () => {
         label: t('settings.fileStagingInlineMaxSize') || 'Inline limit',
         unit: 1024 * 1024,
         min: 1,
-        max: 2048,
+        max: 2047,
       },
       {
         field: 'perUserQuotaBytes',
@@ -1783,7 +1783,7 @@ const SettingsPage: React.FC = () => {
         label: t('settings.fileStagingPerUserQuota') || 'Per-user quota',
         unit: 1024 * 1024,
         min: 1,
-        max: 2048,
+        max: 2047,
       },
       {
         field: 'globalQuotaBytes',
@@ -1791,7 +1791,7 @@ const SettingsPage: React.FC = () => {
         label: t('settings.fileStagingGlobalQuota') || 'Global quota',
         unit: 1024 * 1024,
         min: 1,
-        max: 2048,
+        max: 2047,
       },
       {
         field: 'ttlHours',

@@ -59,22 +59,27 @@ jest.mock('../../src/utils/mcpApps.js', () => ({
 import { handleDescribeToolRequest } from '../../src/services/smartRoutingService.js';
 
 describe('describe_tool for hub built-ins', () => {
-  it('returns the static definition instead of a not-found error', async () => {
+  it('returns the static definition in the MCP content envelope', async () => {
     const result = await handleDescribeToolRequest('mcphub_file_request_upload', 's1');
 
-    expect(result.tool).toMatchObject({
+    // Same shape as the ordinary describe path: clients read content[0].text.
+    expect(result.content[0].type).toBe('text');
+    const payload = JSON.parse(result.content[0].text);
+    expect(payload.tool).toMatchObject({
       name: 'mcphub_file_request_upload',
       server: 'mcphub',
     });
-    expect(result.tool.inputSchema.properties).toHaveProperty('filename');
-    expect(result.tool.inputSchema.properties).toHaveProperty('size_hint');
+    expect(payload.tool.inputSchema.properties).toHaveProperty('filename');
+    expect(payload.tool.inputSchema.properties).toHaveProperty('size_hint');
+    expect(payload.metadata.message).toMatch(/hub tool/i);
   });
 
   it('still resolves ordinary tools through the routing path', async () => {
     // No server is registered in this harness, so the lookup reports the tool
     // as unavailable rather than returning the built-in definition.
     const result = await handleDescribeToolRequest('some-upstream-tool', 's1');
-    expect(result.tool?.name).not.toBe('some-upstream-tool');
-    expect(result.success ?? false).toBe(false);
+    const payload = JSON.parse(result.content[0].text);
+    expect(payload.tool).toBeUndefined();
+    expect(payload.error).toMatch(/not found/i);
   });
 });

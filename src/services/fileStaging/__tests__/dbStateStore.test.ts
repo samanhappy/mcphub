@@ -392,4 +392,33 @@ describe('DbStagingStateStore', () => {
     expect(['first', 'second']).toContain(content);
     expect(record.size).toBe(content.length);
   });
+
+  it('refuses a browser upload while a tool holds the output lease', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, { rootDir, stateDir, disableLock: true });
+    await store.init();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    await store.acquireOutputLeases(ownerHash, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+
+    await expect(
+      store.uploadWithToken(token, Buffer.from('browser'), settings()),
+    ).rejects.toMatchObject({ code: 'not-ready' });
+
+    await store.releaseLeases('call-1');
+    const record = await store.uploadWithToken(token, Buffer.from('browser'), settings());
+    expect(record.state).toBe('ready');
+  });
+
+  it('reserves the announced ceiling against the quota when the link is minted', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, { rootDir, stateDir, disableLock: true });
+    await store.init();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    await store.createReservedRef({ ...input(rootDir), maxBytes: 2000, settings: tight });
+    await expect(
+      store.createReservedRef({ ...input(rootDir), maxBytes: 2000, settings: tight }),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+  });
 });

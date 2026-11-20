@@ -290,6 +290,14 @@ export class DbStagingStateStore implements StagingStateStore {
     try {
       await this.repository.transaction(async (manager) => {
         await this.repository.lockQuota(manager);
+        if (input.maxBytes !== undefined) {
+          assertLeaseQuota(
+            await this.usage(manager, record.ownerHash),
+            await this.usage(manager),
+            1,
+            { ...input.settings, maxFileBytes: input.maxBytes },
+          );
+        }
         await this.assertFileCount(manager, record.ownerHash, 1, input.settings);
         await this.repository.saveRef(manager, toRow(record));
       });
