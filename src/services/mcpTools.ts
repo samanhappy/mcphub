@@ -465,12 +465,15 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       }
       // A $smart route still needs the hub's virtual staging tools: the model
       // calls them directly, and the meta-tools cannot reach a hub built-in.
-      const stagingTools = await withStagingTools(group, [], extra);
+      // Pins go through the same filter, so a pinned upstream tool that shadows
+      // `mcphub_file_*` is dropped instead of listed beside the hub definition.
+      const routeTools = await withStagingTools(group, pinnedTools, extra);
+      const injected = routeTools.some((tool) => isReservedStagingName(tool.name));
       // Nothing to add: return the generator's own object, so callers that
       // compare the response by identity keep working.
-      if (pinnedTools.length === 0 && stagingTools.length === 0) return smartRoutingTools;
-      const tools = [...smartRoutingTools.tools, ...pinnedTools, ...stagingTools];
-      return stagingTools.length > 0 ? { tools, stagingTools: true } : { tools };
+      if (pinnedTools.length === 0 && !injected) return smartRoutingTools;
+      const tools = [...smartRoutingTools.tools, ...routeTools];
+      return injected ? { tools, stagingTools: true } : { tools };
     }
 
     const { filteredServerInfos, serverConfigsByName } =

@@ -239,8 +239,25 @@ describe('staged file browser upload', () => {
       .set('Content-Type', 'application/octet-stream')
       .send(Buffer.alloc(0));
 
-    expect(response.status).toBe(404);
+    // A live link with an empty body is a client mistake, not a dead link.
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/empty/i);
     expect(store.uploadWithToken).not.toHaveBeenCalled();
+  });
+
+  it('does not offer the form for a link that was already used', async () => {
+    mockGetStagingStateStore.mockResolvedValue(
+      uploadStore({
+        getUploadToken: jest.fn(async () => ({
+          ref: 'mcpfile://x',
+          ownerHash: OWNER,
+          usedAt: '2026-11-20T00:00:00.000Z',
+        })),
+      }),
+    );
+
+    const response = await request(appWithUpload()).get('/staging/upload/token-1');
+    expect(response.status).toBe(404);
   });
 });
 

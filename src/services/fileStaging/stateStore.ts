@@ -672,9 +672,12 @@ export class FileStagingStateStore implements StagingStateStore {
       if (record.expiresAt <= nowIso) {
         throw new StagingError('expired', 'Staging reference has expired');
       }
+      // `quotaUsage` already counts this ref's reservation; the check compares
+      // what the ledger would hold after the upload, so subtract it first.
+      const selfReserved = record.reservedBytes ?? 0;
       decideUpload(record, data.length, settings, {
-        ownerUsed: this.quotaUsage(record.ownerHash),
-        globalUsed: this.quotaUsage(),
+        ownerUsed: this.quotaUsage(record.ownerHash) - selfReserved,
+        globalUsed: this.quotaUsage() - selfReserved,
       });
       const file = contentPath(this.rootDir, record.ownerHash, record.id);
       // Same guard as every other write: a tool sharing this UID could swap the
@@ -718,8 +721,20 @@ export class FileStagingStateStore implements StagingStateStore {
         delete this.state.refs[key];
         removed += 1;
       }
+      const liveUploadRefs = new Set<string>();
       for (const [hash, token] of Object.entries(this.state.tokens)) {
-        if (token.usedAt || token.expiresAt <= nowIso) delete this.state.tokens[hash];
+        if (token.usedAt || token.expiresAt <= nowIso) {
+          delete this.state.tokens[hash];
+          continue;
+        }
+        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+      }
+      for (const record of Object.values(this.state.refs)) {
+        // An abandoned link must not hold quota for the whole reference TTL:
+        // once its last upload token is gone, the reservation is released.
+        if (record.state === 'reserved' && record.reservedBytes !== undefined) {
+          if (!liveUploadRefs.has(record.ref)) record.reservedBytes = undefined;
+        }
       }
       await this.persist();
       void settings;

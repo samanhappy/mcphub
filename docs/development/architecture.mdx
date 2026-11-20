@@ -97,6 +97,7 @@ There are four classes of HTTP route, defined in `src/routes/index.ts` and `src/
    - `GET /health`
    - `GET ${basePath}/config`, `GET ${basePath}/public-config`
    - `GET ${basePath}/staging/download/:token` — one-time staged file download; the token is the capability, so it is mounted outside the `/api` auth middleware.
+   - `GET|POST ${basePath}/staging/upload/:token` — one-time browser upload page and its endpoint; same capability model, also outside `/api`.
    - All `/oauth/*` and `/.well-known/oauth-*` endpoints (the OAuth flow itself).
    - `POST /api/auth/login`, `POST /api/auth/register`.
 2. **Authenticated dashboard / management API** under `${basePath}/api/*`. Authentication is enforced by `src/middlewares/auth.ts`, which accepts (in order):

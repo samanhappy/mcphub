@@ -3949,6 +3949,12 @@ const handleHubStagingCall = async (request: any, extra: any) => {
         content: [{ type: 'text', text: 'This route has no staging-enabled stdio server' }],
       };
     }
+    // Resolve the public base URL before minting anything: an unset
+    // `install.baseUrl` would otherwise leave a quota reservation behind for the
+    // whole reference TTL and answer with a misleading "not found".
+    if (name === 'mcphub_file_request_upload') {
+      await requireStagingBaseUrl('Uploads');
+    }
     const store = await getStagingStateStore();
     // Activity logging is deliberately bypassed (no base64/ref payloads); this
     // line is the audit trail for the hub's own tools.

@@ -503,4 +503,55 @@ describe('FileStagingStateStore', () => {
     ).rejects.toThrow(/symlinked path component/i);
     await expect(fs.stat(path.join(outside, 'content'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
+
+  it('accepts an upload that exactly fills the announced ceiling', async () => {
+    const store = await createStore();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 2000,
+      settings: tight,
+    });
+    const token = await store.createUploadToken(reserved.ref, input(rootDir).principal.ownerHash, 900);
+
+    // The ref's own reservation must not be counted a second time.
+    const record = await store.uploadWithToken(token, Buffer.alloc(2000), tight);
+    expect(record.state).toBe('ready');
+    expect(record.size).toBe(2000);
+  });
+
+  it('rejects an upload one byte over the remaining budget', async () => {
+    const store = await createStore();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 2000,
+      settings: tight,
+    });
+    const token = await store.createUploadToken(reserved.ref, input(rootDir).principal.ownerHash, 900);
+    await expect(
+      store.uploadWithToken(token, Buffer.alloc(3001), tight),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+  });
+
+  it('releases the reservation once an unused upload link is gone', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    await store.createReservedRef({ ...input(rootDir), maxBytes: 3000, settings: tight });
+    // A second link cannot fit while the first holds its ceiling.
+    await expect(
+      store.createReservedRef({ ...input(rootDir), maxBytes: 3000, settings: tight }),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+
+    // The link expires unused; the next sweep must return its quota.
+    clock += 901_000;
+    await store.cleanup(tight);
+    const again = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 3000,
+      settings: tight,
+    });
+    expect(again.state).toBe('reserved');
+  });
 });

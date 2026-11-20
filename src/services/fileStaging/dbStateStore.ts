@@ -20,6 +20,8 @@ import {
   refDir,
   removeIfExists,
   writeFileAtomic,
+  writeFileTemp,
+  publishFileTemp,
 } from './paths.js';
 import {
   assertLeaseQuota,
@@ -586,44 +588,77 @@ export class DbStagingStateStore implements StagingStateStore {
     settings: FileStagingSettings,
   ): Promise<StagingRefRecord> {
     const tokenHash = sha256(token);
-    // One transaction, token row locked first: two concurrent POSTs for the
-    // same link serialize here, so the loser sees `usedAt` before it writes
-    // anything and cannot clobber the winner's content.
-    return this.repository.transaction(async (manager) => {
-      const tokenRow = await this.repository.findToken(manager, tokenHash, true);
+    // Validate and write the bytes before opening the transaction: the global
+    // quota lock must not be held across a 100 MiB write and hash. The temp
+    // file is unique to this request, so its digest is final before the rename.
+    const lookup = await this.repository.transaction(async (manager) => {
+      const tokenRow = await this.repository.findToken(manager, tokenHash);
       if (!tokenRow || tokenRow.kind !== 'upload' || tokenRow.usedAt) {
         throw new StagingError('not-found', 'Upload link is not valid');
       }
       if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
         throw new StagingError('expired', 'Upload link has expired');
       }
-      const refRow = await this.repository.findRef(manager, tokenRow.ref, true);
+      const refRow = await this.repository.findRef(manager, tokenRow.ref);
       if (!refRow || refRow.ownerHash !== tokenRow.ownerHash) {
         throw new StagingError('not-found', 'Upload link is not valid');
       }
       if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
         throw new StagingError('expired', 'Staging reference has expired');
       }
-      await this.repository.lockQuota(manager);
-      decideUpload(toRecord(refRow), data.length, settings, {
-        ownerUsed: await this.usage(manager, refRow.ownerHash),
-        globalUsed: await this.usage(manager),
-      });
-      const target = contentPath(this.rootDir, refRow.ownerHash, refRow.id);
-      await assertNoSymlinkComponents(this.rootDir, target);
-      await writeFileAtomic(target, data);
-      const digest = await digestFile(target);
-      refRow.size = digest.size;
-      refRow.sha256 = digest.sha256;
-      refRow.version = 1;
-      refRow.state = 'ready';
-      refRow.reservedBytes = null;
-      refRow.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000);
-      tokenRow.usedAt = new Date(this.now());
-      await this.repository.saveRef(manager, refRow);
-      await this.repository.saveToken(manager, tokenRow);
-      return toRecord(refRow);
+      return { refRow, tokenRow };
     });
+    const target = contentPath(this.rootDir, lookup.refRow.ownerHash, lookup.refRow.id);
+    await assertNoSymlinkComponents(this.rootDir, target);
+    const temp = await writeFileTemp(target, data);
+    let digest: Awaited<ReturnType<typeof digestFile>>;
+    try {
+      digest = await digestFile(temp);
+    } catch (error) {
+      await removeIfExists(temp);
+      throw error;
+    }
+
+    try {
+      return await this.repository.transaction(async (manager) => {
+        // The token row is locked first: two concurrent POSTs for the same link
+        // serialize here, so the loser sees `usedAt` and writes nothing.
+        const tokenRow = await this.repository.findToken(manager, tokenHash, true);
+        if (!tokenRow || tokenRow.kind !== 'upload' || tokenRow.usedAt) {
+          throw new StagingError('not-found', 'Upload link is not valid');
+        }
+        const refRow = await this.repository.findRef(manager, tokenRow.ref, true);
+        if (!refRow || refRow.ownerHash !== tokenRow.ownerHash) {
+          throw new StagingError('not-found', 'Upload link is not valid');
+        }
+        if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
+          throw new StagingError('expired', 'Staging reference has expired');
+        }
+        await this.repository.lockQuota(manager);
+        // `usage` already counts this ref's reservation; the check compares what
+        // the ledger would hold after the upload, so subtract it first.
+        const selfReserved = refRow.reservedBytes ?? 0;
+        decideUpload(toRecord(refRow), digest.size, settings, {
+          ownerUsed: (await this.usage(manager, refRow.ownerHash)) - selfReserved,
+          globalUsed: (await this.usage(manager)) - selfReserved,
+        });
+        await publishFileTemp(temp, target);
+        refRow.size = digest.size;
+        refRow.sha256 = digest.sha256;
+        refRow.version = 1;
+        refRow.state = 'ready';
+        refRow.reservedBytes = null;
+        refRow.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000);
+        tokenRow.usedAt = new Date(this.now());
+        await this.repository.saveRef(manager, refRow);
+        await this.repository.saveToken(manager, tokenRow);
+        return toRecord(refRow);
+      });
+    } catch (error) {
+      // The ledger is still `reserved`; drop the unpublished bytes.
+      await removeIfExists(temp);
+      throw error;
+    }
   }
 
   async cleanup(settings: FileStagingSettings): Promise<number> {
@@ -638,9 +673,21 @@ export class DbStagingStateStore implements StagingStateStore {
         await this.repository.deleteRef(manager, row.ref);
         sweep.push(record);
       }
+      const liveUploadRefs = new Set<string>();
       for (const token of await this.repository.listTokens(manager)) {
         const expired = new Date(token.expiresAt).toISOString() <= nowIso;
-        if (token.usedAt || expired) await this.repository.deleteToken(manager, token.tokenHash);
+        if (token.usedAt || expired) {
+          await this.repository.deleteToken(manager, token.tokenHash);
+          continue;
+        }
+        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+      }
+      // An abandoned link must not hold quota for the whole reference TTL.
+      for (const row of rows) {
+        if (row.state !== 'reserved' || row.reservedBytes == null) continue;
+        if (liveUploadRefs.has(row.ref)) continue;
+        row.reservedBytes = null;
+        await this.repository.saveRef(manager, row);
       }
     });
     await Promise.all(

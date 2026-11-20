@@ -299,6 +299,24 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(mockDescribeTool).toHaveBeenCalled();
   });
 
+  it('does not mint an upload link when install.baseUrl is unset', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+    mockGetSystemConfig.mockResolvedValue({});
+    const createReservedRef = jest.fn();
+    mockGetStagingStateStore.mockResolvedValue({ createReservedRef } as any);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'mcphub_file_request_upload', arguments: { filename: 'x.txt' } } },
+      { sessionId: 's1' },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/install\.baseUrl/);
+    // No ref may be reserved before the link can actually be minted.
+    expect(createReservedRef).not.toHaveBeenCalled();
+  });
+
   it('does not advertise hub tools on a $smart route when staging is disabled', async () => {
     const listed = await mcpService.handleListToolsRequest({}, { sessionId: 's1' });
     expect(listed.tools.some((tool: any) => tool.name.startsWith('mcphub_file_'))).toBe(false);

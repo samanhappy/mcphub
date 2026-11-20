@@ -133,6 +133,10 @@ const messageFor = (error: unknown): string => {
       return 'The staged file is not ready';
     case 'expired':
       return 'The staged file has expired';
+    case 'invalid-ref':
+      // These messages are written for the caller (missing filename, a
+      // reachable base URL, bad base64); masking them invites blind retries.
+      return error.message;
     case 'unauthenticated':
       return 'A signed-in user is required for file staging';
     default:
@@ -244,7 +248,10 @@ export const executeStagingTool = async (
         allowZeroByte: false,
         // The announced ceiling is reserved against the quota at mint time and
         // enforced again when the upload finalizes.
-        maxBytes: typeof sizeHint === 'number' ? sizeHint : context.settings.maxFileBytes,
+        maxBytes:
+          typeof sizeHint === 'number'
+            ? Math.floor(sizeHint)
+            : context.settings.maxFileBytes,
         settings: context.settings,
       });
       const token = await context.store.createUploadToken(
@@ -259,7 +266,10 @@ export const executeStagingTool = async (
         uploadUrl,
         uploadToken: token,
         expiresAt,
-        maxBytes: typeof sizeHint === 'number' ? sizeHint : context.settings.maxFileBytes,
+        maxBytes:
+          typeof sizeHint === 'number'
+            ? Math.floor(sizeHint)
+            : context.settings.maxFileBytes,
       });
     }
 

@@ -241,6 +241,9 @@ export const showStagingUploadPage = async (req: Request, res: Response): Promis
     if (!settings.enabled) throw new Error('disabled');
     const store = await getStagingStateStore();
     const request = await store.getUploadToken(token);
+    // A consumed link is dead: the browser must not be offered a form that can
+    // only fail on submit.
+    if (request.usedAt) throw new Error('used');
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
     // Advertise what this link actually accepts, not the global maximum.
     const limit = ref.reservedBytes ?? settings.maxFileBytes;
@@ -331,7 +334,8 @@ export const receiveStagedUpload = async (req: Request, res: Response): Promise<
     if (!settings.enabled) throw new Error('disabled');
     const body: unknown = req.body;
     if (!Buffer.isBuffer(body) || body.length === 0) {
-      throw new Error('empty body');
+      res.status(400).json({ success: false, message: 'The uploaded file is empty.' });
+      return;
     }
     const store = await getStagingStateStore();
     const record = await store.uploadWithToken(token, body, settings);

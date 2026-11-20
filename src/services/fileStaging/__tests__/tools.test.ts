@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import type { FileStagingSettings } from '../../../types/index.js';
 import { FileStagingStateStore } from '../stateStore.js';
+import { StagingError } from '../types.js';
 import { executeStagingTool, isReservedStagingName, isStagingToolName } from '../tools.js';
 
 const OWNER = 'a'.repeat(64);
@@ -192,5 +193,23 @@ describe('hub staging virtual tools', () => {
     );
     expect(result.isError).toBe(true);
     expect(String(result.content[0].text)).toMatch(/quota|limit/i);
+  });
+
+  it('surfaces the base-URL reason from a failing link factory', async () => {
+    const result = await executeStagingTool(
+      'mcphub_file_request_upload',
+      { filename: 'needs-link.txt' },
+      {
+        ...context(),
+        createUploadUrl: async () => {
+          throw new StagingError(
+            'invalid-ref',
+            'Uploads require a configured install.baseUrl (the localhost default is not reachable by clients)',
+          );
+        },
+      } as any,
+    );
+    expect(result.isError).toBe(true);
+    expect(String(result.content[0].text)).toMatch(/install\.baseUrl/);
   });
 });

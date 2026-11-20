@@ -200,11 +200,18 @@ export const assertDiskCapacity = async (dir: string, requiredBytes: number): Pr
   }
 };
 
-/** Write a file atomically (temp + fsync + rename) with 0600 permissions. */
-export const writeFileAtomic = async (target: string, data: string | Buffer): Promise<void> => {
+/**
+ * Write `data` to a fresh 0600 temp file beside `target` and fsync it, without
+ * publishing it. The caller renames it into place, which is the expensive part
+ * of an upload to keep outside a database transaction.
+ */
+export const writeFileTemp = async (target: string, data: string | Buffer): Promise<string> => {
   const dir = path.dirname(target);
   await ensureDirectory(dir);
-  const temp = path.join(dir, `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`);
+  const temp = path.join(
+    dir,
+    `.${path.basename(target)}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`,
+  );
   const handle = await fs.open(temp, 'wx', 0o600);
   try {
     await handle.writeFile(data);
@@ -212,6 +219,12 @@ export const writeFileAtomic = async (target: string, data: string | Buffer): Pr
   } finally {
     await handle.close();
   }
+  return temp;
+};
+
+/** Publish a temp file produced by `writeFileTemp` and fsync the directory. */
+export const publishFileTemp = async (temp: string, target: string): Promise<void> => {
+  const dir = path.dirname(target);
   await fs.rename(temp, target);
   try {
     const dirHandle = await fs.open(dir, 'r');
@@ -223,6 +236,12 @@ export const writeFileAtomic = async (target: string, data: string | Buffer): Pr
   } catch {
     // Directory fsync is not supported everywhere; the rename is still atomic.
   }
+};
+
+/** Write a file atomically (temp + fsync + rename) with 0600 permissions. */
+export const writeFileAtomic = async (target: string, data: string | Buffer): Promise<void> => {
+  const temp = await writeFileTemp(target, data);
+  await publishFileTemp(temp, target);
 };
 
 export const removeIfExists = async (target: string): Promise<void> => {

@@ -153,9 +153,30 @@ mcphub_file_download { ref: "mcpfile://8a2e..." }
 
 客户端看到的工具名带有服务器名和配置的名称分隔符（服务器 `ssh` 下是 `ssh-upload`）；`tools` 的键是不带前缀的工具名（`upload`、`download`）。
 
+### 浏览器上传：让用户从自己的电脑发送文件
+
+模型读不到用户的磁盘，因此只存在于用户电脑上的文件需要一个用户能打开的链接：
+
+```text
+mcphub_file_request_upload { filename: "report.pdf", size_hint: 2048000 }
+  -> { "ref": "mcpfile://c4d1...", "state": "reserved",
+       "uploadUrl": "https://hub.example/staging/upload/<token>",
+       "uploadToken": "<token>", "expiresAt": "...", "maxBytes": 2048000 }
+
+# 用户打开 uploadUrl，选择文件并点击上传
+# 页面会显示 mcpfile:// 引用，模型轮询：
+
+mcphub_file_status { upload_token: "<token>" }
+  -> { "ref": "mcpfile://c4d1...", "state": "ready", "size": 1834201, "sha256": "..." }
+
+ssh-upload { localPath: "mcpfile://c4d1...", remotePath: "/srv/in/report.pdf" }
+```
+
+上传页面由 hub 提供，不需要 Dashboard 会话：URL 中的 token 就是全部凭据。它只能使用一次，在 `uploadTtlSeconds` 后过期，并且只接受为其对应 `reserved` 引用上传的内容。页面不加载任何第三方资源，运行在基于 nonce 的 CSP 下。
+
 ## 内置工具
 
-当调用者能解析到真实用户时，对于至少暴露一个已启用暂存服务器的路由，hub 会注入三个虚拟工具：
+当调用者能解析到真实用户时，对于至少暴露一个已启用暂存服务器的路由，hub 会注入四个虚拟工具：
 
 | 工具 | 参数 | 返回 |
 | --- | --- | --- |
