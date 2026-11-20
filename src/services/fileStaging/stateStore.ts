@@ -361,7 +361,11 @@ export class FileStagingStateStore implements StagingStateStore {
         );
       }
       this.assertFileCount(input.principal.ownerHash, 1, input.settings);
-      await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
+      // The file this link may receive is bounded by its own ceiling.
+      await assertDiskCapacity(
+        this.rootDir,
+        input.maxBytes ?? input.settings.maxFileBytes,
+      );
       const record = await this.createRecord(input, 'reserved');
       const dir = refDir(this.rootDir, record.ownerHash, record.id);
       await ensureDirectory(dir);
