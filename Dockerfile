@@ -52,9 +52,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 COPY . .
 
-# Download the latest servers.json from mcpm.sh and replace the existing file
-RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
-
 RUN pnpm build
 # Keep the legacy path available only for user-mounted configuration.
 RUN rm /app/mcp_settings.json
