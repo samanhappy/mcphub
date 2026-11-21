@@ -63,7 +63,7 @@ const LanguageSwitch: React.FC = () => {
 
       {/* Show dropdown when opened */}
       {languageDropdownOpen && (
-        <div className="absolute right-0 mt-2 w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+        <div className="absolute right-0 mt-2 w-max min-w-24 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
           <div>
             {availableLanguages.map((lang) => (
               <button
