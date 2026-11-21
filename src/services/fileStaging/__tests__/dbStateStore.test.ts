@@ -281,6 +281,52 @@ describe('DbStagingStateStore', () => {
     });
   });
 
+  it('keeps a reservation held by an active output lease during cleanup', async () => {
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    await store.acquireOutputLeases(owner, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+    expect(await store.usageBytes(owner)).toBe(4096);
+
+    await store.cleanup(settings());
+
+    expect(await store.usageBytes(owner)).toBe(4096);
+    await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+      state: 'reserved',
+      leaseId: 'call-1',
+      reservedBytes: 4096,
+    });
+  });
+
+  it('does not clear a lease committed between the cleanup snapshot and the release', async () => {
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    const originalFindRefs = repository.findRefs.bind(repository);
+    repository.findRefs = async (manager, refs, lock) => {
+      const rows = await originalFindRefs(manager, refs, lock);
+      // Simulate a concurrent lease that commits after `listRefs` read the
+      // snapshot: cleanup must re-read the row under the lock, not save the
+      // stale snapshot back.
+      for (const row of rows) row.leaseId = 'call-race';
+      return rows;
+    };
+
+    await store.cleanup(settings());
+
+    await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+      state: 'reserved',
+      leaseId: 'call-race',
+      reservedBytes: 4096,
+    });
+  });
+
   it('takes the shared quota lock before accounting uploads and output leases', async () => {
     const order: string[] = [];
     const originalLock = repository.lockQuota.bind(repository);
@@ -479,6 +525,40 @@ describe('DbStagingStateStore', () => {
     expect(await store.cleanup(short)).toBe(1);
     await expect(store.getOwnedRef(minted.ref, input(rootDir).principal.ownerHash)).rejects.toMatchObject({
       code: 'not-found',
+    });
+  });
+
+  it('rejects a link that expires while the bytes are being written', async () => {
+    let clock = Date.now();
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, {
+      rootDir,
+      stateDir,
+      disableLock: true,
+      now: () => clock,
+    });
+    await store.init();
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    const token = await store.createUploadToken(
+      reserved.ref,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      60,
+    );
+
+    const originalFindToken = repository.findToken.bind(repository);
+    let calls = 0;
+    repository.findToken = async (manager, hash, lock) => {
+      calls += 1;
+      if (calls === 2) clock += 120_000; // the link expired after the pre-write lookup
+      return originalFindToken(manager, hash, lock);
+    };
+
+    await expect(store.uploadWithToken(token, Buffer.from('late'), settings())).rejects.toMatchObject({
+      code: 'expired',
     });
   });
 

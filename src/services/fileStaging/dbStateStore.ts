@@ -628,6 +628,11 @@ export class DbStagingStateStore implements StagingStateStore {
         if (!tokenRow || tokenRow.kind !== 'upload' || tokenRow.usedAt) {
           throw new StagingError('not-found', 'Upload link is not valid');
         }
+        // The pre-write lookup is outside the transaction; a link that expired
+        // while the bytes were being written must not still finalize.
+        if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
+          throw new StagingError('expired', 'Upload link has expired');
+        }
         const refRow = await this.repository.findRef(manager, tokenRow.ref, true);
         if (!refRow || refRow.ownerHash !== tokenRow.ownerHash) {
           throw new StagingError('not-found', 'Upload link is not valid');
@@ -682,9 +687,15 @@ export class DbStagingStateStore implements StagingStateStore {
         }
         if (token.kind === 'upload') liveUploadRefs.add(token.ref);
       }
-      for (const row of rows) {
-        // A swept ref was already deleted; saving it here would resurrect it.
-        if (swept.has(row.ref)) continue;
+      // Re-read the release candidates under a row lock: the snapshot above
+      // may predate a concurrent finalize or lease, and saving it back would
+      // wipe that write (an upload could flip back to `reserved`, or a live
+      // lease could be cleared and the staged call fail after the tool ran).
+      const candidates = rows
+        .filter((row) => !swept.has(row.ref) && row.state === 'reserved' && row.reservedBytes != null)
+        .map((row) => row.ref);
+      const lockedRows = await this.repository.findRefs(manager, candidates, true);
+      for (const row of lockedRows) {
         if (!shouldReleaseReservation(toRecord(row), liveUploadRefs.has(row.ref))) continue;
         row.reservedBytes = null;
         await this.repository.saveRef(manager, row);

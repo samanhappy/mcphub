@@ -153,10 +153,14 @@ export const decideUpload = (
 /**
  * An abandoned upload link must not hold quota for the whole reference TTL:
  * once the ref has no live upload token left, its reservation is released
- * (the ref itself stays until its own TTL).
+ * (the ref itself stays until its own TTL). A ref held by an output lease is
+ * not abandoned: that lease reserves the quota until finalize.
  */
 export const shouldReleaseReservation = (
   record: StagingRefRecord,
   hasLiveUploadToken: boolean,
 ): boolean =>
-  record.state === 'reserved' && (record.reservedBytes ?? 0) > 0 && !hasLiveUploadToken;
+  record.state === 'reserved' &&
+  (record.reservedBytes ?? 0) > 0 &&
+  !record.leaseId &&
+  !hasLiveUploadToken;

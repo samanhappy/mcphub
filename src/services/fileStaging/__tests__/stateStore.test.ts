@@ -160,6 +160,27 @@ describe('FileStagingStateStore', () => {
     });
   });
 
+  it('keeps a reservation held by an active output lease during cleanup', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    await store.acquireOutputLeases(owner, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+    expect(await store.usageBytes(owner)).toBe(4096);
+
+    await store.cleanup(settings());
+
+    expect(await store.usageBytes(owner)).toBe(4096);
+    await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+      state: 'reserved',
+      leaseId: 'call-1',
+      reservedBytes: 4096,
+    });
+  });
+
   it('fails finalize when the principal directory was replaced by a symlink', async () => {
     const store = await createStore();
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
