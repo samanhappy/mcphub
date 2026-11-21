@@ -1,0 +1,67 @@
+src/services/hostedSkillCatalog.ts
+  s_4ef744778b6bbc::t_4bca085b26f06e 225,229-230,256,287,335-336
+docs/features/skills.mdx
+  s_4ef744778b6bbc::t_4bca085b26f06e 15,19,25
+  s_4ef744778b6bbc::t_1353a6d324cf30 12
+src/controllers/hostedSkillController.ts
+  s_4ef744778b6bbc::t_4bca085b26f06e 91,93,97-98
+locales/en.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+locales/es.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+locales/zh.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+tests/integration/hosted-skills.test.ts
+  s_4ef744778b6bbc::t_4bca085b26f06e 90-92,233,311-315
+docs/zh/features/skills.mdx
+  s_4ef744778b6bbc::t_1353a6d324cf30 12
+  s_4ef744778b6bbc::t_4bca085b26f06e 15,19,25
+frontend/src/components/SkillFileBrowser.tsx
+  s_4ef744778b6bbc::t_6c5f616057d0df 56,61,64,81,105,111
+  s_4ef744778b6bbc::t_a70f0d35503f0b 114
+locales/vi.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+locales/fr.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+locales/tr.json
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 3
+  s_4ef744778b6bbc::t_4bca085b26f06e 20
+src/services/hostedSkillImport.ts
+  s_4ef744778b6bbc::t_4bca085b26f06e 28,52,145,159,165
+frontend/src/pages/SkillsPage.tsx
+  s_4ef744778b6bbc::t_4bca085b26f06e 67,79,81,83,108,110-111,137,777-779
+  s_4ef744778b6bbc::t_8312b0920593e6 356-360,366,390-397,403-404,742
+  s_4ef744778b6bbc::t_bb53af7e1a0a6a 2-13,305,323-327,428,442,445-447,465-466,474,477,485-494,506,520,525,531,533-552,575,578-592,596-600,605-610,612-614,619,623-635,637-639,770
+  s_4ef744778b6bbc::t_fa0d3ca0f12a36 681,704-736
+  s_4ef744778b6bbc::t_ff49b97770bb96 206
+  s_4ef744778b6bbc::t_4abde96e2ff76a 415
+  s_4ef744778b6bbc::t_6c5f616057d0df 250,252-260,262-278,448-456,458-464,522,593-595,615-618,620-622
+  s_4ef744778b6bbc::t_7d302ed82e9d80 666
+  s_4ef744778b6bbc::t_1353a6d324cf30 677
+  s_4ef744778b6bbc::t_5698d9d7c499ec 457,601-604,660,665,667-671,675-676,678-680,682-683,685-703,737-738,741,757,760,762
+frontend/src/index.css
+  s_4ef744778b6bbc::t_6c5f616057d0df 1217-1365,1368-1371,1376-1377
+  s_4ef744778b6bbc::t_437454468c3799 256-257,261-266,270-271,278-279
+  s_4ef744778b6bbc::t_aca796646764ca 1366-1367,1372-1375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c2a6fdc7abf1a3dad2b08f84f199ced63bb9b43",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
