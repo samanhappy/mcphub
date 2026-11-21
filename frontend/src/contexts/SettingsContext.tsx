@@ -129,7 +129,7 @@ interface SystemSettings {
   systemConfig?: {
     toolPolicies?: ToolPolicyRule[];
     routing?: RoutingConfig;
-    install?: InstallConfig;
+    install?: InstallConfig & { skillImportProxy?: string };
     smartRouting?: SmartRoutingConfig;
     toolResultCompression?: ToolResultCompressionConfig;
     fileStaging?: FileStagingConfig;
@@ -174,6 +174,7 @@ interface SettingsContextValue {
   normalizeToolNames: boolean;
   updateNormalizeToolNames: (value: boolean) => Promise<boolean | undefined>;
   nameSeparator: string;
+  skillImportProxy: string;
   enableSessionRebuild: boolean;
   fakeIpExceptions: FakeIpException[];
   updateFakeIpExceptions: (value: FakeIpException[]) => Promise<boolean>;
@@ -450,6 +451,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [normalizeToolNames, setNormalizeToolNames] = useState(false);
   const [nameSeparator, setNameSeparator] = useState<string>('-');
+  const [skillImportProxy, setSkillImportProxy] = useState('server');
   const [enableSessionRebuild, setEnableSessionRebuild] = useState<boolean>(false);
   const [fakeIpExceptions, setFakeIpExceptions] = useState<FakeIpException[]>([]);
   const [allowedCidrs, setAllowedCidrs] = useState<string[]>([]);
@@ -624,6 +626,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       if (data.success) setFakeIpExceptions(data.data?.systemConfig?.network?.fakeIpExceptions ?? []);
       if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
       if (data.success) setNormalizeToolNames(data.data?.systemConfig?.normalizeToolNames === true);
+      if (data.success) setSkillImportProxy(data.data?.systemConfig?.install?.skillImportProxy ?? 'server');
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
       }
@@ -1417,6 +1420,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     normalizeToolNames,
     updateNormalizeToolNames,
     nameSeparator,
+    skillImportProxy,
     enableSessionRebuild,
     fakeIpExceptions,
     updateFakeIpExceptions,

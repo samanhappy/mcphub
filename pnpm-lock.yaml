@@ -165,6 +165,9 @@ importers:
       kysely:
         specifier: ^0.28.9
         version: 0.28.17
+      micromark:
+        specifier: 4.0.2
+        version: 4.0.2
       multer:
         specifier: ^2.2.0
         version: 2.5.0

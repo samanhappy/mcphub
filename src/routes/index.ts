@@ -213,6 +213,15 @@ import {
 import { auth } from '../middlewares/auth.js';
 import { requireAdminMiddleware } from '../utils/requireAdmin.js';
 import {
+  deleteHostedSkill,
+  discoverHostedSkills,
+  importHostedSkill,
+  listHostedSkills,
+  previewHostedSkillFile,
+  publishHostedSkill,
+  uploadSkillDirectory,
+} from '../controllers/hostedSkillController.js';
+import {
   getBetterAuthRuntimeConfig,
   setMountedSsoProviders,
 } from '../services/betterAuthConfig.js';
@@ -506,6 +515,18 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.put('/resources/:id', updateBuiltinResource);
   authenticatedRouter.delete('/resources/:id', deleteBuiltinResource);
   authenticatedRouter.post('/resources/read', readResource);
+
+  authenticatedRouter.get('/skills', requireAdminMiddleware, listHostedSkills);
+  authenticatedRouter.get('/skills/discover', requireAdminMiddleware, discoverHostedSkills);
+  authenticatedRouter.get('/skills/:id/file', requireAdminMiddleware, previewHostedSkillFile);
+  authenticatedRouter.post(
+    '/skills',
+    requireAdminMiddleware,
+    uploadSkillDirectory,
+    importHostedSkill,
+  );
+  authenticatedRouter.put('/skills/:id', requireAdminMiddleware, publishHostedSkill);
+  authenticatedRouter.delete('/skills/:id', requireAdminMiddleware, deleteHostedSkill);
 
   // MCPB upload routes. Admin-only: the handler replaces the code at the
   // deterministic `data/uploads/mcpb/server-<name>` path that existing stdio

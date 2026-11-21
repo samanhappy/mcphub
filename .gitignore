@@ -51,5 +51,8 @@ temp-test-config/
 # Local design drafts and review scratch space
 .scratch/
 
+# Hosted Skill snapshots
+*.json.skills/
+
 # Local transfer staging (never commit)
 .tmp-transfer/

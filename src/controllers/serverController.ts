@@ -84,6 +84,7 @@ import {
   ServerConfigValidationError,
 } from '../utils/serverConfigValidation.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
+import { isSkillImportProxy } from '../services/proxy.js';
 import { setCachedSystemConfig } from '../utils/systemConfigCache.js';
 import { getDefaultInstallBaseUrl, withResolvedInstallBaseUrl } from '../utils/installBaseUrl.js';
 import {
@@ -2327,6 +2328,13 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       });
       return;
     }
+    const rawSkillImportProxy: unknown = install?.skillImportProxy;
+    const skillImportProxy: unknown =
+      typeof rawSkillImportProxy === 'string' ? rawSkillImportProxy.trim() : rawSkillImportProxy;
+    if (skillImportProxy !== undefined && !isSkillImportProxy(skillImportProxy)) {
+      res.status(400).json({ success: false, message: 'Enter a valid HTTP or HTTPS proxy URL' });
+      return;
+    }
     const { smartRouting } = migrateLegacySmartRoutingConfig(requestSmartRouting);
 
     let fileStagingUpdate: ReturnType<typeof normalizeFileStagingSettings>;
@@ -2353,7 +2361,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       install &&
       (typeof install.pythonIndexUrl === 'string' ||
         typeof install.npmRegistry === 'string' ||
-        typeof install.baseUrl === 'string');
+        typeof install.baseUrl === 'string' ||
+        skillImportProxy !== undefined);
 
     const hasSmartRoutingUpdate =
       smartRouting &&
@@ -2652,6 +2661,7 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       if (typeof install.baseUrl === 'string') {
         systemConfig.install.baseUrl = install.baseUrl;
       }
+      if (skillImportProxy !== undefined) systemConfig.install.skillImportProxy = skillImportProxy;
     }
 
     // Track smartRouting state and configuration changes

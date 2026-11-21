@@ -1,0 +1,29 @@
+---
+title: "Skills over MCP"
+description: "Import and publish multi-file Agent Skills on MCPHub endpoints."
+---
+
+Administrators can publish [Agent Skills](https://agentskills.io/specification) through MCPHub using the [MCP Skills Extension](https://skills.extensions.modelcontextprotocol.io/specification/beta/skills). Remote discovery and loading require a client that supports the extension on MCP 2026-07-28. The client reads the Skill over MCP, so no files are installed into the agent's local environment by MCPHub.
+
+## Import and publish
+
+1. Open **Skills** in the dashboard as an administrator. **Installed** opens by default.
+2. Choose **Import manually** to select a local folder containing `SKILL.md` or enter a public GitHub directory or skills.sh URL. Open **Discover** to browse the first 20 entries from the skills.sh all-time leaderboard, search the catalog, or select a skill to import.
+3. Select an installed Skill by name to open its details. The file browser starts with `SKILL.md` and previews Markdown, UTF-8 text, PNG, and JPEG files up to 512 KiB. Select **Enabled** in the detail page and choose the publication scope. Changes are saved automatically. **Global endpoint** publishes to `/mcp` if global routing is enabled. Selected groups publish to their group endpoints and apply the existing route authentication and group visibility.
+4. Connect a compatible client to the published endpoint. It discovers Skills via `skills/list`, fetches their manifests via `skills/get`, and reads individual files via `resources/read`.
+
+Open **Skills → Configuration** to choose the connection method for remote imports. By default, they use the server’s `HTTPS_PROXY` or `HTTP_PROXY` and honor `NO_PROXY`. With neither proxy variable set, they connect directly. You can also force a direct connection or enter a custom HTTP(S) proxy URL. Discovery continues to use the server’s default network configuration.
+
+Discovery uses the public skills.sh catalog endpoints and supports Skills from public GitHub repositories. A skills.sh import finds the Skill in the repository’s default branch and pins the import to that commit. If several directories match, enter a specific GitHub directory URL such as `https://github.com/owner/repo/tree/main/skill-name`. You can also use a commit SHA or URL-encode the slashes in a branch or tag name.
+
+The directory name must match the `name` in `SKILL.md` and be unique in the catalog. Import supports up to 512 regular files and 16 MiB of file content per Skill. GitHub imports resolve the source to a commit at import time. Turn off **Enabled** or delete the Skill to take it off the published endpoints.
+
+For the TypeScript SDK, create the client with `versionNegotiation: { mode: "auto" }` so it discovers the 2026-07-28 endpoint.
+
+## Storage and compatibility
+
+Each Skill is stored under `data/skills/<skill-name>/` relative to the MCPHub working directory. The directory contains the original `SKILL.md` and attachments at their original relative paths, plus the reserved `.mcphub.json` catalog metadata file. Include `data/skills/` in backups. In Docker, mount `/app/data` to persist these directories. The catalog supports either settings backend in single-instance self-hosted deployments.
+
+On first catalog access, MCPHub migrates preview JSON snapshots from `data/skills/` and `<settings-file>.skills/`, preserving IDs and publication settings. If multiple snapshots share a name, the existing directory or first migrated snapshot keeps the name. MCPHub retains the others as `.conflict` files in their original directory for manual recovery.
+
+Both the manifest and its SHA-256 digests describe the original UTF-8 or binary file bytes. If a Skill changes between fetching a manifest and reading a file, clients can refresh the manifest and verify the new file. Existing tools, prompts, and resources remain available through their usual methods.
