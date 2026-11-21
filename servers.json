@@ -60356,24 +60356,24 @@
           "elasticsearch-mcp-server"
         ],
         "env": {
-          "ELASTIC_HOST": "${ELASTIC_HOST}",
-          "ELASTIC_USERNAME": "${ELASTIC_USERNAME}",
-          "ELASTIC_PASSWORD": "${ELASTIC_PASSWORD}"
+          "ELASTICSEARCH_HOSTS": "${ELASTICSEARCH_HOSTS}",
+          "ELASTICSEARCH_USERNAME": "${ELASTICSEARCH_USERNAME}",
+          "ELASTICSEARCH_PASSWORD": "${ELASTICSEARCH_PASSWORD}"
         }
       }
     },
     "arguments": {
-      "ELASTIC_HOST": {
+      "ELASTICSEARCH_HOSTS": {
         "description": "The host URL of the Elasticsearch server.",
         "required": true,
         "example": "https://localhost:9200"
       },
-      "ELASTIC_USERNAME": {
+      "ELASTICSEARCH_USERNAME": {
         "description": "The username for authenticating with the Elasticsearch server.",
         "required": true,
         "example": "elastic"
       },
-      "ELASTIC_PASSWORD": {
+      "ELASTICSEARCH_PASSWORD": {
         "description": "The password for authenticating with the Elasticsearch server.",
         "required": true,
         "example": "test123"
