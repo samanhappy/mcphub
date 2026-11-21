@@ -13,7 +13,7 @@ MCPHub 现在支持从 MCP 工具生成 OpenAPI 3.0.3 规范，实现与 OpenWeb
 - ✅ **OpenWebUI 兼容**：无需 MCPO 代理的直接集成
 - ✅ **实时工具发现**：动态包含已连接 MCP 服务器的工具
 - ✅ **双参数支持**：支持 GET（查询参数）和 POST（JSON 正文）进行工具执行
-- ✅ **无需身份验证**：OpenAPI 端点公开，便于集成
+- ✅ **按范围授权**：使用 MCP Bearer Key 的权限范围控制工具发现和执行
 - ✅ **完整元数据**：具有适当模式和文档的完整 OpenAPI 规范
 
 ## API 端点
@@ -22,16 +22,16 @@ MCPHub 现在支持从 MCP 工具生成 OpenAPI 3.0.3 规范，实现与 OpenWeb
 
 <CodeGroup>
 
-```bash GET /api/openapi.json
-curl "http://localhost:3000/api/openapi.json"
+```bash GET /openapi/openapi.json
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.json"
 ```
 
-```bash GET /api/openapi.yaml
-curl "http://localhost:3000/api/openapi.yaml"
+```bash GET /openapi/openapi.yaml
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.yaml"
 ```
 
 ```bash 带参数
-curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.json?title=我的 MCP API&version=2.0.0"
 ```
 
 </CodeGroup>
@@ -56,10 +56,6 @@ curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
   自定义服务器 URL
 </ParamField>
 
-<ParamField query="includeDisabled" type="boolean" optional default="false">
-  包含禁用的工具
-</ParamField>
-
 <ParamField query="servers" type="string" optional>
   要包含的服务器名称列表（逗号分隔）
 </ParamField>
@@ -68,16 +64,16 @@ curl "http://localhost:3000/api/openapi.json?title=我的 MCP API&version=2.0.0"
 
 <CodeGroup>
 
-```bash GET /api/:name/openapi.json
-curl "http://localhost:3000/api/mygroup/openapi.json"
+```bash GET /openapi/:name/openapi.json
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/mygroup/openapi.json"
 ```
 
-```bash GET /api/:name/openapi.yaml
-curl "http://localhost:3000/api/mygroup/openapi.yaml"
+```bash GET /openapi/:name/openapi.yaml
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/mygroup/openapi.yaml"
 ```
 
 ```bash 带参数
-curl "http://localhost:3000/api/myserver/openapi.json?title=我的服务器 API&version=1.0.0"
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/myserver/openapi.json?title=我的服务器 API&version=1.0.0"
 ```
 
 </CodeGroup>
@@ -92,7 +88,7 @@ curl "http://localhost:3000/api/myserver/openapi.json?title=我的服务器 API&
 
 **查询参数：**
 
-与主 OpenAPI 规范端点相同（title、description、version、serverUrl、includeDisabled）。
+与主 OpenAPI 规范端点相同（title、description、version、serverUrl、servers）。
 
 ### 可用服务器
 
@@ -152,19 +148,19 @@ curl "http://localhost:3000/api/openapi/stats"
 
 <CodeGroup>
 
-```bash GET /api/tools/{serverName}/{toolName}
-curl "http://localhost:3000/api/tools/amap/amap-maps_weather?city=Beijing"
+```bash GET /openapi/tools/{serverName}/{toolName}
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/tools/amap/maps_weather?city=Beijing"
 ```
 
-```bash POST /api/tools/{serverName}/{toolName}
-curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navigate" \
+```bash POST /openapi/tools/{serverName}/{toolName}
+curl -H "Authorization: Bearer $MCPHUB_KEY" -X POST "http://localhost:3000/openapi/tools/playwright/browser_navigate" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com"}'
 ```
 
 </CodeGroup>
 
-通过 OpenAPI 兼容端点执行 MCP 工具。
+规范通过 `servers[0].url` 声明工具执行的基础地址。分组或服务器的基础地址是 `/openapi/:name`，工具请求使用 `/openapi/:name/tools/{serverName}/{toolName}`。
 
 **路径参数：**
 
@@ -186,8 +182,8 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
   </Step>
   <Step title="获取 OpenAPI 规范">
     ```bash
-    curl http://localhost:3000/api/openapi.json > mcphub-api.json
-    curl http://localhost:3000/api/openapi.yaml > mcphub-api.yaml
+    curl -H "Authorization: Bearer $MCPHUB_KEY" http://localhost:3000/openapi/openapi.json > mcphub-api.json
+    curl -H "Authorization: Bearer $MCPHUB_KEY" http://localhost:3000/openapi/openapi.yaml > mcphub-api.yaml
     ```
   </Step>
   <Step title="添加到 OpenWebUI">
@@ -201,10 +197,10 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 
 <CardGroup cols={2}>
   <Card title="OpenAPI URL" icon="link">
-    `http://localhost:3000/api/openapi.json` 或 `http://localhost:3000/api/openapi.yaml`
+    `http://localhost:3000/openapi/openapi.json` 或 `http://localhost:3000/openapi/openapi.yaml`
   </Card>
   <Card title="基础 URL" icon="server">
-    `http://localhost:3000/api`
+    `http://localhost:3000/openapi`
   </Card>
 </CardGroup>
 
@@ -221,7 +217,7 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 ### 生成操作示例
 
 ```yaml
-/tools/amap/amap-maps_weather:
+/tools/amap/maps_weather:
   get:
     summary: "根据城市名称或者标准adcode查询指定城市的天气"
     operationId: "amap_amap-maps_weather"
@@ -244,8 +240,9 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
 
 ### 安全性
 
-- 定义了 Bearer 身份验证但不对工具执行端点强制执行
-- 支持与各种 OpenAPI 兼容系统的灵活集成
+启用 Bearer 鉴权时，规范和工具调用均需发送 `Authorization: Bearer <key>`。分组 Key 可用于授权分组入口。服务器 Key 可用于授权服务器入口，或成员均已获授权的分组入口。排除范围同时作用于规范和调用。个人 Key 还受所有者当前可访问的分组和服务器约束。
+
+对于新的集成，请在 OpenWebUI 中使用 Dashboard 复制的 `/openapi/:name` 基础地址和相应的 Key。旧版 `/api` 规范及工具接口已弃用，仍按 Dashboard API 的现有规则鉴权，使用 Bearer Key 时需要系统级全访问 Key。`/api/openapi/servers` 和 `/api/openapi/stats` 仍是 Dashboard 接口。
 
 ## 相比 MCPO 的优势
 
@@ -280,6 +277,6 @@ curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navi
   </Accordion>
 
   <Accordion title="规范中缺少工具">
-    检查您的 MCP 服务器配置中是否启用了工具。使用 `includeDisabled=true` 查看所有工具。
+    检查您的 MCP 服务器配置中是否启用了工具。确认当前 Key 有权访问该工具。
   </Accordion>
 </AccordionGroup>

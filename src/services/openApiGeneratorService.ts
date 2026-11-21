@@ -1,11 +1,16 @@
 import { OpenAPIV3 } from 'openapi-types';
-import { Tool } from '../types/index.js';
+import { IGroup, Tool } from '../types/index.js';
 import { getServersInfo } from './mcpService.js';
 import config, { getNameSeparator } from '../config/index.js';
 import { getSystemConfigDao } from '../dao/index.js';
 import { resolveInstallBaseUrl } from '../utils/installBaseUrl.js';
 import { filterModelVisibleTools } from '../utils/mcpApps.js';
 import { applyHiddenParams } from '../utils/toolConfig.js';
+import { filterHostedTools } from './hostedAuthService.js';
+import { isReservedStagingName } from './fileStaging/tools.js';
+import { normalizeToolNameForServer } from '../utils/mcpRouteNames.js';
+import { RequestContextService } from './requestContextService.js';
+import type { getToolPolicy } from './toolPolicyService.js';
 import { collectDefinitions, toOpenApiSchema } from '../utils/openApiSchema.js';
 
 /**
@@ -21,7 +26,42 @@ export interface OpenAPIGenerationOptions {
   includeDisabledTools?: boolean;
   groupFilter?: string;
   serverFilter?: string[];
+  scope?: OpenAPIRouteScope;
 }
+
+export interface OpenAPIRouteScope {
+  serverNames: ReadonlySet<string>;
+  group: IGroup | null;
+  routeName?: string;
+  policy: Awaited<ReturnType<typeof getToolPolicy>>;
+}
+
+export const getScopedOpenAPITools = (
+  scope: OpenAPIRouteScope,
+  serverName: string,
+  tools: Tool[],
+): Tool[] => {
+  if (!scope.serverNames.has(serverName)) return [];
+  const member = scope.group?.servers.find(
+    (entry) => (typeof entry === 'string' ? entry : entry.name) === serverName,
+  );
+  const allowed = typeof member === 'object' ? member.tools : undefined;
+  const projected = filterModelVisibleTools(tools).filter((tool) => {
+    const rawName = normalizeToolNameForServer(serverName, tool.name);
+    return (
+      tool.enabled !== false &&
+      !isReservedStagingName(rawName) &&
+      !isReservedStagingName(tool.name) &&
+      !['search_tools', 'describe_tool', 'call_tool'].includes(tool.name) &&
+      (!Array.isArray(allowed) || allowed.includes(rawName))
+    );
+  });
+  const hosted = RequestContextService.getInstance().getHostedAuthContext();
+  return scope.policy.filterTools(
+    serverName,
+    filterHostedTools(hosted, serverName, projected, getNameSeparator()),
+  );
+};
 
 /**
  * Convert MCP tool input schema to OpenAPI parameter or request body schema
@@ -169,7 +209,9 @@ function generateOperationFromTool(tool: Tool, serverName: string): OpenAPIV3.Op
 export async function generateOpenAPISpec(
   options: OpenAPIGenerationOptions = {},
 ): Promise<OpenAPIV3.Document> {
-  const serverInfos = await getServersInfo();
+  const serverInfos = options.scope
+    ? await getServersInfo(undefined, undefined, undefined, options.scope.serverNames)
+    : await getServersInfo();
 
   // Filter servers based on options
   let filteredServers = serverInfos.filter(
@@ -214,13 +256,15 @@ export async function generateOpenAPISpec(
     );
 
     // Apply group-specific tool filtering if group filter is specified
-    let filteredTools = tools;
+    let filteredTools = options.scope
+      ? getScopedOpenAPITools(options.scope, serverInfo.name, tools)
+      : tools;
     if (options.groupFilter && groupConfig.has(serverInfo.name)) {
       const allowedTools = groupConfig.get(serverInfo.name);
       if (allowedTools !== 'all') {
         // Filter tools to only include those specified in the group configuration
         const separator = getNameSeparator();
-        filteredTools = tools.filter(
+        filteredTools = filteredTools.filter(
           (tool) =>
             Array.isArray(allowedTools) &&
             allowedTools.includes(tool.name.replace(serverInfo.name + separator, '')),
@@ -240,7 +284,8 @@ export async function generateOpenAPISpec(
 
   for (const { tool, serverName } of allTools) {
     const operation = generateOperationFromTool(tool, serverName);
-    const { requestBody } = convertToolSchemaToOpenAPI(tool);
+    const method = operation.requestBody ? 'post' : 'get';
+    if (options.scope && config.readonly && method === 'post') continue;
 
     // Extract the tool name without server prefix
     // Tool names are in format: serverName + separator + toolName
@@ -252,7 +297,6 @@ export async function generateOpenAPISpec(
     // Create path for the tool with URL-encoded server and tool names
     // This handles cases where names contain slashes (e.g., "com.atlassian/atlassian-mcp-server")
     const pathName = `/tools/${encodeURIComponent(serverName)}/${encodeURIComponent(toolNameOnly)}`;
-    const method = requestBody ? 'post' : 'get';
 
     if (!paths[pathName]) {
       paths[pathName] = {};
@@ -265,8 +309,17 @@ export async function generateOpenAPISpec(
   const systemConfig = await systemConfigDao.get();
   // Get server URL
   const baseUrl =
-    options.serverUrl || resolveInstallBaseUrl(systemConfig, `http://localhost:${config.port}`);
-  const serverUrl = `${baseUrl}${config.basePath}/api`;
+    options.serverUrl ||
+    resolveInstallBaseUrl(
+      systemConfig,
+      options.scope ? undefined : `http://localhost:${config.port}`,
+    ) ||
+    '';
+  const routeName = options.scope?.routeName;
+  const serverPath = options.scope
+    ? `/openapi${routeName ? `/${encodeURIComponent(routeName)}` : ''}`
+    : '/api';
+  const serverUrl = `${baseUrl}${config.basePath}${serverPath}`;
 
   // Generate OpenAPI document
   const openApiDoc: OpenAPIV3.Document = {

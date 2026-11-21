@@ -13,7 +13,7 @@ MCPHub now supports generating OpenAPI 3.0.3 specifications from MCP tools, enab
 - ✅ **OpenWebUI Compatible**: Direct integration without MCPO proxy
 - ✅ **Real-time Tool Discovery**: Dynamically includes tools from connected MCP servers
 - ✅ **Dual Parameter Support**: Supports both GET (query params) and POST (JSON body) for tool execution
-- ✅ **No Authentication Required**: OpenAPI endpoints are public for easy integration
+- ✅ **Scoped Access**: Uses MCP bearer-key scopes for tool discovery and execution
 - ✅ **Comprehensive Metadata**: Full OpenAPI specification with proper schemas and documentation
 
 ## API Endpoints
@@ -22,16 +22,16 @@ MCPHub now supports generating OpenAPI 3.0.3 specifications from MCP tools, enab
 
 <CodeGroup>
 
-```bash GET /api/openapi.json
-curl "http://localhost:3000/api/openapi.json"
+```bash GET /openapi/openapi.json
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.json"
 ```
 
-```bash GET /api/openapi.yaml
-curl "http://localhost:3000/api/openapi.yaml"
+```bash GET /openapi/openapi.yaml
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.yaml"
 ```
 
 ```bash With Parameters
-curl "http://localhost:3000/api/openapi.json?title=My MCP API&version=2.0.0"
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/openapi.json?title=My MCP API&version=2.0.0"
 ```
 
 </CodeGroup>
@@ -56,10 +56,6 @@ Generates and returns the complete OpenAPI 3.0.3 specification for all connected
   Custom server URL
 </ParamField>
 
-<ParamField query="includeDisabled" type="boolean" optional default="false">
-  Include disabled tools
-</ParamField>
-
 <ParamField query="servers" type="string" optional>
   Comma-separated list of server names to include
 </ParamField>
@@ -68,16 +64,16 @@ Generates and returns the complete OpenAPI 3.0.3 specification for all connected
 
 <CodeGroup>
 
-```bash GET /api/:name/openapi.json
-curl "http://localhost:3000/api/mygroup/openapi.json"
+```bash GET /openapi/:name/openapi.json
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/mygroup/openapi.json"
 ```
 
-```bash GET /api/:name/openapi.yaml
-curl "http://localhost:3000/api/mygroup/openapi.yaml"
+```bash GET /openapi/:name/openapi.yaml
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/mygroup/openapi.yaml"
 ```
 
 ```bash With Parameters
-curl "http://localhost:3000/api/myserver/openapi.json?title=My Server API&version=1.0.0"
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/myserver/openapi.json?title=My Server API&version=1.0.0"
 ```
 
 </CodeGroup>
@@ -92,7 +88,7 @@ Generates and returns the OpenAPI 3.0.3 specification for a specific group or se
 
 **Query Parameters:**
 
-Same as the main OpenAPI specification endpoint (title, description, version, serverUrl, includeDisabled).
+Same as the main OpenAPI specification endpoint (title, description, version, serverUrl, servers).
 
 ### Available Servers
 
@@ -152,19 +148,19 @@ Returns statistics about available tools and servers.
 
 <CodeGroup>
 
-```bash GET /api/tools/{serverName}/{toolName}
-curl "http://localhost:3000/api/tools/amap/amap-maps_weather?city=Beijing"
+```bash GET /openapi/tools/{serverName}/{toolName}
+curl -H "Authorization: Bearer $MCPHUB_KEY" "http://localhost:3000/openapi/tools/amap/maps_weather?city=Beijing"
 ```
 
-```bash POST /api/tools/{serverName}/{toolName}
-curl -X POST "http://localhost:3000/api/tools/playwright/playwright-browser_navigate" \
+```bash POST /openapi/tools/{serverName}/{toolName}
+curl -H "Authorization: Bearer $MCPHUB_KEY" -X POST "http://localhost:3000/openapi/tools/playwright/browser_navigate" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com"}'
 ```
 
 </CodeGroup>
 
-Execute MCP tools via OpenAPI-compatible endpoints.
+The specification declares the base URL for tool execution in `servers[0].url`. For a group or server, this is `/openapi/:name`, and requests use `/openapi/:name/tools/{serverName}/{toolName}`.
 
 Decimal numeric strings are converted in full, including scientific notation (for example, an integer parameter of `1e3` becomes `1000`). Fractional values for integer parameters, non-finite values, and invalid strings are left unchanged for the tool's schema validation; they are not truncated into a different number. Already numeric values are forwarded unchanged.
 
@@ -190,8 +186,8 @@ To integrate MCPHub with OpenWebUI:
   </Step>
   <Step title="Get OpenAPI Specification">
     ```bash
-    curl http://localhost:3000/api/openapi.json > mcphub-api.json
-    curl http://localhost:3000/api/openapi.yaml > mcphub-api.yaml
+    curl -H "Authorization: Bearer $MCPHUB_KEY" http://localhost:3000/openapi/openapi.json > mcphub-api.json
+    curl -H "Authorization: Bearer $MCPHUB_KEY" http://localhost:3000/openapi/openapi.yaml > mcphub-api.yaml
     ```
   </Step>
   <Step title="Add to OpenWebUI">
@@ -205,10 +201,10 @@ In OpenWebUI, you can add MCPHub as an OpenAPI tool by using:
 
 <CardGroup cols={2}>
   <Card title="OpenAPI URL" icon="link">
-    `http://localhost:3000/api/openapi.json` or `http://localhost:3000/api/openapi.yaml`
+    `http://localhost:3000/openapi/openapi.json` or `http://localhost:3000/openapi/openapi.yaml`
   </Card>
   <Card title="Base URL" icon="server">
-    `http://localhost:3000/api`
+    `http://localhost:3000/openapi`
   </Card>
 </CardGroup>
 
@@ -225,7 +221,7 @@ The generated OpenAPI specification includes:
 ### Example Generated Operation
 
 ```yaml
-/tools/amap/amap-maps_weather:
+/tools/amap/maps_weather:
   get:
     summary: "根据城市名称或者标准adcode查询指定城市的天气"
     operationId: "amap_amap-maps_weather"
@@ -248,8 +244,9 @@ The generated OpenAPI specification includes:
 
 ### Security
 
-- The OpenAPI specification and tool execution endpoints are mounted **outside** the authenticated router (see `app.use(${BASE_PATH}/api, router)` versus the `app.get(${BASE_PATH}/api/openapi*)` and `app.get(${BASE_PATH}/api/tools/...)` registrations in `src/routes/index.ts`). They do not require a JWT, bearer key, OAuth token, or Better Auth session.
-- For private deployments, gate these endpoints at your reverse proxy or only expose MCPHub on a trusted network.
+When bearer authentication is enabled, send `Authorization: Bearer <key>` for both specification requests and tool calls. Group keys can use their authorized group routes. Server keys can use their authorized server routes or groups whose members are all authorized. Exclusions apply to both the specification and execution. Personal keys also respect their owner's current access to groups and servers.
+
+For new OpenWebUI integrations, copy the `/openapi/:name` base URL from the dashboard and configure the corresponding key. The deprecated `/api` specification and tool routes retain dashboard authentication, which requires a system-level all-access key when using bearer keys. `/api/openapi/servers` and `/api/openapi/stats` remain dashboard endpoints.
 
 ## Benefits over MCPO
 
@@ -284,6 +281,6 @@ The generated OpenAPI specification includes:
   </Accordion>
 
   <Accordion title="Missing tools in specification">
-    Check if tools are enabled in your MCP server configuration. Use `includeDisabled=true` to see all tools.
+    Check if tools are enabled in your MCP server configuration. Verify that the key can access the tool on the selected route.
   </Accordion>
 </AccordionGroup>

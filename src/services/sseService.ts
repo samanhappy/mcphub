@@ -25,7 +25,7 @@ import {
 } from '../dao/index.js';
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
-import { IUser, BearerKey, BearerKeyKind } from '../types/index.js';
+import { IUser, IGroup, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import {
@@ -279,12 +279,22 @@ const resolveExcludedServerNames = async (key: BearerKey): Promise<string[]> => 
   return [...excluded];
 };
 
-const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promise<boolean> => {
+export const findBearerScopeGroup = async (name: string): Promise<IGroup | null> => {
+  const dao = getGroupDao();
+  return (await dao.findByName(name)) ?? (isValidUUID(name) ? await dao.findById(name) : null);
+};
+
+const isBearerKeyAllowedForRequest = async (
+  req: Request,
+  key: BearerKey,
+  resolvedGroup?: IGroup | null,
+): Promise<boolean> => {
   if (key.kind === 'user' && key.accessType !== 'all' && key.accessType !== 'groups') {
     return false;
   }
 
-  const paramValue = normalizeBearerScopeParam((req.params as any)?.group as string | undefined);
+  const paramValue =
+    resolvedGroup !== undefined ? req.params.group : normalizeBearerScopeParam(req.params?.group);
 
   // accessType 'all' allows all requests
   if (key.accessType === 'all') {
@@ -298,18 +308,14 @@ const isBearerKeyAllowedForRequest = async (req: Request, key: BearerKey): Promi
   }
 
   try {
-    const groupDao = getGroupDao();
     const serverDao = getServerDao();
     const isExcludeScope = key.accessType === 'exclude';
     const excludedGroups = isExcludeScope ? (key.excludedGroups ?? []) : [];
     const excludedServers = isExcludeScope ? new Set(await resolveExcludedServerNames(key)) : null;
 
     // Step 1: Try to match as a group (by name or id), since group has higher priority
-    let matchedGroup = await groupDao.findByName(paramValue);
-    if (!matchedGroup && isValidUUID(paramValue)) {
-      // Only try findById if the parameter is a valid UUID
-      matchedGroup = await groupDao.findById(paramValue);
-    }
+    const matchedGroup =
+      resolvedGroup !== undefined ? resolvedGroup : await findBearerScopeGroup(paramValue);
 
     if (matchedGroup) {
       // Matched as a group
@@ -466,7 +472,12 @@ const oauthUserResult = (req: Request, user: IUser): BearerAuthResult => {
   return { valid: true, user, keyName: OAUTH_AUTH_METHOD_LABEL };
 };
 
-const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
+// A resolved group (or null) binds REST callers to literal route names instead
+// of interpreting MCP smart-routing aliases or re-resolving the route.
+export const validateBearerAuth = async (
+  req: Request,
+  resolvedGroup?: IGroup | null,
+): Promise<BearerAuthResult> => {
   const systemConfigDao = getSystemConfigDao();
   const systemConfig = await systemConfigDao.get();
   const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
@@ -553,7 +564,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       if (!userKeyResult.valid) {
         return matchingKey.kind === 'user' ? userKeyResult : { valid: true };
       }
-      const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
+      const allowed = await isBearerKeyAllowedForRequest(req, matchingKey, resolvedGroup);
       if (allowed) {
         logger.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
@@ -564,7 +575,9 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
       logger.warn(
         `Bearer key matched but rejected due to scope restrictions (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
       );
-      return matchingKey.kind === 'user' ? { valid: false, reason: 'invalid' } : { valid: true };
+      return matchingKey.kind === 'user' || resolvedGroup !== undefined
+        ? { valid: false, reason: 'invalid' }
+        : { valid: true };
     }
 
     const oauthUser = await resolveOAuthUserFromToken(token);
@@ -604,7 +617,7 @@ const validateBearerAuth = async (req: Request): Promise<BearerAuthResult> => {
     if (!userKeyResult.valid) {
       return userKeyResult;
     }
-    const allowed = await isBearerKeyAllowedForRequest(req, matchingKey);
+    const allowed = await isBearerKeyAllowedForRequest(req, matchingKey, resolvedGroup);
     if (!allowed) {
       logger.warn(
         `Bearer key rejected due to scope restrictions: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,

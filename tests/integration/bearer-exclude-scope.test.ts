@@ -7,9 +7,8 @@ import express from 'express';
 import request from 'supertest';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
-import {
-  sseUserContextMiddleware,
-} from '../../src/middlewares/userContext.js';
+import { getGroupDao } from '../../src/dao/index.js';
+import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
 import {
   handleMcpOtherRequest,
   handleMcpPostRequest,
@@ -20,7 +19,10 @@ import {
   getServerByName,
   initializeClientsFromSettings,
 } from '../../src/services/mcpService.js';
-import { clearSettingsCache } from '../../src/config/index.js';
+import config, { clearSettingsCache } from '../../src/config/index.js';
+import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
+import { initRoutes } from '../../src/routes/index.js';
+import { initMiddlewares } from '../../src/middlewares/index.js';
 import type { McpSettings } from '../../src/types/index.js';
 
 jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
@@ -31,11 +33,13 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   syncAllServerToolsEmbeddings: jest.fn(),
 }));
 jest.mock('../../src/services/betterAuthConfig.js', () => ({
-  getBetterAuthRuntimeConfig: jest.fn(async () => ({ enabled: false })),
+  ...jest.requireActual('../../src/services/betterAuthConfig.js'),
+  getBetterAuthRuntimeConfig: jest.fn(async () => ({ enabled: false, basePath: '/better-auth' })),
 }));
 
 const fixture = path.resolve('tests/fixtures/credential-server.mjs');
 const token = 'exclude-scope-token';
+const personalGroupId = '11111111-1111-4111-8111-111111111111';
 let directory: string;
 let app: express.Express;
 let server: HttpServer;
@@ -51,6 +55,7 @@ beforeAll(async () => {
   process.env.MCPHUB_SETTING_PATH = path.join(directory, 'settings.json');
   process.env.USE_DB = 'false';
   const settings: McpSettings = {
+    users: [{ username: 'alice', password: 'unused' }],
     mcpServers: {
       visible: {
         type: 'stdio',
@@ -64,11 +69,58 @@ beforeAll(async () => {
         command: process.execPath,
         args: [fixture],
         owner: 'admin',
-        visibility: 'public',
+        visibility: 'private',
       },
     },
-    groups: [],
+    groups: [
+      { id: 'team', name: 'team', servers: ['visible'] },
+      { id: 'restricted', name: 'restricted', servers: [{ name: 'visible', tools: [] }] },
+      {
+        id: personalGroupId,
+        name: 'shared',
+        owner: 'admin',
+        visibility: 'group',
+        sharedWithUsers: ['alice'],
+        servers: ['visible', 'secret'],
+      },
+    ],
     bearerKeys: [
+      {
+        id: 'group-key',
+        name: 'group-key',
+        token: 'group-token',
+        kind: 'system',
+        enabled: true,
+        accessType: 'groups',
+        allowedGroups: ['team', 'restricted'],
+      },
+      {
+        id: 'personal-key',
+        name: 'personal-key',
+        token: 'personal-token',
+        kind: 'user',
+        owner: 'alice',
+        enabled: true,
+        accessType: 'groups',
+        allowedGroups: [personalGroupId],
+      },
+      {
+        id: 'server-key',
+        name: 'server-key',
+        token: 'server-token',
+        kind: 'system',
+        enabled: true,
+        accessType: 'servers',
+        allowedServers: ['visible'],
+      },
+      {
+        id: 'all-key',
+        name: 'all-key',
+        token: 'all-token',
+        kind: 'system',
+        enabled: true,
+        accessType: 'all',
+      },
       {
         id: 'exclude-key',
         name: 'exclude-key',
@@ -88,6 +140,15 @@ beforeAll(async () => {
         skipAuth: false,
       },
       oauthServer: { enabled: false },
+      toolPolicies: [
+        {
+          id: 'team-identity',
+          effect: 'allow',
+          keyId: 'group-key',
+          groupId: 'team',
+          tool: 'identity',
+        },
+      ],
     },
   };
   fs.writeFileSync(process.env.MCPHUB_SETTING_PATH, JSON.stringify(settings));
@@ -113,6 +174,9 @@ beforeAll(async () => {
   app.get('/mcp', sseUserContextMiddleware, handleMcpOtherRequest);
   app.delete('/mcp', sseUserContextMiddleware, handleMcpOtherRequest);
   app.post('/mcp/:group', sseUserContextMiddleware, handleMcpPostRequest);
+
+  initMiddlewares(app);
+  await initRoutes(app);
 
   server = await new Promise<HttpServer>((resolve) => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
@@ -187,4 +251,169 @@ it('rejects a direct call to an excluded server tool on the global route', async
 it('rejects a direct route to an excluded server', async () => {
   expect((await initializeGroup('visible')).status).toBe(200);
   expect((await initializeGroup('secret')).status).toBe(401);
+});
+
+it('uses the scoped OpenAPI document to call an authorized tool', async () => {
+  const auth = 'Bearer group-token';
+  const spec = await request(app).get('/openapi/team/openapi.json').set('Authorization', auth);
+  expect(spec.status).toBe(200);
+  const advertisedUrl = new URL(
+    spec.body.servers[0].url,
+    'https://hub.example/openapi/team/openapi.json',
+  );
+  expect(advertisedUrl.href).toBe('https://hub.example/openapi/team');
+  const route = advertisedUrl.pathname;
+  const tool = '/tools/visible/identity';
+  expect(spec.body.paths[tool]).toBeDefined();
+  const call = await request(app)
+    .get(route + tool)
+    .set('Authorization', auth);
+  expect(call.status).toBe(200);
+  expect(call.body.isError).not.toBe(true);
+  expect(JSON.stringify(call.body)).toContain('masterKeyInherited');
+
+  expect((await request(app).get('/api/team/openapi.json').set('Authorization', auth)).status).toBe(
+    401,
+  );
+  expect(
+    (await request(app).get('/openapi/tools/visible/identity').set('Authorization', auth)).status,
+  ).toBe(401);
+  expect(
+    (
+      await request(app)
+        .get(route + '/tools/secret/identity')
+        .set('Authorization', auth)
+    ).status,
+  ).toBe(404);
+  expect(
+    (
+      await request(app)
+        .get('/openapi/restricted' + tool)
+        .set('Authorization', auth)
+    ).status,
+  ).toBe(404);
+});
+
+it('omits POST tools from the scoped spec in read-only mode', async () => {
+  const tool = getServerByName('visible')!.tools[0];
+  const originalSchema = tool.inputSchema;
+  const originalReadonly = config.readonly;
+  const specPath = '/openapi/team/openapi.json';
+  const toolPath = '/tools/visible/identity';
+  const auth = 'Bearer group-token';
+  try {
+    tool.inputSchema = { type: 'object', properties: { text: { type: 'string' } } };
+    const writable = await request(app).get(specPath).set('Authorization', auth);
+    expect(writable.body.paths[toolPath].post).toBeDefined();
+
+    config.readonly = true;
+    const readonly = await request(app).get(specPath).set('Authorization', auth);
+    expect(readonly.status).toBe(200);
+    expect(readonly.body.paths[toolPath]).toBeUndefined();
+    const call = await request(app)
+      .post('/openapi/team' + toolPath)
+      .set('Authorization', auth);
+    expect(call.status).toBe(403);
+  } finally {
+    tool.inputSchema = originalSchema;
+    config.readonly = originalReadonly;
+  }
+});
+
+it('applies global exclusions to the OpenAPI document and execution', async () => {
+  const auth = `Bearer ${token}`;
+  const spec = await request(app).get('/openapi/openapi.json').set('Authorization', auth);
+  expect(spec.status).toBe(200);
+  expect(spec.body.paths['/tools/visible/identity']).toBeDefined();
+  expect(spec.body.paths['/tools/secret/identity']).toBeUndefined();
+  expect(
+    (await request(app).get('/openapi/tools/secret/identity').set('Authorization', auth)).status,
+  ).toBe(404);
+});
+
+it('serves YAML on a direct server route and preserves legacy access for all-access keys', async () => {
+  const auth = 'Bearer server-token';
+  const spec = await request(app).get('/openapi/visible/openapi.yaml').set('Authorization', auth);
+  expect(spec.status).toBe(200);
+  expect(spec.headers['content-type']).toContain('application/yaml');
+  expect(spec.text).toContain('/openapi/visible');
+  expect(spec.text).toContain('/tools/visible/identity');
+  expect(spec.text).not.toContain('/tools/secret/identity');
+  expect(
+    (await request(app).get('/openapi/visible/tools/secret/identity').set('Authorization', auth))
+      .status,
+  ).toBe(404);
+  const legacy = await request(app)
+    .get('/api/team/openapi.json')
+    .set('Authorization', 'Bearer all-token');
+  expect(legacy.status).toBe(200);
+  expect(new URL(legacy.body.servers[0].url).pathname).toBe('/api');
+});
+
+it('does not prepare an out-of-scope personal server for a spec or tool call', async () => {
+  const unrelated = getServerByName('secret')!.config!;
+  const originalTemplate = unrelated.credentialTemplate;
+  const acquire = jest.spyOn(PrincipalRuntimeService.prototype, 'acquire');
+  const auth = 'Bearer personal-token';
+  try {
+    unrelated.credentialTemplate = [{ target: 'env', name: 'PERSONAL_KEY' }];
+    const spec = await request(app).get('/openapi/shared/openapi.json').set('Authorization', auth);
+    expect(spec.status).toBe(200);
+    expect(spec.body.paths['/tools/visible/identity']).toBeDefined();
+
+    const call = await request(app)
+      .get('/openapi/shared/tools/visible/identity')
+      .set('Authorization', auth);
+    expect(call.status).toBe(200);
+    expect(call.body.isError).not.toBe(true);
+    expect(acquire).not.toHaveBeenCalled();
+  } finally {
+    unrelated.credentialTemplate = originalTemplate;
+    acquire.mockRestore();
+  }
+});
+
+it('enforces the personal key owner’s live server visibility and group access', async () => {
+  const auth = 'Bearer personal-token';
+  const route = '/openapi/shared';
+  const spec = await request(app)
+    .get(route + '/openapi.json')
+    .set('Authorization', auth);
+  expect(spec.status).toBe(200);
+  expect(spec.body.paths['/tools/visible/identity']).toBeDefined();
+  expect(spec.body.paths['/tools/secret/identity']).toBeUndefined();
+  expect(
+    (
+      await request(app)
+        .get(route + '/tools/secret/identity')
+        .set('Authorization', auth)
+    ).status,
+  ).toBe(404);
+  const call = await request(app)
+    .post(route + '/tools/visible/identity')
+    .set('Authorization', auth)
+    .send({});
+  expect(call.status).toBe(200);
+  expect(call.body.isError).not.toBe(true);
+
+  await getGroupDao().update(personalGroupId, { sharedWithUsers: [] });
+  try {
+    expect(
+      (
+        await request(app)
+          .get(route + '/openapi.json')
+          .set('Authorization', auth)
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post(route + '/tools/visible/identity')
+          .set('Authorization', auth)
+          .send({})
+      ).status,
+    ).toBe(403);
+  } finally {
+    await getGroupDao().update(personalGroupId, { sharedWithUsers: ['alice'] });
+  }
 });
