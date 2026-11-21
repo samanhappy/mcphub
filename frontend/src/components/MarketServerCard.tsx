@@ -1,11 +1,18 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Zap } from 'lucide-react';
+import { Check, Star, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { MarketServer } from '@/types';
 
 interface MarketServerCardProps {
-  server: MarketServer;
-  onClick: (server: MarketServer) => void;
+  server: Pick<
+    MarketServer,
+    'name' | 'display_name' | 'author' | 'description' | 'categories' | 'tags' | 'is_official'
+  > &
+    Partial<Pick<MarketServer, 'tools'>>;
+  to: string;
+  stars?: number;
+  transports?: string[];
 }
 
 const getInitials = (name: string) =>
@@ -16,17 +23,15 @@ const getInitials = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) => {
+const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, to, stars, transports }) => {
   const { t } = useTranslation();
   const tags = (server.tags || []).slice(0, 3);
   const category = server.categories?.[0];
 
   return (
-    <div
-      className="hub-card flex flex-col cursor-pointer transition-colors h-full overflow-hidden"
-      onClick={() => onClick(server)}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--hub-ink-2)')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--hub-line)')}
+    <Link
+      to={to}
+      className="hub-card flex min-w-0 flex-col transition-colors h-full overflow-hidden hover:border-[var(--hub-ink-2)]"
     >
       <div className="p-3.5 flex-1 flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
@@ -73,17 +78,14 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
                 </span>
               )}
             </div>
-            <div
-              className="hub-mono truncate"
-              style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}
-            >
+            <div className="hub-mono truncate" style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}>
               @{server.author?.name || t('market.unknown')}
             </div>
           </div>
         </div>
 
         <div
-          className="flex-1 line-clamp-2"
+          className="flex-1 line-clamp-2 break-words"
           style={{ fontSize: 12.5, color: 'var(--hub-ink-2)', lineHeight: 1.5 }}
         >
           {server.description}
@@ -116,17 +118,28 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, onClick }) 
         }}
       >
         <div
-          className="hub-mono flex items-center gap-3"
+          className="hub-mono flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
           style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}
         >
-          <span className="inline-flex items-center gap-1">
-            <Zap size={11} />
-            {server.tools?.length ?? 0} {t('server.tools').toLowerCase()}
-          </span>
+          {stars === undefined ? (
+            <span className="inline-flex items-center gap-1">
+              <Zap size={11} />
+              {server.tools?.length ?? 0} {t('server.tools').toLowerCase()}
+            </span>
+          ) : (
+            stars > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Star size={11} /> {stars.toLocaleString()}
+              </span>
+            )
+          )}
           {category && <span className="truncate">{category}</span>}
+          {transports?.map((transport) => (
+            <span key={transport}>{transport}</span>
+          ))}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
