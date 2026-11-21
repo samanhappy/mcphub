@@ -28,6 +28,7 @@ import {
   assertRefsLeasable,
   decideFinalize,
   decideUpload,
+  partitionLiveTokens,
   shouldReleaseReservation,
 } from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
@@ -758,20 +759,15 @@ export class FileStagingStateStore implements StagingStateStore {
     return this.exclusive(async () => {
       const nowIso = new Date(this.now()).toISOString();
       let removed = 0;
-      const liveDownloadRefs = new Set<string>();
-      const liveUploadRefs = new Set<string>();
-      for (const [hash, token] of Object.entries(this.state.tokens)) {
-        if (token.usedAt || token.expiresAt <= nowIso) {
-          delete this.state.tokens[hash];
-          continue;
-        }
-        if (token.kind === 'download') liveDownloadRefs.add(token.ref);
-        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
-      }
+      const { liveDownloadRefs, liveUploadRefs, expired } = partitionLiveTokens(
+        Object.values(this.state.tokens),
+        nowIso,
+      );
+      for (const token of expired) delete this.state.tokens[token.tokenHash];
       for (const [key, record] of Object.entries(this.state.refs)) {
-        // A live download token is a promise that the bytes still exist, even
-        // after the reference TTL; keep the ref until that token expires.
-        if (liveDownloadRefs.has(record.ref)) continue;
+        // A live download token promises the bytes are still fetchable, even
+        // after the reference TTL; keep only a ready ref until it expires.
+        if (record.state === 'ready' && liveDownloadRefs.has(record.ref)) continue;
         // A stale pin (past pinUntil) is treated as released: a crashed
         // download must not protect content forever.
         const pinned = record.pinCount > 0 && (!record.pinUntil || record.pinUntil > nowIso);

@@ -156,6 +156,37 @@ export const decideUpload = (
   }
 };
 
+type LivenessToken = {
+  kind: string;
+  ref: string;
+  usedAt?: string | Date | null;
+  expiresAt: string | Date;
+};
+
+/**
+ * Split one ledger's tokens into live refs and already-dead tokens. Liveness is
+ * the same rule in both backends; deleting the dead rows is backend-specific.
+ */
+export const partitionLiveTokens = <T extends LivenessToken>(
+  tokens: readonly T[],
+  nowIso: string,
+): { liveDownloadRefs: Set<string>; liveUploadRefs: Set<string>; expired: T[] } => {
+  const liveDownloadRefs = new Set<string>();
+  const liveUploadRefs = new Set<string>();
+  const expired: T[] = [];
+  for (const token of tokens) {
+    const expiresAt =
+      typeof token.expiresAt === 'string' ? token.expiresAt : token.expiresAt.toISOString();
+    if (token.usedAt || expiresAt <= nowIso) {
+      expired.push(token);
+      continue;
+    }
+    if (token.kind === 'download') liveDownloadRefs.add(token.ref);
+    else if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+  }
+  return { liveDownloadRefs, liveUploadRefs, expired };
+};
+
 /**
  * An abandoned upload link must not hold quota for the whole reference TTL:
  * once the ref has no live upload token left, its reservation is released

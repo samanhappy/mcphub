@@ -3976,12 +3976,14 @@ const handleHubStagingCall = async (request: any, extra: any) => {
       settings,
       store,
       createDownloadUrl: async (ref) => {
+        // Resolve the URL before minting the token: a config read failure must
+        // not leave a live download token holding the ref.
+        const baseUrl = await requireStagingBaseUrl('Downloads');
         const token = await store.createDownloadToken(
           ref,
           principal.ownerHash,
           settings.downloadTtlSeconds,
         );
-        const baseUrl = await requireStagingBaseUrl('Downloads');
         return {
           downloadUrl: `${baseUrl}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),

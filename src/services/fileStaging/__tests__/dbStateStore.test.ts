@@ -312,6 +312,7 @@ describe('DbStagingStateStore', () => {
     await expect(store.getOwnedRef(ready.ref, input(rootDir).principal.ownerHash)).rejects.toMatchObject({
       code: 'not-found',
     });
+    await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'not-found' });
   });
 
   it('keeps a reservation held by an active output lease during cleanup', async () => {

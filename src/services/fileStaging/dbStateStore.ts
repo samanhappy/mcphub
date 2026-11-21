@@ -30,6 +30,7 @@ import {
   assertRefsLeasable,
   decideFinalize,
   decideUpload,
+  partitionLiveTokens,
   shouldReleaseReservation,
 } from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
@@ -726,22 +727,18 @@ export class DbStagingStateStore implements StagingStateStore {
     const swept = new Set<string>();
     await this.repository.transaction(async (manager) => {
       const rows = await this.repository.listRefs(manager);
-      const liveDownloadRefs = new Set<string>();
-      const liveUploadRefs = new Set<string>();
-      for (const token of await this.repository.listTokens(manager)) {
-        const expired = new Date(token.expiresAt).toISOString() <= nowIso;
-        if (token.usedAt || expired) {
-          await this.repository.deleteToken(manager, token.tokenHash);
-          continue;
-        }
-        if (token.kind === 'download') liveDownloadRefs.add(token.ref);
-        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+      const { liveDownloadRefs, liveUploadRefs, expired } = partitionLiveTokens(
+        await this.repository.listTokens(manager),
+        nowIso,
+      );
+      for (const token of expired) {
+        await this.repository.deleteToken(manager, token.tokenHash);
       }
       for (const row of rows) {
         const record = toRecord(row);
-        // A live download token promises the bytes are still fetchable; do not
-        // sweep the ref out from under it even if the reference TTL passed.
-        if (liveDownloadRefs.has(row.ref)) continue;
+        // A live download token promises the bytes are still fetchable; keep a
+        // ready ref until it expires, but never exempt a failed ref.
+        if (record.state === 'ready' && liveDownloadRefs.has(row.ref)) continue;
         if (!isSweepable(record, nowIso)) continue;
         await this.repository.deleteRef(manager, row.ref);
         swept.add(row.ref);
