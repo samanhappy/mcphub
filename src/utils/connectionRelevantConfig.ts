@@ -7,21 +7,27 @@ export type ServerRecord = ServerConfig & { name: string };
 import { hasStagedTools } from '../services/fileStaging/adapter.js';
 import { normalizeServerConfigForPersistence } from './serverConfigPersistence.js';
 
-const stripUndefinedDeep = (value: unknown): unknown => {
+const stripDeep = (value: unknown, drop: (nestedValue: unknown) => boolean): unknown => {
   if (Array.isArray(value)) {
-    return value.map((item) => stripUndefinedDeep(item));
+    return value.map((item) => stripDeep(item, drop));
   }
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value)
-        .filter(([, nestedValue]) => nestedValue !== undefined)
-        .map(([key, nestedValue]) => [key, stripUndefinedDeep(nestedValue)]),
+        .filter(([, nestedValue]) => !drop(nestedValue))
+        .map(([key, nestedValue]) => [key, stripDeep(nestedValue, drop)]),
     );
   }
 
   return value;
 };
+
+const stripUndefinedDeep = (value: unknown): unknown =>
+  stripDeep(value, (nestedValue) => nestedValue === undefined);
+
+export const stripNullishDeep = (value: unknown): unknown =>
+  stripDeep(value, (nestedValue) => nestedValue === undefined || nestedValue === null);
 
 // Fields baked into the live MCP client/transport at connect time. Editing any
 // of these requires tearing down and re-establishing the runtime. Everything

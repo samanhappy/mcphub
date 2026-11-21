@@ -9,10 +9,21 @@ const mockGetStagingStateStore = jest.fn();
 
 jest.mock('../../src/services/fileStaging/settings.js', () => ({
   getStagingStateStore: (...args: unknown[]) => mockGetStagingStateStore(...args),
+  getFileStagingSettings: jest.fn(async () => ({
+    enabled: true,
+    maxFileBytes: 4096,
+    uploadTtlSeconds: 900,
+  })),
   isStagingRuntimeSupported: () => true,
 }));
 
-import { downloadStagedFile } from '../../src/controllers/fileStagingController.js';
+import {
+  assertStagingUploadLink,
+  downloadStagedFile,
+  rawStagingUploadBody,
+  receiveStagedUpload,
+  showStagingUploadPage,
+} from '../../src/controllers/fileStagingController.js';
 
 const OWNER = 'a'.repeat(64);
 const sha256 = (value: Buffer | string) => createHash('sha256').update(value).digest('hex');
@@ -140,5 +151,180 @@ describe('staged file download endpoint', () => {
     const response = await request(appWith()).get('/staging/download/token-2');
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ success: false, message: 'Download link is not valid' });
+  });
+});
+
+describe('staged file browser upload', () => {
+  const appWithUpload = () => {
+    const app = express();
+    app.get('/staging/upload/:token', showStagingUploadPage);
+    app.post(
+      '/staging/upload/:token',
+      assertStagingUploadLink,
+      rawStagingUploadBody,
+      receiveStagedUpload,
+    );
+    return app;
+  };
+
+  const uploadStore = (overrides: Record<string, unknown> = {}) => ({
+    getUploadToken: jest.fn(async () => ({ ref: 'mcpfile://x', ownerHash: OWNER })),
+    getOwnedRef: jest.fn(async () => ({
+      ref: 'mcpfile://x',
+      filename: 'report.csv',
+      state: 'reserved',
+    })),
+    uploadWithToken: jest.fn(async (_token: string, body: Buffer) => ({
+      ref: 'mcpfile://x',
+      size: body.length,
+      sha256: sha256(body),
+    })),
+    ...overrides,
+  });
+
+  it('renders a self-contained page with a nonce-scoped CSP', async () => {
+    mockGetStagingStateStore.mockResolvedValue(uploadStore());
+    const response = await request(appWithUpload()).get('/staging/upload/token-1');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.headers['content-security-policy']).toContain("script-src 'nonce-");
+    expect(response.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(response.headers['x-robots-tag']).toBe('noindex');
+    expect(response.text).toContain('report.csv');
+    expect(response.text).not.toMatch(/<script[^>]*src=/);
+    // The nonce in the header is the one the inline blocks carry.
+    const nonce = /'nonce-([^']+)'/.exec(String(response.headers['content-security-policy']))?.[1];
+    expect(nonce).toBeTruthy();
+    expect(response.text).toContain(`nonce="${nonce}"`);
+  });
+
+  it('stores the uploaded bytes and returns the staged reference', async () => {
+    const store = uploadStore();
+    mockGetStagingStateStore.mockResolvedValue(store);
+    const response = await request(appWithUpload())
+      .post('/staging/upload/token-1')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('browser bytes'));
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.ref).toBe('mcpfile://x');
+    expect(store.uploadWithToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers a used or expired link with 404 and no detail', async () => {
+    mockGetStagingStateStore.mockResolvedValue(
+      uploadStore({
+        uploadWithToken: jest.fn(async () => {
+          throw Object.assign(new Error('gone'), { code: 'not-found' });
+        }),
+      }),
+    );
+    const response = await request(appWithUpload())
+      .post('/staging/upload/token-1')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('x'));
+
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).not.toMatch(/mcpfile|token/i);
+  });
+
+  it('rejects an empty body without consuming the link', async () => {
+    const store = uploadStore();
+    mockGetStagingStateStore.mockResolvedValue(store);
+    const response = await request(appWithUpload())
+      .post('/staging/upload/token-1')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.alloc(0));
+
+    // A live link with an empty body is a client mistake, not a dead link.
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/empty/i);
+    expect(store.uploadWithToken).not.toHaveBeenCalled();
+  });
+
+  it('does not offer the form for a link that was already used', async () => {
+    mockGetStagingStateStore.mockResolvedValue(
+      uploadStore({
+        getUploadToken: jest.fn(async () => ({
+          ref: 'mcpfile://x',
+          ownerHash: OWNER,
+          usedAt: '2026-11-20T00:00:00.000Z',
+        })),
+      }),
+    );
+
+    const response = await request(appWithUpload()).get('/staging/upload/token-1');
+    expect(response.status).toBe(404);
+  });
+});
+
+describe('staged upload link precheck', () => {
+  const appWithUpload = () => {
+    const app = express();
+    app.post(
+      '/staging/upload/:token',
+      assertStagingUploadLink,
+      rawStagingUploadBody,
+      receiveStagedUpload,
+    );
+    return app;
+  };
+
+  it('rejects an unknown link before the body is parsed', async () => {
+    const uploadWithToken = jest.fn();
+    mockGetStagingStateStore.mockResolvedValue({
+      getUploadToken: jest.fn(async () => {
+        throw Object.assign(new Error('gone'), { code: 'not-found' });
+      }),
+      uploadWithToken,
+    });
+
+    const response = await request(appWithUpload())
+      .post('/staging/upload/unknown')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('x'));
+
+    expect(response.status).toBe(404);
+    expect(uploadWithToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects an upload whose declared length exceeds the link ceiling', async () => {
+    const uploadWithToken = jest.fn();
+    mockGetStagingStateStore.mockResolvedValue({
+      getUploadToken: jest.fn(async () => ({ ref: 'mcpfile://x', ownerHash: OWNER })),
+      getOwnedRef: jest.fn(async () => ({
+        ref: 'mcpfile://x',
+        filename: 'a.bin',
+        state: 'reserved',
+        reservedBytes: 4,
+      })),
+      uploadWithToken,
+    });
+
+    const response = await request(appWithUpload())
+      .post('/staging/upload/token-1')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('more than four bytes'));
+
+    expect(response.status).toBe(413);
+    expect(uploadWithToken).not.toHaveBeenCalled();
+  });
+
+  it('refuses a link whose reference is already ready', async () => {
+    mockGetStagingStateStore.mockResolvedValue({
+      getUploadToken: jest.fn(async () => ({ ref: 'mcpfile://x', ownerHash: OWNER })),
+      getOwnedRef: jest.fn(async () => ({ ref: 'mcpfile://x', state: 'ready' })),
+      uploadWithToken: jest.fn(),
+    });
+
+    const response = await request(appWithUpload())
+      .post('/staging/upload/token-1')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('x'));
+
+    expect(response.status).toBe(404);
   });
 });

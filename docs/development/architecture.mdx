@@ -91,14 +91,14 @@ See [Database Configuration](/configuration/database-configuration) for setup de
 
 ## Request paths
 
-There are three classes of HTTP route, defined in `src/routes/index.ts` and `src/routes/serverRoutes.ts` and mounted by `AppServer`:
+There are four classes of HTTP route, defined in `src/routes/index.ts` and `src/routes/serverRoutes.ts` and mounted by `AppServer`:
 
 1. **Public endpoints** (no auth):
    - `GET /health`
    - `GET ${basePath}/config`, `GET ${basePath}/public-config`
    - `GET ${basePath}/staging/download/:token` — one-time staged file download; the token is the capability, so it is mounted outside the `/api` auth middleware.
+   - `GET|POST ${basePath}/staging/upload/:token` — one-time browser upload page and its endpoint; same capability model, also outside `/api`.
    - All `/oauth/*` and `/.well-known/oauth-*` endpoints (the OAuth flow itself).
-   - All `${basePath}/api/openapi*` and `${basePath}/api/tools/...` OpenAPI endpoints.
    - `POST /api/auth/login`, `POST /api/auth/register`.
 2. **Authenticated dashboard / management API** under `${basePath}/api/*`. Authentication is enforced by `src/middlewares/auth.ts`, which accepts (in order):
    - A forward-auth JWT from the configured issuer, verified against its JWKS (`src/services/forwardAuthService.ts`, when `systemConfig.auth.forwardAuth` is enabled). A token from that issuer that fails verification is rejected without trying the methods below.
@@ -108,6 +108,8 @@ There are three classes of HTTP route, defined in `src/routes/index.ts` and `src
    - An `x-auth-token` JWT issued by `/api/auth/login`, or the same value as a `?token=` query.
    - If `systemConfig.routing.skipAuth` is `true`, unauthenticated dashboard API calls receive a synthetic `guest` user with admin privileges.
 3. **MCP transport routes**: `${basePath}/mcp/:group?`, `${basePath}/sse/:group?`, plus their user-scoped variants `${basePath}/:user/mcp/...` and `${basePath}/:user/sse/...`. These are rate-limited via `mcpConnectionRateLimiter` and pass through `sseUserContextMiddleware` before being dispatched by `sseService.ts`. Forward-auth JWTs are checked first, with the same no-fallback rule as the dashboard API. Key scopes are enforced inside `sseService.ts`; user-level keys support unrestricted or allowed-group scopes and restore their owner's live user context so group/server visibility filtering also applies.
+
+4. **OpenAPI client routes** under `${basePath}/openapi`. These share MCP bearer authentication and rate limiting. The selected route, live principal permissions, exclusions, and tool policy bound both the generated specification and execution. Legacy OpenAPI routes under `${basePath}/api` still use dashboard authentication.
 
 ## Observability
 

@@ -53,3 +53,6 @@ temp-test-config/
 
 # Hosted Skill snapshots
 *.json.skills/
+
+# Local transfer staging (never commit)
+.tmp-transfer/

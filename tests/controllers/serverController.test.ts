@@ -1991,6 +1991,63 @@ describe('serverController - updateServer', () => {
     });
   });
 
+  it('does not reload the runtime for a tags-only edit (#1506)', async () => {
+    mockRequest.body.config = {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      tags: [' db ', 'DB', 'prod'],
+      visibility: 'private',
+      sharedWithUsers: undefined,
+      perSessionClient: undefined,
+      startOnDemand: undefined,
+      idleTimeoutMs: undefined,
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+      tags: ['db'],
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockServerDao.update).toHaveBeenCalledWith(
+      'test-server',
+      expect.objectContaining({ tags: ['db', 'prod'] }),
+    );
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+    expect(mockNotifyToolChanged).not.toHaveBeenCalled();
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      message: 'Server updated successfully',
+    });
+  });
+
+  it('rejects malformed tags with a 400 before touching the runtime (#1506)', async () => {
+    mockRequest.body.config = {
+      type: 'sse',
+      url: 'https://example.com/sse',
+      tags: 'db',
+    };
+    mockServerDao.findById.mockResolvedValue({
+      name: 'test-server',
+      type: 'sse',
+      url: 'https://example.com/sse',
+      enabled: true,
+      owner: 'admin',
+      visibility: 'private',
+    });
+
+    await updateServer(mockRequest as Request, mockResponse as Response);
+
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockServerDao.update).not.toHaveBeenCalled();
+    expect(mockAddOrUpdateServer).not.toHaveBeenCalled();
+  });
+
   it('reloads the runtime when a connection-relevant field changes', async () => {
     // Changing the launch command is a real connection change and must go
     // through the reload path (addOrUpdateServer + targeted reconnect).

@@ -20,6 +20,7 @@ const settings: FileStagingSettings = {
   globalQuotaBytes: 262144,
   ttlHours: 1,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 10,
   cleanupIntervalMinutes: 15,
 };
@@ -241,6 +242,32 @@ describe('staging dispatch seam', () => {
     );
     expect(rejected.isError).toBe(true);
     expect(rejected.content[0].text).toMatch(/not allowed/i);
+  });
+
+  it('keeps normal calls working but rejects staging when the runtime version is unknown', async () => {
+    const invoke = jest.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] }));
+    const normal = await dispatchStagedToolCall(
+      { ...serverInfo(), version: undefined } as ServerInfo,
+      { name: 'ssh-upload', arguments: { localPath: '/tmp/plain' } },
+      invoke,
+      'alice',
+    );
+    expect(normal.isError).toBeUndefined();
+    expect(invoke).toHaveBeenCalledWith({
+      name: 'ssh-upload',
+      arguments: { localPath: '/tmp/plain' },
+    });
+
+    const ready = await store.createReadyRef(input(), Buffer.from('x'));
+    const rejected = await dispatchStagedToolCall(
+      { ...serverInfo(), version: undefined } as ServerInfo,
+      { name: 'ssh-upload', arguments: { localPath: ready.ref } },
+      invoke,
+      'alice',
+    );
+    expect(rejected.isError).toBe(true);
+    expect(rejected.content[0].text).toMatch(/not allowed/i);
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 
   it('disables staging on a replica without blocking normal calls', async () => {

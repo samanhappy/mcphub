@@ -14,6 +14,7 @@ const settings = (overrides: Partial<FileStagingSettings> = {}): FileStagingSett
   globalQuotaBytes: 4 * 1024 * 1024,
   ttlHours: 1,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 100,
   cleanupIntervalMinutes: 15,
   ...overrides,
@@ -51,6 +52,65 @@ describe('FileStagingStateStore', () => {
 
   afterEach(async () => {
     await fs.rm(path.dirname(rootDir), { recursive: true, force: true });
+  });
+
+  it('rolls back the ref and token when metadata writing fails', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalWriteMeta = (store as any).writeMeta.bind(store);
+    (store as any).writeMeta = async () => {
+      throw new Error('metadata write failed');
+    };
+
+    await expect(
+      store.createUploadLink({ ...input(rootDir), maxBytes: 4096, settings: settings() }, 60),
+    ).rejects.toThrow('metadata write failed');
+    (store as any).writeMeta = originalWriteMeta;
+
+    expect(await store.usageBytes(owner)).toBe(0);
+    expect(await store.cleanup(settings())).toBe(0);
+  });
+
+  it('rolls the persisted state back when persist fails after writing', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalPersist = (store as any).persist.bind(store);
+    let calls = 0;
+    (store as any).persist = async () => {
+      calls += 1;
+      await originalPersist();
+      if (calls === 1) throw new Error('persist failed after rename');
+    };
+
+    await expect(
+      store.createUploadLink({ ...input(rootDir), maxBytes: 4096, settings: settings() }, 60),
+    ).rejects.toThrow('persist failed after rename');
+    (store as any).persist = originalPersist;
+
+    // The rollback must have written the old state, not merely cleared memory.
+    const reloaded = new FileStagingStateStore({ rootDir, stateDir, disableLock: true });
+    await reloaded.init();
+    expect(await reloaded.usageBytes(owner)).toBe(0);
+  });
+
+  it('creates the reserved ref and upload token atomically', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const { record, token, expiresAt } = await store.createUploadLink(
+      { ...input(rootDir), maxBytes: 4096, settings: settings() },
+      60,
+    );
+    expect(record.state).toBe('reserved');
+    expect(record.reservedBytes).toBe(4096);
+    await expect(store.getUploadToken(token)).resolves.toMatchObject({
+      ref: record.ref,
+      kind: 'upload',
+      expiresAt,
+    });
+
+    // An immediate cleanup sees the token, so the quota stays reserved.
+    await store.cleanup(settings());
+    expect(await store.usageBytes(owner)).toBe(4096);
   });
 
   it('creates a ready ref and scopes it to its owner and server', async () => {
@@ -157,6 +217,53 @@ describe('FileStagingStateStore', () => {
     // Finalizing again is impossible: the lease is gone and the ref is ready.
     await expect(store.finalizeOutputs('call-1', [reserved.ref], settings())).rejects.toMatchObject({
       code: 'lease-conflict',
+    });
+  });
+
+  it('keeps a ready ref alive while a live download token exists', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const short = settings({ ttlHours: 0.001 });
+    const ready = await store.createReadyRef({ ...input(rootDir), settings: short }, Buffer.from('bytes'));
+    const token = await store.createDownloadToken(
+      ready.ref,
+      input(rootDir).principal.ownerHash,
+      300,
+    );
+    expect(token).toBeTruthy();
+
+    clock += 60_000;
+    await store.cleanup(short);
+    await expect(store.getOwnedRef(ready.ref, input(rootDir).principal.ownerHash)).resolves.toMatchObject({
+      state: 'ready',
+    });
+
+    clock += 400_000;
+    await store.cleanup(short);
+    await expect(store.getOwnedRef(ready.ref, input(rootDir).principal.ownerHash)).rejects.toMatchObject({
+      code: 'not-found',
+    });
+    await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  it('keeps a reservation held by an active output lease during cleanup', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    await store.acquireOutputLeases(owner, [{ ref: reserved.ref, leaseId: 'call-1' }], settings());
+    expect(await store.usageBytes(owner)).toBe(4096);
+
+    await store.cleanup(settings());
+
+    expect(await store.usageBytes(owner)).toBe(4096);
+    await expect(store.getOwnedRef(reserved.ref, owner)).resolves.toMatchObject({
+      state: 'reserved',
+      leaseId: 'call-1',
+      reservedBytes: 4096,
     });
   });
 
@@ -397,5 +504,161 @@ describe('FileStagingStateStore', () => {
     // timer, so without the ref check the token would still serve the content.
     clock += 2 * 3600_000;
     await expect(store.consumeDownloadToken(token)).rejects.toMatchObject({ code: 'expired' });
+  });
+
+  it('finalizes a reserved ref from a one-time upload token', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+
+    // Peeking must not consume the link; the browser may reload the page.
+    const peeked = await store.getUploadToken(token);
+    expect(peeked.ref).toBe(reserved.ref);
+    expect(peeked.kind).toBe('upload');
+
+    const record = await store.uploadWithToken(token, Buffer.from('browser bytes'), settings());
+    expect(record.state).toBe('ready');
+    expect(record.size).toBe(13);
+    expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const content = path.join(rootDir, ownerHash, record.id, 'content');
+    expect(await fs.readFile(content, 'utf8')).toBe('browser bytes');
+
+    // The link is single use, and the ref is no longer writable.
+    await expect(
+      store.uploadWithToken(token, Buffer.from('again'), settings()),
+    ).rejects.toMatchObject({ code: 'not-found' });
+    await expect(
+      store.createUploadToken(record.ref, ownerHash, 900),
+    ).rejects.toMatchObject({ code: 'not-ready' });
+  });
+
+  it('rejects an upload token that outlived its link', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(
+      reserved.ref,
+      input(rootDir).principal.ownerHash,
+      900,
+    );
+    clock += 901_000;
+    await expect(
+      store.uploadWithToken(token, Buffer.from('late'), settings()),
+    ).rejects.toMatchObject({ code: 'expired' });
+  });
+
+  it('rejects an upload larger than the configured limit and leaves the ref writable', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    await expect(
+      store.uploadWithToken(token, Buffer.alloc(5000), settings({ maxFileBytes: 4096 })),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+    // Nothing was consumed: a smaller retry still succeeds.
+    const record = await store.uploadWithToken(token, Buffer.from('ok'), settings());
+    expect(record.state).toBe('ready');
+  });
+
+  it('refuses a browser upload while a tool holds the output lease', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+    await store.acquireOutputLeases(
+      ownerHash,
+      [{ ref: reserved.ref, leaseId: 'call-1' }],
+      settings(),
+    );
+
+    await expect(
+      store.uploadWithToken(token, Buffer.from('browser'), settings()),
+    ).rejects.toMatchObject({ code: 'not-ready' });
+
+    // The link survives: once the lease is released the upload still works.
+    await store.releaseLeases('call-1');
+    const record = await store.uploadWithToken(token, Buffer.from('browser'), settings());
+    expect(record.state).toBe('ready');
+  });
+
+  it('reserves the announced ceiling against the quota when the link is minted', async () => {
+    const store = await createStore();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const first = await store.createReservedRef({ ...input(rootDir), maxBytes: 2000, settings: tight });
+    expect(first.reservedBytes).toBe(2000);
+    await expect(
+      store.createReservedRef({ ...input(rootDir), maxBytes: 2000, settings: tight }),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+  });
+
+  it('refuses a browser upload through a ref directory replaced by a symlink', async () => {
+    const store = await createStore();
+    const ownerHash = input(rootDir).principal.ownerHash;
+    const reserved = await store.createReservedRef(input(rootDir));
+    const token = await store.createUploadToken(reserved.ref, ownerHash, 900);
+
+    // A tool shares this process's UID and can replace its own ref directory.
+    const outside = path.join(path.dirname(rootDir), 'outside-upload');
+    await fs.mkdir(outside, { recursive: true });
+    const refDirectory = path.join(rootDir, ownerHash, reserved.id);
+    await fs.rename(refDirectory, path.join(path.dirname(rootDir), 'moved-upload'));
+    await fs.symlink(outside, refDirectory);
+
+    await expect(
+      store.uploadWithToken(token, Buffer.from('escape'), settings()),
+    ).rejects.toThrow(/symlinked path component/i);
+    await expect(fs.stat(path.join(outside, 'content'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('accepts an upload that exactly fills the announced ceiling', async () => {
+    const store = await createStore();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 2000,
+      settings: tight,
+    });
+    const token = await store.createUploadToken(reserved.ref, input(rootDir).principal.ownerHash, 900);
+
+    // The ref's own reservation must not be counted a second time.
+    const record = await store.uploadWithToken(token, Buffer.alloc(2000), tight);
+    expect(record.state).toBe('ready');
+    expect(record.size).toBe(2000);
+  });
+
+  it('rejects an upload one byte over the remaining budget', async () => {
+    const store = await createStore();
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 2000,
+      settings: tight,
+    });
+    const token = await store.createUploadToken(reserved.ref, input(rootDir).principal.ownerHash, 900);
+    await expect(
+      store.uploadWithToken(token, Buffer.alloc(3001), tight),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+  });
+
+  it('releases the reservation once an unused upload link is gone', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const tight = settings({ perUserQuotaBytes: 3000, maxFileBytes: 4096 });
+    await store.createReservedRef({ ...input(rootDir), maxBytes: 3000, settings: tight });
+    // A second link cannot fit while the first holds its ceiling.
+    await expect(
+      store.createReservedRef({ ...input(rootDir), maxBytes: 3000, settings: tight }),
+    ).rejects.toMatchObject({ code: 'quota-exceeded' });
+
+    // The link expires unused; the next sweep must return its quota.
+    clock += 901_000;
+    await store.cleanup(tight);
+    const again = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 3000,
+      settings: tight,
+    });
+    expect(again.state).toBe('reserved');
   });
 });

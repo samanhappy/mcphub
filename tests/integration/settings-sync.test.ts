@@ -543,6 +543,22 @@ test('keeps hiddenParams in per-tool server config', async () => {
   expect(servers.get('remote')?.tools).toEqual(tools);
 });
 
+test('normalizes declared tags and keeps the declaration fingerprint when only tags change (#1506)', async () => {
+  write({ mcpServers: { remote: { ...remote, tags: [' db ', 'DB', 'prod'] } } });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.tags).toEqual(['db', 'prod']);
+  const hash = servers.get('remote')?.settingsSyncHash;
+
+  write({ mcpServers: { remote: { ...remote, tags: ['db'] } } });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.tags).toEqual(['db']);
+  expect(servers.get('remote')?.settingsSyncHash).toBe(hash);
+
+  write({ mcpServers: { remote } });
+  await syncSettingsToDatabase();
+  expect(servers.get('remote')?.tags).toBeNull();
+});
+
 test('reports created, updated and unchanged entries and skips unchanged saves', async () => {
   const log = jest.spyOn(logger, 'log');
   write({ mcpServers: { remote }, groups: [{ name: 'team', servers: ['remote'] }] });

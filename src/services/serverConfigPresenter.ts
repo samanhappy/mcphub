@@ -20,6 +20,7 @@ export interface PresentedServer<T> {
 const SAFE_SERVER_CONFIG_FIELDS = [
   'name',
   'description',
+  'tags',
   'type',
   'visibility',
   'owner',

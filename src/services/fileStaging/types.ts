@@ -39,9 +39,29 @@ export interface StagingRefRecord {
   pinUntil?: string;
 }
 
+/** Shared shape for a one-time upload token; the timestamp type follows the store. */
+export const makeUploadTokenFields = <T extends string | Date>(
+  tokenHash: string,
+  ref: string,
+  ownerHash: string,
+  expiresAt: T,
+) => ({
+  tokenHash,
+  kind: 'upload' as const,
+  ref,
+  ownerHash,
+  version: 0,
+  contentHash: '',
+  expiresAt,
+});
+
 export interface StagingTokenRecord {
   tokenHash: string;
-  kind: 'download';
+  /**
+   * `download` links a ready ref to a one-time GET; `upload` links a reserved
+   * ref to a one-time browser POST that finalizes it (#1056 PR2).
+   */
+  kind: 'download' | 'upload';
   ref: string;
   ownerHash: string;
   version: number;
@@ -67,6 +87,8 @@ export interface CreateRefInput {
   serverName: string;
   filename?: string;
   allowZeroByte?: boolean;
+  /** Ceiling announced to the browser; enforced when the upload finalizes. */
+  maxBytes?: number;
   settings: FileStagingSettings;
 }
 

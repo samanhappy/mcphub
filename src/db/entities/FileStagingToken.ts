@@ -1,8 +1,10 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 /**
- * One-time download token for a ready staged file (#1056). Only the SHA-256 of
- * the token is stored; the raw token never reaches the database or logs.
+ * One-time capability token for a staged file (#1056): a download link for a
+ * ready reference, or a browser upload link for a reserved one. Only the
+ * SHA-256 of the token is stored; the raw token never reaches the database or
+ * logs.
  */
 @Entity({ name: 'file_staging_tokens' })
 export class FileStagingTokenEntity {

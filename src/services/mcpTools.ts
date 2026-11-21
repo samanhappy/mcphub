@@ -463,9 +463,17 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
         // Pins are an optimisation: failing to resolve them must not cost the meta-tools
         logger.warn(`Failed to list pinned tools for ${group}; returning meta-tools only`, error);
       }
-      return pinnedTools.length > 0
-        ? { tools: [...smartRoutingTools.tools, ...pinnedTools] }
-        : smartRoutingTools;
+      // A $smart route still needs the hub's virtual staging tools: the model
+      // calls them directly, and the meta-tools cannot reach a hub built-in.
+      // Pins go through the same filter, so a pinned upstream tool that shadows
+      // `mcphub_file_*` is dropped instead of listed beside the hub definition.
+      const routeTools = await withStagingTools(group, pinnedTools, extra);
+      const injected = routeTools.some((tool) => isReservedStagingName(tool.name));
+      // Nothing to add: return the generator's own object, so callers that
+      // compare the response by identity keep working.
+      if (pinnedTools.length === 0 && !injected) return smartRoutingTools;
+      const tools = [...smartRoutingTools.tools, ...routeTools];
+      return injected ? { tools, stagingTools: true } : { tools };
     }
 
     const { filteredServerInfos, serverConfigsByName } =
@@ -484,6 +492,55 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     return tools.some((tool) => isReservedStagingName(tool.name))
       ? { tools, stagingTools: true }
       : { tools };
+  };
+
+  /**
+   * Add the hub built-ins to a `search_tools` answer. The model must be able to
+   * find them by name through discovery, not only see them in `tools/list`.
+   */
+  type SearchToolsResult = {
+    content: Array<{ type: string; text: string }>;
+    [key: string]: unknown;
+  };
+
+  const appendStagingToolsToSearchResult = <T extends SearchToolsResult>(
+    result: T,
+    stagingTools: Tool[],
+  ): T => {
+    const [block] = result?.content ?? [];
+    if (!block || block.type !== 'text') return result;
+    let parsed: {
+      tools?: Array<{ name?: string }>;
+      metadata?: Record<string, unknown>;
+      [key: string]: unknown;
+    };
+    try {
+      parsed = JSON.parse(block.text);
+    } catch {
+      return result;
+    }
+    const listed = Array.isArray(parsed.tools) ? parsed.tools : [];
+    const names = new Set(listed.map((tool) => tool.name));
+    const added = stagingTools.filter((tool) => !names.has(tool.name));
+    if (added.length === 0) return result;
+    const tools = [...listed, ...added];
+    return {
+      ...result,
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            ...parsed,
+            tools,
+            metadata: {
+              ...(parsed.metadata ?? {}),
+              totalResults: tools.length,
+              stagingTools: true,
+            },
+          }),
+        },
+      ],
+    };
   };
 
   const handleCallToolRequestImpl = async (request: any, extra: any) => {
@@ -566,7 +623,7 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     };
 
     const reserveHostedIfNeeded = async (serverName: string, toolName: string) => {
-      const policy = await getToolPolicy(group);
+      const policy = await getToolPolicy(group, extra?.policyGroupId);
       const decision = policy.authorize(serverName, toolName);
       policyAudit = { ...decision, serverId: policy.serverId(serverName), groupId: policy.groupId };
       logger.log('Tool policy decision', {
@@ -616,7 +673,12 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       // Special handling for smart routing tools
       if (!upstreamOwnsMetaName && request.params.name === 'search_tools') {
         const { query, limit = 10 } = request.params.arguments || {};
-        return await handleSearchToolsRequest(query, limit, sessionId, group);
+        const result = await handleSearchToolsRequest(query, limit, sessionId, group);
+        // Hub built-ins are not in the vector index, so a $smart client would
+        // never discover the staging tools from search alone (#1056 PR3).
+        const stagingTools = await withStagingTools(group, [], extra);
+        if (stagingTools.length === 0) return result;
+        return appendStagingToolsToSearchResult(result, stagingTools);
       }
 
       // Special handling for describe_tool (progressive disclosure mode)

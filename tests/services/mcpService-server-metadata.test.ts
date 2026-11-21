@@ -184,6 +184,17 @@ describe('mcpService initialize metadata', () => {
     expect(server.config?.id).toBe('persistent-id');
   });
 
+  it('exposes server tags on list entries and omits an empty tag list (#1506)', async () => {
+    mockFindAll.mockResolvedValue([
+      { name: 'tagged', type: 'stdio', command: 'node', enabled: false, tags: ['db', 'prod'] },
+      { name: 'untagged', type: 'stdio', command: 'node', enabled: false, tags: [] },
+    ]);
+    const servers = await getServersInfo();
+    const byName = Object.fromEntries(servers.map((server) => [server.name, server]));
+    expect(byName.tagged.config?.tags).toEqual(['db', 'prod']);
+    expect(byName.untagged.config).not.toHaveProperty('tags');
+  });
+
   it('does not invent a protocol version before initialization', async () => {
     mockFindAll.mockResolvedValue([
       { name: 'waiting', type: 'stdio', command: 'node', enabled: false },

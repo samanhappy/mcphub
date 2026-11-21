@@ -36,6 +36,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useSettingsData } from '@/hooks/useSettingsData';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageServer } from '@/utils/serverPermissions';
+import { getServerTagList } from '@/utils/serverTags';
 import {
   getServerVisibilityDisplay,
   getServerVisibilityOptions,
@@ -455,7 +456,7 @@ const ServerCard = ({
   })();
 
   const serverEndpoint = `${baseUrl}/mcp/${server.name}`;
-  const serverOpenApiEndpoint = `${baseUrl}/api/${server.name}`;
+  const serverOpenApiEndpoint = `${baseUrl}/openapi/${encodeURIComponent(server.name)}`;
 
   const copyEndpoint = async (value: string) => {
     const ok = await copyText(value);
@@ -630,6 +631,15 @@ const ServerCard = ({
                   title={server.config.description}
                 >
                   {server.config.description}
+                </div>
+              )}
+              {getServerTagList(server).length > 0 && (
+                <div className="flex flex-wrap gap-1" style={{ marginTop: 3 }}>
+                  {getServerTagList(server).map((tag) => (
+                    <span key={tag} className="hub-tag text-[11px]">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
@@ -1001,7 +1011,7 @@ const ServerCard = ({
                   </button>
                 </div>
                 <div className="hub-endpoint" style={{ height: 26 }}>
-                  <div className="hub-endpoint-label">/api/</div>
+                  <div className="hub-endpoint-label">/openapi/</div>
                   <div
                     className="hub-endpoint-url"
                     title={serverOpenApiEndpoint}

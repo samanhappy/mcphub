@@ -7,7 +7,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiResponse, BearerKey } from '@/types';
+import { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
@@ -132,6 +132,7 @@ interface SystemSettings {
     install?: InstallConfig & { skillImportProxy?: string };
     smartRouting?: SmartRoutingConfig;
     toolResultCompression?: ToolResultCompressionConfig;
+    fileStaging?: FileStagingConfig;
     mcpRouter?: MCPRouterConfig;
     normalizeToolNames?: boolean;
     nameSeparator?: string;
@@ -164,6 +165,7 @@ interface SettingsContextValue {
   installConfig: InstallConfig;
   smartRoutingConfig: SmartRoutingConfig;
   toolResultCompressionConfig: ToolResultCompressionConfig;
+  fileStagingConfig: FileStagingConfig;
   mcpRouterConfig: MCPRouterConfig;
   oauthServerConfig: OAuthServerConfig;
   allowRegistration: boolean;
@@ -200,6 +202,9 @@ interface SettingsContextValue {
   ) => Promise<boolean | undefined>;
   updateToolResultCompressionConfigBatch: (
     updates: Partial<ToolResultCompressionConfig>,
+  ) => Promise<boolean | undefined>;
+  updateFileStagingConfigBatch: (
+    updates: Partial<FileStagingConfig>,
   ) => Promise<boolean | undefined>;
   updateRoutingConfigBatch: (updates: Partial<RoutingConfig>) => Promise<boolean | undefined>;
   updateMCPRouterConfig: (key: keyof MCPRouterConfig, value: any) => Promise<boolean | undefined>;
@@ -416,6 +421,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       strategy: 'auto',
     });
 
+  const [fileStagingConfig, setFileStagingConfig] = useState<FileStagingConfig>({
+    enabled: false,
+    maxFileBytes: 100 * 1024 * 1024,
+    inlineMaxBytes: 1024 * 1024,
+    perUserQuotaBytes: 1024 * 1024 * 1024,
+    globalQuotaBytes: 10 * 1024 * 1024 * 1024,
+    ttlHours: 24,
+    downloadTtlSeconds: 300,
+    uploadTtlSeconds: 900,
+    maxFilesPerUser: 100,
+    cleanupIntervalMinutes: 15,
+  });
+
   const [mcpRouterConfig, setMCPRouterConfig] = useState<MCPRouterConfig>({
     apiKey: '',
     referer: 'https://www.mcphub.app',
@@ -535,6 +553,21 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           strategy: ['auto', 'json', 'log', 'search', 'diff', 'text'].includes(strategy)
             ? strategy
             : 'auto',
+        });
+      }
+      if (data.success && data.data?.systemConfig?.fileStaging) {
+        const fileStaging = data.data.systemConfig.fileStaging;
+        setFileStagingConfig({
+          enabled: fileStaging.enabled ?? false,
+          maxFileBytes: fileStaging.maxFileBytes || 100 * 1024 * 1024,
+          inlineMaxBytes: fileStaging.inlineMaxBytes || 1024 * 1024,
+          perUserQuotaBytes: fileStaging.perUserQuotaBytes || 1024 * 1024 * 1024,
+          globalQuotaBytes: fileStaging.globalQuotaBytes || 10 * 1024 * 1024 * 1024,
+          ttlHours: fileStaging.ttlHours || 24,
+          downloadTtlSeconds: fileStaging.downloadTtlSeconds || 300,
+          uploadTtlSeconds: fileStaging.uploadTtlSeconds || 900,
+          maxFilesPerUser: fileStaging.maxFilesPerUser || 100,
+          cleanupIntervalMinutes: fileStaging.cleanupIntervalMinutes || 15,
         });
       }
       if (data.success && data.data?.systemConfig?.mcpRouter) {
@@ -824,6 +857,43 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         error instanceof Error
           ? error.message
           : 'Failed to update tool result compression config',
+      );
+      showToast(t('errors.failedToUpdateSettings'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Batch update file staging configuration
+  const updateFileStagingConfigBatch = async (updates: Partial<FileStagingConfig>) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiPut('/system-config', {
+        fileStaging: updates,
+      });
+
+      if (data.success) {
+        setFileStagingConfig({
+          ...fileStagingConfig,
+          ...updates,
+        });
+        showToast(t('settings.systemConfigUpdated'));
+        return true;
+      } else {
+        setError(data.error || 'Failed to update file staging config');
+        showToast(data.error || t('errors.failedToUpdateSettings'));
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to batch update file staging config', {
+        updates,
+        error,
+      });
+      setError(
+        error instanceof Error ? error.message : 'Failed to update file staging config',
       );
       showToast(t('errors.failedToUpdateSettings'));
       return false;
@@ -1341,6 +1411,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     installConfig,
     smartRoutingConfig,
     toolResultCompressionConfig,
+    fileStagingConfig,
     mcpRouterConfig,
     oauthServerConfig,
     allowRegistration,
@@ -1368,6 +1439,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateSmartRoutingConfigBatch,
     updateToolResultCompressionConfig,
     updateToolResultCompressionConfigBatch,
+    updateFileStagingConfigBatch,
     updateRoutingConfigBatch,
     updateMCPRouterConfig,
     updateMCPRouterConfigBatch,

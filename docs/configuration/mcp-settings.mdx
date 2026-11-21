@@ -76,6 +76,7 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `sharedWithUsers` | string[] | no | Local usernames allowed to discover and call a server whose `visibility` is `group`. Ignored for other visibility values. |
 | `sharedWithUserGroups` | string[] | no | Case-sensitive user-group names whose members can use this server when `visibility` is `group`. Administrators set `userGroups` on users through the user edit form or `PUT /api/users/:username`. Existing user-key and OAuth requests read current memberships. |
 | `description` | string | no | Free-form description displayed in the dashboard. |
+| `tags` | string[] | no | Labels for organizing the dashboard server list. Values are trimmed, compared case-insensitively, de-duplicated, and limited to 64 characters each. Tags are metadata only: they do not affect connections, MCP endpoints, or Groups. With database schema synchronization disabled, apply `docs/migrations/0009-server-tags.sql` before upgrading. |
 | `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
 | `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |
 | `oauth` | object | no | Upstream OAuth client settings (used when the upstream server requires OAuth). |

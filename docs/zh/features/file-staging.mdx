@@ -153,14 +153,36 @@ mcphub_file_download { ref: "mcpfile://8a2e..." }
 
 客户端看到的工具名带有服务器名和配置的名称分隔符（服务器 `ssh` 下是 `ssh-upload`）；`tools` 的键是不带前缀的工具名（`upload`、`download`）。
 
+### 浏览器上传：让用户从自己的电脑发送文件
+
+模型读不到用户的磁盘，因此只存在于用户电脑上的文件需要一个用户能打开的链接：
+
+```text
+mcphub_file_request_upload { filename: "report.pdf", size_hint: 2048000 }
+  -> { "ref": "mcpfile://c4d1...", "state": "reserved",
+       "uploadUrl": "https://hub.example/staging/upload/<token>",
+       "uploadToken": "<token>", "expiresAt": "...", "maxBytes": 2048000 }
+
+# 用户打开 uploadUrl，选择文件并点击上传
+# 页面会显示 mcpfile:// 引用，模型轮询：
+
+mcphub_file_status { upload_token: "<token>" }
+  -> { "ref": "mcpfile://c4d1...", "state": "ready", "size": 1834201, "sha256": "..." }
+
+ssh-upload { localPath: "mcpfile://c4d1...", remotePath: "/srv/in/report.pdf" }
+```
+
+上传页面由 hub 提供，不需要 Dashboard 会话：URL 中的 token 就是全部凭据。它只能使用一次，在 `uploadTtlSeconds` 后过期，并且只接受为其对应 `reserved` 引用上传的内容。页面不加载任何第三方资源，运行在基于 nonce 的 CSP 下。
+
 ## 内置工具
 
-当调用者能解析到真实用户时，对于至少暴露一个已启用暂存服务器的路由，hub 会注入三个虚拟工具：
+当调用者能解析到真实用户时，对于至少暴露一个已启用暂存服务器的路由，hub 会注入四个虚拟工具：
 
 | 工具 | 参数 | 返回 |
 | --- | --- | --- |
 | `mcphub_file_upload` | `filename`（必填）、`content_base64`、`server`、`allow_zero_byte` | 带内容时返回 `{ ref, state: "ready", size }`；不带内容时返回 `{ ref, state: "reserved" }`。 |
-| `mcphub_file_status` | `ref`（必填） | `{ ref, state, size, sha256, expiresAt }`（文件就绪后才有 `sha256`）。 |
+| `mcphub_file_request_upload` | `filename`（必填）、`size_hint`、`server` | `{ ref, state: "reserved", uploadUrl, uploadToken, expiresAt, maxBytes }` |
+| `mcphub_file_status` | `ref` 或 `upload_token` | `{ ref, state, size, sha256, expiresAt }`（文件就绪后才有 `sha256`）。 |
 | `mcphub_file_download` | `ref`（必填） | 就绪文件返回 `{ ref, downloadUrl, expiresAt }`。 |
 
 - `filename` 只用于展示，永远不是路径。目录部分、NUL、CR、LF、引号和反斜杠会被去掉，名称截断到 255 个 UTF-8 字节。
@@ -169,7 +191,9 @@ mcphub_file_download { ref: "mcpfile://8a2e..." }
 - `allow_zero_byte`（默认 `false`）允许零字节的工具输出变成就绪。它只对输出引用生效。
 - `status` 和 `download` 只能看到调用者拥有的引用；他人的或缺失的引用返回相同的未找到错误。
 - `download` 要求引用处于 `ready` 状态；`reserved`、`failed` 或已过期的引用会被拒绝。返回的链接一次性且短期有效；重试需要重新调用 `mcphub_file_download`。
-- 这些工具只在存在暂存目标的路由中列出，也不会通过 `$smart` 路由暴露。
+- `request_upload` 会创建一个 `reserved` 引用和一次性浏览器上传链接；`size_hint` 设定该链接的上限，未提供时上限为 `maxFileBytes`，并按该值在用户/全局配额中预留，直到链接被消费或 cleanup 释放。Hub 会在读取请求体前检查声明的 `Content-Length`，并在上传落盘时复核实际大小。
+- `status` 既接受 `mcpfile://` 引用，也接受 `request_upload` 返回的 `uploadToken`，模型无需知道引用即可轮询浏览器上传。
+- 这些工具在存在暂存目标的路由中都会列出，包括 `$smart` 路由；在 `$smart` 路由上按名称直接调用，`call_tool` 仍会拒绝它们，`describe_tool` 会用静态定义回答。
 
 ### 保留命名空间
 
@@ -221,6 +245,7 @@ ${basePath}/staging/download/:token
 | `globalQuotaBytes` | 10 GiB | 整个 hub 的配额。 |
 | `ttlHours` | 24 | 引用及其内容的生命周期，范围 1 到 8760 小时。 |
 | `downloadTtlSeconds` | 300 | 下载链接有效期，范围 10 到 3600 秒。 |
+| `uploadTtlSeconds` | 900 | 浏览器上传链接有效期，范围 60 到 3600 秒。 |
 | `maxFilesPerUser` | 100 | 每个用户同时存在的引用上限。 |
 | `cleanupIntervalMinutes` | 15 | 过期引用清理周期，范围 1 到 1440 分钟。 |
 
@@ -251,4 +276,4 @@ ${basePath}/staging/download/:token
 
 ## 尚未包含
 
-暂存目前不提供浏览器上传页面、S3/MinIO 或多节点存储、响应路径自动识别或自动注入 `downloadUrl`、虚拟工具的 `$smart` 暴露、MCP Apps 文件 API、已签发引用的撤销路径、非 SSH 适配器，以及操作系统级隔离。直接调用、嵌套调用与错误记录都会把引用排除在活动记录之外；经 hub 不检查的通道（例如资源读取）传到上游工具的内容不在该保证范围内。本阶段也没有用于暂存的 Dashboard 编辑器；配置通过上述 PATCH 路由完成。
+暂存目前不提供 S3/MinIO 或多节点存储、响应路径自动识别或自动注入 `downloadUrl`、MCP Apps 文件 API、已签发引用的撤销路径、非 SSH 适配器，以及操作系统级隔离。直接调用、嵌套调用与错误记录都会把引用排除在活动记录之外；经 hub 不检查的通道（例如资源读取）传到上游工具的内容不在该保证范围内。Dashboard 的 **设置 → 文件暂存** 可编辑全局设置；服务器级暂存与按工具开启仍需使用上述 PATCH 路由。

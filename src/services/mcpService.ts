@@ -212,6 +212,7 @@ import {
   UpstreamRequestError,
 } from '../utils/upstreamError.js';
 import { logger } from '../utils/logger.js';
+import { stripNullishDeep } from '../utils/connectionRelevantConfig.js';
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -2882,11 +2883,20 @@ export const reconcileReplicaServers = async (
     validateMaxBufferSize(resolved.options?.maxBufferSize);
     expanded.set(declaration.name, resolved);
   }
+  const comparable = (config: ServerConfig | undefined) => {
+    if (!config) return config;
+    const { tags: _tags, ...rest } = config;
+    return stripNullishDeep(rest);
+  };
   const changed = serverInfos.filter(
     (info) =>
-      !isDeepStrictEqual(info.config, expanded.get(info.name)) ||
+      !isDeepStrictEqual(comparable(info.config), comparable(expanded.get(info.name))) ||
       (info.enabled !== false) !== (expanded.get(info.name)?.enabled !== false),
   );
+  for (const info of serverInfos) {
+    const next = expanded.get(info.name);
+    if (next && !changed.includes(info)) info.config = next;
+  }
   for (const info of changed) closeServer(info.name);
   serverInfos = serverInfos.filter((info) => !changed.includes(info));
   await initializeClientsFromSettings(false, undefined, { declarations, preserveExisting: true });
@@ -2909,6 +2919,7 @@ export const getServersInfo = async (
   page?: number,
   limit?: number,
   user?: any,
+  serverNames?: ReadonlySet<string>,
 ): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
   const dataService = getDataService();
   const isNonAdminUser = Boolean(user && !user.isAdmin);
@@ -2971,8 +2982,11 @@ export const getServersInfo = async (
 
   const principal = (user ||
     UserContextService.getInstance().getCurrentUser()) as RequestPrincipal | null;
+  const scopedInfos = serverNames
+    ? filterServerInfos.filter((info) => serverNames.has(info.name))
+    : filterServerInfos;
   const presentedInfos = await Promise.all(
-    filterServerInfos.map(async (info) => {
+    scopedInfos.map(async (info) => {
       if (
         !hasPersonalAuthentication(info.config) ||
         info.enabled === false ||
@@ -3118,7 +3132,10 @@ export const getServersInfo = async (
                 }
               : undefined,
           config:
-            resolvedType || serverConfig?.description || serverConfig?.command
+            resolvedType ||
+            serverConfig?.description ||
+            serverConfig?.tags?.length ||
+            serverConfig?.command
               ? {
                   ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
@@ -3129,6 +3146,7 @@ export const getServersInfo = async (
                     ? { oauth: { identityMode: 'personal' as const } }
                     : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
+                  ...(serverConfig?.tags?.length ? { tags: [...serverConfig.tags] } : {}),
                   // Expose command so the frontend can determine if reinstall is
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
@@ -3766,7 +3784,25 @@ const resolveStagingTargets = async (group: string | undefined): Promise<Staging
       );
       continue;
     }
-    if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
+    // A credential-template server never connects globally, so its
+    // `ServerInfo.version` is undefined until a per-user runtime exists. The
+    // config already pins the exact package, and the actual staged call is
+    // checked again against the connected runtime in dispatchStagedToolCall;
+    // rejecting here would make shared staging unusable before the first call.
+    // `hasCredentialTemplate` intentionally also covers private per-user
+    // credential servers: they have the same missing global runtime.
+    // Other servers keep the original fail-closed behavior until they report.
+    if (serverInfo.version === undefined) {
+      if (!hasCredentialTemplate(config)) {
+        logger.warn(
+          `[staging] ${serverInfo.name} has not reported a version yet; only credential-template servers resolve before their runtime connects`,
+        );
+        continue;
+      }
+      logger.debug(
+        `[staging] ${serverInfo.name} has no version before its per-user runtime; deferring the pinned-version check to the staged call`,
+      );
+    } else if (!serverVersionMatchesPinnedProfile(serverInfo.version)) {
       logger.warn(
         `[staging] ${serverInfo.name} reports version ${serverInfo.version}; expected the pinned staging profile`,
       );
@@ -3872,6 +3908,23 @@ const withStagingTools = async (
   return [...injected, ...tools.filter((tool) => !isReservedStagingName(tool.name))];
 };
 
+/**
+ * A remote client cannot resolve the hub's localhost, so staging links require
+ * the configured install base URL (design §8.1). The dashboard default is
+ * localhost:3000, which no remote MCP client can reach.
+ */
+const requireStagingBaseUrl = async (kind: 'Downloads' | 'Uploads'): Promise<string> => {
+  const systemConfig = await getSystemConfigDao().get();
+  const baseUrl = resolveInstallBaseUrl(systemConfig)?.replace(/\/$/, '');
+  if (!baseUrl || baseUrl === DEFAULT_INSTALL_BASE_URL) {
+    throw new StagingError(
+      'invalid-ref',
+      `${kind} require a configured install.baseUrl (the localhost default is not reachable by clients)`,
+    );
+  }
+  return baseUrl;
+};
+
 const handleHubStagingCall = async (request: any, extra: any) => {
   const name = request?.params?.name;
   if (!isStagingToolName(name)) {
@@ -3886,14 +3939,24 @@ const handleHubStagingCall = async (request: any, extra: any) => {
   }
   const group = getMcpRequestGroup(extra);
   const username = stagingAskUsername(extra);
+  let uploadBaseUrl: string | undefined;
   try {
     const principal = await resolveStagingPrincipal(username);
     const targets = await resolveStagingTargets(group);
-    if (name === 'mcphub_file_upload' && targets.length === 0) {
+    if (
+      (name === 'mcphub_file_upload' || name === 'mcphub_file_request_upload') &&
+      targets.length === 0
+    ) {
       return {
         isError: true,
         content: [{ type: 'text', text: 'This route has no staging-enabled stdio server' }],
       };
+    }
+    // Resolve the public base URL before minting: fail fast instead of handing
+    // back a link that cannot be reached. A tokenless reservation would be
+    // released at the next cleanup, but the caller would still get a dead link.
+    if (name === 'mcphub_file_request_upload') {
+      uploadBaseUrl = await requireStagingBaseUrl('Uploads');
     }
     const store = await getStagingStateStore();
     // Activity logging is deliberately bypassed (no base64/ref payloads); this
@@ -3915,26 +3978,27 @@ const handleHubStagingCall = async (request: any, extra: any) => {
       settings,
       store,
       createDownloadUrl: async (ref) => {
+        // Resolve the URL before minting the token: a config read failure must
+        // not leave a live download token holding the ref.
+        const baseUrl = await requireStagingBaseUrl('Downloads');
         const token = await store.createDownloadToken(
           ref,
           principal.ownerHash,
           settings.downloadTtlSeconds,
         );
-        const systemConfig = await getSystemConfigDao().get();
-        // A remote client cannot resolve the hub's localhost: staging links
-        // require the configured install base URL (design §8.1).
-        const baseUrl = resolveInstallBaseUrl(systemConfig);
-        // The dashboard default is localhost:3000, which no remote MCP client
-        // can resolve; minting a link on it fails later and silently.
-        if (!baseUrl || baseUrl.replace(/\/$/, '') === DEFAULT_INSTALL_BASE_URL) {
-          throw new StagingError(
-            'invalid-ref',
-            'Downloads require a configured install.baseUrl (the localhost default is not reachable by clients)',
-          );
-        }
         return {
-          downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
+          downloadUrl: `${baseUrl}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),
+        };
+      },
+      createUploadUrl: async (token) => {
+        // The token is the only authority a browser needs, so it never has to
+        // hold a hub session. Reuse the pre-mint base URL: re-reading config
+        // here could fail after the link reserved quota.
+        const baseUrl = uploadBaseUrl ?? (await requireStagingBaseUrl('Uploads'));
+        return {
+          uploadUrl: `${baseUrl}${config.basePath}/staging/upload/${token}`,
+          expiresAt: new Date(Date.now() + settings.uploadTtlSeconds * 1000).toISOString(),
         };
       },
     });
@@ -4609,9 +4673,10 @@ const withToolPolicy = async (
   request: any,
   extra: any,
   invocation: boolean,
+  policyGroupId?: string,
 ) => {
   const group = getMcpRequestGroup(extra);
-  const policy = await getToolPolicy(group);
+  const policy = await getToolPolicy(group, policyGroupId);
   if (!policy.active) return handler(request, extra);
   const { filteredServerInfos: candidates, serverConfigsByName } =
     await getFilteredServerInfosForGroup(getGroupLookupName(group));
@@ -4780,11 +4845,16 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   });
   return context.runWithContext(() => withRequestServers(visible, action), user ?? null);
 };
-const handleOriginalToolCallRequest = (request: any, extra: any) => {
-  // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
-  // past the outer dispatch, and the hub namespace is never reachable from a
-  // non-MCP caller (the OpenAPI controller rejects it as well).
-  if (isReservedStagingName(request?.params?.arguments?.toolName)) {
+const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?: string) => {
+  // A nested `call_tool` must not smuggle a reserved hub name past the outer
+  // dispatch, and the hub namespace is never reachable from a non-MCP caller
+  // (the OpenAPI controller rejects it as well). `describe_tool` is the one
+  // exception: describing a hub built-in is how a $smart client learns its
+  // schema, and it never executes anything.
+  if (
+    isReservedStagingName(request?.params?.arguments?.toolName) &&
+    request?.params?.name !== 'describe_tool'
+  ) {
     return Promise.resolve({
       isError: true,
       content: [{ type: 'text', text: 'Hub built-in tools cannot be called through call_tool' }],
@@ -4796,15 +4866,23 @@ const handleOriginalToolCallRequest = (request: any, extra: any) => {
   return isReservedStagingName(request?.params?.name)
     ? handleHubStagingCall(request, extra)
     : observeToolCall(() =>
-        withReplicaServerScope(() => withToolPolicy(callToolWithPrincipal, request, extra, true)),
+        withReplicaServerScope(() =>
+          withToolPolicy(
+            callToolWithPrincipal,
+            request,
+            policyGroupId === undefined ? extra : { ...extra, policyGroupId },
+            true,
+            policyGroupId,
+          ),
+        ),
       );
 };
-export const handleCallToolRequest = async (request: any, extra: any) => {
+export const handleCallToolRequest = async (request: any, extra: any, policyGroupId?: string) => {
   if (
     isReservedStagingName(request?.params?.name) ||
     isReservedStagingName(request?.params?.arguments?.toolName)
   ) {
-    return handleOriginalToolCallRequest(request, extra);
+    return handleOriginalToolCallRequest(request, extra, policyGroupId);
   }
   if ((await getSystemConfigDao().get())?.normalizeToolNames === true && !extra?.server) {
     // Resolve through the caller's current catalog; never retain aliases across principals.
@@ -4815,7 +4893,7 @@ export const handleCallToolRequest = async (request: any, extra: any) => {
       request = { ...request, params: { ...request.params, name: original } };
     }
   }
-  return handleOriginalToolCallRequest(request, extra);
+  return handleOriginalToolCallRequest(request, extra, policyGroupId);
 };
 
 export const handleGetPromptRequest = withPrincipalServers(

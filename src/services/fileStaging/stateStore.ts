@@ -22,7 +22,15 @@ import {
   removeIfExists,
   writeFileAtomic,
 } from './paths.js';
-import { assertLeaseQuota, assertRefsLeasable, decideFinalize } from './policy.js';
+import {
+  assertLeaseQuota,
+  assertMintReservation,
+  assertRefsLeasable,
+  decideFinalize,
+  decideUpload,
+  partitionLiveTokens,
+  shouldReleaseReservation,
+} from './policy.js';
 import { acquireStagingProcessLock } from './processLock.js';
 import {
   type CreateRefInput,
@@ -31,6 +39,7 @@ import {
   type StagingRefRecord,
   type StagingStateDocument,
   type StagingTokenRecord,
+  makeUploadTokenFields,
   StagingError,
 } from './types.js';
 
@@ -66,6 +75,25 @@ export interface StagingStateStore {
   unpinRef(ref: string): Promise<void>;
   createDownloadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
   consumeDownloadToken(token: string): Promise<StagingTokenRecord>;
+  /** Atomically create a reserved ref and its one-time upload link (#1056 PR2). */
+  createUploadLink(
+    input: CreateRefInput,
+    ttlSeconds: number,
+  ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }>;
+  /**
+   * Lower-level primitive for an existing reserved ref (tests/repair). The
+   * production upload path uses `createUploadLink`, which creates the ref and
+   * token atomically.
+   */
+  createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
+  /** Peek an upload token without consuming it, so a model can poll status. */
+  getUploadToken(token: string): Promise<StagingTokenRecord>;
+  /** Consume the token and finalize the reserved ref with the uploaded bytes. */
+  uploadWithToken(
+    token: string,
+    data: Buffer,
+    settings: FileStagingSettings,
+  ): Promise<StagingRefRecord>;
   cleanup(settings: FileStagingSettings): Promise<number>;
   usageBytes(ownerHash?: string): Promise<number>;
 }
@@ -268,6 +296,7 @@ export class FileStagingStateStore implements StagingStateStore {
       size: 0,
       version: 0,
       allowZeroByte: input.allowZeroByte === true,
+      reservedBytes: input.maxBytes,
       createdAt,
       expiresAt,
       pinCount: 0,
@@ -339,18 +368,77 @@ export class FileStagingStateStore implements StagingStateStore {
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
     this.assertInit();
     return this.exclusive(async () => {
-      this.assertFileCount(input.principal.ownerHash, 1, input.settings);
-      await assertDiskCapacity(this.rootDir, input.settings.maxFileBytes);
-      const record = await this.createRecord(input, 'reserved');
-      const dir = refDir(this.rootDir, record.ownerHash, record.id);
-      await ensureDirectory(dir);
-      const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
-      await handle.close();
-      this.state.refs[record.ref] = record;
+      const record = await this.createReservedRecord(input);
       await this.writeMeta(record);
       await this.persist();
       return record;
     });
+  }
+
+  async createUploadLink(
+    input: CreateRefInput,
+    ttlSeconds: number,
+  ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = await this.createReservedRecord(input);
+      const token = randomBytes(32).toString('base64url');
+      const tokenHash = sha256(token);
+      const expiresAt = new Date(this.now() + ttlSeconds * 1000).toISOString();
+      this.state.tokens[tokenHash] = makeUploadTokenFields(
+        tokenHash,
+        record.ref,
+        record.ownerHash,
+        expiresAt,
+      );
+      try {
+        await this.writeMeta(record);
+        await this.persist();
+      } catch (error) {
+        // The pair was not committed; drop both halves. The first persist may
+        // have renamed the new state before failing, so write the rolled-back
+        // state back before removing the directory. If that rollback fails,
+        // keep the directory: a persisted ref with its directory is recoverable,
+        // a persisted ref without it is the resurrection bug.
+        delete this.state.refs[record.ref];
+        delete this.state.tokens[tokenHash];
+        let rolledBack = false;
+        try {
+          await this.persist();
+          rolledBack = true;
+        } catch {
+          // Leave the directory for cleanup if the rollback could not be written.
+        }
+        if (rolledBack) {
+          await removeIfExists(refDir(this.rootDir, record.ownerHash, record.id));
+        }
+        throw error;
+      }
+      return { record, token, expiresAt };
+    });
+  }
+
+  private async createReservedRecord(input: CreateRefInput): Promise<StagingRefRecord> {
+    // A reserved destination with an announced ceiling holds that much quota
+    // until it is finalized or swept, so links cannot be minted past budget.
+    if (input.maxBytes !== undefined) {
+      assertMintReservation(
+        this.quotaUsage(input.principal.ownerHash),
+        this.quotaUsage(),
+        input.maxBytes,
+        input.settings,
+      );
+    }
+    this.assertFileCount(input.principal.ownerHash, 1, input.settings);
+    // The file this reserved destination may receive is bounded by its ceiling.
+    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
+    const record = await this.createRecord(input, 'reserved');
+    const dir = refDir(this.rootDir, record.ownerHash, record.id);
+    await ensureDirectory(dir);
+    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
+    await handle.close();
+    this.state.refs[record.ref] = record;
+    return record;
   }
 
   async getOwnedRef(ref: string, ownerHash: string): Promise<StagingRefRecord> {
@@ -576,12 +664,110 @@ export class FileStagingStateStore implements StagingStateStore {
     });
   }
 
+  /** Lower-level primitive; the production path is `createUploadLink`. */
+  async createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = this.requireRef(ref);
+      if (record.ownerHash !== ownerHash) {
+        throw new StagingError('not-found', 'Staging reference not found');
+      }
+      if (record.state !== 'reserved') {
+        throw new StagingError('not-ready', 'Upload destination is not writable');
+      }
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
+      const token = randomBytes(32).toString('base64url');
+      const tokenHash = sha256(token);
+      this.state.tokens[tokenHash] = makeUploadTokenFields(
+        tokenHash,
+        record.ref,
+        ownerHash,
+        new Date(this.now() + ttlSeconds * 1000).toISOString(),
+      );
+      await this.persist();
+      return token;
+    });
+  }
+
+  async getUploadToken(token: string): Promise<StagingTokenRecord> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = this.state.tokens[sha256(token)];
+      if (!record || record.kind !== 'upload') {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (record.expiresAt <= new Date(this.now()).toISOString()) {
+        throw new StagingError('expired', 'Upload link has expired');
+      }
+      return record;
+    });
+  }
+
+  async uploadWithToken(
+    token: string,
+    data: Buffer,
+    settings: FileStagingSettings,
+  ): Promise<StagingRefRecord> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const nowIso = new Date(this.now()).toISOString();
+      const tokenRecord = this.state.tokens[sha256(token)];
+      if (!tokenRecord || tokenRecord.kind !== 'upload' || tokenRecord.usedAt) {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (tokenRecord.expiresAt <= nowIso) {
+        throw new StagingError('expired', 'Upload link has expired');
+      }
+      const record = this.state.refs[tokenRecord.ref];
+      if (!record || record.ownerHash !== tokenRecord.ownerHash) {
+        throw new StagingError('not-found', 'Upload link is not valid');
+      }
+      if (record.expiresAt <= nowIso) {
+        throw new StagingError('expired', 'Staging reference has expired');
+      }
+      decideUpload(record, data.length, settings, {
+        ownerUsed: this.quotaUsage(record.ownerHash),
+        globalUsed: this.quotaUsage(),
+      });
+      const file = contentPath(this.rootDir, record.ownerHash, record.id);
+      // Same guard as every other write: a tool sharing this UID could swap the
+      // ref directory for a symlink between mint and upload.
+      await assertNoSymlinkComponents(this.rootDir, file);
+      await writeFileAtomic(file, data);
+      const digest = await digestFile(file);
+      record.size = digest.size;
+      record.sha256 = digest.sha256;
+      record.version = 1;
+      record.state = 'ready';
+      record.reservedBytes = undefined;
+      // Same lifetime rule as the DB store: a finished upload is a normal
+      // reference and expires on the reference TTL, not on the link TTL.
+      record.expiresAt = new Date(this.now() + settings.ttlHours * 3600_000).toISOString();
+      tokenRecord.usedAt = nowIso;
+      // `meta.json` is only a cache; a failure there must not leave the
+      // authoritative ledger behind the in-memory record.
+      await this.writeMeta(record).catch(() => undefined);
+      await this.persist();
+      return record;
+    });
+  }
+
   async cleanup(settings: FileStagingSettings): Promise<number> {
     this.assertInit();
     return this.exclusive(async () => {
       const nowIso = new Date(this.now()).toISOString();
       let removed = 0;
+      const { liveDownloadRefs, liveUploadRefs, expired } = partitionLiveTokens(
+        Object.values(this.state.tokens),
+        nowIso,
+      );
+      for (const token of expired) delete this.state.tokens[token.tokenHash];
       for (const [key, record] of Object.entries(this.state.refs)) {
+        // A live download token promises the bytes are still fetchable, even
+        // after the reference TTL; keep only a ready ref until it expires.
+        if (record.state === 'ready' && liveDownloadRefs.has(record.ref)) continue;
         // A stale pin (past pinUntil) is treated as released: a crashed
         // download must not protect content forever.
         const pinned = record.pinCount > 0 && (!record.pinUntil || record.pinUntil > nowIso);
@@ -595,8 +781,10 @@ export class FileStagingStateStore implements StagingStateStore {
         delete this.state.refs[key];
         removed += 1;
       }
-      for (const [hash, token] of Object.entries(this.state.tokens)) {
-        if (token.usedAt || token.expiresAt <= nowIso) delete this.state.tokens[hash];
+      for (const record of Object.values(this.state.refs)) {
+        if (shouldReleaseReservation(record, liveUploadRefs.has(record.ref))) {
+          record.reservedBytes = undefined;
+        }
       }
       await this.persist();
       void settings;

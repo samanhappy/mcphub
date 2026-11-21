@@ -155,6 +155,8 @@ jest.mock('../../src/controllers/betterAuthController.js', () => ({
 
 jest.mock('../../src/controllers/openApiController.js', () => ({
   getOpenAPISpec: routeHandler,
+  getScopedOpenAPISpec: routeHandler,
+  executeScopedOpenAPITool: routeHandler,
   getOpenAPIServers: routeHandler,
   getOpenAPIStats: routeHandler,
   executeToolViaOpenAPI: routeHandler,

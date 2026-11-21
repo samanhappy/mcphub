@@ -46,7 +46,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   const { auth } = useAuth();
   const canManage = !!auth.user && (auth.user.isAdmin || auth.user.username === group.owner);
   const { showToast } = useToast();
-  const { installConfig, nameSeparator } = useSettingsData();
+  const { installConfig, nameSeparator, routingConfig } = useSettingsData();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -83,7 +83,8 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   // The raw groupEndpoint above is intentionally left as-is for the legacy
   // "Copy URL" actions.
   const clientConfigEndpoint = `${baseUrl}/mcp/${encodeURIComponent(group.name)}`;
-  const groupOpenApiEndpoint = `${baseUrl}/api/${group.name}`;
+  const openApiRouteName = routingConfig.enableGroupNameRoute ? group.name : group.id;
+  const groupOpenApiEndpoint = `${baseUrl}/openapi/${encodeURIComponent(openApiRouteName)}`;
 
   const serverNames = getServerNames(group.servers);
   const groupServers = servers.filter((s) => serverNames.includes(s.name));
@@ -337,8 +338,8 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
             className="hub-mono break-all"
             style={{ fontSize: 12, color: 'var(--hub-ink-2)', lineHeight: 1.4 }}
           >
-            <span style={{ color: 'var(--hub-ink-3)' }}>/api/</span>
-            <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{group.name}</b>
+            <span style={{ color: 'var(--hub-ink-3)' }}>/openapi/</span>
+            <b style={{ color: 'var(--hub-ink)', fontWeight: 600 }}>{openApiRouteName}</b>
           </div>
           <div className="flex gap-1.5 mt-2">
             <button
