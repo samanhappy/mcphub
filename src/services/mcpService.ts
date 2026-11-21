@@ -3906,6 +3906,23 @@ const withStagingTools = async (
   return [...injected, ...tools.filter((tool) => !isReservedStagingName(tool.name))];
 };
 
+/**
+ * A remote client cannot resolve the hub's localhost, so staging links require
+ * the configured install base URL (design §8.1). The dashboard default is
+ * localhost:3000, which no remote MCP client can reach.
+ */
+const requireStagingBaseUrl = async (kind: 'Downloads' | 'Uploads'): Promise<string> => {
+  const systemConfig = await getSystemConfigDao().get();
+  const baseUrl = resolveInstallBaseUrl(systemConfig)?.replace(/\/$/, '');
+  if (!baseUrl || baseUrl === DEFAULT_INSTALL_BASE_URL) {
+    throw new StagingError(
+      'invalid-ref',
+      `${kind} require a configured install.baseUrl (the localhost default is not reachable by clients)`,
+    );
+  }
+  return baseUrl;
+};
+
 const handleHubStagingCall = async (request: any, extra: any) => {
   const name = request?.params?.name;
   if (!isStagingToolName(name)) {
@@ -3920,14 +3937,24 @@ const handleHubStagingCall = async (request: any, extra: any) => {
   }
   const group = getMcpRequestGroup(extra);
   const username = stagingAskUsername(extra);
+  let uploadBaseUrl: string | undefined;
   try {
     const principal = await resolveStagingPrincipal(username);
     const targets = await resolveStagingTargets(group);
-    if (name === 'mcphub_file_upload' && targets.length === 0) {
+    if (
+      (name === 'mcphub_file_upload' || name === 'mcphub_file_request_upload') &&
+      targets.length === 0
+    ) {
       return {
         isError: true,
         content: [{ type: 'text', text: 'This route has no staging-enabled stdio server' }],
       };
+    }
+    // Resolve the public base URL before minting: fail fast instead of handing
+    // back a link that cannot be reached. A tokenless reservation would be
+    // released at the next cleanup, but the caller would still get a dead link.
+    if (name === 'mcphub_file_request_upload') {
+      uploadBaseUrl = await requireStagingBaseUrl('Uploads');
     }
     const store = await getStagingStateStore();
     // Activity logging is deliberately bypassed (no base64/ref payloads); this
@@ -3949,26 +3976,27 @@ const handleHubStagingCall = async (request: any, extra: any) => {
       settings,
       store,
       createDownloadUrl: async (ref) => {
+        // Resolve the URL before minting the token: a config read failure must
+        // not leave a live download token holding the ref.
+        const baseUrl = await requireStagingBaseUrl('Downloads');
         const token = await store.createDownloadToken(
           ref,
           principal.ownerHash,
           settings.downloadTtlSeconds,
         );
-        const systemConfig = await getSystemConfigDao().get();
-        // A remote client cannot resolve the hub's localhost: staging links
-        // require the configured install base URL (design §8.1).
-        const baseUrl = resolveInstallBaseUrl(systemConfig);
-        // The dashboard default is localhost:3000, which no remote MCP client
-        // can resolve; minting a link on it fails later and silently.
-        if (!baseUrl || baseUrl.replace(/\/$/, '') === DEFAULT_INSTALL_BASE_URL) {
-          throw new StagingError(
-            'invalid-ref',
-            'Downloads require a configured install.baseUrl (the localhost default is not reachable by clients)',
-          );
-        }
         return {
-          downloadUrl: `${baseUrl.replace(/\/$/, '')}${config.basePath}/staging/download/${token}`,
+          downloadUrl: `${baseUrl}${config.basePath}/staging/download/${token}`,
           expiresAt: new Date(Date.now() + settings.downloadTtlSeconds * 1000).toISOString(),
+        };
+      },
+      createUploadUrl: async (token) => {
+        // The token is the only authority a browser needs, so it never has to
+        // hold a hub session. Reuse the pre-mint base URL: re-reading config
+        // here could fail after the link reserved quota.
+        const baseUrl = uploadBaseUrl ?? (await requireStagingBaseUrl('Uploads'));
+        return {
+          uploadUrl: `${baseUrl}${config.basePath}/staging/upload/${token}`,
+          expiresAt: new Date(Date.now() + settings.uploadTtlSeconds * 1000).toISOString(),
         };
       },
     });
@@ -4816,10 +4844,15 @@ const withReplicaServerScope = async <T>(action: () => Promise<T>): Promise<T> =
   return context.runWithContext(() => withRequestServers(visible, action), user ?? null);
 };
 const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?: string) => {
-  // A nested `call_tool`/`describe_tool` must not smuggle a reserved hub name
-  // past the outer dispatch, and the hub namespace is never reachable from a
-  // non-MCP caller (the OpenAPI controller rejects it as well).
-  if (isReservedStagingName(request?.params?.arguments?.toolName)) {
+  // A nested `call_tool` must not smuggle a reserved hub name past the outer
+  // dispatch, and the hub namespace is never reachable from a non-MCP caller
+  // (the OpenAPI controller rejects it as well). `describe_tool` is the one
+  // exception: describing a hub built-in is how a $smart client learns its
+  // schema, and it never executes anything.
+  if (
+    isReservedStagingName(request?.params?.arguments?.toolName) &&
+    request?.params?.name !== 'describe_tool'
+  ) {
     return Promise.resolve({
       isError: true,
       content: [{ type: 'text', text: 'Hub built-in tools cannot be called through call_tool' }],

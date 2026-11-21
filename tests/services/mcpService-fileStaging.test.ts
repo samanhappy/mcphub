@@ -85,11 +85,22 @@ jest.mock('../../src/services/vectorSearchService.js', () => ({
   removeServerToolEmbeddings: jest.fn(),
   saveToolsAsVectorEmbeddings: jest.fn(),
 }));
+const mockDescribeTool = jest.fn();
 jest.mock('../../src/services/smartRoutingService.js', () => ({
   initSmartRoutingService: jest.fn(),
   getSmartRoutingTools: jest.fn(async () => ({ tools: [] })),
-  handleSearchToolsRequest: jest.fn(),
-  handleDescribeToolRequest: jest.fn(),
+  handleSearchToolsRequest: jest.fn(async () => ({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({
+          tools: [{ name: 'ssh-upload', description: 'upload', serverName: 'ssh' }],
+          metadata: { query: 'upload a file', totalResults: 1 },
+        }),
+      },
+    ],
+  })),
+  handleDescribeToolRequest: (...args: unknown[]) => mockDescribeTool(...args),
   isSmartRoutingGroup: jest.fn(() => true),
 }));
 jest.mock('../../src/services/oauthService.js', () => ({ initializeAllOAuthClients: jest.fn() }));
@@ -272,6 +283,40 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(mockCallTool).not.toHaveBeenCalled();
   });
 
+  it('lets describe_tool answer for a hub name instead of refusing it', async () => {
+    enableStaging();
+    mockDescribeTool.mockResolvedValue({
+      content: [{ type: 'text', text: JSON.stringify({ tool: { name: 'mcphub_file_upload' } }) }],
+    });
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'describe_tool', arguments: { toolName: 'mcphub_file_upload' } } },
+      { sessionId: 's1' },
+    );
+
+    // The guard exists to block call_tool, not describe_tool (#1056 PR3).
+    expect(textOf(result)).not.toMatch(/cannot be called through call_tool/i);
+    expect(mockDescribeTool).toHaveBeenCalled();
+  });
+
+  it('does not mint an upload link when install.baseUrl is unset', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+    mockGetSystemConfig.mockResolvedValue({});
+    const createReservedRef = jest.fn();
+    mockGetStagingStateStore.mockResolvedValue({ createReservedRef } as any);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'mcphub_file_request_upload', arguments: { filename: 'x.txt' } } },
+      { sessionId: 's1' },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/install\.baseUrl/);
+    // No ref may be reserved before the link can actually be minted.
+    expect(createReservedRef).not.toHaveBeenCalled();
+  });
+
   it('does not advertise hub tools on a $smart route when staging is disabled', async () => {
     const listed = await mcpService.handleListToolsRequest({}, { sessionId: 's1' });
     expect(listed.tools.some((tool: any) => tool.name.startsWith('mcphub_file_'))).toBe(false);
@@ -317,5 +362,34 @@ describe('hub staging tools at the public MCP entry points', () => {
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/no staging-enabled/i);
     expect(createReadyRef).not.toHaveBeenCalled();
+  });
+
+  it('lists the hub tools on a $smart route when a staging target exists', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+
+    const listed = await mcpService.handleListToolsRequest({}, { sessionId: 's1' });
+    const names = listed.tools.map((tool: any) => tool.name);
+
+    // The route is a $smart route in this harness, so the meta-tools and the
+    // hub built-ins must both be present.
+    expect(names).toContain('mcphub_file_upload');
+    expect(names).toContain('mcphub_file_request_upload');
+    expect((listed as { stagingTools?: boolean }).stagingTools).toBe(true);
+  });
+
+  it('surfaces the hub tools in a $smart search_tools answer', async () => {
+    enableStaging();
+    mcpService.setServerInfosForTest([makeSshStagingServer(undefined)]);
+
+    const result = await mcpService.handleCallToolRequest(
+      { params: { name: 'search_tools', arguments: { query: 'upload a file' } } },
+      { sessionId: 's1' },
+    );
+    const payload = JSON.parse(result.content[0].text);
+
+    const names = payload.tools.map((tool: any) => tool.name);
+    expect(names).toContain('mcphub_file_upload');
+    expect(payload.metadata.stagingTools).toBe(true);
   });
 });

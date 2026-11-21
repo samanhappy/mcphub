@@ -53,6 +53,20 @@ export const assertRefsLeasable = (
  * adjusted at finalize. The check is a real reservation, not post-hoc
  * accounting, so concurrent calls cannot both pass it.
  */
+export const assertMintReservation = (
+  ownerUsed: number,
+  globalUsed: number,
+  maxBytes: number,
+  settings: FileStagingSettings,
+): void => {
+  if (ownerUsed + maxBytes > settings.perUserQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+  }
+  if (globalUsed + maxBytes > settings.globalQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+  }
+};
+
 export const assertLeaseQuota = (
   ownerUsed: number,
   globalUsed: number,
@@ -98,3 +112,92 @@ export const decideFinalize = (
   }
   return { size: digest.size, sha256: digest.sha256 };
 };
+
+export interface UploadQuotaUsage {
+  ownerUsed: number;
+  globalUsed: number;
+}
+
+/** The ceiling a link announced, or the global limit when no hint was given. */
+export const getUploadCeiling = (
+  record: Pick<StagingRefRecord, 'reservedBytes'>,
+  settings: Pick<FileStagingSettings, 'maxFileBytes'>,
+): number => record.reservedBytes ?? settings.maxFileBytes;
+
+/**
+ * Validate a browser upload against the reserved ref it was minted for. Both
+ * ledgers call this so the ceiling, empty-file and quota rules cannot drift.
+ */
+export const decideUpload = (
+  record: StagingRefRecord,
+  dataLength: number,
+  settings: FileStagingSettings,
+  usage: UploadQuotaUsage,
+): void => {
+  if (record.state !== 'reserved' || record.leaseId) {
+    throw new StagingError('not-ready', 'Upload destination is not writable');
+  }
+  // A link may announce a tighter ceiling than the global limit.
+  if (dataLength > getUploadCeiling(record, settings)) {
+    throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
+  }
+  if (dataLength === 0 && !record.allowZeroByte) {
+    throw new StagingError('not-ready', 'Empty files are not accepted');
+  }
+  // Usage counts this ref's own reservation, but the upload replaces it with
+  // the bytes on disk, so comparing `usage + dataLength` would charge the
+  // reservation twice.
+  const selfReserved = record.reservedBytes ?? 0;
+  if (usage.ownerUsed - selfReserved + dataLength > settings.perUserQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Per-user staging quota exceeded');
+  }
+  if (usage.globalUsed - selfReserved + dataLength > settings.globalQuotaBytes) {
+    throw new StagingError('quota-exceeded', 'Global staging quota exceeded');
+  }
+};
+
+type LivenessToken = {
+  kind: string;
+  ref: string;
+  usedAt?: string | Date | null;
+  expiresAt: string | Date;
+};
+
+/**
+ * Split one ledger's tokens into live refs and already-dead tokens. Liveness is
+ * the same rule in both backends; deleting the dead rows is backend-specific.
+ */
+export const partitionLiveTokens = <T extends LivenessToken>(
+  tokens: readonly T[],
+  nowIso: string,
+): { liveDownloadRefs: Set<string>; liveUploadRefs: Set<string>; expired: T[] } => {
+  const liveDownloadRefs = new Set<string>();
+  const liveUploadRefs = new Set<string>();
+  const expired: T[] = [];
+  for (const token of tokens) {
+    const expiresAt =
+      typeof token.expiresAt === 'string' ? token.expiresAt : token.expiresAt.toISOString();
+    if (token.usedAt || expiresAt <= nowIso) {
+      expired.push(token);
+      continue;
+    }
+    if (token.kind === 'download') liveDownloadRefs.add(token.ref);
+    else if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+  }
+  return { liveDownloadRefs, liveUploadRefs, expired };
+};
+
+/**
+ * An abandoned upload link must not hold quota for the whole reference TTL:
+ * once the ref has no live upload token left, its reservation is released
+ * (the ref itself stays until its own TTL). A ref held by an output lease is
+ * not abandoned: that lease reserves the quota until finalize.
+ */
+export const shouldReleaseReservation = (
+  record: StagingRefRecord,
+  hasLiveUploadToken: boolean,
+): boolean =>
+  record.state === 'reserved' &&
+  (record.reservedBytes ?? 0) > 0 &&
+  !record.leaseId &&
+  !hasLiveUploadToken;

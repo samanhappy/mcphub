@@ -23,6 +23,7 @@ export const DEFAULT_FILE_STAGING_SETTINGS: FileStagingSettings = {
   globalQuotaBytes: 10 * 1024 * 1024 * 1024,
   ttlHours: 24,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 100,
   cleanupIntervalMinutes: 15,
 };
@@ -36,6 +37,7 @@ const OVERRIDEABLE_NUMERIC_KEYS = [
   'globalQuotaBytes',
   'ttlHours',
   'downloadTtlSeconds',
+  'uploadTtlSeconds',
   'maxFilesPerUser',
   'cleanupIntervalMinutes',
 ] as const;
@@ -66,6 +68,7 @@ export const resolveFileStagingSettings = (
   // consistent even if the two settings are edited independently.
   settings.inlineMaxBytes = Math.min(settings.inlineMaxBytes, settings.maxFileBytes);
   settings.downloadTtlSeconds = clampInt(settings.downloadTtlSeconds, 300, 10, 3600);
+  settings.uploadTtlSeconds = clampInt(settings.uploadTtlSeconds, 900, 60, 3600);
   settings.ttlHours = clampInt(settings.ttlHours, 24, 1, 24 * 365);
   settings.cleanupIntervalMinutes = clampInt(settings.cleanupIntervalMinutes, 15, 1, 24 * 60);
   return settings;

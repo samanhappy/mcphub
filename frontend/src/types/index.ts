@@ -107,6 +107,26 @@ export interface CloudServerTool {
   inputSchema: Record<string, any>;
 }
 
+// Hub-wide file staging settings (#1056)
+/**
+ * Mirrors `FileStagingSettings` in `src/types/index.ts`. Kept as a local copy
+ * because importing the backend module drags the whole `src/` graph into the
+ * frontend typecheck (see the openapi errors it produces). Keep the two in
+ * sync when adding a setting.
+ */
+export interface FileStagingConfig {
+  enabled: boolean;
+  maxFileBytes: number;
+  inlineMaxBytes: number;
+  perUserQuotaBytes: number;
+  globalQuotaBytes: number;
+  ttlHours: number;
+  downloadTtlSeconds: number;
+  uploadTtlSeconds: number;
+  maxFilesPerUser: number;
+  cleanupIntervalMinutes: number;
+}
+
 // Tool input schema types
 export interface ToolInputSchema {
   type: string;

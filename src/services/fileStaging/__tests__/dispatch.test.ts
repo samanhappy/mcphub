@@ -20,6 +20,7 @@ const settings: FileStagingSettings = {
   globalQuotaBytes: 262144,
   ttlHours: 1,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 10,
   cleanupIntervalMinutes: 15,
 };
