@@ -558,7 +558,7 @@ describe('DbStagingStateStore', () => {
     });
   });
 
-  it('rejects a link that expires while the bytes are being written', async () => {
+  it('rejects a link that expires while waiting for the quota lock', async () => {
     let clock = Date.now();
     const repository = new FakeRepository();
     const store = new DbStagingStateStore(repository, {
@@ -579,17 +579,57 @@ describe('DbStagingStateStore', () => {
       60,
     );
 
-    const originalFindToken = repository.findToken.bind(repository);
-    let calls = 0;
-    repository.findToken = async (manager, hash, lock) => {
-      calls += 1;
-      if (calls === 2) clock += 120_000; // the link expired after the pre-write lookup
-      return originalFindToken(manager, hash, lock);
+    const originalLock = repository.lockQuota.bind(repository);
+    repository.lockQuota = async (manager: EntityManager) => {
+      clock += 120_000; // the link expires while the upload waits for the quota lock
+      await originalLock(manager);
     };
 
     await expect(store.uploadWithToken(token, Buffer.from('late'), settings())).rejects.toMatchObject({
       code: 'expired',
     });
+  });
+
+  it('rolls back the reserved ref when the upload token cannot be written', async () => {
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, {
+      rootDir,
+      stateDir,
+      disableLock: true,
+    });
+    await store.init();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalSaveToken = repository.saveToken.bind(repository);
+    repository.saveToken = async () => {
+      throw new Error('token write failed');
+    };
+
+    await expect(
+      store.createUploadLink(
+        { ...input(rootDir), maxBytes: 4096, settings: settings() },
+        60,
+      ),
+    ).rejects.toThrow('token write failed');
+
+    expect(await store.usageBytes(owner)).toBe(0);
+    const rows = await repository.transaction((manager) => repository.listRefs(manager));
+    expect(rows).toHaveLength(0);
+    repository.saveToken = originalSaveToken;
+  });
+
+  it('keeps a freshly created upload link reservation through an immediate cleanup', async () => {
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const { record, token } = await store.createUploadLink(
+      { ...input(rootDir), maxBytes: 4096, settings: settings() },
+      60,
+    );
+    expect(record.state).toBe('reserved');
+    expect(record.reservedBytes).toBe(4096);
+
+    await store.cleanup(settings());
+
+    expect(await store.usageBytes(owner)).toBe(4096);
+    await expect(store.getUploadToken(token)).resolves.toMatchObject({ ref: record.ref });
   });
 
   it('releases the reservation once an unused upload link is gone', async () => {

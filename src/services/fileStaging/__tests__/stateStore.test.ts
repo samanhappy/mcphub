@@ -53,6 +53,25 @@ describe('FileStagingStateStore', () => {
     await fs.rm(path.dirname(rootDir), { recursive: true, force: true });
   });
 
+  it('creates the reserved ref and upload token atomically', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const { record, token } = await store.createUploadLink(
+      { ...input(rootDir), maxBytes: 4096, settings: settings() },
+      60,
+    );
+    expect(record.state).toBe('reserved');
+    expect(record.reservedBytes).toBe(4096);
+    await expect(store.getUploadToken(token)).resolves.toMatchObject({
+      ref: record.ref,
+      kind: 'upload',
+    });
+
+    // An immediate cleanup sees the token, so the quota stays reserved.
+    await store.cleanup(settings());
+    expect(await store.usageBytes(owner)).toBe(4096);
+  });
+
   it('creates a ready ref and scopes it to its owner and server', async () => {
     const store = await createStore();
     const record = await store.createReadyRef(input(rootDir), Buffer.from('hello'));

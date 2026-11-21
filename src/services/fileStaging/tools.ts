@@ -242,20 +242,20 @@ export const executeStagingTool = async (
       }
       const maxBytes =
         typeof sizeHint === 'number' ? Math.floor(sizeHint) : context.settings.maxFileBytes;
-      const record = await context.store.createReservedRef({
-        principal: context.principal,
-        serverId: target.serverId,
-        serverName: target.serverName,
-        filename,
-        allowZeroByte: false,
-        // The announced ceiling is reserved against the quota at mint time and
-        // enforced again when the upload finalizes.
-        maxBytes,
-        settings: context.settings,
-      });
-      const token = await context.store.createUploadToken(
-        record.ref,
-        context.principal.ownerHash,
+      // One atomic call: a cleanup that runs between "ref" and "token" could
+      // otherwise release the reservation before the link exists.
+      const { record, token } = await context.store.createUploadLink(
+        {
+          principal: context.principal,
+          serverId: target.serverId,
+          serverName: target.serverName,
+          filename,
+          allowZeroByte: false,
+          // The announced ceiling is reserved against the quota at mint time and
+          // enforced again when the upload finalizes.
+          maxBytes,
+          settings: context.settings,
+        },
         context.settings.uploadTtlSeconds,
       );
       const { uploadUrl, expiresAt } = await context.createUploadUrl(token);

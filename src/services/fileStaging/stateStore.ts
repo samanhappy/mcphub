@@ -73,7 +73,12 @@ export interface StagingStateStore {
   unpinRef(ref: string): Promise<void>;
   createDownloadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
   consumeDownloadToken(token: string): Promise<StagingTokenRecord>;
-  /** Mint a one-time browser-upload link for a reserved ref (#1056 PR2). */
+  /** Atomically create a reserved ref and its one-time upload link (#1056 PR2). */
+  createUploadLink(
+    input: CreateRefInput,
+    ttlSeconds: number,
+  ): Promise<{ record: StagingRefRecord; token: string }>;
+  /** Mint a one-time browser-upload link for an existing reserved ref. */
   createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
   /** Peek an upload token without consuming it, so a model can poll status. */
   getUploadToken(token: string): Promise<StagingTokenRecord>;
@@ -357,32 +362,57 @@ export class FileStagingStateStore implements StagingStateStore {
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
     this.assertInit();
     return this.exclusive(async () => {
-      // A reserved destination with an announced ceiling holds that much quota
-      // until it is finalized or swept, so links cannot be minted past budget.
-      if (input.maxBytes !== undefined) {
-        assertMintReservation(
-          this.quotaUsage(input.principal.ownerHash),
-          this.quotaUsage(),
-          input.maxBytes,
-          input.settings,
-        );
-      }
-      this.assertFileCount(input.principal.ownerHash, 1, input.settings);
-      // The file this link may receive is bounded by its own ceiling.
-      await assertDiskCapacity(
-        this.rootDir,
-        input.maxBytes ?? input.settings.maxFileBytes,
-      );
-      const record = await this.createRecord(input, 'reserved');
-      const dir = refDir(this.rootDir, record.ownerHash, record.id);
-      await ensureDirectory(dir);
-      const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
-      await handle.close();
-      this.state.refs[record.ref] = record;
+      const record = await this.createReservedRecord(input);
       await this.writeMeta(record);
       await this.persist();
       return record;
     });
+  }
+
+  async createUploadLink(
+    input: CreateRefInput,
+    ttlSeconds: number,
+  ): Promise<{ record: StagingRefRecord; token: string }> {
+    this.assertInit();
+    return this.exclusive(async () => {
+      const record = await this.createReservedRecord(input);
+      const token = randomBytes(32).toString('base64url');
+      this.state.tokens[sha256(token)] = {
+        tokenHash: sha256(token),
+        kind: 'upload',
+        ref: record.ref,
+        ownerHash: record.ownerHash,
+        version: 0,
+        contentHash: '',
+        expiresAt: new Date(this.now() + ttlSeconds * 1000).toISOString(),
+      };
+      await this.writeMeta(record);
+      await this.persist();
+      return { record, token };
+    });
+  }
+
+  private async createReservedRecord(input: CreateRefInput): Promise<StagingRefRecord> {
+    // A reserved destination with an announced ceiling holds that much quota
+    // until it is finalized or swept, so links cannot be minted past budget.
+    if (input.maxBytes !== undefined) {
+      assertMintReservation(
+        this.quotaUsage(input.principal.ownerHash),
+        this.quotaUsage(),
+        input.maxBytes,
+        input.settings,
+      );
+    }
+    this.assertFileCount(input.principal.ownerHash, 1, input.settings);
+    // The file this link may receive is bounded by its own ceiling.
+    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
+    const record = await this.createRecord(input, 'reserved');
+    const dir = refDir(this.rootDir, record.ownerHash, record.id);
+    await ensureDirectory(dir);
+    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
+    await handle.close();
+    this.state.refs[record.ref] = record;
+    return record;
   }
 
   async getOwnedRef(ref: string, ownerHash: string): Promise<StagingRefRecord> {

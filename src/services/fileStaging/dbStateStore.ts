@@ -299,17 +299,7 @@ export class DbStagingStateStore implements StagingStateStore {
     await handle.close();
     try {
       await this.repository.transaction(async (manager) => {
-        await this.repository.lockQuota(manager);
-        if (input.maxBytes !== undefined) {
-          assertMintReservation(
-            await this.usage(manager, record.ownerHash),
-            await this.usage(manager),
-            input.maxBytes,
-            input.settings,
-          );
-        }
-        await this.assertFileCount(manager, record.ownerHash, 1, input.settings);
-        await this.repository.saveRef(manager, toRow(record));
+        await this.saveReservedRef(manager, record, input);
       });
     } catch (error) {
       await removeIfExists(dir);
@@ -317,6 +307,61 @@ export class DbStagingStateStore implements StagingStateStore {
     }
     await this.writeMeta(record);
     return record;
+  }
+
+  async createUploadLink(
+    input: CreateRefInput,
+    ttlSeconds: number,
+  ): Promise<{ record: StagingRefRecord; token: string }> {
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = sha256(token);
+    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
+    const record = await this.createRecord(input, 'reserved');
+    const dir = refDir(this.rootDir, record.ownerHash, record.id);
+    await ensureDirectory(dir);
+    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
+    await handle.close();
+    try {
+      // One transaction: cleanup can never observe a reserved ref without its
+      // upload token, which would let it release the link's quota reservation
+      // before the link is issued.
+      await this.repository.transaction(async (manager) => {
+        await this.saveReservedRef(manager, record, input);
+        await this.repository.saveToken(manager, {
+          tokenHash,
+          kind: 'upload',
+          ref: record.ref,
+          ownerHash: record.ownerHash,
+          version: 0,
+          contentHash: '',
+          expiresAt: new Date(this.now() + ttlSeconds * 1000),
+          usedAt: null,
+        });
+      });
+    } catch (error) {
+      await removeIfExists(dir);
+      throw error;
+    }
+    await this.writeMeta(record);
+    return { record, token };
+  }
+
+  private async saveReservedRef(
+    manager: Parameters<FileStagingRepository['listRefs']>[0],
+    record: StagingRefRecord,
+    input: CreateRefInput,
+  ): Promise<void> {
+    await this.repository.lockQuota(manager);
+    if (input.maxBytes !== undefined) {
+      assertMintReservation(
+        await this.usage(manager, record.ownerHash),
+        await this.usage(manager),
+        input.maxBytes,
+        input.settings,
+      );
+    }
+    await this.assertFileCount(manager, record.ownerHash, 1, input.settings);
+    await this.repository.saveRef(manager, toRow(record));
   }
 
   async getOwnedRef(ref: string, ownerHash: string): Promise<StagingRefRecord> {
@@ -630,9 +675,6 @@ export class DbStagingStateStore implements StagingStateStore {
         }
         // The pre-write lookup is outside the transaction; a link that expired
         // while the bytes were being written must not still finalize.
-        if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
-          throw new StagingError('expired', 'Upload link has expired');
-        }
         // Same lock order as leases and mint: quota, then ref. Taking the ref
         // lock first would deadlock with acquireOutputLeases (quota -> ref).
         await this.repository.lockQuota(manager);
@@ -642,6 +684,12 @@ export class DbStagingStateStore implements StagingStateStore {
         }
         if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
           throw new StagingError('expired', 'Staging reference has expired');
+        }
+        // Recheck the link expiry only after both locks are held: a link that
+        // expires while this call waits for the quota or ref lock must not
+        // still finalize.
+        if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
+          throw new StagingError('expired', 'Upload link has expired');
         }
         decideUpload(toRecord(refRow), digest.size, settings, {
           ownerUsed: await this.usage(manager, refRow.ownerHash),
