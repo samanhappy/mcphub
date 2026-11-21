@@ -222,24 +222,17 @@ function recoverReplacements(root: string) {
   }
 }
 
-function writeSnapshot(
-  root: string,
-  { contents, ...snapshot }: Snapshot & { contents: Buffer[] },
-  replace: boolean,
-) {
+function writeSnapshot(root: string, { contents, ...snapshot }: Snapshot & { contents: Buffer[] }) {
   const { name, files } = snapshot.skill;
   if (!skillNamePattern.test(name)) throw new SkillInputError('Invalid Skill name');
   const target = containedPath(root, name);
-  if (!replace && fileStat(target)) {
-    throw new SkillNameConflict(
-      'A Skill with this name already exists. Use Replace files to update it.',
-    );
+  if (fileStat(target)) {
+    throw new SkillNameConflict('A Skill with this name already exists.');
   }
 
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   if (!fileStat(root)?.isDirectory()) throw new Error('Invalid Skill storage directory');
   const staged = fs.mkdtempSync(join(root, '.import-'));
-  const backup = containedPath(root, backupPrefix + name);
   try {
     for (const [index, { path }] of files.entries()) {
       validateSkillPath(path);
@@ -260,14 +253,7 @@ function writeSnapshot(
     }
     writeMetadata(staged, snapshot);
 
-    if (replace) fs.renameSync(target, backup);
-    try {
-      fs.renameSync(staged, target);
-    } catch (error) {
-      if (replace) fs.renameSync(backup, target);
-      throw error;
-    }
-    if (replace) fs.rmSync(backup, { recursive: true });
+    fs.renameSync(staged, target);
   } finally {
     fs.rmSync(staged, { recursive: true, force: true });
   }
@@ -298,7 +284,7 @@ function prepareStore(): string {
         const current = readMetadata(root, snapshot.skill.name);
         const metadata = { skill: snapshot.skill, entries: snapshot.entries };
         if (JSON.stringify(current) !== JSON.stringify(metadata)) {
-          writeSnapshot(root, snapshot, false);
+          writeSnapshot(root, snapshot);
         }
         fs.unlinkSync(path);
       } catch (error) {
@@ -346,24 +332,8 @@ export function listSkillSnapshots<T>(project: (snapshot: Snapshot) => T): T[] {
   return Array.from(storedSnapshots(prepareStore()), project);
 }
 
-export function saveSkillSnapshot(
-  snapshot: Snapshot & { contents: Buffer[] },
-  replaceId?: string,
-): HostedSkill | undefined {
-  const root = prepareStore();
-  if (replaceId) {
-    const previous = readSnapshot(root, replaceId)?.skill;
-    if (!previous) return;
-    if (previous.name !== snapshot.skill.name) {
-      throw new SkillInputError('An updated Skill must keep its original name');
-    }
-    Object.assign(snapshot.skill, {
-      enabled: previous.enabled,
-      global: previous.global,
-      groupIds: previous.groupIds,
-    });
-  }
-  writeSnapshot(root, snapshot, Boolean(replaceId));
+export function saveSkillSnapshot(snapshot: Snapshot & { contents: Buffer[] }): HostedSkill {
+  writeSnapshot(prepareStore(), snapshot);
   return snapshot.skill;
 }
 

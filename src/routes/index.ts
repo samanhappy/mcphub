@@ -502,12 +502,6 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
     uploadSkillDirectory,
     importHostedSkill,
   );
-  authenticatedRouter.put(
-    '/skills/:id/content',
-    requireAdminMiddleware,
-    uploadSkillDirectory,
-    importHostedSkill,
-  );
   authenticatedRouter.put('/skills/:id', requireAdminMiddleware, publishHostedSkill);
   authenticatedRouter.delete('/skills/:id', requireAdminMiddleware, deleteHostedSkill);
 

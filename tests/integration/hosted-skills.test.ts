@@ -40,7 +40,6 @@ app.get('/api/skills', requireAdminMiddleware, listHostedSkills);
 app.get('/api/skills/discover', requireAdminMiddleware, discoverHostedSkills);
 app.get('/api/skills/:id/file', requireAdminMiddleware, previewHostedSkillFile);
 app.post('/api/skills', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
-app.put('/api/skills/:id/content', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
 app.put('/api/skills/:id', requireAdminMiddleware, publishHostedSkill);
 app.delete('/api/skills/:id', requireAdminMiddleware, deleteHostedSkill);
 
@@ -88,8 +87,9 @@ const directoryUpload = (body: Array<[string, Buffer]>) =>
       files: body.map(([path, bytes]) => ({ path, base64: bytes.toString('base64') })),
     }),
   );
-const importDirectory = (files: Array<[string, Buffer]>, id?: string) =>
-  (id ? request(server).put(`/api/skills/${id}/content`) : request(server).post('/api/skills'))
+const importDirectory = (files: Array<[string, Buffer]>) =>
+  request(server)
+    .post('/api/skills')
     .set('X-Test-Admin', 'yes')
     .attach('directory', directoryUpload(files), 'skill.json');
 
@@ -230,7 +230,7 @@ it('previews only cataloged files for administrators, including unpublished Skil
   await preview('SKILL.md').expect(404);
 });
 
-it('imports directories, restricts all reads by publication scope, and replaces and removes snapshots', async () => {
+it('imports directories, restricts all reads by publication scope, and removes snapshots', async () => {
   await request(server).get('/api/skills').expect(403);
   await request(server)
     .post('/api/skills')
@@ -308,23 +308,11 @@ it('imports directories, restricts all reads by publication scope, and replaces 
     1,
   );
 
-  const newBytes = Buffer.from('updated guide');
-  const updated = (
-    await importDirectory(
-      [
-        ['SKILL.md', manifest],
-        ['references/guide.txt', newBytes],
-      ],
-      created.id,
-    ).expect(200)
-  ).body.data;
-  expect(updated).toMatchObject({ id: created.id, enabled: true, groupIds: [team] });
-  expect(updated.version).not.toBe(created.version);
-  expect(fs.readFileSync(path.join(skillPath(), 'references/guide.txt'))).toEqual(newBytes);
-  expect(fs.existsSync(path.join(skillPath(), 'references/remove.txt'))).toBe(false);
-  expect((await groupCall('resources/read', { uri: fileUri })).body.result.contents[0].text).toBe(
-    newBytes.toString(),
-  );
+  await request(server)
+    .put(`/api/skills/${created.id}/content`)
+    .set('X-Test-Admin', 'yes')
+    .attach('directory', directoryUpload([['SKILL.md', manifest]]), 'skill.json')
+    .expect(404);
   await request(server)
     .put(`/api/skills/${created.id}`)
     .set('X-Test-Admin', 'yes')

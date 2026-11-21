@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "Buscar habilidades instaladas",
     "notFound": "No se encontró la habilidad.",
     "disabled": "Desactivada",
     "binaryPreview": "Este formato de archivo no admite vista previa.",
@@ -16,7 +17,7 @@
     "proxyCustom": "Usar un proxy personalizado",
     "proxyAddress": "URL del proxy",
     "proxySaveFailed": "No se pudo guardar el proxy de importación",
-    "proxyHelp": "Se aplica a las importaciones y reemplazos remotos. El proxy del servidor usa HTTPS_PROXY o HTTP_PROXY y respeta NO_PROXY.",
+    "proxyHelp": "Se aplica a las importaciones remotas. El proxy del servidor usa HTTPS_PROXY o HTTP_PROXY y respeta NO_PROXY.",
     "searchCatalog": "Buscar en skills.sh",
     "catalogUrl": "URL de la habilidad en skills.sh",
     "noResults": "No se encontraron habilidades.",
@@ -26,8 +27,6 @@
     "source": "Origen",
     "directory": "Carpeta local",
     "githubUrl": "URL de la carpeta de GitHub",
-    "replace": "Reemplazar archivos",
-    "replaceTitle": "Reemplazar archivos de {{name}}",
     "empty": "No hay habilidades importadas.",
     "files": "Archivos ({{count}})",
     "publication": "Publicación",

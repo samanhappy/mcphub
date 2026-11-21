@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "Tìm kỹ năng đã cài đặt",
     "notFound": "Không tìm thấy kỹ năng.",
     "disabled": "Đã tắt",
     "binaryPreview": "Không thể xem trước định dạng tệp này.",
@@ -16,7 +17,7 @@
     "proxyCustom": "Dùng proxy tùy chỉnh",
     "proxyAddress": "URL proxy",
     "proxySaveFailed": "Không thể lưu proxy nhập kỹ năng",
-    "proxyHelp": "Áp dụng khi nhập hoặc thay thế kỹ năng từ xa. Proxy máy chủ dùng HTTPS_PROXY hoặc HTTP_PROXY và tuân theo NO_PROXY.",
+    "proxyHelp": "Áp dụng khi nhập kỹ năng từ xa. Proxy máy chủ dùng HTTPS_PROXY hoặc HTTP_PROXY và tuân theo NO_PROXY.",
     "searchCatalog": "Tìm trên skills.sh",
     "catalogUrl": "URL kỹ năng trên skills.sh",
     "noResults": "Không tìm thấy kỹ năng phù hợp.",
@@ -26,8 +27,6 @@
     "source": "Nguồn",
     "directory": "Thư mục cục bộ",
     "githubUrl": "URL thư mục GitHub",
-    "replace": "Thay thế tệp",
-    "replaceTitle": "Thay thế tệp của {{name}}",
     "empty": "Chưa nhập kỹ năng nào.",
     "files": "Tệp ({{count}})",
     "publication": "Phạm vi công bố",

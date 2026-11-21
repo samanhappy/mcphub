@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "搜索已安装的技能",
     "notFound": "未找到技能。",
     "disabled": "已停用",
     "binaryPreview": "此文件格式暂不支持预览。",
@@ -16,7 +17,7 @@
     "proxyCustom": "使用自定义代理",
     "proxyAddress": "代理地址",
     "proxySaveFailed": "无法保存技能导入代理配置",
-    "proxyHelp": "适用于远程导入和替换技能。复用服务器代理时使用 HTTPS_PROXY 或 HTTP_PROXY，并遵循 NO_PROXY。",
+    "proxyHelp": "适用于远程导入技能。复用服务器代理时使用 HTTPS_PROXY 或 HTTP_PROXY，并遵循 NO_PROXY。",
     "searchCatalog": "搜索 skills.sh",
     "catalogUrl": "skills.sh 技能链接",
     "noResults": "没有找到匹配的技能。",
@@ -26,8 +27,6 @@
     "source": "来源",
     "directory": "本地文件夹",
     "githubUrl": "GitHub 文件夹 URL",
-    "replace": "替换文件",
-    "replaceTitle": "替换 {{name}} 的文件",
     "empty": "暂无已导入的技能。",
     "files": "文件（{{count}}）",
     "publication": "发布范围",

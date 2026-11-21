@@ -53,15 +53,15 @@ export default function SkillFileBrowser({
   }
 
   return (
-    <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+    <div className="skill-reader">
       <nav
         className="hub-card min-w-0 overflow-hidden"
         aria-label={t('skills.files', { count: skill.files.length })}
       >
-        <h2 className="hub-border-b hub-sect px-4 py-3">
+        <h2 className="hub-border-b hub-sect hub-bg-2 px-4 py-3">
           {t('skills.files', { count: skill.files.length })}
         </h2>
-        <div className="max-h-56 overflow-auto p-2 lg:max-h-[65vh]">
+        <div className="max-h-40 overflow-auto p-2 md:max-h-[65vh]">
           {[...folders]
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([folder, entries]) => (
@@ -78,7 +78,7 @@ export default function SkillFileBrowser({
                     title={entry.path}
                     aria-current={entry.path === file.path ? 'true' : undefined}
                     onClick={() => setSelectedPath(entry.path)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hub-surface-hover)] aria-[current=true]:bg-[var(--hub-surface-hover)] aria-[current=true]:font-semibold"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hub-surface-hover)] aria-[current=true]:bg-[var(--hub-accent-soft)] aria-[current=true]:font-semibold"
                   >
                     <FileText
                       size={14}
@@ -102,16 +102,16 @@ export default function SkillFileBrowser({
         aria-labelledby="skill-file-heading"
         aria-busy={!response}
       >
-        <div className="hub-border-b flex flex-wrap items-baseline gap-2 px-4 py-3">
+        <div className="hub-border-b hub-bg-2 flex flex-wrap items-baseline gap-2 px-4 py-3">
           <h2 id="skill-file-heading" className="hub-mono min-w-0 break-all text-sm font-semibold">
             {file.path}
           </h2>
           <span className="text-xs text-[var(--hub-ink-3)]">{formatBytes(file.size)}</span>
         </div>
-        <div className="min-h-44 overflow-auto p-4 sm:p-6 lg:max-h-[65vh]">
+        <div className="min-h-60 overflow-auto p-4 sm:p-8 md:max-h-[65vh]">
           {!response && (
             <p className="hub-sub" role="status">
-              {t('common.loading')}
+              {t('app.loading')}
             </p>
           )}
           {response && !preview && (

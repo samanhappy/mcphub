@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "Yüklü becerileri ara",
     "notFound": "Beceri bulunamadı.",
     "disabled": "Devre dışı",
     "binaryPreview": "Bu dosya biçimi önizlenemiyor.",
@@ -16,7 +17,7 @@
     "proxyCustom": "Özel proxy kullan",
     "proxyAddress": "Proxy URL’si",
     "proxySaveFailed": "İçe aktarma proxy’si kaydedilemedi",
-    "proxyHelp": "Uzak içe aktarma ve değiştirme işlemlerine uygulanır. Sunucu proxy’si HTTPS_PROXY veya HTTP_PROXY kullanır ve NO_PROXY ayarına uyar.",
+    "proxyHelp": "Uzak içe aktarma işlemlerine uygulanır. Sunucu proxy’si HTTPS_PROXY veya HTTP_PROXY kullanır ve NO_PROXY ayarına uyar.",
     "searchCatalog": "skills.sh üzerinde ara",
     "catalogUrl": "skills.sh beceri URL’si",
     "noResults": "Eşleşen beceri bulunamadı.",
@@ -26,8 +27,6 @@
     "source": "Kaynak",
     "directory": "Yerel klasör",
     "githubUrl": "GitHub klasör URL’si",
-    "replace": "Dosyaları değiştir",
-    "replaceTitle": "{{name}} dosyalarını değiştir",
     "empty": "İçe aktarılan beceri yok.",
     "files": "Dosyalar ({{count}})",
     "publication": "Yayınlama",

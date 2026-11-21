@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "Rechercher les compétences installées",
     "notFound": "Compétence introuvable.",
     "disabled": "Désactivée",
     "binaryPreview": "Ce format de fichier ne peut pas être prévisualisé.",
@@ -16,7 +17,7 @@
     "proxyCustom": "Utiliser un proxy personnalisé",
     "proxyAddress": "URL du proxy",
     "proxySaveFailed": "Impossible d’enregistrer le proxy d’importation",
-    "proxyHelp": "S’applique aux imports et remplacements distants. Le proxy du serveur utilise HTTPS_PROXY ou HTTP_PROXY et respecte NO_PROXY.",
+    "proxyHelp": "S’applique aux imports distants. Le proxy du serveur utilise HTTPS_PROXY ou HTTP_PROXY et respecte NO_PROXY.",
     "searchCatalog": "Rechercher sur skills.sh",
     "catalogUrl": "URL de la compétence sur skills.sh",
     "noResults": "Aucune compétence correspondante.",
@@ -26,8 +27,6 @@
     "source": "Source",
     "directory": "Dossier local",
     "githubUrl": "URL du dossier GitHub",
-    "replace": "Remplacer les fichiers",
-    "replaceTitle": "Remplacer les fichiers de {{name}}",
     "empty": "Aucune compétence importée.",
     "files": "Fichiers ({{count}})",
     "publication": "Publication",

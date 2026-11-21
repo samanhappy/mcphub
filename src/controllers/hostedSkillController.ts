@@ -86,21 +86,16 @@ export const discoverHostedSkills = withSkillsApi(async (req, res) => {
 });
 
 export const importHostedSkill = withSkillsApi(async (req, res) => {
-  const id = req.params.id;
   const url: unknown = req.body?.url;
   const snapshot = req.file
-    ? importSkillDirectory(req.file.buffer, id)
+    ? importSkillDirectory(req.file.buffer)
     : typeof url === 'string' && url.length <= 4096
-      ? await importRemoteSkill(url, id)
+      ? await importRemoteSkill(url)
       : undefined;
   if (!snapshot)
     throw new SkillInputError('Provide a directory, GitHub directory URL, or skills.sh Skill URL');
-  const skill = saveSkillSnapshot(snapshot, id);
-  if (!skill) {
-    failure(res, 404, 'Skill not found');
-    return;
-  }
-  res.status(id ? 200 : 201).json({ success: true, data: skill });
+  const skill = saveSkillSnapshot(snapshot);
+  res.status(201).json({ success: true, data: skill });
 });
 
 export const publishHostedSkill = withSkillsApi(async (req, res) => {

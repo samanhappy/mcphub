@@ -1,5 +1,6 @@
 {
   "skills": {
+    "searchInstalled": "Search installed skills",
     "notFound": "Skill not found.",
     "disabled": "Disabled",
     "binaryPreview": "This file format cannot be previewed.",
@@ -16,7 +17,7 @@
     "proxyCustom": "Use custom proxy",
     "proxyAddress": "Proxy URL",
     "proxySaveFailed": "Could not save the Skill import proxy",
-    "proxyHelp": "Applies to remote Skill imports and replacements. The server proxy uses HTTPS_PROXY or HTTP_PROXY and honors NO_PROXY.",
+    "proxyHelp": "Applies to remote Skill imports. The server proxy uses HTTPS_PROXY or HTTP_PROXY and honors NO_PROXY.",
     "searchCatalog": "Search skills.sh",
     "catalogUrl": "skills.sh Skill URL",
     "noResults": "No matching skills found.",
@@ -26,8 +27,6 @@
     "source": "Source",
     "directory": "Local directory",
     "githubUrl": "GitHub directory URL",
-    "replace": "Replace files",
-    "replaceTitle": "Replace files for {{name}}",
     "empty": "No Skills imported.",
     "files": "Files ({{count}})",
     "publication": "Publication",

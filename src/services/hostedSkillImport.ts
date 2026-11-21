@@ -25,7 +25,7 @@ const isSkillSlug = (slug: string) =>
 
 export class SkillSearchError extends Error {}
 
-export function importSkillDirectory(payload: Buffer, id?: string) {
+export function importSkillDirectory(payload: Buffer) {
   let input: { directory: string; files: Array<{ path: string; base64: string }> };
   try {
     input = JSON.parse(payload.toString('utf8'));
@@ -49,12 +49,7 @@ export function importSkillDirectory(payload: Buffer, id?: string) {
       throw new SkillInputError('Invalid file encoding');
     return { path: file.path, bytes };
   });
-  return buildSkillSnapshot(
-    input.directory,
-    { type: 'directory', name: input.directory },
-    files,
-    id,
-  );
+  return buildSkillSnapshot(input.directory, { type: 'directory', name: input.directory }, files);
 }
 
 async function remoteBytes(
@@ -147,7 +142,7 @@ export async function searchSkillsCatalog(input: unknown): Promise<SkillSearchRe
   }
 }
 
-export async function importRemoteSkill(input: string, id?: string) {
+export async function importRemoteSkill(input: string) {
   const selection =
     (await getSystemConfigDao().get({ failClosed: true })).install?.skillImportProxy ?? 'server';
   const proxy = getProxyConfigFromEnv(process.env);
@@ -161,13 +156,13 @@ export async function importRemoteSkill(input: string, id?: string) {
     throw new SkillInputError('Invalid Skill import proxy configuration on the MCPHub server');
   }
   try {
-    return await downloadRemoteSkill(input, id, dispatcher);
+    return await downloadRemoteSkill(input, dispatcher);
   } finally {
     await dispatcher.destroy();
   }
 }
 
-async function downloadRemoteSkill(input: string, id?: string, dispatcher?: Dispatcher) {
+async function downloadRemoteSkill(input: string, dispatcher?: Dispatcher) {
   let url: URL;
   let segments: string[];
   try {
@@ -313,6 +308,5 @@ async function downloadRemoteSkill(input: string, id?: string, dispatcher?: Disp
       commit: commit.sha,
     },
     inputFiles,
-    id,
   );
 }
