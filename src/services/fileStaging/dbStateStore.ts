@@ -310,14 +310,15 @@ export class DbStagingStateStore implements StagingStateStore {
   ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }> {
     const token = randomBytes(32).toString('base64url');
     const tokenHash = sha256(token);
-    const expiresAt = new Date(this.now() + ttlSeconds * 1000);
     const { record, dir } = await this.createReservedDir(input);
     try {
       // One transaction: cleanup can never observe a reserved ref without its
       // upload token, which would let it release the link's quota reservation
-      // before the link is issued.
-      await this.repository.transaction(async (manager) => {
+      // before the link is issued. The timestamp is taken after the quota lock
+      // so time spent waiting for the lock does not count against the link.
+      const expiresAt = await this.repository.transaction(async (manager) => {
         await this.saveReservedRef(manager, record, input);
+        const deadline = new Date(this.now() + ttlSeconds * 1000);
         await this.repository.saveToken(manager, {
           tokenHash,
           kind: 'upload',
@@ -325,16 +326,20 @@ export class DbStagingStateStore implements StagingStateStore {
           ownerHash: record.ownerHash,
           version: 0,
           contentHash: '',
-          expiresAt,
+          expiresAt: deadline,
           usedAt: null,
         });
+        // The metadata file is part of the same failure domain as the ledger
+        // rows: if it cannot be written, roll the transaction back so a caller
+        // can retry without leaving quota held by an unreachable link.
+        await this.writeMeta(record);
+        return deadline.toISOString();
       });
+      return { record, token, expiresAt };
     } catch (error) {
       await removeIfExists(dir);
       throw error;
     }
-    await this.writeMeta(record);
-    return { record, token, expiresAt: expiresAt.toISOString() };
   }
 
   private async createReservedDir(

@@ -53,6 +53,23 @@ describe('FileStagingStateStore', () => {
     await fs.rm(path.dirname(rootDir), { recursive: true, force: true });
   });
 
+  it('rolls back the ref and token when metadata writing fails', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalWriteMeta = (store as any).writeMeta.bind(store);
+    (store as any).writeMeta = async () => {
+      throw new Error('metadata write failed');
+    };
+
+    await expect(
+      store.createUploadLink({ ...input(rootDir), maxBytes: 4096, settings: settings() }, 60),
+    ).rejects.toThrow('metadata write failed');
+    (store as any).writeMeta = originalWriteMeta;
+
+    expect(await store.usageBytes(owner)).toBe(0);
+    expect(await store.cleanup(settings())).toBe(0);
+  });
+
   it('creates the reserved ref and upload token atomically', async () => {
     const store = await createStore();
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

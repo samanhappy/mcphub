@@ -381,9 +381,10 @@ export class FileStagingStateStore implements StagingStateStore {
     return this.exclusive(async () => {
       const record = await this.createReservedRecord(input);
       const token = randomBytes(32).toString('base64url');
+      const tokenHash = sha256(token);
       const expiresAt = new Date(this.now() + ttlSeconds * 1000).toISOString();
-      this.state.tokens[sha256(token)] = {
-        tokenHash: sha256(token),
+      this.state.tokens[tokenHash] = {
+        tokenHash,
         kind: 'upload',
         ref: record.ref,
         ownerHash: record.ownerHash,
@@ -391,8 +392,17 @@ export class FileStagingStateStore implements StagingStateStore {
         contentHash: '',
         expiresAt,
       };
-      await this.writeMeta(record);
-      await this.persist();
+      try {
+        await this.writeMeta(record);
+        await this.persist();
+      } catch (error) {
+        // The pair was not committed; drop both halves and the directory so
+        // a metadata/storage failure cannot strand quota on an unreachable link.
+        delete this.state.refs[record.ref];
+        delete this.state.tokens[tokenHash];
+        await removeIfExists(refDir(this.rootDir, record.ownerHash, record.id));
+        throw error;
+      }
       return { record, token, expiresAt };
     });
   }

@@ -615,6 +615,52 @@ describe('DbStagingStateStore', () => {
     expect(rows).toHaveLength(0);
   });
 
+  it('rolls back the ref and token when metadata writing fails', async () => {
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalWriteMeta = (store as any).writeMeta.bind(store);
+    (store as any).writeMeta = async () => {
+      throw new Error('metadata write failed');
+    };
+
+    await expect(
+      store.createUploadLink(
+        { ...input(rootDir), maxBytes: 4096, settings: settings() },
+        60,
+      ),
+    ).rejects.toThrow('metadata write failed');
+    (store as any).writeMeta = originalWriteMeta;
+
+    expect(await store.usageBytes(owner)).toBe(0);
+    expect(repository.tokens.size).toBe(0);
+    const rows = await repository.transaction((manager) => repository.listRefs(manager));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('starts the upload link TTL after the quota lock', async () => {
+    let clock = Date.now();
+    const repository = new FakeRepository();
+    const store = new DbStagingStateStore(repository, {
+      rootDir,
+      stateDir,
+      disableLock: true,
+      now: () => clock,
+    });
+    await store.init();
+    const originalLock = repository.lockQuota.bind(repository);
+    repository.lockQuota = async (manager: EntityManager) => {
+      clock += 61_000;
+      await originalLock(manager);
+    };
+
+    const { token, expiresAt } = await store.createUploadLink(
+      { ...input(rootDir), maxBytes: 4096, settings: settings() },
+      60,
+    );
+
+    expect(new Date(expiresAt).getTime()).toBeGreaterThan(clock);
+    await expect(store.getUploadToken(token)).resolves.toMatchObject({ expiresAt });
+  });
+
   it('keeps a freshly created upload link reservation through an immediate cleanup', async () => {
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const { record, token, expiresAt } = await store.createUploadLink(
