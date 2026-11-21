@@ -14,6 +14,7 @@ import {
   discoverHostedSkills,
   importHostedSkill,
   listHostedSkills,
+  previewHostedSkillFile,
   publishHostedSkill,
   uploadSkillDirectory,
 } from '../../src/controllers/hostedSkillController.js';
@@ -37,6 +38,7 @@ app.use('/api', authenticatedRouteRateLimiter, (req, _res, next) => {
 app.put('/api/system-config', updateSystemConfig);
 app.get('/api/skills', requireAdminMiddleware, listHostedSkills);
 app.get('/api/skills/discover', requireAdminMiddleware, discoverHostedSkills);
+app.get('/api/skills/:id/file', requireAdminMiddleware, previewHostedSkillFile);
 app.post('/api/skills', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
 app.put('/api/skills/:id/content', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
 app.put('/api/skills/:id', requireAdminMiddleware, publishHostedSkill);
@@ -201,6 +203,31 @@ it('advertises the extension, without the optional directory method', async () =
   expect(oldResult.capabilities.extensions ?? {}).not.toHaveProperty([
     'io.modelcontextprotocol/skills',
   ]);
+});
+
+it('previews only cataloged files for administrators, including unpublished Skills', async () => {
+  const created = (
+    await importDirectory([
+      ['SKILL.md', manifest],
+      ['references/binary', attachment],
+      ['references/large.txt', Buffer.alloc(512 * 1024 + 1, 'a')],
+    ]).expect(201)
+  ).body.data;
+  const preview = (file: string, admin = true) =>
+    request(server)
+      .get(`/api/skills/${created.id}/file`)
+      .set('X-Test-Admin', admin ? 'yes' : 'no')
+      .query({ path: file });
+
+  await preview('SKILL.md', false).expect(403);
+  const result = await preview('SKILL.md').expect('Cache-Control', 'private, no-store').expect(200);
+  expect(result.body.data).toEqual({ kind: 'text', text: manifest.toString('utf8') });
+  await preview('references/binary').expect(200, { success: true, data: { kind: 'binary' } });
+  await preview('references/large.txt').expect(200, { success: true, data: { kind: 'too-large' } });
+  await preview('../settings.json').expect(400);
+  await preview('references/missing.md').expect(404);
+  fs.writeFileSync(path.join(skillPath(), 'SKILL.md'), Buffer.alloc(manifest.length, 'x'));
+  await preview('SKILL.md').expect(404);
 });
 
 it('imports directories, restricts all reads by publication scope, and replaces and removes snapshots', async () => {

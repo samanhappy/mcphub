@@ -87,6 +87,7 @@
     "js-yaml": "4.3.2",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.9",
+    "micromark": "4.0.2",
     "multer": "^2.2.0",
     "openai": "^7.45.1",
     "openapi-types": "^12.1.3",

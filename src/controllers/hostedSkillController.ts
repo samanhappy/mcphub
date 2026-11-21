@@ -4,6 +4,7 @@ import { getGroupDao } from '../dao/DaoFactory.js';
 import {
   listSkillSnapshots,
   MAX_SKILL_BYTES,
+  readSkillPreview,
   removeSkill,
   saveSkillSnapshot,
   SkillInputError,
@@ -67,6 +68,17 @@ export const uploadSkillDirectory: RequestHandler = (req, res, next) => {
 
 export const listHostedSkills = withSkillsApi((_req, res) => {
   res.json({ success: true, data: listSkillSnapshots(({ skill }) => skill) });
+});
+
+export const previewHostedSkillFile = withSkillsApi((req, res) => {
+  const { path } = req.query;
+  if (typeof path !== 'string') throw new SkillInputError('Provide a Skill file path');
+  const preview = readSkillPreview(req.params.id, path);
+  if (!preview) {
+    failure(res, 404, 'Skill file not found');
+    return;
+  }
+  res.set('Cache-Control', 'private, no-store').json({ success: true, data: preview });
 });
 
 export const discoverHostedSkills = withSkillsApi(async (req, res) => {

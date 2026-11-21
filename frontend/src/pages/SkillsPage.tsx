@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import SkillFileBrowser from '@/components/SkillFileBrowser';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -286,9 +287,14 @@ function SkillProxySettings({ hidden }: { hidden: boolean }) {
 const tabs = ['installed', 'discover', 'configuration'] as const;
 
 function SkillManager() {
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('skill');
+  const navigate = useNavigate();
+  const [revision, setRevision] = useState(0);
   const { t, i18n } = useTranslation();
   const { groups, loading: groupsLoading, error: groupsError } = useGroupData();
   const [skills, setSkills] = useState<HostedSkill[]>([]);
+  const selected = skills.find((skill) => skill.id === id);
   const importedUrls = new Set(
     skills.flatMap(({ source }) => (source.type === 'skills-sh' ? [source.url] : [])),
   );
@@ -314,7 +320,7 @@ function SkillManager() {
     return () => {
       active = false;
     };
-  }, [t]);
+  }, [revision, t]);
 
   const run = async (
     action: () => Promise<ApiResponse>,
@@ -365,8 +371,14 @@ function SkillManager() {
     void run(() => apiPut(`/skills/${skillId}`, publication), replaceSkill);
   };
 
-  return (
-    <div>
+  const refresh = () => {
+    setLoading(true);
+    setError('');
+    setRevision((current) => current + 1);
+  };
+
+  const catalog = (
+    <>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="hub-h1">{t('skills.title')}</h1>
         <button
@@ -525,63 +537,107 @@ function SkillManager() {
           </p>
         )}
         {skills.map((skill) => (
-          <section key={skill.id} className="hub-card hub-card-pad mb-4 space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-              <div className="min-w-0 flex-1">
-                <h2 className="hub-card-title break-words">{skill.name}</h2>
-                <p className="hub-sub break-words">{skill.description}</p>
-                <p className="mt-1 break-all text-xs text-[var(--hub-ink-3)]">
-                  {skill.source.type === 'directory'
-                    ? t('skills.directory')
-                    : `${skill.source.url} · ${skill.source.commit.slice(0, 12)}`}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="hub-btn"
-                  disabled={busy}
-                  onClick={() => setImportTarget({ replacement: skill })}
-                >
-                  {t('skills.replace')}
-                </button>
-                <button
-                  type="button"
-                  className="hub-btn danger"
-                  disabled={busy}
-                  onClick={() => setRemoval(skill)}
-                >
-                  {t('common.delete')}
-                </button>
-              </div>
+          <section key={skill.id} className="hub-card hub-card-pad mb-3">
+            <h2 className="hub-card-title break-words">
+              <Link className="hover:underline" to={`/skills?skill=${skill.id}`}>
+                {skill.name}
+              </Link>
+            </h2>
+            <p className="hub-sub break-words">{skill.description}</p>
+            <p className="mt-2 text-xs text-[var(--hub-ink-3)]">
+              {t('skills.files', { count: skill.files.length })}
+            </p>
+          </section>
+        ))}
+      </div>
+    </>
+  );
+
+  const detail = (
+    <>
+      <Link
+        to="/skills"
+        className="mb-3 inline-flex items-center gap-2 text-sm text-[var(--hub-ink-3)] hover:text-[var(--hub-ink)]"
+      >
+        <ArrowLeft size={15} aria-hidden="true" />
+        {t('skills.title')}
+      </Link>
+      {error && (
+        <p className="mb-3 text-sm text-[var(--hub-err)]" role="alert">
+          {error}
+        </p>
+      )}
+      {!selected && (
+        <p className="hub-sub" role="status">
+          {loading ? t('common.loading') : !error && t('skills.notFound')}
+        </p>
+      )}
+      {selected && (
+        <>
+          <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="hub-h1 break-words">{selected.name}</h1>
+              <p className="hub-sub mt-1 max-w-4xl break-words">{selected.description}</p>
+              <p className="mt-1 break-all text-xs text-[var(--hub-ink-3)]">
+                {selected.source.type === 'directory'
+                  ? t('skills.directory')
+                  : `${selected.source.url} · ${selected.source.commit.slice(0, 12)}`}
+              </p>
             </div>
-            <details className="group hub-border-t pt-3">
-              <summary className="hub-sect flex w-fit cursor-pointer items-center gap-1.5 [&::-webkit-details-marker]:hidden">
-                <ChevronRight size={12} aria-hidden="true" className="group-open:rotate-90" />
-                {t('skills.files', { count: skill.files.length })}
-              </summary>
-              <ul className="hub-mono mt-2 space-y-1 pl-[18px] text-xs text-[var(--hub-ink-2)]">
-                {skill.files.map((file) => (
-                  <li key={file.uri} className="break-all">
-                    {file.path}
-                  </li>
-                ))}
-              </ul>
-            </details>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="hub-btn"
+                disabled={busy}
+                onClick={() => setImportTarget({ replacement: selected })}
+              >
+                {t('skills.replace')}
+              </button>
+              <button
+                type="button"
+                className="hub-btn danger"
+                disabled={busy}
+                onClick={() => setRemoval(selected)}
+              >
+                {t('common.delete')}
+              </button>
+              <button
+                type="button"
+                className="hub-btn"
+                disabled={busy || loading}
+                onClick={refresh}
+                aria-label={t('common.refresh')}
+                title={t('common.refresh')}
+              >
+                <RefreshCw size={14} aria-hidden="true" />
+              </button>
+            </div>
+          </header>
+          <details className="hub-card hub-card-pad group mb-4">
+            <summary className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={14} aria-hidden="true" className="group-open:rotate-90" />
+              {t('skills.publication')}
+              <span className="text-xs font-normal text-[var(--hub-ink-3)]">
+                {t(selected.enabled ? 'skills.enabled' : 'skills.disabled')}
+              </span>
+            </summary>
             <form
-              className="hub-border-t pt-3 text-[13px] text-[var(--hub-ink-2)] [&_input]:accent-[var(--hub-ink-2)]"
-              key={JSON.stringify([skill.enabled, skill.global, skill.groupIds])}
-              onSubmit={(event) => publish(event, skill.id)}
+              className="pt-3 text-[13px] text-[var(--hub-ink-2)] [&_input]:accent-[var(--hub-ink-2)]"
+              key={JSON.stringify([selected.enabled, selected.global, selected.groupIds])}
+              onSubmit={(event) => publish(event, selected.id)}
             >
-              <fieldset disabled={busy || groupsLoading || !!groupsError} className="space-y-2">
-                <legend className="hub-sect mb-2">{t('skills.publication')}</legend>
+              <fieldset
+                aria-label={t('skills.publication')}
+                disabled={busy || groupsLoading || !!groupsError}
+                className="space-y-2"
+              >
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <label className="flex items-center gap-2">
-                    <input name="enabled" type="checkbox" defaultChecked={skill.enabled} />
+                    <input name="enabled" type="checkbox" defaultChecked={selected.enabled} />
                     {t('skills.enabled')}
                   </label>
                   <label className="flex items-center gap-2">
-                    <input name="global" type="checkbox" defaultChecked={skill.global} />
+                    <input name="global" type="checkbox" defaultChecked={selected.global} />
                     {t('skills.global')}
                   </label>
                 </div>
@@ -597,7 +653,7 @@ function SkillManager() {
                           type="checkbox"
                           name="group"
                           value={group.id}
-                          defaultChecked={skill.groupIds.includes(group.id)}
+                          defaultChecked={selected.groupIds.includes(group.id)}
                         />
                         {group.name}
                       </label>
@@ -610,9 +666,16 @@ function SkillManager() {
                 </button>
               </fieldset>
             </form>
-          </section>
-        ))}
-      </div>
+          </details>
+          <SkillFileBrowser key={selected.id} skill={selected} revision={revision} />
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <div>
+      {id ? detail : catalog}
       {importTarget && (
         <SkillImportDialog
           target={importTarget}
@@ -638,6 +701,7 @@ function SkillManager() {
             () => {
               setSkills((current) => current.filter(({ id }) => id !== removal.id));
               setRemoval(undefined);
+              navigate('/skills', { replace: true });
             },
           );
         }}

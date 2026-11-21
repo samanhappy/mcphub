@@ -7,11 +7,13 @@ import { getSettingsPath } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { isReplicaMode } from '../utils/replicaMode.js';
 import { isHostedModeEnabled } from './hostedMode.js';
-import type {
-  HostedSkill,
-  HostedSkillSource,
-  SkillEntry,
-  SkillPublication,
+import {
+  MAX_SKILL_PREVIEW_BYTES,
+  type HostedSkill,
+  type HostedSkillSource,
+  type SkillEntry,
+  type SkillPreview,
+  type SkillPublication,
 } from '../types/hostedSkill.js';
 
 export const skillsAvailable = () => !isReplicaMode() && !isHostedModeEnabled();
@@ -323,6 +325,21 @@ function readSnapshot(root: string, id: string): Snapshot | undefined {
   for (const snapshot of storedSnapshots(root)) {
     if (snapshot.skill.id === id) return snapshot;
   }
+}
+
+export function readSkillPreview(id: string, path: string): SkillPreview | undefined {
+  validateSkillPath(path);
+  const snapshot = readSnapshot(prepareStore(), id);
+  const file = snapshot?.skill.files.find((entry) => entry.path === path);
+  if (!snapshot || !file) return;
+  if (file.size > MAX_SKILL_PREVIEW_BYTES) return { kind: 'too-large' };
+  const content = readSkillFile(snapshot, file.uri);
+  if (!content) return;
+  if ('text' in content) return { kind: 'text', text: content.text };
+  if (content.mimeType === 'image/png' || content.mimeType === 'image/jpeg') {
+    return { kind: 'image', mimeType: content.mimeType, base64: content.blob };
+  }
+  return { kind: 'binary' };
 }
 
 export function listSkillSnapshots<T>(project: (snapshot: Snapshot) => T): T[] {

@@ -209,6 +209,7 @@ import {
   discoverHostedSkills,
   importHostedSkill,
   listHostedSkills,
+  previewHostedSkillFile,
   publishHostedSkill,
   uploadSkillDirectory,
 } from '../controllers/hostedSkillController.js';
@@ -494,6 +495,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
 
   authenticatedRouter.get('/skills', requireAdminMiddleware, listHostedSkills);
   authenticatedRouter.get('/skills/discover', requireAdminMiddleware, discoverHostedSkills);
+  authenticatedRouter.get('/skills/:id/file', requireAdminMiddleware, previewHostedSkillFile);
   authenticatedRouter.post(
     '/skills',
     requireAdminMiddleware,

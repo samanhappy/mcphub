@@ -1176,3 +1176,34 @@ button.hub-btn.primary.is-loading::after {
   line-height: 1.4;
   white-space: nowrap;
 }
+
+.skill-markdown {
+  color: var(--hub-ink);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.skill-markdown > * + * { margin-top: 1em; }
+.skill-markdown :is(h1, h2, h3, h4, h5, h6) { font-weight: 600; line-height: 1.35; }
+.skill-markdown h1 { font-size: 1.5em; }
+.skill-markdown h2 { font-size: 1.25em; }
+.skill-markdown h3 { font-size: 1.125em; }
+.skill-markdown :is(ul, ol) { padding-inline-start: 1.5em; }
+.skill-markdown ul { list-style: disc; }
+.skill-markdown ol { list-style: decimal; }
+.skill-markdown li + li { margin-top: 0.25em; }
+.skill-markdown a { color: var(--hub-accent); text-decoration: underline; }
+.skill-markdown blockquote {
+  border-inline-start: 2px solid var(--hub-line);
+  color: var(--hub-ink-2);
+  padding-inline-start: 1em;
+}
+.skill-markdown code { font-family: var(--hub-mono); font-size: 0.9em; }
+.skill-markdown :not(pre) > code { background: var(--hub-bg-2); border-radius: 4px; padding: 0.1em 0.3em; }
+.skill-markdown pre {
+  overflow-x: auto;
+  background: var(--hub-bg-2);
+  border: 1px solid var(--hub-line);
+  border-radius: 6px;
+  padding: 12px;
+}

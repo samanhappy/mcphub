@@ -1,5 +1,9 @@
 {
   "skills": {
+    "notFound": "No se encontró la habilidad.",
+    "disabled": "Desactivada",
+    "binaryPreview": "Este formato de archivo no admite vista previa.",
+    "largePreview": "La vista previa admite archivos de hasta 512 KiB.",
     "imported": "Importada",
     "installed": "Instaladas",
     "discover": "Descubrir",

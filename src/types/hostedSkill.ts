@@ -36,3 +36,10 @@ export interface HostedSkill extends SkillPublication {
   version: string;
   files: SkillFile[];
 }
+
+export const MAX_SKILL_PREVIEW_BYTES = 512 * 1024;
+
+export type SkillPreview =
+  | { kind: 'text'; text: string }
+  | { kind: 'image'; mimeType: 'image/png' | 'image/jpeg'; base64: string }
+  | { kind: 'binary' | 'too-large' };

@@ -1,5 +1,9 @@
 {
   "skills": {
+    "notFound": "Không tìm thấy kỹ năng.",
+    "disabled": "Đã tắt",
+    "binaryPreview": "Không thể xem trước định dạng tệp này.",
+    "largePreview": "Có thể xem trước các tệp có kích thước tối đa 512 KiB.",
     "imported": "Đã nhập",
     "installed": "Đã cài đặt",
     "discover": "Khám phá",

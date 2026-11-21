@@ -1,5 +1,9 @@
 {
   "skills": {
+    "notFound": "Skill not found.",
+    "disabled": "Disabled",
+    "binaryPreview": "This file format cannot be previewed.",
+    "largePreview": "Preview is available for files up to 512 KiB.",
     "imported": "Imported",
     "installed": "Installed",
     "discover": "Discover",

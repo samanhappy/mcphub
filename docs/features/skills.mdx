@@ -9,7 +9,7 @@ Administrators can publish [Agent Skills](https://agentskills.io/specification) 
 
 1. Open **Skills** in the dashboard as an administrator. **Installed** opens by default.
 2. Choose **Import manually** to select a local folder containing `SKILL.md` or enter a public GitHub directory or skills.sh URL. Open **Discover** to browse the first 20 entries from the skills.sh all-time leaderboard, search the catalog, or select a skill to import.
-3. Select **Enabled** and choose the publication scope. **Global endpoint** publishes to `/mcp` if global routing is enabled. Selected groups publish to their group endpoints and apply the existing route authentication and group visibility.
+3. Select an installed Skill by name to open its details. The file browser starts with `SKILL.md` and previews Markdown, UTF-8 text, PNG, and JPEG files up to 512 KiB. Open **Publication**, select **Enabled**, and choose the publication scope. **Global endpoint** publishes to `/mcp` if global routing is enabled. Selected groups publish to their group endpoints and apply the existing route authentication and group visibility.
 4. Connect a compatible client to the published endpoint. It discovers Skills via `skills/list`, fetches their manifests via `skills/get`, and reads individual files via `resources/read`.
 
 Open **Skills → Configuration** to choose the connection method for remote imports and replacements. By default, they use the server’s `HTTPS_PROXY` or `HTTP_PROXY` and honor `NO_PROXY`. With neither proxy variable set, they connect directly. You can also force a direct connection or enter a custom HTTP(S) proxy URL. Discovery continues to use the server’s default network configuration.

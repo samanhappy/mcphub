@@ -1,5 +1,9 @@
 {
   "skills": {
+    "notFound": "Beceri bulunamadı.",
+    "disabled": "Devre dışı",
+    "binaryPreview": "Bu dosya biçimi önizlenemiyor.",
+    "largePreview": "Önizleme, 512 KiB boyutuna kadar olan dosyalar için kullanılabilir.",
     "imported": "İçe aktarıldı",
     "installed": "Yüklü",
     "discover": "Keşfet",

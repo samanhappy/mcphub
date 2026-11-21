@@ -1,5 +1,9 @@
 {
   "skills": {
+    "notFound": "Compétence introuvable.",
+    "disabled": "Désactivée",
+    "binaryPreview": "Ce format de fichier ne peut pas être prévisualisé.",
+    "largePreview": "L’aperçu est disponible pour les fichiers de 512 Kio maximum.",
     "imported": "Importée",
     "installed": "Installées",
     "discover": "Découvrir",
