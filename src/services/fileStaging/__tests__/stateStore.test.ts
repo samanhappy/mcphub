@@ -70,6 +70,28 @@ describe('FileStagingStateStore', () => {
     expect(await store.cleanup(settings())).toBe(0);
   });
 
+  it('rolls the persisted state back when persist fails after writing', async () => {
+    const store = await createStore();
+    const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const originalPersist = (store as any).persist.bind(store);
+    let calls = 0;
+    (store as any).persist = async () => {
+      calls += 1;
+      await originalPersist();
+      if (calls === 1) throw new Error('persist failed after rename');
+    };
+
+    await expect(
+      store.createUploadLink({ ...input(rootDir), maxBytes: 4096, settings: settings() }, 60),
+    ).rejects.toThrow('persist failed after rename');
+    (store as any).persist = originalPersist;
+
+    // The rollback must have written the old state, not merely cleared memory.
+    const reloaded = new FileStagingStateStore({ rootDir, stateDir, disableLock: true });
+    await reloaded.init();
+    expect(await reloaded.usageBytes(owner)).toBe(0);
+  });
+
   it('creates the reserved ref and upload token atomically', async () => {
     const store = await createStore();
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

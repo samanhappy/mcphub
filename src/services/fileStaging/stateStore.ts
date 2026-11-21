@@ -394,11 +394,23 @@ export class FileStagingStateStore implements StagingStateStore {
         await this.writeMeta(record);
         await this.persist();
       } catch (error) {
-        // The pair was not committed; drop both halves and the directory so
-        // a metadata/storage failure cannot strand quota on an unreachable link.
+        // The pair was not committed; drop both halves. The first persist may
+        // have renamed the new state before failing, so write the rolled-back
+        // state back before removing the directory. If that rollback fails,
+        // keep the directory: a persisted ref with its directory is recoverable,
+        // a persisted ref without it is the resurrection bug.
         delete this.state.refs[record.ref];
         delete this.state.tokens[tokenHash];
-        await removeIfExists(refDir(this.rootDir, record.ownerHash, record.id));
+        let rolledBack = false;
+        try {
+          await this.persist();
+          rolledBack = true;
+        } catch {
+          // Leave the directory for cleanup if the rollback could not be written.
+        }
+        if (rolledBack) {
+          await removeIfExists(refDir(this.rootDir, record.ownerHash, record.id));
+        }
         throw error;
       }
       return { record, token, expiresAt };
