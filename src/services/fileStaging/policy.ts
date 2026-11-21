@@ -122,6 +122,12 @@ export interface UploadQuotaUsage {
  * Validate a browser upload against the reserved ref it was minted for. Both
  * ledgers call this so the ceiling, empty-file and quota rules cannot drift.
  */
+/** The ceiling a link announced, or the global limit when no hint was given. */
+export const getUploadCeiling = (
+  record: Pick<StagingRefRecord, 'reservedBytes'>,
+  settings: Pick<FileStagingSettings, 'maxFileBytes'>,
+): number => record.reservedBytes ?? settings.maxFileBytes;
+
 export const decideUpload = (
   record: StagingRefRecord,
   dataLength: number,
@@ -132,7 +138,7 @@ export const decideUpload = (
     throw new StagingError('not-ready', 'Upload destination is not writable');
   }
   // A link may announce a tighter ceiling than the global limit.
-  if (dataLength > (record.reservedBytes ?? settings.maxFileBytes)) {
+  if (dataLength > getUploadCeiling(record, settings)) {
     throw new StagingError('quota-exceeded', 'File exceeds the configured staging limit');
   }
   if (dataLength === 0 && !record.allowZeroByte) {

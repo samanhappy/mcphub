@@ -633,6 +633,9 @@ export class DbStagingStateStore implements StagingStateStore {
         if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
           throw new StagingError('expired', 'Upload link has expired');
         }
+        // Same lock order as leases and mint: quota, then ref. Taking the ref
+        // lock first would deadlock with acquireOutputLeases (quota -> ref).
+        await this.repository.lockQuota(manager);
         const refRow = await this.repository.findRef(manager, tokenRow.ref, true);
         if (!refRow || refRow.ownerHash !== tokenRow.ownerHash) {
           throw new StagingError('not-found', 'Upload link is not valid');
@@ -640,7 +643,6 @@ export class DbStagingStateStore implements StagingStateStore {
         if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
           throw new StagingError('expired', 'Staging reference has expired');
         }
-        await this.repository.lockQuota(manager);
         decideUpload(toRecord(refRow), digest.size, settings, {
           ownerUsed: await this.usage(manager, refRow.ownerHash),
           globalUsed: await this.usage(manager),

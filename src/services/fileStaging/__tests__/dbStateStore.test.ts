@@ -327,6 +327,36 @@ describe('DbStagingStateStore', () => {
     });
   });
 
+  it('takes the quota lock before the ref lock when finalizing an upload', async () => {
+    const reserved = await store.createReservedRef({
+      ...input(rootDir),
+      maxBytes: 4096,
+      settings: settings(),
+    });
+    const token = await store.createUploadToken(
+      reserved.ref,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      60,
+    );
+
+    const order: string[] = [];
+    const originalLock = repository.lockQuota.bind(repository);
+    repository.lockQuota = async (manager: EntityManager) => {
+      order.push('quota');
+      await originalLock(manager);
+    };
+    const originalFindRef = repository.findRef.bind(repository);
+    repository.findRef = async (manager: EntityManager, ref: string, lock = false) => {
+      if (lock) order.push('ref');
+      return originalFindRef(manager, ref, lock);
+    };
+
+    await store.uploadWithToken(token, Buffer.from('x'), settings());
+    // `acquireOutputLeases` takes quota then ref; the upload must match that
+    // order or the two transactions can deadlock.
+    expect(order).toEqual(['quota', 'ref']);
+  });
+
   it('takes the shared quota lock before accounting uploads and output leases', async () => {
     const order: string[] = [];
     const originalLock = repository.lockQuota.bind(repository);

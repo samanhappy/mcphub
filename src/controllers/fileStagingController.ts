@@ -7,6 +7,7 @@ import type { NextFunction, Request, Response } from 'express';
 import express from 'express';
 
 import { openNoFollow } from '../services/fileStaging/paths.js';
+import { getUploadCeiling } from '../services/fileStaging/policy.js';
 import { logger } from '../utils/logger.js';
 import {
   getFileStagingSettings,
@@ -246,7 +247,7 @@ export const showStagingUploadPage = async (req: Request, res: Response): Promis
     if (request.usedAt) throw new Error('used');
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
     // Advertise what this link actually accepts, not the global maximum.
-    const limit = ref.reservedBytes ?? settings.maxFileBytes;
+    const limit = getUploadCeiling(ref, settings);
     const nonce = randomBytes(16).toString('base64');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Security-Policy', cspForPage(nonce));
@@ -284,7 +285,7 @@ export const assertStagingUploadLink = async (
     const request = await store.getUploadToken(token);
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
     if (ref.state !== 'reserved' || ref.leaseId) throw new Error('not writable');
-    const limit = ref.reservedBytes ?? settings.maxFileBytes;
+    const limit = getUploadCeiling(ref, settings);
     const declared = Number(req.headers['content-length']);
     if (Number.isFinite(declared) && declared > limit) {
       res.status(413).json({ success: false, message: 'The file exceeds the staging limit.' });

@@ -3949,9 +3949,9 @@ const handleHubStagingCall = async (request: any, extra: any) => {
         content: [{ type: 'text', text: 'This route has no staging-enabled stdio server' }],
       };
     }
-    // Resolve the public base URL before minting anything: an unset
-    // `install.baseUrl` would otherwise leave a quota reservation behind for the
-    // whole reference TTL and answer with a misleading "not found".
+    // Resolve the public base URL before minting: fail fast instead of handing
+    // back a link that cannot be reached. A tokenless reservation would be
+    // released at the next cleanup, but the caller would still get a dead link.
     if (name === 'mcphub_file_request_upload') {
       await requireStagingBaseUrl('Uploads');
     }

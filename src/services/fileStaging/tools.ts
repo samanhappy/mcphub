@@ -240,6 +240,8 @@ export const executeStagingTool = async (
           throw new StagingError('quota-exceeded', 'size_hint exceeds the staging limit');
         }
       }
+      const maxBytes =
+        typeof sizeHint === 'number' ? Math.floor(sizeHint) : context.settings.maxFileBytes;
       const record = await context.store.createReservedRef({
         principal: context.principal,
         serverId: target.serverId,
@@ -248,10 +250,7 @@ export const executeStagingTool = async (
         allowZeroByte: false,
         // The announced ceiling is reserved against the quota at mint time and
         // enforced again when the upload finalizes.
-        maxBytes:
-          typeof sizeHint === 'number'
-            ? Math.floor(sizeHint)
-            : context.settings.maxFileBytes,
+        maxBytes,
         settings: context.settings,
       });
       const token = await context.store.createUploadToken(
@@ -266,10 +265,7 @@ export const executeStagingTool = async (
         uploadUrl,
         uploadToken: token,
         expiresAt,
-        maxBytes:
-          typeof sizeHint === 'number'
-            ? Math.floor(sizeHint)
-            : context.settings.maxFileBytes,
+        maxBytes,
       });
     }
 
