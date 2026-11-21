@@ -6,7 +6,14 @@ export interface SkillPublication {
 
 export type HostedSkillSource =
   | { type: 'directory'; name: string }
-  | { type: 'github'; url: string; commit: string };
+  | { type: 'github' | 'skills-sh'; url: string; commit: string };
+
+export interface SkillSearchResult {
+  name: string;
+  source: string;
+  url: string;
+  installs: number | null;
+}
 
 export interface SkillFile {
   path: string;

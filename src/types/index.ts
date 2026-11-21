@@ -316,6 +316,7 @@ export interface SystemConfig {
     skipAuth?: boolean; // Controls whether the dashboard requires login
   };
   install?: {
+    skillImportProxy?: string; // direct, server, or an HTTP(S) proxy URL
     pythonIndexUrl?: string; // Python package repository URL (UV_DEFAULT_INDEX)
     npmRegistry?: string; // NPM registry URL (npm_config_registry)
     baseUrl?: string; // Base URL for group card copy operations

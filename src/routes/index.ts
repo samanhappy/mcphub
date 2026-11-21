@@ -206,6 +206,7 @@ import { auth } from '../middlewares/auth.js';
 import { requireAdminMiddleware } from '../utils/requireAdmin.js';
 import {
   deleteHostedSkill,
+  discoverHostedSkills,
   importHostedSkill,
   listHostedSkills,
   publishHostedSkill,
@@ -492,6 +493,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   authenticatedRouter.post('/resources/read', readResource);
 
   authenticatedRouter.get('/skills', requireAdminMiddleware, listHostedSkills);
+  authenticatedRouter.get('/skills/discover', requireAdminMiddleware, discoverHostedSkills);
   authenticatedRouter.post(
     '/skills',
     requireAdminMiddleware,

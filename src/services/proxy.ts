@@ -8,9 +8,24 @@
  */
 import { FetchLike } from '@modelcontextprotocol/server';
 
-/**
- * Configuration options for HTTP/HTTPS proxy settings.
- */
+export const isSkillImportProxy = (value: unknown): value is string => {
+  if (value === 'direct' || value === 'server') return true;
+  if (
+    typeof value !== 'string' ||
+    value.length > 2048 ||
+    !/^https?:\/\/[^/\\\s]+\/?$/i.test(value)
+  ) {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    return url.pathname === '/' && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+};
+
+/** Configuration options for HTTP/HTTPS proxy settings. */
 export interface ProxyConfig {
   /**
    * HTTP proxy URL (e.g., 'http://proxy.example.com:8080')
@@ -175,7 +190,7 @@ function shouldBypassProxy(hostname: string, noProxyList: string[]): boolean {
  *
  * @returns A ProxyConfig object populated from environment variables
  */
-export function getProxyConfigFromEnv(env: Record<string, string>): ProxyConfig {
+export function getProxyConfigFromEnv(env: NodeJS.ProcessEnv): ProxyConfig {
   return {
     httpProxy: env.http_proxy || env.HTTP_PROXY,
     httpsProxy: env.https_proxy || env.HTTPS_PROXY,

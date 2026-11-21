@@ -9,9 +9,17 @@
 
 - Unless explicitly requested otherwise, use the English UI for all screenshots.
 
-- Any pull request with visible UI changes must include browser screenshots in the PR body or a PR comment. Upload the images to GitHub so reviewers can view them; local file paths do not count.
+- Any pull request with visible UI changes must include browser screenshots uploaded to GitHub in the PR body or a PR comment.
 - Show before/after screenshots for changes to existing UI, or the resulting state for new UI. Capture the affected states and viewport sizes, including mobile when responsive behavior changes.
 - Label viewport sizes and disclose mocked data or simulated states. Verify that the uploaded images render in the PR before considering the task complete.
+
+Use GitHub CLI v2.99.0 or later to upload local screenshots with `--attach`. Repeat the flag for multiple files. If the PR body contains a Markdown image reference to an attached file, `gh` replaces the local reference with the uploaded URL and keeps the image in place. [GitHub CLI attachment documentation](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli)
+
+```bash
+gh pr create --title "Describe the change" --body-file pr-body.md --attach ./desktop.png --attach ./mobile.png
+gh pr edit 123 --attach ./desktop.png --attach ./mobile.png
+gh pr comment 123 --attach ./desktop.png --attach ./mobile.png
+```
 
 ## Public documentation formatting
 

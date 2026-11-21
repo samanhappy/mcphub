@@ -6,10 +6,12 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
+import { Agent, EnvHttpProxyAgent, ProxyAgent } from 'undici';
 import { sseUserContextMiddleware } from '../../src/middlewares/userContext.js';
 import { closeModernMcpHandler, handleMcpPostRequest } from '../../src/services/sseService.js';
 import {
   deleteHostedSkill,
+  discoverHostedSkills,
   importHostedSkill,
   listHostedSkills,
   publishHostedSkill,
@@ -20,7 +22,9 @@ import {
   authenticatedRouteRateLimiter,
   mcpConnectionRateLimiter,
 } from '../../src/utils/rateLimit.js';
-import { JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
+import { getSystemConfigDao, JsonFileDaoFactory, setDaoFactory } from '../../src/dao/DaoFactory.js';
+
+import { updateSystemConfig } from '../../src/controllers/serverController.js';
 
 const app = express();
 let server: ReturnType<typeof app.listen>;
@@ -30,7 +34,9 @@ app.use('/api', authenticatedRouteRateLimiter, (req, _res, next) => {
   Object.assign(req, { user: { isAdmin: req.get('X-Test-Admin') === 'yes' } });
   next();
 });
+app.put('/api/system-config', updateSystemConfig);
 app.get('/api/skills', requireAdminMiddleware, listHostedSkills);
+app.get('/api/skills/discover', requireAdminMiddleware, discoverHostedSkills);
 app.post('/api/skills', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
 app.put('/api/skills/:id/content', requireAdminMiddleware, uploadSkillDirectory, importHostedSkill);
 app.put('/api/skills/:id', requireAdminMiddleware, publishHostedSkill);
@@ -491,4 +497,140 @@ it('migrates preview snapshots and retains conflicting copies outside the catalo
     .set('X-Test-Admin', 'yes')
     .expect(200);
   expect((await rpc('skills/list').expect(200)).body.result.skills).toEqual([]);
+});
+
+it.each([
+  ['server', EnvHttpProxyAgent],
+  ['direct', Agent],
+  ['http://127.0.0.1:8080', ProxyAgent],
+] as const)(
+  'imports a pinned skills.sh entry with configured proxy %s',
+  async (skillImportProxy, expectedDispatcher) => {
+    await request(server)
+      .put('/api/system-config')
+      .set('X-Test-Admin', 'yes')
+      .send({ install: { skillImportProxy } })
+      .expect(200);
+    expect((await getSystemConfigDao().getSection('install'))?.skillImportProxy).toBe(
+      skillImportProxy,
+    );
+    jest.replaceProperty(process, 'env', { ...process.env, https_proxy: 'http://127.0.0.1:3128' });
+    const commit = 'a'.repeat(40);
+    const root = 'b'.repeat(40);
+    const tree = 'c'.repeat(40);
+    const sha = createHash('sha1')
+      .update(`blob ${manifest.length}\0`)
+      .update(manifest)
+      .digest('hex');
+    const blob = { path: 'SKILL.md', type: 'blob', mode: '100644', size: manifest.length, sha };
+    const fakeFetch = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === 'https://api.github.com/repos/test/repo/commits/HEAD')
+        return Response.json({ sha: commit, commit: { tree: { sha: root } } });
+      if (url.endsWith(`/git/trees/${root}?recursive=1`))
+        return Response.json({ tree: [{ ...blob, path: 'plugins/team-guide/SKILL.md' }] });
+      if (
+        url === `https://raw.githubusercontent.com/test/repo/${commit}/plugins/team-guide/SKILL.md`
+      )
+        return new Response(new Uint8Array(manifest));
+      throw new Error('Unexpected source request: ' + url);
+    });
+    const url = 'https://www.skills.sh/test/repo/team-guide';
+    const response = await request(server)
+      .post('/api/skills')
+      .set('X-Test-Admin', 'yes')
+      .send({ url })
+      .expect(201);
+    expect(response.body.data).toMatchObject({
+      name: 'team-guide',
+      enabled: false,
+      source: { type: 'skills-sh', url: 'https://skills.sh/test/repo/team-guide', commit },
+    });
+    expect(fs.readFileSync(path.join(skillPath(), 'SKILL.md'))).toEqual(manifest);
+    expect(fakeFetch).toHaveBeenCalledTimes(3);
+    const dispatcher = expect.any(expectedDispatcher);
+    for (const [, options] of fakeFetch.mock.calls) {
+      expect(options).toEqual(expect.objectContaining({ dispatcher, redirect: 'error' }));
+    }
+  },
+);
+
+it('restricts proxy settings to admins and rejects invalid proxy URLs', async () => {
+  const endpoint = '/api/system-config';
+  await request(server)
+    .put(endpoint)
+    .send({ install: { skillImportProxy: 'direct' } })
+    .expect(403);
+  const previous = (await getSystemConfigDao().getSection('install'))?.skillImportProxy;
+  await request(server)
+    .put(endpoint)
+    .set('X-Test-Admin', 'yes')
+    .send({ install: { skillImportProxy: 'file:///tmp/proxy' } })
+    .expect(400);
+  expect((await getSystemConfigDao().getSection('install'))?.skillImportProxy).toBe(previous);
+});
+
+it('rejects non-GitHub skills.sh links before making network requests', async () => {
+  const fakeFetch = jest.spyOn(global, 'fetch');
+  await request(server)
+    .post('/api/skills')
+    .set('X-Test-Admin', 'yes')
+    .send({ url: 'https://skills.sh/example.com/team-guide' })
+    .expect(400);
+  expect(fakeFetch).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['/api/skills/discover', 'https://skills.sh/api/skills/all-time/0'],
+  ['/api/skills/discover?q=team%20guide', 'https://skills.sh/api/search?q=team+guide&limit=20'],
+])('loads public catalog entries from %s for admins', async (endpoint, upstream) => {
+  const fakeFetch = jest.spyOn(global, 'fetch').mockResolvedValue(
+    Response.json({
+      skills: [
+        { source: 'test/repo', skillId: 'team-guide', name: 'Team Guide', installs: 37 },
+        { source: 'example.com', skillId: 'other', name: 'Non-GitHub entry' },
+      ],
+    }),
+  );
+  await request(server).get(endpoint).expect(403);
+  expect(fakeFetch).not.toHaveBeenCalled();
+  const result = await request(server).get(endpoint).set('X-Test-Admin', 'yes').expect(200);
+  expect(result.body.data).toEqual([
+    {
+      source: 'test/repo',
+      name: 'Team Guide',
+      installs: 37,
+      url: 'https://skills.sh/test/repo/team-guide',
+    },
+  ]);
+  expect(fakeFetch).toHaveBeenCalledWith(upstream, expect.any(Object));
+});
+
+it('requires an explicit GitHub directory when more than one Skill directory matches', async () => {
+  const commit = 'a'.repeat(40);
+  const root = 'b'.repeat(40);
+  const fakeFetch = jest
+    .spyOn(global, 'fetch')
+    .mockResolvedValueOnce(Response.json({ sha: commit, commit: { tree: { sha: root } } }))
+    .mockResolvedValueOnce(
+      Response.json({
+        tree: [
+          { type: 'blob', path: 'team-guide/SKILL.md' },
+          { type: 'blob', path: 'plugins/team-guide/SKILL.md' },
+        ],
+      }),
+    );
+  const result = await request(server)
+    .post('/api/skills')
+    .set('X-Test-Admin', 'yes')
+    .send({ url: 'https://skills.sh/test/repo/team-guide' })
+    .expect(400);
+  expect(result.body.message).toContain('Multiple Skill directories match');
+  expect(fakeFetch).toHaveBeenCalledTimes(2);
+  expect(fs.existsSync(skillPath())).toBe(false);
+});
+
+it('returns a gateway error when the skills.sh search service is unavailable', async () => {
+  jest.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 503 }));
+  await request(server).get('/api/skills/discover?q=team').set('X-Test-Admin', 'yes').expect(502);
 });

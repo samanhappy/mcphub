@@ -11,7 +11,12 @@ import {
   skillsAvailable,
   updateSkillPublication,
 } from '../services/hostedSkillCatalog.js';
-import { importGitHubSkill, importSkillDirectory } from '../services/hostedSkillImport.js';
+import {
+  importRemoteSkill,
+  importSkillDirectory,
+  searchSkillsCatalog,
+  SkillSearchError,
+} from '../services/hostedSkillImport.js';
 import { logger } from '../utils/logger.js';
 
 const failure = (res: Response, status: number, message: string) =>
@@ -33,6 +38,10 @@ export const withSkillsApi =
       }
       if (error instanceof SkillInputError) {
         failure(res, 400, error.message);
+        return;
+      }
+      if (error instanceof SkillSearchError) {
+        failure(res, 502, error.message);
         return;
       }
       logger.error('Skills catalog request failed', error);
@@ -60,15 +69,20 @@ export const listHostedSkills = withSkillsApi((_req, res) => {
   res.json({ success: true, data: listSkillSnapshots(({ skill }) => skill) });
 });
 
+export const discoverHostedSkills = withSkillsApi(async (req, res) => {
+  res.json({ success: true, data: await searchSkillsCatalog(req.query.q) });
+});
+
 export const importHostedSkill = withSkillsApi(async (req, res) => {
   const id = req.params.id;
   const url: unknown = req.body?.url;
   const snapshot = req.file
     ? importSkillDirectory(req.file.buffer, id)
     : typeof url === 'string' && url.length <= 4096
-      ? await importGitHubSkill(url, id)
+      ? await importRemoteSkill(url, id)
       : undefined;
-  if (!snapshot) throw new SkillInputError('Provide a directory or a GitHub directory URL');
+  if (!snapshot)
+    throw new SkillInputError('Provide a directory, GitHub directory URL, or skills.sh Skill URL');
   const skill = saveSkillSnapshot(snapshot, id);
   if (!skill) {
     failure(res, 404, 'Skill not found');
