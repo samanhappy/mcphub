@@ -38,6 +38,7 @@ import {
   type StagingRefRecord,
   type StagingStateDocument,
   type StagingTokenRecord,
+  makeUploadTokenFields,
   StagingError,
 } from './types.js';
 
@@ -383,15 +384,12 @@ export class FileStagingStateStore implements StagingStateStore {
       const token = randomBytes(32).toString('base64url');
       const tokenHash = sha256(token);
       const expiresAt = new Date(this.now() + ttlSeconds * 1000).toISOString();
-      this.state.tokens[tokenHash] = {
+      this.state.tokens[tokenHash] = makeUploadTokenFields(
         tokenHash,
-        kind: 'upload',
-        ref: record.ref,
-        ownerHash: record.ownerHash,
-        version: 0,
-        contentHash: '',
+        record.ref,
+        record.ownerHash,
         expiresAt,
-      };
+      );
       try {
         await this.writeMeta(record);
         await this.persist();
@@ -669,15 +667,12 @@ export class FileStagingStateStore implements StagingStateStore {
       }
       const token = randomBytes(32).toString('base64url');
       const tokenHash = sha256(token);
-      this.state.tokens[tokenHash] = {
+      this.state.tokens[tokenHash] = makeUploadTokenFields(
         tokenHash,
-        kind: 'upload',
-        ref: record.ref,
+        record.ref,
         ownerHash,
-        version: 0,
-        contentHash: '',
-        expiresAt: new Date(this.now() + ttlSeconds * 1000).toISOString(),
-      };
+        new Date(this.now() + ttlSeconds * 1000).toISOString(),
+      );
       await this.persist();
       return token;
     });

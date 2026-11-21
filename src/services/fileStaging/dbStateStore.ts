@@ -41,6 +41,7 @@ import {
   type StagingRefRecord,
   type StagingRefState,
   type StagingTokenRecord,
+  makeUploadTokenFields,
   StagingError,
 } from './types.js';
 
@@ -320,13 +321,7 @@ export class DbStagingStateStore implements StagingStateStore {
         await this.saveReservedRef(manager, record, input);
         const deadline = new Date(this.now() + ttlSeconds * 1000);
         await this.repository.saveToken(manager, {
-          tokenHash,
-          kind: 'upload',
-          ref: record.ref,
-          ownerHash: record.ownerHash,
-          version: 0,
-          contentHash: '',
-          expiresAt: deadline,
+          ...makeUploadTokenFields(tokenHash, record.ref, record.ownerHash, deadline),
           usedAt: null,
         });
         // The metadata file is part of the same failure domain as the ledger
@@ -612,13 +607,12 @@ export class DbStagingStateStore implements StagingStateStore {
         throw new StagingError('expired', 'Staging reference has expired');
       }
       await this.repository.saveToken(manager, {
-        tokenHash,
-        kind: 'upload',
-        ref: row.ref,
-        ownerHash,
-        version: 0,
-        contentHash: '',
-        expiresAt: new Date(this.now() + ttlSeconds * 1000),
+        ...makeUploadTokenFields(
+          tokenHash,
+          row.ref,
+          ownerHash,
+          new Date(this.now() + ttlSeconds * 1000),
+        ),
         usedAt: null,
       });
     });
