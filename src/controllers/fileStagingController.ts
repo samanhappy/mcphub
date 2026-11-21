@@ -283,6 +283,7 @@ export const assertStagingUploadLink = async (
     if (!settings.enabled) throw new Error('disabled');
     const store = await getStagingStateStore();
     const request = await store.getUploadToken(token);
+    if (request.usedAt) throw new Error('used');
     const ref = await store.getOwnedRef(request.ref, request.ownerHash);
     if (ref.state !== 'reserved' || ref.leaseId) throw new Error('not writable');
     const limit = getUploadCeiling(ref, settings);

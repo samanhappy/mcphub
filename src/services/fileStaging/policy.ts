@@ -118,16 +118,16 @@ export interface UploadQuotaUsage {
   globalUsed: number;
 }
 
-/**
- * Validate a browser upload against the reserved ref it was minted for. Both
- * ledgers call this so the ceiling, empty-file and quota rules cannot drift.
- */
 /** The ceiling a link announced, or the global limit when no hint was given. */
 export const getUploadCeiling = (
   record: Pick<StagingRefRecord, 'reservedBytes'>,
   settings: Pick<FileStagingSettings, 'maxFileBytes'>,
 ): number => record.reservedBytes ?? settings.maxFileBytes;
 
+/**
+ * Validate a browser upload against the reserved ref it was minted for. Both
+ * ledgers call this so the ceiling, empty-file and quota rules cannot drift.
+ */
 export const decideUpload = (
   record: StagingRefRecord,
   dataLength: number,

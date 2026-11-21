@@ -18,6 +18,7 @@ const settings = (overrides: Partial<FileStagingSettings> = {}): FileStagingSett
   globalQuotaBytes: 4 * 1024 * 1024,
   ttlHours: 1,
   downloadTtlSeconds: 300,
+  uploadTtlSeconds: 900,
   maxFilesPerUser: 100,
   cleanupIntervalMinutes: 15,
   ...overrides,
