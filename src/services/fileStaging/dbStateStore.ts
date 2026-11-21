@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import type { EntityManager } from 'typeorm';
 import type { FileStagingSettings } from '../../types/index.js';
 import { FileStagingRepository } from '../../db/repositories/FileStagingRepository.js';
 import type { FileStagingRefEntity } from '../../db/entities/FileStagingRef.js';
@@ -171,7 +172,7 @@ export class DbStagingStateStore implements StagingStateStore {
   }
 
   private async usage(
-    manager: Parameters<FileStagingRepository['listRefs']>[0],
+    manager: EntityManager,
     ownerHash?: string,
   ): Promise<number> {
     const rows = await this.repository.listRefs(manager);
@@ -228,7 +229,7 @@ export class DbStagingStateStore implements StagingStateStore {
   }
 
   private async assertFileCount(
-    manager: Parameters<FileStagingRepository['listRefs']>[0],
+    manager: EntityManager,
     ownerHash: string,
     additional: number,
     settings: FileStagingSettings,
@@ -290,13 +291,7 @@ export class DbStagingStateStore implements StagingStateStore {
   }
 
   async createReservedRef(input: CreateRefInput): Promise<StagingRefRecord> {
-    // The file this link may receive is bounded by its own ceiling.
-    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
-    const record = await this.createRecord(input, 'reserved');
-    const dir = refDir(this.rootDir, record.ownerHash, record.id);
-    await ensureDirectory(dir);
-    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
-    await handle.close();
+    const { record, dir } = await this.createReservedDir(input);
     try {
       await this.repository.transaction(async (manager) => {
         await this.saveReservedRef(manager, record, input);
@@ -312,15 +307,11 @@ export class DbStagingStateStore implements StagingStateStore {
   async createUploadLink(
     input: CreateRefInput,
     ttlSeconds: number,
-  ): Promise<{ record: StagingRefRecord; token: string }> {
+  ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }> {
     const token = randomBytes(32).toString('base64url');
     const tokenHash = sha256(token);
-    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
-    const record = await this.createRecord(input, 'reserved');
-    const dir = refDir(this.rootDir, record.ownerHash, record.id);
-    await ensureDirectory(dir);
-    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
-    await handle.close();
+    const expiresAt = new Date(this.now() + ttlSeconds * 1000);
+    const { record, dir } = await this.createReservedDir(input);
     try {
       // One transaction: cleanup can never observe a reserved ref without its
       // upload token, which would let it release the link's quota reservation
@@ -334,7 +325,7 @@ export class DbStagingStateStore implements StagingStateStore {
           ownerHash: record.ownerHash,
           version: 0,
           contentHash: '',
-          expiresAt: new Date(this.now() + ttlSeconds * 1000),
+          expiresAt,
           usedAt: null,
         });
       });
@@ -343,11 +334,24 @@ export class DbStagingStateStore implements StagingStateStore {
       throw error;
     }
     await this.writeMeta(record);
-    return { record, token };
+    return { record, token, expiresAt: expiresAt.toISOString() };
+  }
+
+  private async createReservedDir(
+    input: CreateRefInput,
+  ): Promise<{ record: StagingRefRecord; dir: string }> {
+    // The file this reserved destination may receive is bounded by its ceiling.
+    await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
+    const record = await this.createRecord(input, 'reserved');
+    const dir = refDir(this.rootDir, record.ownerHash, record.id);
+    await ensureDirectory(dir);
+    const handle = await fs.open(path.join(dir, 'content'), 'wx', 0o600);
+    await handle.close();
+    return { record, dir };
   }
 
   private async saveReservedRef(
-    manager: Parameters<FileStagingRepository['listRefs']>[0],
+    manager: EntityManager,
     record: StagingRefRecord,
     input: CreateRefInput,
   ): Promise<void> {
@@ -587,6 +591,7 @@ export class DbStagingStateStore implements StagingStateStore {
     });
   }
 
+  /** Lower-level primitive; the production path is `createUploadLink`. */
   async createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string> {
     const token = randomBytes(32).toString('base64url');
     const tokenHash = sha256(token);
@@ -673,8 +678,6 @@ export class DbStagingStateStore implements StagingStateStore {
         if (!tokenRow || tokenRow.kind !== 'upload' || tokenRow.usedAt) {
           throw new StagingError('not-found', 'Upload link is not valid');
         }
-        // The pre-write lookup is outside the transaction; a link that expired
-        // while the bytes were being written must not still finalize.
         // Same lock order as leases and mint: quota, then ref. Taking the ref
         // lock first would deadlock with acquireOutputLeases (quota -> ref).
         await this.repository.lockQuota(manager);
@@ -685,9 +688,9 @@ export class DbStagingStateStore implements StagingStateStore {
         if (new Date(refRow.expiresAt).toISOString() <= this.nowIso()) {
           throw new StagingError('expired', 'Staging reference has expired');
         }
-        // Recheck the link expiry only after both locks are held: a link that
-        // expires while this call waits for the quota or ref lock must not
-        // still finalize.
+        // The pre-write lookup was outside this transaction; recheck the link
+        // expiry only after both locks are held, so a link that expires while
+        // this call waits for the quota or ref lock cannot still finalize.
         if (new Date(tokenRow.expiresAt).toISOString() <= this.nowIso()) {
           throw new StagingError('expired', 'Upload link has expired');
         }

@@ -244,7 +244,7 @@ export const executeStagingTool = async (
         typeof sizeHint === 'number' ? Math.floor(sizeHint) : context.settings.maxFileBytes;
       // One atomic call: a cleanup that runs between "ref" and "token" could
       // otherwise release the reservation before the link exists.
-      const { record, token } = await context.store.createUploadLink(
+      const { record, token, expiresAt } = await context.store.createUploadLink(
         {
           principal: context.principal,
           serverId: target.serverId,
@@ -258,7 +258,7 @@ export const executeStagingTool = async (
         },
         context.settings.uploadTtlSeconds,
       );
-      const { uploadUrl, expiresAt } = await context.createUploadUrl(token);
+      const { uploadUrl } = await context.createUploadUrl(token);
       return ok({
         ref: record.ref,
         state: record.state,

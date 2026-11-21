@@ -149,6 +149,7 @@ describe('hub staging virtual tools', () => {
     // The returned token is live and points at the reserved ref.
     const request = await store.getUploadToken(String(payload.uploadToken));
     expect(request.ref).toBe(payload.ref);
+    expect(payload.expiresAt).toBe(request.expiresAt);
 
     // The announced ceiling is enforced by the ledger, not only by the page.
     await expect(

@@ -77,8 +77,12 @@ export interface StagingStateStore {
   createUploadLink(
     input: CreateRefInput,
     ttlSeconds: number,
-  ): Promise<{ record: StagingRefRecord; token: string }>;
-  /** Mint a one-time browser-upload link for an existing reserved ref. */
+  ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }>;
+  /**
+   * Lower-level primitive for an existing reserved ref (tests/repair). The
+   * production upload path uses `createUploadLink`, which creates the ref and
+   * token atomically.
+   */
   createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string>;
   /** Peek an upload token without consuming it, so a model can poll status. */
   getUploadToken(token: string): Promise<StagingTokenRecord>;
@@ -372,11 +376,12 @@ export class FileStagingStateStore implements StagingStateStore {
   async createUploadLink(
     input: CreateRefInput,
     ttlSeconds: number,
-  ): Promise<{ record: StagingRefRecord; token: string }> {
+  ): Promise<{ record: StagingRefRecord; token: string; expiresAt: string }> {
     this.assertInit();
     return this.exclusive(async () => {
       const record = await this.createReservedRecord(input);
       const token = randomBytes(32).toString('base64url');
+      const expiresAt = new Date(this.now() + ttlSeconds * 1000).toISOString();
       this.state.tokens[sha256(token)] = {
         tokenHash: sha256(token),
         kind: 'upload',
@@ -384,11 +389,11 @@ export class FileStagingStateStore implements StagingStateStore {
         ownerHash: record.ownerHash,
         version: 0,
         contentHash: '',
-        expiresAt: new Date(this.now() + ttlSeconds * 1000).toISOString(),
+        expiresAt,
       };
       await this.writeMeta(record);
       await this.persist();
-      return { record, token };
+      return { record, token, expiresAt };
     });
   }
 
@@ -404,7 +409,7 @@ export class FileStagingStateStore implements StagingStateStore {
       );
     }
     this.assertFileCount(input.principal.ownerHash, 1, input.settings);
-    // The file this link may receive is bounded by its own ceiling.
+    // The file this reserved destination may receive is bounded by its ceiling.
     await assertDiskCapacity(this.rootDir, input.maxBytes ?? input.settings.maxFileBytes);
     const record = await this.createRecord(input, 'reserved');
     const dir = refDir(this.rootDir, record.ownerHash, record.id);
@@ -638,6 +643,7 @@ export class FileStagingStateStore implements StagingStateStore {
     });
   }
 
+  /** Lower-level primitive; the production path is `createUploadLink`. */
   async createUploadToken(ref: string, ownerHash: string, ttlSeconds: number): Promise<string> {
     this.assertInit();
     return this.exclusive(async () => {

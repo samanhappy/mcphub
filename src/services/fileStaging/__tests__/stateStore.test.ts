@@ -56,7 +56,7 @@ describe('FileStagingStateStore', () => {
   it('creates the reserved ref and upload token atomically', async () => {
     const store = await createStore();
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-    const { record, token } = await store.createUploadLink(
+    const { record, token, expiresAt } = await store.createUploadLink(
       { ...input(rootDir), maxBytes: 4096, settings: settings() },
       60,
     );
@@ -65,6 +65,7 @@ describe('FileStagingStateStore', () => {
     await expect(store.getUploadToken(token)).resolves.toMatchObject({
       ref: record.ref,
       kind: 'upload',
+      expiresAt,
     });
 
     // An immediate cleanup sees the token, so the quota stays reserved.
