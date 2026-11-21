@@ -1,0 +1,24 @@
+tests/routes/index.test.ts
+  s_005b580fa65ef1::t_d096cfedb3b8dd 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2c8ad3b6b83301428fe5ed0d2414c2a083a5066",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_005b580fa65ef1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edea-20cf-7a62-9a2e-bc7291e1d7e8",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
