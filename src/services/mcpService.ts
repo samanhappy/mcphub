@@ -3937,6 +3937,7 @@ const handleHubStagingCall = async (request: any, extra: any) => {
   }
   const group = getMcpRequestGroup(extra);
   const username = stagingAskUsername(extra);
+  let uploadBaseUrl: string | undefined;
   try {
     const principal = await resolveStagingPrincipal(username);
     const targets = await resolveStagingTargets(group);
@@ -3953,7 +3954,7 @@ const handleHubStagingCall = async (request: any, extra: any) => {
     // back a link that cannot be reached. A tokenless reservation would be
     // released at the next cleanup, but the caller would still get a dead link.
     if (name === 'mcphub_file_request_upload') {
-      await requireStagingBaseUrl('Uploads');
+      uploadBaseUrl = await requireStagingBaseUrl('Uploads');
     }
     const store = await getStagingStateStore();
     // Activity logging is deliberately bypassed (no base64/ref payloads); this
@@ -3988,8 +3989,9 @@ const handleHubStagingCall = async (request: any, extra: any) => {
       },
       createUploadUrl: async (token) => {
         // The token is the only authority a browser needs, so it never has to
-        // hold a hub session.
-        const baseUrl = await requireStagingBaseUrl('Uploads');
+        // hold a hub session. Reuse the pre-mint base URL: re-reading config
+        // here could fail after the link reserved quota.
+        const baseUrl = uploadBaseUrl ?? (await requireStagingBaseUrl('Uploads'));
         return {
           uploadUrl: `${baseUrl}${config.basePath}/staging/upload/${token}`,
           expiresAt: new Date(Date.now() + settings.uploadTtlSeconds * 1000).toISOString(),

@@ -191,7 +191,7 @@ ssh-upload { localPath: "mcpfile://c4d1...", remotePath: "/srv/in/report.pdf" }
 - `allow_zero_byte`（默认 `false`）允许零字节的工具输出变成就绪。它只对输出引用生效。
 - `status` 和 `download` 只能看到调用者拥有的引用；他人的或缺失的引用返回相同的未找到错误。
 - `download` 要求引用处于 `ready` 状态；`reserved`、`failed` 或已过期的引用会被拒绝。返回的链接一次性且短期有效；重试需要重新调用 `mcphub_file_download`。
-- `request_upload` 会创建一个 `reserved` 引用和一次性浏览器上传链接；`size_hint` 设定该链接的上限，未提供时上限为 `maxFileBytes`。Hub 会在读取请求体前检查声明的 `Content-Length`，并在上传落盘时复核实际大小。
+- `request_upload` 会创建一个 `reserved` 引用和一次性浏览器上传链接；`size_hint` 设定该链接的上限，未提供时上限为 `maxFileBytes`，并按该值在用户/全局配额中预留，直到链接被消费或 cleanup 释放。Hub 会在读取请求体前检查声明的 `Content-Length`，并在上传落盘时复核实际大小。
 - `status` 既接受 `mcpfile://` 引用，也接受 `request_upload` 返回的 `uploadToken`，模型无需知道引用即可轮询浏览器上传。
 - 这些工具在存在暂存目标的路由中都会列出，包括 `$smart` 路由；在 `$smart` 路由上按名称直接调用，`call_tool` 仍会拒绝它们，`describe_tool` 会用静态定义回答。
 

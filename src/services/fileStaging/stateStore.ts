@@ -758,7 +758,20 @@ export class FileStagingStateStore implements StagingStateStore {
     return this.exclusive(async () => {
       const nowIso = new Date(this.now()).toISOString();
       let removed = 0;
+      const liveDownloadRefs = new Set<string>();
+      const liveUploadRefs = new Set<string>();
+      for (const [hash, token] of Object.entries(this.state.tokens)) {
+        if (token.usedAt || token.expiresAt <= nowIso) {
+          delete this.state.tokens[hash];
+          continue;
+        }
+        if (token.kind === 'download') liveDownloadRefs.add(token.ref);
+        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+      }
       for (const [key, record] of Object.entries(this.state.refs)) {
+        // A live download token is a promise that the bytes still exist, even
+        // after the reference TTL; keep the ref until that token expires.
+        if (liveDownloadRefs.has(record.ref)) continue;
         // A stale pin (past pinUntil) is treated as released: a crashed
         // download must not protect content forever.
         const pinned = record.pinCount > 0 && (!record.pinUntil || record.pinUntil > nowIso);
@@ -771,14 +784,6 @@ export class FileStagingStateStore implements StagingStateStore {
         await removeIfExists(refDir(this.rootDir, record.ownerHash, record.id));
         delete this.state.refs[key];
         removed += 1;
-      }
-      const liveUploadRefs = new Set<string>();
-      for (const [hash, token] of Object.entries(this.state.tokens)) {
-        if (token.usedAt || token.expiresAt <= nowIso) {
-          delete this.state.tokens[hash];
-          continue;
-        }
-        if (token.kind === 'upload') liveUploadRefs.add(token.ref);
       }
       for (const record of Object.values(this.state.refs)) {
         if (shouldReleaseReservation(record, liveUploadRefs.has(record.ref))) {

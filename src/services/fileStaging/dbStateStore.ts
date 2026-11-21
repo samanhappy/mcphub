@@ -697,6 +697,9 @@ export class DbStagingStateStore implements StagingStateStore {
           ownerUsed: await this.usage(manager, refRow.ownerHash),
           globalUsed: await this.usage(manager),
         });
+        // Keep the rename inside the transaction: the ledger must never say
+        // `ready` before the bytes are at `target`. The write and hash (the
+        // expensive parts) already happen outside; this is one rename.
         await publishFileTemp(temp, target);
         refRow.size = digest.size;
         refRow.sha256 = digest.sha256;
@@ -723,13 +726,7 @@ export class DbStagingStateStore implements StagingStateStore {
     const swept = new Set<string>();
     await this.repository.transaction(async (manager) => {
       const rows = await this.repository.listRefs(manager);
-      for (const row of rows) {
-        const record = toRecord(row);
-        if (!isSweepable(record, nowIso)) continue;
-        await this.repository.deleteRef(manager, row.ref);
-        swept.add(row.ref);
-        sweep.push(record);
-      }
+      const liveDownloadRefs = new Set<string>();
       const liveUploadRefs = new Set<string>();
       for (const token of await this.repository.listTokens(manager)) {
         const expired = new Date(token.expiresAt).toISOString() <= nowIso;
@@ -737,7 +734,18 @@ export class DbStagingStateStore implements StagingStateStore {
           await this.repository.deleteToken(manager, token.tokenHash);
           continue;
         }
+        if (token.kind === 'download') liveDownloadRefs.add(token.ref);
         if (token.kind === 'upload') liveUploadRefs.add(token.ref);
+      }
+      for (const row of rows) {
+        const record = toRecord(row);
+        // A live download token promises the bytes are still fetchable; do not
+        // sweep the ref out from under it even if the reference TTL passed.
+        if (liveDownloadRefs.has(row.ref)) continue;
+        if (!isSweepable(record, nowIso)) continue;
+        await this.repository.deleteRef(manager, row.ref);
+        swept.add(row.ref);
+        sweep.push(record);
       }
       // Re-read the release candidates under a row lock: the snapshot above
       // may predate a concurrent finalize or lease, and saving it back would

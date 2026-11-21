@@ -220,6 +220,31 @@ describe('FileStagingStateStore', () => {
     });
   });
 
+  it('keeps a ready ref alive while a live download token exists', async () => {
+    let clock = Date.now();
+    const store = await createStore({ now: () => clock });
+    const short = settings({ ttlHours: 0.001 });
+    const ready = await store.createReadyRef({ ...input(rootDir), settings: short }, Buffer.from('bytes'));
+    const token = await store.createDownloadToken(
+      ready.ref,
+      input(rootDir).principal.ownerHash,
+      300,
+    );
+    expect(token).toBeTruthy();
+
+    clock += 60_000;
+    await store.cleanup(short);
+    await expect(store.getOwnedRef(ready.ref, input(rootDir).principal.ownerHash)).resolves.toMatchObject({
+      state: 'ready',
+    });
+
+    clock += 400_000;
+    await store.cleanup(short);
+    await expect(store.getOwnedRef(ready.ref, input(rootDir).principal.ownerHash)).rejects.toMatchObject({
+      code: 'not-found',
+    });
+  });
+
   it('keeps a reservation held by an active output lease during cleanup', async () => {
     const store = await createStore();
     const owner = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
