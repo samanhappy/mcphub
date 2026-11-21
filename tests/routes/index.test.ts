@@ -65,6 +65,7 @@ jest.mock('../../src/controllers/userController.js', () => ({
 }));
 
 jest.mock('../../src/controllers/marketController.js', () => ({
+  getHostedMarketCatalog: routeHandler,
   getAllMarketServers: routeHandler,
   getMarketServer: routeHandler,
   getAllMarketCategories: routeHandler,
