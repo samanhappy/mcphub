@@ -69,7 +69,8 @@ const startHub = async (name: string, settingsValue: object): Promise<HubProcess
     }
     try {
       const response = await fetch(`http://127.0.0.1:${port}/health`);
-      if (response.ok) break;
+      // Health can return 200 before upstream initialization registers /sse.
+      if (response.ok && output.join('').includes('MCP server initialized successfully')) break;
     } catch {
       // not listening yet
     }
@@ -77,7 +78,7 @@ const startHub = async (name: string, settingsValue: object): Promise<HubProcess
   }
   if (Date.now() >= deadline) {
     child.kill('SIGTERM');
-    throw new Error(`hub ${name} did not become healthy:\n${output.join('')}`);
+    throw new Error(`hub ${name} did not become ready for SSE:\n${output.join('')}`);
   }
   return { child, port, dir, logs: () => output.join('') };
 };
