@@ -12,6 +12,7 @@ interface MarketServerCardProps {
     Partial<Pick<MarketServer, 'tools'>>;
   to: string;
   stars?: number;
+  toolCount?: number;
   transports?: string[];
 }
 
@@ -23,10 +24,17 @@ const getInitials = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, to, stars, transports }) => {
+const MarketServerCard: React.FC<MarketServerCardProps> = ({
+  server,
+  to,
+  stars,
+  toolCount,
+  transports,
+}) => {
   const { t } = useTranslation();
   const tags = (server.tags || []).slice(0, 3);
   const category = server.categories?.[0];
+  const indexedTools = toolCount ?? server.tools?.length ?? 0;
 
   return (
     <Link
@@ -121,17 +129,16 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({ server, to, stars, 
           className="hub-mono flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
           style={{ fontSize: 11.5, color: 'var(--hub-ink-3)' }}
         >
-          {stars === undefined ? (
+          {stars !== undefined && stars > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Star size={11} /> {stars.toLocaleString()}
+            </span>
+          )}
+          {indexedTools > 0 && (
             <span className="inline-flex items-center gap-1">
               <Zap size={11} />
-              {server.tools?.length ?? 0} {t('server.tools').toLowerCase()}
+              {indexedTools.toLocaleString()} {t('server.tools').toLowerCase()}
             </span>
-          ) : (
-            stars > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <Star size={11} /> {stars.toLocaleString()}
-              </span>
-            )
           )}
           {category && <span className="truncate">{category}</span>}
           {transports?.map((transport) => (

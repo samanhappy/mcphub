@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: createDevProxyConfig(env.BASE_PATH),
+      proxy: createDevProxyConfig(env.BASE_PATH, `http://localhost:${process.env.PORT || 3000}`),
     },
   };
 });

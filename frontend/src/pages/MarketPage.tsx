@@ -385,7 +385,7 @@ export default function MarketPage() {
   const active = tab === 'registry' || tab === 'local' ? tab : 'hosted';
 
   if (serverName) return <LegacyMarket />;
-  if (active === 'hosted' && query.has('entry')) return <HostedMarket />;
+  const showHostedDetail = active === 'hosted' && query.has('entry');
 
   const tabs = [
     { id: 'hosted', href: '/market', label: 'MCPHub Registry' },
@@ -407,10 +407,16 @@ export default function MarketPage() {
 
   return (
     <div>
-      <h1 className="hub-h1 mb-5">{t('nav.market')}</h1>
+      <h1 hidden={showHostedDetail} className="hub-h1 mb-5">
+        {t('nav.market')}
+      </h1>
       <nav
         aria-label={t('nav.market')}
-        className="mb-5 flex flex-wrap gap-x-1.5 border-b border-[var(--hub-line)]"
+        className={
+          showHostedDetail
+            ? 'hidden'
+            : 'mb-5 flex flex-wrap gap-x-1.5 border-b border-[var(--hub-line)]'
+        }
       >
         {tabs.map(({ id, href, label, source, url }) => {
           const selected = id === active;

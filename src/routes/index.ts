@@ -545,6 +545,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
   // Market routes
   authenticatedRouter.get('/market/catalog', getHostedMarketCatalog);
   authenticatedRouter.get('/market/catalog/categories', getHostedMarketCatalog);
+  authenticatedRouter.get('/market/catalog/featured', getHostedMarketCatalog);
   authenticatedRouter.get('/market/catalog/:author/:name', getHostedMarketCatalog);
   authenticatedRouter.get('/market/servers', getAllMarketServers);
   authenticatedRouter.get('/market/servers/search', searchMarketServersByQuery);

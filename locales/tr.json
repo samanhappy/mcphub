@@ -789,6 +789,9 @@
     "installError": "Sunucu yüklenemedi: {{error}}"
   },
   "registry": {
+    "featuredTitle": "Öne çıkan sunucular",
+    "overview": "Genel bakış",
+    "toolsNotIndexed": "Bu sunucunun araçları henüz dizine eklenmedi.",
     "title": "Kayıt",
     "official": "Resmi",
     "latest": "En Son",

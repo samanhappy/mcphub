@@ -24,7 +24,9 @@ export const getHostedMarketCatalog = async (req: Request, res: Response): Promi
 
   const path = isDetail
     ? `servers/${encodeURIComponent(author)}/${encodeURIComponent(name)}`
-    : /\/categories\/?$/i.test(req.path) ? 'categories' : 'servers';
+    : /\/featured\/?$/i.test(req.path)
+      ? 'featured'
+      : /\/categories\/?$/i.test(req.path) ? 'categories' : 'servers';
   const url = new URL(path, HOSTED_REGISTRY_URL);
   if (path === 'servers') {
     for (const key of ['q', 'category', 'transport', 'page', 'pageSize']) {

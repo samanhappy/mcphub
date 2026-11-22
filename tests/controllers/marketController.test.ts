@@ -45,6 +45,8 @@ describe('hosted Market catalog', () => {
 
   it.each([
     ['/market/catalog/categories/', {}, 'categories'],
+    ['/market/catalog/featured', {}, 'featured'],
+    ['/market/catalog/example/featured', { author: 'example', name: 'featured' }, 'servers/example/featured'],
     [
       '/market/catalog/ac-mizan/registry',
       { author: 'ac-mizan', name: 'registry' },

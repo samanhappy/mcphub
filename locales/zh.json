@@ -792,6 +792,9 @@
     "installError": "安装服务器失败：{{error}}"
   },
   "registry": {
+    "featuredTitle": "精选服务器",
+    "overview": "介绍",
+    "toolsNotIndexed": "此服务器的工具尚未收录。",
     "title": "注册中心",
     "official": "官方",
     "latest": "最新版本",
