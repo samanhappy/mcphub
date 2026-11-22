@@ -789,7 +789,7 @@
     "installError": "Échec de l'installation du serveur : {{error}}"
   },
   "registry": {
-    "featuredTitle": "Serveurs en vedette",
+    "featured": "En vedette",
     "overview": "Présentation",
     "toolsNotIndexed": "Les outils de ce serveur ne sont pas encore indexés.",
     "title": "Registre",

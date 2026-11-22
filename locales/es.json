@@ -790,7 +790,7 @@
     "installError": "Error al instalar el servidor: {{error}}"
   },
   "registry": {
-    "featuredTitle": "Servidores destacados",
+    "featured": "Destacado",
     "overview": "Descripción general",
     "toolsNotIndexed": "Aún no se han indexado las herramientas de este servidor.",
     "title": "Registro",

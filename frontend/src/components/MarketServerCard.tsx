@@ -14,6 +14,7 @@ interface MarketServerCardProps {
   stars?: number;
   toolCount?: number;
   transports?: string[];
+  featured?: boolean;
 }
 
 const getInitials = (name: string) =>
@@ -30,6 +31,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
   stars,
   toolCount,
   transports,
+  featured,
 }) => {
   const { t } = useTranslation();
   const tags = (server.tags || []).slice(0, 3);
@@ -90,6 +92,11 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
               @{server.author?.name || t('market.unknown')}
             </div>
           </div>
+          {featured && (
+            <span className="shrink-0 self-start whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              {t('registry.featured')}
+            </span>
+          )}
         </div>
 
         <div

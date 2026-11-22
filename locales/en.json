@@ -790,7 +790,7 @@
     "installError": "Failed to install server: {{error}}"
   },
   "registry": {
-    "featuredTitle": "Featured servers",
+    "featured": "Featured",
     "overview": "Overview",
     "toolsNotIndexed": "Tools have not been indexed for this server yet.",
     "title": "Registry",

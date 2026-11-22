@@ -790,7 +790,7 @@
     "installError": "Cài đặt máy chủ thất bại: {{error}}"
   },
   "registry": {
-    "featuredTitle": "Máy chủ nổi bật",
+    "featured": "Nổi bật",
     "overview": "Tổng quan",
     "toolsNotIndexed": "Các công cụ của máy chủ này chưa được lập chỉ mục.",
     "title": "Kho lưu trữ (Registry)",

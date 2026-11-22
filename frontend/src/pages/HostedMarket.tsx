@@ -519,7 +519,7 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
   const [featured, setFeatured] = useState<CatalogServer[]>([]);
 
   useEffect(() => {
-    if (!showFeatured) return;
+    if (hidden) return;
     let active = true;
     const refresh = async () => {
       const response = await apiGet<ApiResponse<{ server: CatalogServer; endsAt?: string }[]>>(
@@ -541,14 +541,19 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
       active = false;
       clearInterval(timer);
     };
-  }, [showFeatured]);
+  }, [hidden]);
 
-  const renderCard = (server: CatalogServer) => {
+  const featuredPaths = new Set(featured.map(registryPath));
+  const items = new Map<string, CatalogServer>();
+  for (const server of showFeatured ? featured : []) items.set(registryPath(server), server);
+  for (const server of data?.items ?? []) items.set(registryPath(server), server);
+
+  const renderCard = ([path, server]: [string, CatalogServer]) => {
     const next = new URLSearchParams(filters);
     next.set('entry', `${server.author}/${server.name}`);
     return (
       <MarketServerCard
-        key={registryPath(server)}
+        key={path}
         to={`/market?${next}`}
         server={{
           name: server.name,
@@ -563,6 +568,7 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
         stars={server.github.stars}
         toolCount={server.toolCount}
         transports={server.transports}
+        featured={featuredPaths.has(path)}
       />
     );
   };
@@ -626,34 +632,23 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
           </label>
         </div>
         <div className="min-w-0">
-          {showFeatured && featured.length > 0 && (
-            <section className="mb-6" aria-labelledby="market-featured">
-              <h2 id="market-featured" className="mb-3 text-sm font-semibold">
-                {t('registry.featuredTitle')}
-              </h2>
-              <div className={CARD_GRID}>{featured.map(renderCard)}</div>
-            </section>
+          {data && data.items.length > 0 && (
+            <p className="mb-3 text-sm text-[var(--hub-ink-3)]" role="status">
+              {t('registry.showing', {
+                from: (data.page - 1) * data.pageSize + 1,
+                to: (data.page - 1) * data.pageSize + data.items.length,
+                total: data.total.toLocaleString(),
+              })}
+            </p>
           )}
+          {items.size > 0 && <div className={CARD_GRID}>{Array.from(items, renderCard)}</div>}
           {loading ? (
             <MarketGridSkeleton />
           ) : !data ? (
             <p role="alert">{t('registry.fetchError')}</p>
           ) : (
             <>
-              {data.items.length > 0 ? (
-                <p className="mb-3 text-sm text-[var(--hub-ink-3)]" role="status">
-                  {t('registry.showing', {
-                    from: (data.page - 1) * data.pageSize + 1,
-                    to: (data.page - 1) * data.pageSize + data.items.length,
-                    total: data.total.toLocaleString(),
-                  })}
-                </p>
-              ) : (
-                <p role="status">{t('registry.noServers')}</p>
-              )}
-              <div className={CARD_GRID}>
-                {data.items.map(renderCard)}
-              </div>
+              {items.size === 0 && <p role="status">{t('registry.noServers')}</p>}
               <Pagination
                 currentPage={data.page}
                 totalPages={Math.ceil(data.total / data.pageSize)}
