@@ -1,0 +1,67 @@
+locales/en.json
+  s_005b580fa65ef1::t_8085eee322e774 794-795
+  s_005b580fa65ef1::t_590d924ef24525 793
+locales/zh.json
+  s_005b580fa65ef1::t_8085eee322e774 796-797
+  s_005b580fa65ef1::t_442e8cc6a401ff 795
+frontend/src/pages/HostedMarket.tsx
+  s_005b580fa65ef1::t_47eef81fff5a58 209
+  s_005b580fa65ef1::t_d2332017319a2e 32
+  s_005b580fa65ef1::t_9f73955c246917 1,5,38-44,60,64,72,123,128-129,135
+  s_005b580fa65ef1::t_8085eee322e774 144,154-157,159,167,236-237,244-279,281,291-297,299,307-310,312-322,325-335,352,364,367-377,379-396
+  s_005b580fa65ef1::t_48c78b8c5abd9e 140,179-180,186,298,300-306,323,398-406,408,418,422-426
+  s_005b580fa65ef1::t_9806e15c5d62e6 133-134
+  s_005b580fa65ef1::t_f43e6f2db95bb3 131-132
+  s_005b580fa65ef1::t_b9ac69140b5b1f 142-143,145-153,158,160-166,168-175
+  s_005b580fa65ef1::t_d33573fdca0d3e 407,409-417,419-421
+  s_005b580fa65ef1::t_a1c2149f7bfe43 130,181-185,311,324,337-340
+  s_005b580fa65ef1::t_c4c7d16d2b0c15 202,520-521,523-524,527-530,533-543,545,547-569,633,635-636
+  s_005b580fa65ef1::t_2f4c315e03f4e4 192-201,203-208,210-215,336,342-351,353-363,365-366,498,512,515,518-519,522,525-526,531-532,544,546,584,629-632,634,655,669,676-677,679,685,687,699-704
+locales/es.json
+  s_005b580fa65ef1::t_8085eee322e774 794-795
+  s_005b580fa65ef1::t_429143b0fbf58d 793
+src/controllers/marketController.ts
+  s_005b580fa65ef1::t_c4c7d16d2b0c15 29
+  s_005b580fa65ef1::t_488e9f931f0eda 27-28
+locales/vi.json
+  s_005b580fa65ef1::t_8085eee322e774 794-795
+  s_005b580fa65ef1::t_7864373192dca4 793
+frontend/src/pages/MarketPage.tsx
+  s_005b580fa65ef1::t_fe432cf56f17cc 410-412,415-419
+  s_005b580fa65ef1::t_899ed75af03469 388
+frontend/src/components/MarketServerCard.tsx
+  s_005b580fa65ef1::t_d2332017319a2e 15,27-33,37,132-137,140
+locales/fr.json
+  s_005b580fa65ef1::t_8085eee322e774 793-794
+  s_005b580fa65ef1::t_e1dc58f11a72da 792
+frontend/vite.config.ts
+  s_005b580fa65ef1::t_812d32df4eb09a 66
+locales/tr.json
+  s_005b580fa65ef1::t_8085eee322e774 793-794
+  s_005b580fa65ef1::t_97d8bc60858ddc 792
+src/routes/index.ts
+  s_005b580fa65ef1::t_1a7a06bf226e96 548
+tests/controllers/marketController.test.ts
+  s_005b580fa65ef1::t_14c91f82a3c8c2 48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4cd3b57356307d4febb23d129e50e57650a4118",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_005b580fa65ef1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edea-20cf-7a62-9a2e-bc7291e1d7e8",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
