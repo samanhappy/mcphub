@@ -21,6 +21,8 @@ const SAFE_SERVER_CONFIG_FIELDS = [
   'name',
   'description',
   'tags',
+  'repositoryUrl',
+  'documentationUrl',
   'type',
   'visibility',
   'owner',

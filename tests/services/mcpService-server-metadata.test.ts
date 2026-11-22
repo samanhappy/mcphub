@@ -195,6 +195,26 @@ describe('mcpService initialize metadata', () => {
     expect(byName.untagged.config).not.toHaveProperty('tags');
   });
 
+  it('exposes repository and documentation links on list entries (#1495)', async () => {
+    mockFindAll.mockResolvedValue([
+      {
+        name: 'linked',
+        type: 'stdio',
+        command: 'node',
+        enabled: false,
+        repositoryUrl: 'https://github.com/owner/repo',
+        documentationUrl: 'https://docs.example.com',
+      },
+      { name: 'plain', type: 'stdio', command: 'node', enabled: false },
+    ]);
+    const servers = await getServersInfo();
+    const byName = Object.fromEntries(servers.map((server) => [server.name, server]));
+    expect(byName.linked.config?.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(byName.linked.config?.documentationUrl).toBe('https://docs.example.com');
+    expect(byName.plain.config).not.toHaveProperty('repositoryUrl');
+    expect(byName.plain.config).not.toHaveProperty('documentationUrl');
+  });
+
   it('does not invent a protocol version before initialization', async () => {
     mockFindAll.mockResolvedValue([
       { name: 'waiting', type: 'stdio', command: 'node', enabled: false },

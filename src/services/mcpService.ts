@@ -3235,6 +3235,8 @@ export const getServersInfo = async (
             resolvedType ||
             serverConfig?.description ||
             serverConfig?.tags?.length ||
+            serverConfig?.repositoryUrl ||
+            serverConfig?.documentationUrl ||
             serverConfig?.command ||
             serverConfig?.staging
               ? {
@@ -3248,6 +3250,12 @@ export const getServersInfo = async (
                     : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
                   ...(serverConfig?.tags?.length ? { tags: [...serverConfig.tags] } : {}),
+                  ...(serverConfig?.repositoryUrl
+                    ? { repositoryUrl: serverConfig.repositoryUrl }
+                    : {}),
+                  ...(serverConfig?.documentationUrl
+                    ? { documentationUrl: serverConfig.documentationUrl }
+                    : {}),
                   // Expose command so the frontend can determine if reinstall is
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
