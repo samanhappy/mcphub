@@ -1,0 +1,24 @@
+tests/integration/hub-to-hub-sse.test.ts
+  s_005b580fa65ef1::t_387aa4623db60a 72-73,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92a72c9e7a79490839dd0ee6c58aa6e9a9c8c60c",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_005b580fa65ef1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edea-20cf-7a62-9a2e-bc7291e1d7e8",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
