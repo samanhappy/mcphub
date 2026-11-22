@@ -10,6 +10,46 @@ import {
   filterMarketServersByTag,
 } from '../services/marketService.js';
 
+const HOSTED_REGISTRY_URL = 'https://www.mcphub.app/api/v1/registry/';
+const REGISTRY_SLUG = /^[a-z\d][a-z\d._-]{0,127}$/i;
+
+// Dashboard preview. Keep upstream requests on the public Registry API origin.
+export const getHostedMarketCatalog = async (req: Request, res: Response): Promise<void> => {
+  const { author, name } = req.params;
+  const isDetail = author !== undefined || name !== undefined;
+  if (isDetail && ![author, name].every((slug) => REGISTRY_SLUG.test(slug ?? ''))) {
+    res.status(400).json({ success: false, message: 'Invalid Registry server identity' });
+    return;
+  }
+
+  const path = isDetail
+    ? `servers/${encodeURIComponent(author)}/${encodeURIComponent(name)}`
+    : /\/featured\/?$/i.test(req.path)
+      ? 'featured'
+      : /\/categories\/?$/i.test(req.path) ? 'categories' : 'servers';
+  const url = new URL(path, HOSTED_REGISTRY_URL);
+  if (path === 'servers') {
+    for (const key of ['q', 'category', 'transport', 'page', 'pageSize']) {
+      const value = req.query[key];
+      if (typeof value === 'string') url.searchParams.set(key, value.slice(0, 128));
+    }
+  }
+
+  try {
+    const upstream = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(8_000) });
+    if (isDetail && upstream.status === 404) {
+      res.status(404).json({ success: false, message: 'Registry server not found' });
+      return;
+    }
+    if (!upstream.ok) throw new Error(`Registry response ${upstream.status}`);
+    const payload = await upstream.json() as ApiResponse<unknown>;
+    if (payload?.success !== true || payload.data == null) throw new Error('Invalid Registry response');
+    res.json(payload);
+  } catch {
+    res.status(502).json({ success: false, message: 'MCPHub Registry unavailable' });
+  }
+};
+
 // Get all market servers
 export const getAllMarketServers = (_: Request, res: Response): void => {
   try {

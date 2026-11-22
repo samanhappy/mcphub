@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, AlertCircle, X, ChevronDown } from 'lucide-react';
 import {
   MarketServer,
@@ -19,14 +19,16 @@ import RegistryServerCard from '@/components/RegistryServerCard';
 import RegistryServerDetail from '@/components/RegistryServerDetail';
 import Pagination from '@/components/ui/Pagination';
 import CursorPagination from '@/components/ui/CursorPagination';
+import HostedMarket from './HostedMarket';
+import MarketCategories from '@/components/MarketCategories';
 
-const MarketPage: React.FC = () => {
+const LegacyMarket: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { serverName } = useParams<{ serverName?: string }>();
   const { showToast } = useToast();
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   // The cloud (MCPRouter) tab is hidden; only 'local' and 'registry' remain.
   const currentTab: 'local' | 'registry' =
     searchParams.get('tab') === 'registry' ? 'registry' : 'local';
@@ -109,21 +111,10 @@ const MarketPage: React.FC = () => {
     navigate,
   ]);
 
-  const switchTab = (tab: 'local' | 'registry') => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('tab', tab);
-    setSearchParams(newParams);
-    if (serverName) navigate('/market?' + newParams.toString());
-  };
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (currentTab === 'local') searchLocalServers(searchQuery);
     else if (currentTab === 'registry') searchRegistryServers(registrySearchQuery);
-  };
-
-  const handleCategoryClick = (category: string) => {
-    if (currentTab === 'local') filterLocalByCategory(category);
   };
 
   const handleClearFilters = () => {
@@ -137,15 +128,9 @@ const MarketPage: React.FC = () => {
     }
   };
 
-  const handleServerClick = (server: MarketServer | RegistryServerEntry) => {
-    if (currentTab === 'registry') {
-      const registryServer = server as RegistryServerEntry;
-      const name = registryServer.server?.name;
-      if (name) navigate(`/market/${encodeURIComponent(name)}?tab=registry`);
-    } else {
-      const marketServer = server as MarketServer;
-      navigate(`/market/${marketServer.name}?tab=local`);
-    }
+  const openRegistryServer = (entry: RegistryServerEntry) => {
+    const name = entry.server?.name;
+    if (name) navigate(`/market/${encodeURIComponent(name)}?tab=registry`);
   };
 
   const handleBackToList = () => navigate(`/market?tab=${currentTab}`);
@@ -236,63 +221,8 @@ const MarketPage: React.FC = () => {
   const totalPages = isLocalTab ? localTotalPages : registryTotalPages;
   const serversPerPage = isLocalTab ? localServersPerPage : registryServersPerPage;
 
-  const tabs: { id: 'local' | 'registry'; label: string; sourceLabel: string; sourceUrl: string }[] = [
-    { id: 'local', label: t('market.title'), sourceLabel: 'MCPM', sourceUrl: 'https://mcpm.sh' },
-    {
-      id: 'registry',
-      label: t('registry.title'),
-      sourceLabel: t('registry.official'),
-      sourceUrl: 'https://registry.modelcontextprotocol.io',
-    },
-  ];
-
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-end justify-between gap-4 mb-6">
-        <div>
-          <h1 className="hub-h1">{t('nav.market')}</h1>
-          <p className="hub-sub">
-            {tabs.map((tab) => tab.label).join(' · ')}
-          </p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="mb-5">
-        <div style={{ borderBottom: '1px solid var(--hub-line)' }}>
-          <nav className="flex -mb-px gap-1.5">
-            {tabs.map((tab) => {
-              const active = currentTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => switchTab(tab.id)}
-                  className="py-2 px-3 transition-colors text-[14px]"
-                  style={{
-                    borderBottom: '2px solid ' + (active ? 'var(--hub-ink)' : 'transparent'),
-                    color: active ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
-                    fontWeight: active ? 500 : 400,
-                  }}
-                >
-                  {tab.label}
-                  <a
-                    href={tab.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hub-mono ml-1.5"
-                    style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    ({tab.sourceLabel})
-                  </a>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
-
       {error && (
         <div
           className="hub-card flex items-center justify-between gap-3 mb-4"
@@ -342,51 +272,16 @@ const MarketPage: React.FC = () => {
         </form>
       )}
 
-      <div className={isLocalTab ? 'grid gap-5' : ''} style={isLocalTab ? { gridTemplateColumns: '180px 1fr' } : undefined}>
-        {/* Categories sidebar (local only) */}
+      <div className={isLocalTab ? 'grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]' : ''}>
         {isLocalTab && (
-          <div>
-            <h3 className="hub-sect mb-2">{t('market.categories')}</h3>
-            <div className="flex flex-col gap-0.5">
-              <button
-                onClick={() => filterLocalByCategory('')}
-                className="flex items-center justify-between transition-colors text-[13px]"
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  background: !selectedCategory ? 'var(--hub-surface)' : 'transparent',
-                  color: !selectedCategory ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
-                  border: '1px solid ' + (!selectedCategory ? 'var(--hub-line)' : 'transparent'),
-                }}
-              >
-                <span>{t('common.all')}</span>
-                <span className="hub-mono" style={{ fontSize: 11, color: 'var(--hub-ink-3)' }}>
-                  {allLocalServers.length}
-                </span>
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => handleCategoryClick(cat)}
-                  className="flex items-center justify-between transition-colors text-[13px]"
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    background: selectedCategory === cat ? 'var(--hub-surface)' : 'transparent',
-                    color: selectedCategory === cat ? 'var(--hub-ink)' : 'var(--hub-ink-2)',
-                    border:
-                      '1px solid ' + (selectedCategory === cat ? 'var(--hub-line)' : 'transparent'),
-                  }}
-                >
-                  <span className="truncate">{cat}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <MarketCategories
+            categories={categories.map((name) => ({ slug: name, name }))}
+            selected={selectedCategory}
+            onSelect={filterLocalByCategory}
+            total={allLocalServers.length}
+          />
         )}
-
-        {/* Grid */}
-        <div>
+        <div className="min-w-0">
           {loading ? (
             <div className="hub-card p-6 text-center" style={{ color: 'var(--hub-ink-3)' }}>
               {t('app.loading')}
@@ -403,13 +298,13 @@ const MarketPage: React.FC = () => {
                     <MarketServerCard
                       key={index}
                       server={server as MarketServer}
-                      onClick={handleServerClick}
+                      to={`/market/${encodeURIComponent((server as MarketServer).name)}?tab=local`}
                     />
                   ) : (
                     <RegistryServerCard
                       key={index}
                       serverEntry={server as RegistryServerEntry}
-                      onClick={handleServerClick}
+                      onClick={openRegistryServer}
                     />
                   ),
                 )}
@@ -482,4 +377,77 @@ const MarketPage: React.FC = () => {
   );
 };
 
-export default MarketPage;
+export default function MarketPage() {
+  const { t } = useTranslation();
+  const { serverName } = useParams<{ serverName?: string }>();
+  const [query] = useSearchParams();
+  const tab = query.get('tab');
+  const active = tab === 'registry' || tab === 'local' ? tab : 'hosted';
+
+  if (serverName) return <LegacyMarket />;
+  const showHostedDetail = active === 'hosted' && query.has('entry');
+
+  const tabs = [
+    { id: 'hosted', href: '/market', label: 'MCPHub Registry' },
+    {
+      id: 'local',
+      href: '/market?tab=local',
+      label: t('market.title'),
+      source: 'MCPM',
+      url: 'https://mcpm.sh',
+    },
+    {
+      id: 'registry',
+      href: '/market?tab=registry',
+      label: t('registry.title'),
+      source: t('registry.official'),
+      url: 'https://registry.modelcontextprotocol.io',
+    },
+  ];
+
+  return (
+    <div>
+      <h1 hidden={showHostedDetail} className="hub-h1 mb-5">
+        {t('nav.market')}
+      </h1>
+      <nav
+        aria-label={t('nav.market')}
+        className={
+          showHostedDetail
+            ? 'hidden'
+            : 'mb-5 flex flex-wrap gap-x-1.5 border-b border-[var(--hub-line)]'
+        }
+      >
+        {tabs.map(({ id, href, label, source, url }) => {
+          const selected = id === active;
+          return (
+            <div
+              key={id}
+              className="flex items-center gap-1.5 border-b-2 px-3 text-sm"
+              style={{
+                borderColor: selected ? 'var(--hub-ink)' : 'transparent',
+                color: selected ? 'var(--hub-ink)' : 'var(--hub-ink-3)',
+                fontWeight: selected ? 500 : 400,
+              }}
+            >
+              <Link to={href} aria-current={selected ? 'page' : undefined} className="py-2">
+                {label}
+              </Link>
+              {url && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hub-mono text-[11px] text-[var(--hub-ink-3)]"
+                >
+                  ({source})
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+      {active === 'hosted' ? <HostedMarket /> : <LegacyMarket />}
+    </div>
+  );
+}

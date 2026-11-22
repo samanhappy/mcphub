@@ -58,6 +58,8 @@ The services in `src/services/` are the core domain layer. Notable members:
 | `marketService.ts` / `cloudService.ts` / `registry.ts` | Read-mostly catalogs surfaced by the dashboard. |
 | `keepAliveService.ts` | Optional periodic ping for `sse` upstream servers. |
 
+The dashboard's default Market uses the public MCPHub Registry via the Hub's authenticated `/api/market/catalog` routes. It requests one page at a time and reads installation methods from the selected entry. The MCPM and official MCP Registry views remain available as Market tabs. Public Discovery and CLI discovery use the instance's local catalog.
+
 Upstream discovery follows `nextCursor` for tools, prompts, resources, and resource templates before publishing a combined list. Repeated cursors, more than 100 additional pages, or a failed page reject discovery rather than publish a truncated list. Combined multi-page lists do not advertise a cache TTL.
 
 ## Data layer
