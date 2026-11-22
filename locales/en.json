@@ -403,7 +403,10 @@
     "validationKeepAliveRange": "Health check interval must be at least 5,000 ms.",
     "validationIdleTimeoutMin": "Idle shutdown timeout must be at least 10,000 ms.",
     "saving": "Saving…",
-    "adding": "Adding…"
+    "adding": "Adding…",
+    "newToolsCount": "{{count}} new",
+    "newToolsSinceLastReview": "New tools since you last checked: {{count}}",
+    "markToolsSeen": "Mark as seen"
   },
   "status": {
     "sleeping": "Sleeping",
@@ -919,7 +922,8 @@
     "fixJsonBeforeSwitching": "Please fix JSON format before switching to form mode",
     "item": "Item {{index}}",
     "addItem": "Add {{key}} item",
-    "enterKey": "Enter {{key}}"
+    "enterKey": "Enter {{key}}",
+    "new": "New"
   },
   "prompt": {
     "run": "Get",

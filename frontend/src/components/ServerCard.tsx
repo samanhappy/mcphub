@@ -34,6 +34,8 @@ import { copyText } from '@/utils/clipboard';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
 import { useRuntimeSettings, useSettingsActions } from '@/hooks/useSettingsData';
+import { useNewTools } from '@/hooks/useNewTools';
+import { upstreamToolName } from '@/utils/toolChanges';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageServer } from '@/utils/serverPermissions';
 import { getServerTagList } from '@/utils/serverTags';
@@ -159,9 +161,15 @@ const ServerCard = ({
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { installConfig } = useRuntimeSettings();
+  const { installConfig, nameSeparator } = useRuntimeSettings();
   const { exportMCPSettings } = useSettingsActions();
   const { auth } = useAuth();
+  const { newTools, acknowledge: acknowledgeNewTools } = useNewTools(
+    server,
+    nameSeparator,
+    auth.user?.username,
+  );
+  const newToolSet = new Set(newTools);
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [expanded, setExpanded] = useState(false);
@@ -740,11 +748,16 @@ const ServerCard = ({
           {/* Tools / Prompts / Resources counts */}
           {capabilitySummaries.map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
             const isEmpty = total === 0;
+            const hasNew = key === 'tools' && newTools.length > 0;
             return (
               <span
                 key={key}
-                className={`hub-server-capability-stat hub-mono hub-num ${isEmpty ? 'is-empty' : ''}`}
-                title={`${label}: ${enabledCount}/${total}`}
+                className={`hub-server-capability-stat hub-mono hub-num ${isEmpty ? 'is-empty' : ''} ${hasNew ? 'has-new' : ''}`}
+                title={
+                  hasNew
+                    ? `${label}: ${enabledCount}/${total} · ${t('server.newToolsCount', { count: newTools.length })}`
+                    : `${label}: ${enabledCount}/${total}`
+                }
               >
                 <span className="text-[var(--hub-ink-3)]">
                   <CapabilityIcon icon={Icon} />
@@ -965,6 +978,11 @@ const ServerCard = ({
                     <span className="hub-mono hub-num" style={{ color: 'var(--hub-ink-3)', fontSize: 11 }}>
                       {tab.total === 0 ? '0' : `${tab.enabled}/${tab.total}`}
                     </span>
+                    {tab.key === 'tools' && newTools.length > 0 && (
+                      <span className="hub-tag accent" title={t('server.newToolsCount', { count: newTools.length })}>
+                        +{newTools.length}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1053,11 +1071,30 @@ const ServerCard = ({
 
             {expandedTab === 'tools' && server.tools && (
               <div className="space-y-3 mt-2">
+                {newTools.length > 0 && (
+                  <div
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-md"
+                    style={{ background: 'var(--hub-accent-soft)', color: 'var(--hub-accent)', fontSize: 12 }}
+                  >
+                    <span>{t('server.newToolsSinceLastReview', { count: newTools.length })}</span>
+                    <button
+                      type="button"
+                      className="hub-btn sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        acknowledgeNewTools();
+                      }}
+                    >
+                      {t('server.markToolsSeen')}
+                    </button>
+                  </div>
+                )}
                 {server.tools.map((tool, index) => (
                   <ToolCard
                     key={index}
                     server={server.name}
                     tool={tool}
+                    isNew={newToolSet.has(upstreamToolName(server.name, tool.name, nameSeparator))}
                     readOnly={!canManage}
                     onToggle={handleToolToggle}
                     onDescriptionUpdate={handleToolDescriptionUpdate}

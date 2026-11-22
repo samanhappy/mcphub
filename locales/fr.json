@@ -403,7 +403,10 @@
     "validationKeepAliveRange": "L'intervalle de vérification doit être d'au moins 5 000 ms.",
     "validationIdleTimeoutMin": "Le délai d'arrêt d'inactivité doit être d'au moins 10 000 ms.",
     "saving": "Enregistrement…",
-    "adding": "Ajout…"
+    "adding": "Ajout…",
+    "newToolsCount": "{{count}} nouveaux",
+    "newToolsSinceLastReview": "Nouveaux outils depuis votre dernière consultation : {{count}}",
+    "markToolsSeen": "Marquer comme vus"
   },
   "status": {
     "sleeping": "En veille",
@@ -918,7 +921,8 @@
     "fixJsonBeforeSwitching": "Veuillez corriger le format JSON avant de passer en mode formulaire",
     "item": "Élément {{index}}",
     "addItem": "Ajouter un élément {{key}}",
-    "enterKey": "Entrez {{key}}"
+    "enterKey": "Entrez {{key}}",
+    "new": "Nouveau"
   },
   "prompt": {
     "run": "Obtenir",

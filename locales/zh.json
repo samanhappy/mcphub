@@ -403,7 +403,10 @@
     "validationKeepAliveRange": "健康检查间隔不能小于 5,000 毫秒。",
     "validationIdleTimeoutMin": "空闲关闭超时不能小于 10,000 毫秒。",
     "saving": "保存中…",
-    "adding": "添加中…"
+    "adding": "添加中…",
+    "newToolsCount": "{{count}} 个新工具",
+    "newToolsSinceLastReview": "自上次查看以来的新工具：{{count}} 个",
+    "markToolsSeen": "标记为已查看"
   },
   "status": {
     "sleeping": "休眠",
@@ -921,7 +924,8 @@
     "fixJsonBeforeSwitching": "请修复 JSON 格式后再切换到表单模式",
     "item": "项目 {{index}}",
     "addItem": "添加 {{key}} 项目",
-    "enterKey": "输入 {{key}}"
+    "enterKey": "输入 {{key}}",
+    "new": "新"
   },
   "prompt": {
     "run": "获取",

@@ -403,7 +403,10 @@
     "validationKeepAliveRange": "Khoảng thời gian kiểm tra sức khỏe phải ít nhất 5.000 ms.",
     "validationIdleTimeoutMin": "Thời gian tắt khi nhàn rỗi phải ít nhất 10.000 ms.",
     "saving": "Đang lưu…",
-    "adding": "Đang thêm…"
+    "adding": "Đang thêm…",
+    "newToolsCount": "{{count}} mới",
+    "newToolsSinceLastReview": "Công cụ mới kể từ lần xem trước: {{count}}",
+    "markToolsSeen": "Đánh dấu đã xem"
   },
   "status": {
     "sleeping": "Đang ngủ",
@@ -919,7 +922,8 @@
     "fixJsonBeforeSwitching": "Vui lòng sửa định dạng JSON trước khi chuyển sang chế độ biểu mẫu",
     "item": "Mục {{index}}",
     "addItem": "Thêm mục {{key}}",
-    "enterKey": "Nhập {{key}}"
+    "enterKey": "Nhập {{key}}",
+    "new": "Mới"
   },
   "prompt": {
     "run": "Lấy",

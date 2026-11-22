@@ -478,6 +478,14 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   opacity: 0.6;
 }
 
+/* Tools that the user has not acknowledged yet (#1496) */
+.hub-server-capability-stat.has-new {
+  border-color: var(--hub-accent);
+}
+.hub-server-capability-stat.has-new .hub-server-capability-icon {
+  color: var(--hub-accent);
+}
+
 .hub-server-capability-icon {
   display: inline-flex;
   width: 14px;
