@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,224 +15,37 @@ import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
+import type {
+  BetterAuthConfig,
+  InstallConfig,
+  MCPRouterConfig,
+  OAuthServerConfig,
+  RoutingConfig,
+  RuntimeSettingsContextValue,
+  SettingsActionsContextValue,
+  SettingsContextValue,
+  SettingsSectionKey,
+  SmartRoutingConfig,
+  SystemSettings,
+  TempRoutingConfig,
+  ToolResultCompressionConfig,
+} from './settingsTypes';
 
-// Define types for the settings data
-interface RoutingConfig {
-  enableGlobalRoute: boolean;
-  enableGroupNameRoute: boolean;
-  enableBearerAuth: boolean;
-  bearerAuthKey: string;
-  bearerAuthHeaderName: string;
-  allowAuthorizationPassthrough: boolean;
-  jsonBodyLimit: string;
-  skipAuth: boolean;
-}
-
-interface InstallConfig {
-  pythonIndexUrl: string;
-  npmRegistry: string;
-  baseUrl: string;
-}
-
-interface SmartRoutingConfig {
-  enabled: boolean;
-  dbUrl: string;
-  basePacingDelayMs?: number;
-  embeddingProvider?: 'openai' | 'azure_openai';
-  embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
-  embeddingDimensions?: number;
-  embeddingDimensionsApiPassthrough: boolean;
-  llmProviderBaseUrl: string;
-  llmProviderApiKey: string;
-  embeddingModel: string;
-  azureOpenaiEndpoint?: string;
-  azureOpenaiApiKey?: string;
-  azureOpenaiApiVersion?: string;
-  azureOpenaiEmbeddingDeployment?: string;
-  azureOpenaiEmbeddingModel?: string;
-  progressiveDisclosure: boolean;
-  embeddingMaxTokens?: number;
-  embeddingQueryPrefix?: string;
-  embeddingDocumentPrefix?: string;
-  similarityThreshold?: number;
-  fullSchemaTopN?: number;
-  // Unset = server default (title, annotations)
-  toolDefinitionFields?: string[];
-  /**
-   * Read-only metadata from the server (issue #642): fields whose runtime value
-   * comes from an environment variable, so whatever is typed into the form for
-   * them is currently ignored. Never sent back on save.
-   */
-  envOverriddenFields?: Array<{ field: string; envVar: string }>;
-}
-
-type ToolResultCompressionStrategy = 'auto' | 'json' | 'log' | 'search' | 'diff' | 'text';
-
-interface ToolResultCompressionConfig {
-  enabled: boolean;
-  minTokens: number;
-  maxOutputTokens: number;
-  strategy: ToolResultCompressionStrategy;
-}
-
-interface MCPRouterConfig {
-  apiKey: string;
-  referer: string;
-  title: string;
-  baseUrl: string;
-}
-
-interface OAuthServerConfig {
-  alwaysShowApprovalScreen: boolean;
-  approvalLifetime: number;
-  enabled: boolean;
-  accessTokenLifetime: number;
-  refreshTokenLifetime: number;
-  authorizationCodeLifetime: number;
-  requireClientSecret: boolean;
-  allowedScopes: string[];
-  requireState: boolean;
-  dynamicRegistration: {
-    enabled: boolean;
-    allowedGrantTypes: string[];
-    requiresAuthentication: boolean;
-    clientTtl: number;
-  };
-}
-
-interface BetterAuthProviderToggle {
-  enabled: boolean;
-}
-
-interface BetterAuthOidcConfig {
-  enabled: boolean;
-  providerId: string;
-  discoveryUrl: string;
-  scopes: string[];
-  pkce: boolean;
-  prompt: string;
-}
-
-interface BetterAuthConfig {
-  enabled: boolean;
-  baseUrl: string;
-  basePath: string;
-  trustedOrigins: string[];
-  disablePasswordLogin: boolean;
-  providers: {
-    google: BetterAuthProviderToggle;
-    github: BetterAuthProviderToggle;
-    oidc: BetterAuthOidcConfig;
-  };
-}
-
-interface SystemSettings {
-  systemConfig?: {
-    toolPolicies?: ToolPolicyRule[];
-    routing?: RoutingConfig;
-    install?: InstallConfig & { skillImportProxy?: string };
-    smartRouting?: SmartRoutingConfig;
-    toolResultCompression?: ToolResultCompressionConfig;
-    fileStaging?: FileStagingConfig;
-    mcpRouter?: MCPRouterConfig;
-    normalizeToolNames?: boolean;
-    nameSeparator?: string;
-    oauthServer?: OAuthServerConfig;
-    auth?: {
-      allowRegistration?: boolean;
-      betterAuth?: Partial<BetterAuthConfig>;
-    };
-    enableSessionRebuild?: boolean;
-    network?: { allowedCidrs?: string[]; fakeIpExceptions?: FakeIpException[] };
-    activityLog?: {
-      storeToolPayload?: boolean;
-    };
-  };
-  bearerKeys?: BearerKey[];
-}
-
-interface TempRoutingConfig {
-  bearerAuthKey: string;
-  bearerAuthHeaderName: string;
-  jsonBodyLimit: string;
-}
-
-interface SettingsContextValue {
-  toolPolicies: ToolPolicyRule[] | undefined;
-  updateToolPolicies: (rules: ToolPolicyRule[]) => Promise<boolean>;
-  routingConfig: RoutingConfig;
-  tempRoutingConfig: TempRoutingConfig;
-  setTempRoutingConfig: React.Dispatch<React.SetStateAction<TempRoutingConfig>>;
-  installConfig: InstallConfig;
-  smartRoutingConfig: SmartRoutingConfig;
-  toolResultCompressionConfig: ToolResultCompressionConfig;
-  fileStagingConfig: FileStagingConfig;
-  mcpRouterConfig: MCPRouterConfig;
-  oauthServerConfig: OAuthServerConfig;
-  allowRegistration: boolean;
-  updateAllowRegistration: (value: boolean) => Promise<void>;
-  betterAuthConfig: BetterAuthConfig;
-  normalizeToolNames: boolean;
-  updateNormalizeToolNames: (value: boolean) => Promise<boolean | undefined>;
-  nameSeparator: string;
-  skillImportProxy: string;
-  enableSessionRebuild: boolean;
-  fakeIpExceptions: FakeIpException[];
-  updateFakeIpExceptions: (value: FakeIpException[]) => Promise<boolean>;
-  allowedCidrs: string[];
-  updateAllowedCidrs: (value: string[]) => Promise<boolean>;
-  storeToolPayload: boolean;
-  bearerKeys: BearerKey[];
-  loading: boolean;
-  error: string | null;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
-  triggerRefresh: () => void;
-  fetchSettings: () => Promise<void>;
-  updateRoutingConfig: (key: keyof RoutingConfig, value: any) => Promise<boolean | undefined>;
-  updateInstallConfig: (key: keyof InstallConfig, value: any) => Promise<boolean | undefined>;
-  updateSmartRoutingConfig: (
-    key: keyof SmartRoutingConfig,
-    value: any,
-  ) => Promise<boolean | undefined>;
-  updateSmartRoutingConfigBatch: (
-    updates: Partial<SmartRoutingConfig>,
-  ) => Promise<boolean | undefined>;
-  updateToolResultCompressionConfig: (
-    key: keyof ToolResultCompressionConfig,
-    value: any,
-  ) => Promise<boolean | undefined>;
-  updateToolResultCompressionConfigBatch: (
-    updates: Partial<ToolResultCompressionConfig>,
-  ) => Promise<boolean | undefined>;
-  updateFileStagingConfigBatch: (
-    updates: Partial<FileStagingConfig>,
-  ) => Promise<boolean | undefined>;
-  updateRoutingConfigBatch: (updates: Partial<RoutingConfig>) => Promise<boolean | undefined>;
-  updateMCPRouterConfig: (key: keyof MCPRouterConfig, value: any) => Promise<boolean | undefined>;
-  updateMCPRouterConfigBatch: (updates: Partial<MCPRouterConfig>) => Promise<boolean | undefined>;
-  updateOAuthServerConfig: (
-    key: keyof OAuthServerConfig,
-    value: any,
-  ) => Promise<boolean | undefined>;
-  updateOAuthServerConfigBatch: (
-    updates: Partial<OAuthServerConfig>,
-  ) => Promise<boolean | undefined>;
-  updateBetterAuthConfigBatch: (updates: Partial<BetterAuthConfig>) => Promise<boolean | undefined>;
-  updateNameSeparator: (value: string) => Promise<boolean | undefined>;
-  updateSessionRebuild: (value: boolean) => Promise<boolean | undefined>;
-  updateStoreToolPayload: (value: boolean) => Promise<boolean | undefined>;
-  exportMCPSettings: (serverName?: string) => Promise<any>;
-  // Bearer key management
-  refreshBearerKeys: () => Promise<void>;
-  createBearerKey: (
-    payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
-  ) => Promise<BearerKey | null>;
-  updateBearerKey: (
-    id: string,
-    updates: Partial<Omit<BearerKey, 'id'>>,
-  ) => Promise<BearerKey | null>;
-  deleteBearerKey: (id: string) => Promise<boolean>;
-}
+export type {
+  BetterAuthConfig,
+  InstallConfig,
+  MCPRouterConfig,
+  OAuthServerConfig,
+  RoutingConfig,
+  RuntimeSettingsContextValue,
+  SettingsActionsContextValue,
+  SettingsContextValue,
+  SettingsSectionKey,
+  SmartRoutingConfig,
+  SystemSettings,
+  TempRoutingConfig,
+  ToolResultCompressionConfig,
+};
 
 const getDefaultOAuthServerConfig = (): OAuthServerConfig => ({
   alwaysShowApprovalScreen: true,
@@ -306,7 +120,8 @@ const normalizeBetterAuthConfig = (config?: Partial<BetterAuthConfig>): BetterAu
       },
       oidc: {
         enabled: config?.providers?.oidc?.enabled ?? defaults.providers.oidc.enabled,
-        providerId: config?.providers?.oidc?.providerId?.trim() || defaults.providers.oidc.providerId,
+        providerId:
+          config?.providers?.oidc?.providerId?.trim() || defaults.providers.oidc.providerId,
         discoveryUrl: config?.providers?.oidc?.discoveryUrl?.trim() || '',
         scopes: normalizeStringArray(config?.providers?.oidc?.scopes, DEFAULT_OIDC_SCOPES),
         pkce: config?.providers?.oidc?.pkce ?? defaults.providers.oidc.pkce,
@@ -347,14 +162,39 @@ const mergeBetterAuthConfig = (
   return normalizeBetterAuthConfig(nextConfig);
 };
 
-const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
+const RuntimeSettingsContext = createContext<RuntimeSettingsContextValue | undefined>(undefined);
+const SettingsActionsContext = createContext<SettingsActionsContextValue | undefined>(undefined);
 
-export const useSettings = () => {
-  const context = useContext(SettingsContext);
+/**
+ * Subscribe only to read-only runtime settings. Non-settings views should use
+ * this hook so saving a settings section does not trigger unrelated re-renders.
+ */
+export const useRuntimeSettings = (): RuntimeSettingsContextValue => {
+  const context = useContext(RuntimeSettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
+    throw new Error('useRuntimeSettings must be used within a SettingsProvider');
   }
   return context;
+};
+
+/**
+ * Subscribe to settings write operations, per-section saving flags, and Bearer Key helpers.
+ */
+export const useSettingsActions = (): SettingsActionsContextValue => {
+  const context = useContext(SettingsActionsContext);
+  if (!context) {
+    throw new Error('useSettingsActions must be used within a SettingsProvider');
+  }
+  return context;
+};
+
+/**
+ * Backward-compatible combined hook merging runtime settings and write actions.
+ */
+export const useSettings = (): SettingsContextValue => {
+  const runtime = useRuntimeSettings();
+  const actions = useSettingsActions();
+  return useMemo(() => ({ ...runtime, ...actions }), [runtime, actions]);
 };
 
 interface SettingsProviderProps {
@@ -459,97 +299,112 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
   const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [savingSections, setSavingSections] = useState<
+    Partial<Record<SettingsSectionKey, boolean>>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Trigger a refresh of the settings data
+  const setSectionSaving = useCallback((section: SettingsSectionKey, saving: boolean) => {
+    setSavingSections((prev) => {
+      if (Boolean(prev[section]) === saving) return prev;
+      return { ...prev, [section]: saving };
+    });
+  }, []);
+
+  const isSectionSaving = useCallback(
+    (section: SettingsSectionKey) => Boolean(savingSections[section]),
+    [savingSections],
+  );
+
+  const anySectionSaving = useMemo(
+    () => Object.values(savingSections).some(Boolean),
+    [savingSections],
+  );
+
+  const loading = initialLoading || anySectionSaving;
+
   const triggerRefresh = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
   }, []);
 
-  // Fetch current settings
   const fetchSettings = useCallback(async () => {
-    setLoading(true);
+    setInitialLoading(true);
     setError(null);
 
     try {
       const data: ApiResponse<SystemSettings> = await apiGet('/settings');
 
       if (data.success && data.data?.systemConfig) {
-        const rules = data.data.systemConfig.toolPolicies === undefined
-          ? []
-          : data.data.systemConfig.toolPolicies;
+        const rules =
+          data.data.systemConfig.toolPolicies === undefined
+            ? []
+            : data.data.systemConfig.toolPolicies;
         validateToolPolicies(rules);
         setToolPolicies(rules);
       }
       if (data.success && data.data?.systemConfig?.routing) {
+        const routing = data.data.systemConfig.routing;
         setRoutingConfig({
-          enableGlobalRoute: data.data.systemConfig.routing.enableGlobalRoute ?? true,
-          enableGroupNameRoute: data.data.systemConfig.routing.enableGroupNameRoute ?? true,
-          enableBearerAuth: data.data.systemConfig.routing.enableBearerAuth ?? true,
-          bearerAuthKey: data.data.systemConfig.routing.bearerAuthKey || '',
-          bearerAuthHeaderName:
-            data.data.systemConfig.routing.bearerAuthHeaderName || 'Authorization',
-          allowAuthorizationPassthrough:
-            data.data.systemConfig.routing.allowAuthorizationPassthrough === true,
-          jsonBodyLimit: data.data.systemConfig.routing.jsonBodyLimit || '1mb',
-          skipAuth: data.data.systemConfig.routing.skipAuth ?? false,
+          enableGlobalRoute: routing.enableGlobalRoute ?? true,
+          enableGroupNameRoute: routing.enableGroupNameRoute ?? true,
+          enableBearerAuth: routing.enableBearerAuth ?? true,
+          bearerAuthKey: routing.bearerAuthKey || '',
+          bearerAuthHeaderName: routing.bearerAuthHeaderName || 'Authorization',
+          allowAuthorizationPassthrough: routing.allowAuthorizationPassthrough === true,
+          jsonBodyLimit: routing.jsonBodyLimit || '1mb',
+          skipAuth: routing.skipAuth ?? false,
         });
       }
       if (data.success && data.data?.systemConfig?.install) {
+        const install = data.data.systemConfig.install;
         setInstallConfig({
-          pythonIndexUrl: data.data.systemConfig.install.pythonIndexUrl || '',
-          npmRegistry: data.data.systemConfig.install.npmRegistry || '',
-          baseUrl: data.data.systemConfig.install.baseUrl || 'http://localhost:3000',
+          pythonIndexUrl: install.pythonIndexUrl || '',
+          npmRegistry: install.npmRegistry || '',
+          baseUrl: install.baseUrl || 'http://localhost:3000',
         });
       }
       if (data.success && data.data?.systemConfig?.smartRouting) {
+        const sr = data.data.systemConfig.smartRouting;
         setSmartRoutingConfig({
-          enabled: data.data.systemConfig.smartRouting.enabled ?? false,
-          dbUrl: data.data.systemConfig.smartRouting.dbUrl || '',
-          basePacingDelayMs: data.data.systemConfig.smartRouting.basePacingDelayMs,
-          embeddingProvider:
-            data.data.systemConfig.smartRouting.embeddingProvider === 'azure_openai'
-              ? 'azure_openai'
-              : 'openai',
+          enabled: sr.enabled ?? false,
+          dbUrl: sr.dbUrl || '',
+          basePacingDelayMs: sr.basePacingDelayMs,
+          embeddingProvider: sr.embeddingProvider === 'azure_openai' ? 'azure_openai' : 'openai',
           embeddingEncodingFormat:
-            data.data.systemConfig.smartRouting.embeddingEncodingFormat === 'base64'
+            sr.embeddingEncodingFormat === 'base64'
               ? 'base64'
-              : data.data.systemConfig.smartRouting.embeddingEncodingFormat === 'float'
+              : sr.embeddingEncodingFormat === 'float'
                 ? 'float'
                 : 'auto',
-          embeddingDimensions: data.data.systemConfig.smartRouting.embeddingDimensions,
-          embeddingDimensionsApiPassthrough:
-            data.data.systemConfig.smartRouting.embeddingDimensionsApiPassthrough ?? false,
-          llmProviderBaseUrl: data.data.systemConfig.smartRouting.llmProviderBaseUrl || '',
-          llmProviderApiKey: data.data.systemConfig.smartRouting.llmProviderApiKey || '',
-          embeddingModel: data.data.systemConfig.smartRouting.embeddingModel || '',
-          azureOpenaiEndpoint: data.data.systemConfig.smartRouting.azureOpenaiEndpoint || '',
-          azureOpenaiApiKey: data.data.systemConfig.smartRouting.azureOpenaiApiKey || '',
-          azureOpenaiApiVersion: data.data.systemConfig.smartRouting.azureOpenaiApiVersion || '',
-          azureOpenaiEmbeddingDeployment:
-            data.data.systemConfig.smartRouting.azureOpenaiEmbeddingDeployment || '',
-          azureOpenaiEmbeddingModel:
-            data.data.systemConfig.smartRouting.azureOpenaiEmbeddingModel || '',
-          progressiveDisclosure: data.data.systemConfig.smartRouting.progressiveDisclosure ?? false,
-          embeddingMaxTokens: data.data.systemConfig.smartRouting.embeddingMaxTokens,
-          embeddingQueryPrefix: data.data.systemConfig.smartRouting.embeddingQueryPrefix || '',
-          embeddingDocumentPrefix:
-            data.data.systemConfig.smartRouting.embeddingDocumentPrefix || '',
-          similarityThreshold: data.data.systemConfig.smartRouting.similarityThreshold,
-          fullSchemaTopN: data.data.systemConfig.smartRouting.fullSchemaTopN,
-          toolDefinitionFields: data.data.systemConfig.smartRouting.toolDefinitionFields,
-          envOverriddenFields: data.data.systemConfig.smartRouting.envOverriddenFields ?? [],
+          embeddingDimensions: sr.embeddingDimensions,
+          embeddingDimensionsApiPassthrough: sr.embeddingDimensionsApiPassthrough ?? false,
+          llmProviderBaseUrl: sr.llmProviderBaseUrl || '',
+          llmProviderApiKey: sr.llmProviderApiKey || '',
+          embeddingModel: sr.embeddingModel || '',
+          azureOpenaiEndpoint: sr.azureOpenaiEndpoint || '',
+          azureOpenaiApiKey: sr.azureOpenaiApiKey || '',
+          azureOpenaiApiVersion: sr.azureOpenaiApiVersion || '',
+          azureOpenaiEmbeddingDeployment: sr.azureOpenaiEmbeddingDeployment || '',
+          azureOpenaiEmbeddingModel: sr.azureOpenaiEmbeddingModel || '',
+          progressiveDisclosure: sr.progressiveDisclosure ?? false,
+          embeddingMaxTokens: sr.embeddingMaxTokens,
+          embeddingQueryPrefix: sr.embeddingQueryPrefix || '',
+          embeddingDocumentPrefix: sr.embeddingDocumentPrefix || '',
+          similarityThreshold: sr.similarityThreshold,
+          fullSchemaTopN: sr.fullSchemaTopN,
+          toolDefinitionFields: sr.toolDefinitionFields,
+          envOverriddenFields: sr.envOverriddenFields ?? [],
         });
       }
       if (data.success && data.data?.systemConfig?.toolResultCompression) {
-        const toolResultCompression = data.data.systemConfig.toolResultCompression;
-        const strategy = toolResultCompression.strategy;
+        const compression = data.data.systemConfig.toolResultCompression;
+        const strategy = compression.strategy;
         setToolResultCompressionConfig({
-          enabled: toolResultCompression.enabled ?? false,
-          minTokens: toolResultCompression.minTokens || 2000,
-          maxOutputTokens: toolResultCompression.maxOutputTokens || 1200,
+          enabled: compression.enabled ?? false,
+          minTokens: compression.minTokens || 2000,
+          maxOutputTokens: compression.maxOutputTokens || 1200,
           strategy: ['auto', 'json', 'log', 'search', 'diff', 'text'].includes(strategy)
             ? strategy
             : 'auto',
@@ -571,11 +426,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
         });
       }
       if (data.success && data.data?.systemConfig?.mcpRouter) {
+        const router = data.data.systemConfig.mcpRouter;
         setMCPRouterConfig({
-          apiKey: data.data.systemConfig.mcpRouter.apiKey || '',
-          referer: data.data.systemConfig.mcpRouter.referer || 'https://www.mcphub.app',
-          title: data.data.systemConfig.mcpRouter.title || 'MCPHub',
-          baseUrl: data.data.systemConfig.mcpRouter.baseUrl || 'https://api.mcprouter.to/v1',
+          apiKey: router.apiKey || '',
+          referer: router.referer || 'https://www.mcphub.app',
+          title: router.title || 'MCPHub',
+          baseUrl: router.baseUrl || 'https://api.mcprouter.to/v1',
         });
       }
       if (data.success) {
@@ -589,7 +445,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           const dynamicAllowedGrantTypes = Array.isArray(
             oauth.dynamicRegistration?.allowedGrantTypes,
           )
-            ? [...oauth.dynamicRegistration!.allowedGrantTypes!]
+            ? [...oauth.dynamicRegistration.allowedGrantTypes]
             : [...defaultDynamic.allowedGrantTypes];
 
           setOAuthServerConfig({
@@ -612,8 +468,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
               requiresAuthentication:
                 oauth.dynamicRegistration?.requiresAuthentication ??
                 defaultDynamic.requiresAuthentication,
-              clientTtl:
-                oauth.dynamicRegistration?.clientTtl ?? defaultDynamic.clientTtl,
+              clientTtl: oauth.dynamicRegistration?.clientTtl ?? defaultDynamic.clientTtl,
             },
           });
         } else {
@@ -622,11 +477,11 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
         setAllowRegistration(data.data?.systemConfig?.auth?.allowRegistration === true);
         setBetterAuthConfig(normalizeBetterAuthConfig(data.data?.systemConfig?.auth?.betterAuth));
+        setFakeIpExceptions(data.data?.systemConfig?.network?.fakeIpExceptions ?? []);
+        setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
+        setNormalizeToolNames(data.data?.systemConfig?.normalizeToolNames === true);
+        setSkillImportProxy(data.data?.systemConfig?.install?.skillImportProxy ?? 'server');
       }
-      if (data.success) setFakeIpExceptions(data.data?.systemConfig?.network?.fakeIpExceptions ?? []);
-      if (data.success) setAllowedCidrs(data.data?.systemConfig?.network?.allowedCidrs ?? []);
-      if (data.success) setNormalizeToolNames(data.data?.systemConfig?.normalizeToolNames === true);
-      if (data.success) setSkillImportProxy(data.data?.systemConfig?.install?.skillImportProxy ?? 'server');
       if (data.success && data.data?.systemConfig?.nameSeparator !== undefined) {
         setNameSeparator(data.data.systemConfig.nameSeparator);
       }
@@ -636,825 +491,596 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       if (data.success && data.data?.systemConfig?.activityLog?.storeToolPayload !== undefined) {
         setStoreToolPayload(data.data.systemConfig.activityLog.storeToolPayload);
       }
-
       if (data.success && Array.isArray(data.data?.bearerKeys)) {
         setBearerKeys(data.data.bearerKeys);
       }
-    } catch (error) {
-      console.error('Failed to fetch settings', { error });
-      setError(error instanceof Error ? error.message : 'Failed to fetch settings');
-      showToast(t('errors.failedToFetchSettings'));
+    } catch (err) {
+      console.error('Failed to fetch settings', { error: err });
+      setError(err instanceof Error ? err.message : 'Failed to fetch settings');
+      showToast(t('errors.failedToFetchSettings'), 'error');
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   }, [t, showToast]);
 
-  // Update routing configuration
-  const updateRoutingConfig = async (key: keyof RoutingConfig, value: any) => {
-    setLoading(true);
-    setError(null);
+  const runSystemConfigUpdate = useCallback(
+    async <TData = unknown>(
+      section: SettingsSectionKey,
+      payload: Record<string, unknown>,
+      onSuccess: (responseData: TData) => void,
+      fallbackErrorKey: string,
+      fallbackMessage: string,
+    ): Promise<boolean> => {
+      setSectionSaving(section, true);
+      setError(null);
+      try {
+        const data = await apiPut<ApiResponse<TData>>('/system-config', payload);
+        if (data.success) {
+          onSuccess(data.data as TData);
+          showToast(t('settings.systemConfigUpdated'), 'success');
+          return true;
+        }
+        const message = data.message || data.error || t(fallbackErrorKey) || fallbackMessage;
+        setError(message);
+        showToast(message, 'error');
+        return false;
+      } catch (err) {
+        console.error(`Failed to update ${section} config`, { payload, error: err });
+        const message = err instanceof Error ? err.message : fallbackMessage;
+        setError(message);
+        showToast(t(fallbackErrorKey) || message, 'error');
+        return false;
+      } finally {
+        setSectionSaving(section, false);
+      }
+    },
+    [setSectionSaving, showToast, t],
+  );
 
-    try {
-      const data = await apiPut('/system-config', {
-        routing: {
-          [key]: value,
+  const updateRoutingConfig = useCallback(
+    async (key: keyof RoutingConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'routing',
+        { routing: { [key]: value } },
+        () => setRoutingConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateRoutingConfig',
+        'Failed to update routing config',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateRoutingConfigBatch = useCallback(
+    async (updates: Partial<RoutingConfig>) =>
+      runSystemConfigUpdate(
+        'routing',
+        { routing: updates },
+        () => setRoutingConfig((prev) => ({ ...prev, ...updates })),
+        'errors.failedToUpdateRoutingConfig',
+        'Failed to update routing config',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateInstallConfig = useCallback(
+    async (key: keyof InstallConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'install',
+        { install: { [key]: value } },
+        () => setInstallConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateInstallConfig',
+        'Failed to update install config',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateInstallConfigBatch = useCallback(
+    async (updates: Partial<InstallConfig & { skillImportProxy?: string }>) =>
+      runSystemConfigUpdate(
+        'install',
+        { install: updates },
+        () => {
+          const { skillImportProxy: nextProxy, ...installFields } = updates;
+          if (Object.keys(installFields).length > 0) {
+            setInstallConfig((prev) => ({ ...prev, ...installFields }));
+          }
+          if (nextProxy !== undefined) {
+            setSkillImportProxy(nextProxy);
+          }
         },
-      });
+        'errors.failedToUpdateInstallConfig',
+        'Failed to update install config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-      if (data.success) {
-        setRoutingConfig({
-          ...routingConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update routing config');
-        showToast(data.error || t('errors.failedToUpdateRoutingConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update routing config', { key, value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update routing config');
-      showToast(t('errors.failedToUpdateRoutingConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateSkillImportProxy = useCallback(
+    async (value: string): Promise<boolean> =>
+      runSystemConfigUpdate(
+        'skillImportProxy',
+        { install: { skillImportProxy: value } },
+        () => setSkillImportProxy(value),
+        'skills.proxySaveFailed',
+        'Failed to update skill import proxy',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-  // Update install configuration
-  const updateInstallConfig = async (key: keyof InstallConfig, value: any) => {
-    setLoading(true);
-    setError(null);
+  const updateSmartRoutingConfig = useCallback(
+    async (key: keyof SmartRoutingConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'smartRouting',
+        { smartRouting: { [key]: value } },
+        () => setSmartRoutingConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateSmartRoutingConfig',
+        'Failed to update smart routing config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-    try {
-      const data = await apiPut('/system-config', {
-        install: {
-          [key]: value,
-        },
-      });
+  const updateSmartRoutingConfigBatch = useCallback(
+    async (updates: Partial<SmartRoutingConfig>) =>
+      runSystemConfigUpdate(
+        'smartRouting',
+        { smartRouting: updates },
+        () => setSmartRoutingConfig((prev) => ({ ...prev, ...updates })),
+        'errors.failedToUpdateSmartRoutingConfig',
+        'Failed to update smart routing config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-      if (data.success) {
-        setInstallConfig({
-          ...installConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update install config');
-        showToast(data.error || t('errors.failedToUpdateInstallConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update install config', { key, value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update install config');
-      showToast(t('errors.failedToUpdateInstallConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateToolResultCompressionConfig = useCallback(
+    async (key: keyof ToolResultCompressionConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'toolResultCompression',
+        { toolResultCompression: { [key]: value } },
+        () => setToolResultCompressionConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateSettings',
+        'Failed to update tool result compression config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-  // Update smart routing configuration
-  const updateSmartRoutingConfig = async (key: keyof SmartRoutingConfig, value: any) => {
-    setLoading(true);
-    setError(null);
+  const updateToolResultCompressionConfigBatch = useCallback(
+    async (updates: Partial<ToolResultCompressionConfig>) =>
+      runSystemConfigUpdate(
+        'toolResultCompression',
+        { toolResultCompression: updates },
+        () => setToolResultCompressionConfig((prev) => ({ ...prev, ...updates })),
+        'errors.failedToUpdateSettings',
+        'Failed to update tool result compression config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-    try {
-      const data = await apiPut('/system-config', {
-        smartRouting: {
-          [key]: value,
-        },
-      });
+  const updateFileStagingConfigBatch = useCallback(
+    async (updates: Partial<FileStagingConfig>) =>
+      runSystemConfigUpdate(
+        'fileStaging',
+        { fileStaging: updates },
+        () => setFileStagingConfig((prev) => ({ ...prev, ...updates })),
+        'errors.failedToUpdateSettings',
+        'Failed to update file staging config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-      if (data.success) {
-        setSmartRoutingConfig({
-          ...smartRoutingConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update smart routing config');
-        showToast(data.error || t('errors.failedToUpdateSmartRoutingConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update smart routing config', { key, value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update smart routing config');
-      showToast(t('errors.failedToUpdateSmartRoutingConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateMCPRouterConfig = useCallback(
+    async (key: keyof MCPRouterConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'mcpRouter',
+        { mcpRouter: { [key]: value } },
+        () => setMCPRouterConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateMCPRouterConfig',
+        'Failed to update MCP Router config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-  // Batch update smart routing configuration
-  const updateSmartRoutingConfigBatch = async (updates: Partial<SmartRoutingConfig>) => {
-    setLoading(true);
-    setError(null);
+  const updateMCPRouterConfigBatch = useCallback(
+    async (updates: Partial<MCPRouterConfig>) =>
+      runSystemConfigUpdate(
+        'mcpRouter',
+        { mcpRouter: updates },
+        () => setMCPRouterConfig((prev) => ({ ...prev, ...updates })),
+        'errors.failedToUpdateMCPRouterConfig',
+        'Failed to update MCP Router config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-    try {
-      const data = await apiPut('/system-config', {
-        smartRouting: updates,
-      });
+  const updateOAuthServerConfig = useCallback(
+    async (key: keyof OAuthServerConfig, value: unknown) =>
+      runSystemConfigUpdate(
+        'oauthServer',
+        { oauthServer: { [key]: value } },
+        () => setOAuthServerConfig((prev) => ({ ...prev, [key]: value })),
+        'errors.failedToUpdateOAuthServerConfig',
+        'Failed to update OAuth server config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-      if (data.success) {
-        setSmartRoutingConfig({
-          ...smartRoutingConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update smart routing config');
-        showToast(data.error || t('errors.failedToUpdateSmartRoutingConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update smart routing config', { updates, error });
-      setError(error instanceof Error ? error.message : 'Failed to update smart routing config');
-      showToast(t('errors.failedToUpdateSmartRoutingConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateOAuthServerConfigBatch = useCallback(
+    async (updates: Partial<OAuthServerConfig>) =>
+      runSystemConfigUpdate(
+        'oauthServer',
+        { oauthServer: updates },
+        () =>
+          setOAuthServerConfig((prev) => ({
+            ...prev,
+            ...updates,
+            dynamicRegistration: updates.dynamicRegistration
+              ? { ...prev.dynamicRegistration, ...updates.dynamicRegistration }
+              : prev.dynamicRegistration,
+          })),
+        'errors.failedToUpdateOAuthServerConfig',
+        'Failed to update OAuth server config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-  // Update tool result compression configuration
-  const updateToolResultCompressionConfig = async (
-    key: keyof ToolResultCompressionConfig,
-    value: any,
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        toolResultCompression: {
-          [key]: value,
-        },
-      });
-
-      if (data.success) {
-        setToolResultCompressionConfig({
-          ...toolResultCompressionConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update tool result compression config');
-        showToast(data.error || t('errors.failedToUpdateSettings'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update tool result compression config', { key, value, error });
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update tool result compression config',
+  const updateAllowRegistration = useCallback(
+    async (value: boolean) => {
+      await runSystemConfigUpdate(
+        'allowRegistration',
+        { auth: { allowRegistration: value } },
+        () => setAllowRegistration(value),
+        'errors.failedToUpdateSettings',
+        'Failed to update registration setting',
       );
-      showToast(t('errors.failedToUpdateSettings'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [runSystemConfigUpdate],
+  );
 
-  // Batch update tool result compression configuration
-  const updateToolResultCompressionConfigBatch = async (
-    updates: Partial<ToolResultCompressionConfig>,
-  ) => {
-    setLoading(true);
-    setError(null);
+  const updateBetterAuthConfigBatch = useCallback(
+    async (updates: Partial<BetterAuthConfig>) =>
+      runSystemConfigUpdate(
+        'betterAuth',
+        { auth: { betterAuth: updates } },
+        () => setBetterAuthConfig((current) => mergeBetterAuthConfig(current, updates)),
+        'errors.failedToUpdateBetterAuthConfig',
+        'Failed to update Better Auth config',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-    try {
-      const data = await apiPut('/system-config', {
-        toolResultCompression: updates,
-      });
+  const updateNameSeparator = useCallback(
+    async (value: string) =>
+      runSystemConfigUpdate(
+        'nameSeparator',
+        { nameSeparator: value },
+        () => setNameSeparator(value),
+        'errors.failedToUpdateNameSeparator',
+        'Failed to update name separator',
+      ),
+    [runSystemConfigUpdate],
+  );
 
-      if (data.success) {
-        setToolResultCompressionConfig({
-          ...toolResultCompressionConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update tool result compression config');
-        showToast(data.error || t('errors.failedToUpdateSettings'));
-        return false;
+  const updateNormalizeToolNames = useCallback(
+    async (value: boolean) =>
+      runSystemConfigUpdate(
+        'normalizeToolNames',
+        { normalizeToolNames: value },
+        () => setNormalizeToolNames(value),
+        'settings.toolNameCompatibilityUpdateFailed',
+        'Failed to update tool name compatibility setting',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateSessionRebuild = useCallback(
+    async (value: boolean) =>
+      runSystemConfigUpdate(
+        'sessionRebuild',
+        { enableSessionRebuild: value },
+        () => setEnableSessionRebuild(value),
+        'errors.failedToUpdateSessionRebuild',
+        'Failed to update session rebuild setting',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateToolPolicies = useCallback(
+    async (rules: ToolPolicyRule[]): Promise<boolean> =>
+      runSystemConfigUpdate(
+        'toolPolicies',
+        { toolPolicies: rules },
+        () => setToolPolicies(rules),
+        'settings.toolPolicies.saveFailed',
+        'Failed to save tool policies',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateFakeIpExceptions = useCallback(
+    async (value: FakeIpException[]): Promise<boolean> =>
+      runSystemConfigUpdate<{ network?: { fakeIpExceptions?: FakeIpException[] } }>(
+        'fakeIpExceptions',
+        { network: { fakeIpExceptions: value } },
+        (responseData) => setFakeIpExceptions(responseData?.network?.fakeIpExceptions ?? value),
+        'settings.fakeIp.saveFailed',
+        'Failed to update fake IP exceptions',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateAllowedCidrs = useCallback(
+    async (value: string[]): Promise<boolean> =>
+      runSystemConfigUpdate<{ network?: { allowedCidrs?: string[] } }>(
+        'allowedCidrs',
+        { network: { allowedCidrs: value } },
+        (responseData) => setAllowedCidrs(responseData?.network?.allowedCidrs ?? value),
+        'settings.allowedCidrsUpdateFailed',
+        'Failed to update allowed CIDRs',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const updateStoreToolPayload = useCallback(
+    async (value: boolean) =>
+      runSystemConfigUpdate(
+        'storeToolPayload',
+        { activityLog: { storeToolPayload: value } },
+        () => setStoreToolPayload(value),
+        'settings.storeToolPayloadUpdateFailed',
+        'Failed to update activity log setting',
+      ),
+    [runSystemConfigUpdate],
+  );
+
+  const exportMCPSettings = useCallback(
+    async (serverName?: string) => {
+      setSectionSaving('exportConfig', true);
+      setError(null);
+      try {
+        return await apiGet(`/mcp-settings/export?serverName=${serverName ? serverName : ''}`);
+      } catch (err) {
+        console.error('Failed to export MCP settings', { serverName, error: err });
+        const errorMessage = err instanceof Error ? err.message : 'Failed to export MCP settings';
+        setError(errorMessage);
+        showToast(errorMessage, 'error');
+        return undefined;
+      } finally {
+        setSectionSaving('exportConfig', false);
       }
-    } catch (error) {
-      console.error('Failed to batch update tool result compression config', {
-        updates,
-        error,
-      });
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update tool result compression config',
-      );
-      showToast(t('errors.failedToUpdateSettings'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [setSectionSaving, showToast],
+  );
 
-  // Batch update file staging configuration
-  const updateFileStagingConfigBatch = async (updates: Partial<FileStagingConfig>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        fileStaging: updates,
-      });
-
-      if (data.success) {
-        setFileStagingConfig({
-          ...fileStagingConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update file staging config');
-        showToast(data.error || t('errors.failedToUpdateSettings'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update file staging config', {
-        updates,
-        error,
-      });
-      setError(
-        error instanceof Error ? error.message : 'Failed to update file staging config',
-      );
-      showToast(t('errors.failedToUpdateSettings'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Batch update routing configuration
-  const updateRoutingConfigBatch = async (updates: Partial<RoutingConfig>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        routing: updates,
-      });
-
-      if (data.success) {
-        setRoutingConfig({
-          ...routingConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update routing config');
-        showToast(data.error || t('errors.failedToUpdateRoutingConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update routing config', { updates, error });
-      setError(error instanceof Error ? error.message : 'Failed to update routing config');
-      showToast(t('errors.failedToUpdateRoutingConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update MCP Router configuration
-  const updateMCPRouterConfig = async (key: keyof MCPRouterConfig, value: any) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        mcpRouter: {
-          [key]: value,
-        },
-      });
-
-      if (data.success) {
-        setMCPRouterConfig({
-          ...mcpRouterConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update MCP Router config');
-        showToast(data.error || t('errors.failedToUpdateMCPRouterConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update MCP Router config', { key, value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update MCP Router config');
-      showToast(t('errors.failedToUpdateMCPRouterConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Batch update MCP Router configuration
-  const updateMCPRouterConfigBatch = async (updates: Partial<MCPRouterConfig>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        mcpRouter: updates,
-      });
-
-      if (data.success) {
-        setMCPRouterConfig({
-          ...mcpRouterConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update MCP Router config');
-        showToast(data.error || t('errors.failedToUpdateMCPRouterConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update MCP Router config', { updates, error });
-      setError(error instanceof Error ? error.message : 'Failed to update MCP Router config');
-      showToast(t('errors.failedToUpdateMCPRouterConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update OAuth server configuration
-  const updateOAuthServerConfig = async (key: keyof OAuthServerConfig, value: any) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        oauthServer: {
-          [key]: value,
-        },
-      });
-
-      if (data.success) {
-        setOAuthServerConfig({
-          ...oauthServerConfig,
-          [key]: value,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update OAuth server config');
-        showToast(data.error || t('errors.failedToUpdateOAuthServerConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update OAuth server config', { key, value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update OAuth server config');
-      showToast(t('errors.failedToUpdateOAuthServerConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Batch update OAuth server configuration
-  const updateOAuthServerConfigBatch = async (updates: Partial<OAuthServerConfig>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        oauthServer: updates,
-      });
-
-      if (data.success) {
-        setOAuthServerConfig({
-          ...oauthServerConfig,
-          ...updates,
-        });
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update OAuth server config');
-        showToast(data.error || t('errors.failedToUpdateOAuthServerConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update OAuth server config', { updates, error });
-      setError(error instanceof Error ? error.message : 'Failed to update OAuth server config');
-      showToast(t('errors.failedToUpdateOAuthServerConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateAllowRegistration = async (value: boolean) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiPut('/system-config', { auth: { allowRegistration: value } });
-      if (data.success) {
-        setAllowRegistration(value);
-        showToast(t('settings.systemConfigUpdated'));
-      } else {
-        showToast(t('errors.failedToUpdateSettings'));
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to update registration setting');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Batch update Better Auth configuration
-  const updateBetterAuthConfigBatch = async (updates: Partial<BetterAuthConfig>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        auth: {
-          betterAuth: updates,
-        },
-      });
-
-      if (data.success) {
-        setBetterAuthConfig((current) => mergeBetterAuthConfig(current, updates));
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update Better Auth config');
-        showToast(data.error || t('errors.failedToUpdateBetterAuthConfig'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to batch update Better Auth config', { updates, error });
-      setError(error instanceof Error ? error.message : 'Failed to update Better Auth config');
-      showToast(t('errors.failedToUpdateBetterAuthConfig'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update name separator
-  const updateNameSeparator = async (value: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        nameSeparator: value,
-      });
-
-      if (data.success) {
-        setNameSeparator(value);
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update name separator');
-        showToast(data.error || t('errors.failedToUpdateNameSeparator'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update name separator', { value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update name separator');
-      showToast(t('errors.failedToUpdateNameSeparator'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update tool name compatibility flag
-  const updateNormalizeToolNames = async (value: boolean) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        normalizeToolNames: value,
-      });
-
-      if (data.success) {
-        setNormalizeToolNames(value);
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update tool name compatibility setting');
-        showToast(data.error || t('settings.toolNameCompatibilityUpdateFailed'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update tool name compatibility setting', { value, error });
-      setError(
-        error instanceof Error ? error.message : 'Failed to update tool name compatibility setting',
-      );
-      showToast(t('settings.toolNameCompatibilityUpdateFailed'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update session rebuild flag
-  const updateSessionRebuild = async (value: boolean) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        enableSessionRebuild: value,
-      });
-
-      if (data.success) {
-        setEnableSessionRebuild(value);
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update session rebuild setting');
-        showToast(data.error || t('errors.failedToUpdateSessionRebuild'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update session rebuild setting', { value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update session rebuild setting');
-      showToast(t('errors.failedToUpdateSessionRebuild'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateToolPolicies = async (rules: ToolPolicyRule[]): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const data = await apiPut('/system-config', { toolPolicies: rules });
-      if (!data.success) {
-        showToast(data.message || data.error || t('settings.toolPolicies.saveFailed'), 'error');
-        return false;
-      }
-      setToolPolicies(rules);
-      showToast(t('settings.systemConfigUpdated'));
-      return true;
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : t('settings.toolPolicies.saveFailed'),
-        'error',
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateFakeIpExceptions = async (value: FakeIpException[]): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const data = await apiPut('/system-config', { network: { fakeIpExceptions: value } });
-      if (!data.success) {
-        showToast(data.message || data.error || t('settings.fakeIp.saveFailed'), 'error');
-        return false;
-      }
-      setFakeIpExceptions(data.data.network.fakeIpExceptions ?? []);
-      showToast(t('settings.systemConfigUpdated'));
-      return true;
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('settings.fakeIp.saveFailed'), 'error');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateAllowedCidrs = async (value: string[]): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const data = await apiPut('/system-config', { network: { allowedCidrs: value } });
-      if (!data.success) {
-        showToast(data.message || data.error || t('settings.allowedCidrsUpdateFailed'));
-        return false;
-      }
-      setAllowedCidrs(data.data.network.allowedCidrs);
-      showToast(t('settings.systemConfigUpdated'));
-      return true;
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('settings.allowedCidrsUpdateFailed'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateStoreToolPayload = async (value: boolean) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiPut('/system-config', {
-        activityLog: {
-          storeToolPayload: value,
-        },
-      });
-
-      if (data.success) {
-        setStoreToolPayload(value);
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
-      } else {
-        setError(data.error || 'Failed to update activity log setting');
-        showToast(data.error || t('settings.storeToolPayloadUpdateFailed'));
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to update activity log setting', { value, error });
-      setError(error instanceof Error ? error.message : 'Failed to update activity log setting');
-      showToast(t('settings.storeToolPayloadUpdateFailed'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const exportMCPSettings = async (serverName?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await apiGet(`/mcp-settings/export?serverName=${serverName ? serverName : ''}`);
-    } catch (error) {
-      console.error('Failed to export MCP settings', { serverName, error });
-      const errorMessage = error instanceof Error ? error.message : 'Failed to export MCP settings';
-      setError(errorMessage);
-      showToast(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Bearer key management helpers
-  const refreshBearerKeys = async () => {
+  const refreshBearerKeys = useCallback(async () => {
     try {
       const data: ApiResponse<BearerKey[]> = await apiGet('/auth/keys');
       if (data.success && Array.isArray(data.data)) {
         setBearerKeys(data.data);
       }
-    } catch (error) {
-      console.error('Failed to refresh bearer keys', { error });
-      showToast(t('errors.failedToFetchSettings'));
+    } catch (err) {
+      console.error('Failed to refresh bearer keys', { error: err });
+      showToast(t('errors.failedToFetchSettings'), 'error');
     }
-  };
+  }, [showToast, t]);
 
-  const createBearerKey = async (
-    payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
-  ): Promise<BearerKey | null> => {
-    try {
-      const data: ApiResponse<BearerKey> = await apiPost('/auth/keys', payload as any);
-      if (data.success && data.data) {
-        await refreshBearerKeys();
-        showToast(t('settings.systemConfigUpdated'));
-        return data.data;
+  const createBearerKey = useCallback(
+    async (
+      payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+    ): Promise<BearerKey | null> => {
+      setSectionSaving('bearerKeys', true);
+      try {
+        const data: ApiResponse<BearerKey> = await apiPost('/auth/keys', payload);
+        if (data.success && data.data) {
+          await refreshBearerKeys();
+          showToast(t('settings.systemConfigUpdated'), 'success');
+          return data.data;
+        }
+        showToast(data.message || t('errors.failedToUpdateRoutingConfig'), 'error');
+        return null;
+      } catch (err) {
+        console.error('Failed to create bearer key', { error: err });
+        showToast(t('errors.failedToUpdateRoutingConfig'), 'error');
+        return null;
+      } finally {
+        setSectionSaving('bearerKeys', false);
       }
-      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
-      return null;
-    } catch (error) {
-      console.error('Failed to create bearer key', { error });
-      showToast(t('errors.failedToUpdateRoutingConfig'));
-      return null;
-    }
-  };
+    },
+    [refreshBearerKeys, setSectionSaving, showToast, t],
+  );
 
-  const updateBearerKey = async (
-    id: string,
-    updates: Partial<Omit<BearerKey, 'id'>>,
-  ): Promise<BearerKey | null> => {
-    try {
-      const data: ApiResponse<BearerKey> = await apiPut(`/auth/keys/${id}`, updates as any);
-      if (data.success && data.data) {
-        await refreshBearerKeys();
-        showToast(t('settings.systemConfigUpdated'));
-        return data.data;
+  const updateBearerKey = useCallback(
+    async (
+      id: string,
+      updates: Partial<Omit<BearerKey, 'id'>>,
+    ): Promise<BearerKey | null> => {
+      setSectionSaving('bearerKeys', true);
+      try {
+        const data: ApiResponse<BearerKey> = await apiPut(`/auth/keys/${id}`, updates);
+        if (data.success && data.data) {
+          await refreshBearerKeys();
+          showToast(t('settings.systemConfigUpdated'), 'success');
+          return data.data;
+        }
+        showToast(data.message || t('errors.failedToUpdateRoutingConfig'), 'error');
+        return null;
+      } catch (err) {
+        console.error('Failed to update bearer key', { id, error: err });
+        showToast(t('errors.failedToUpdateRoutingConfig'), 'error');
+        return null;
+      } finally {
+        setSectionSaving('bearerKeys', false);
       }
-      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
-      return null;
-    } catch (error) {
-      console.error('Failed to update bearer key', { id, error });
-      showToast(t('errors.failedToUpdateRoutingConfig'));
-      return null;
-    }
-  };
+    },
+    [refreshBearerKeys, setSectionSaving, showToast, t],
+  );
 
-  const deleteBearerKey = async (id: string): Promise<boolean> => {
-    try {
-      const data: ApiResponse = await apiDelete(`/auth/keys/${id}`);
-      if (data.success) {
-        await refreshBearerKeys();
-        showToast(t('settings.systemConfigUpdated'));
-        return true;
+  const deleteBearerKey = useCallback(
+    async (id: string): Promise<boolean> => {
+      setSectionSaving('bearerKeys', true);
+      try {
+        const data: ApiResponse = await apiDelete(`/auth/keys/${id}`);
+        if (data.success) {
+          await refreshBearerKeys();
+          showToast(t('settings.systemConfigUpdated'), 'success');
+          return true;
+        }
+        showToast(data.message || t('errors.failedToUpdateRoutingConfig'), 'error');
+        return false;
+      } catch (err) {
+        console.error('Failed to delete bearer key', { id, error: err });
+        showToast(t('errors.failedToUpdateRoutingConfig'), 'error');
+        return false;
+      } finally {
+        setSectionSaving('bearerKeys', false);
       }
-      showToast(data.message || t('errors.failedToUpdateRoutingConfig'));
-      return false;
-    } catch (error) {
-      console.error('Failed to delete bearer key', { id, error });
-      showToast(t('errors.failedToUpdateRoutingConfig'));
-      return false;
-    }
-  };
+    },
+    [refreshBearerKeys, setSectionSaving, showToast, t],
+  );
 
-  // Fetch settings when the component mounts or refreshKey changes
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings, refreshKey]);
 
-  // Watch for authentication status changes - refetch settings after login
   useEffect(() => {
     if (auth.isAuthenticated) {
-      console.log('[SettingsContext] User authenticated, triggering settings refresh');
-      // When user logs in, trigger a refresh to load settings
       triggerRefresh();
     }
   }, [auth.isAuthenticated, triggerRefresh]);
 
   useEffect(() => {
-    if (routingConfig) {
-      setTempRoutingConfig({
-        bearerAuthKey: routingConfig.bearerAuthKey,
-        bearerAuthHeaderName: routingConfig.bearerAuthHeaderName,
-        jsonBodyLimit: routingConfig.jsonBodyLimit,
-      });
-    }
+    setTempRoutingConfig({
+      bearerAuthKey: routingConfig.bearerAuthKey,
+      bearerAuthHeaderName: routingConfig.bearerAuthHeaderName,
+      jsonBodyLimit: routingConfig.jsonBodyLimit,
+    });
   }, [routingConfig]);
 
-  const value: SettingsContextValue = {
-    toolPolicies,
-    updateToolPolicies,
-    routingConfig,
-    tempRoutingConfig,
-    setTempRoutingConfig,
-    installConfig,
-    smartRoutingConfig,
-    toolResultCompressionConfig,
-    fileStagingConfig,
-    mcpRouterConfig,
-    oauthServerConfig,
-    allowRegistration,
-    updateAllowRegistration,
-    betterAuthConfig,
-    normalizeToolNames,
-    updateNormalizeToolNames,
-    nameSeparator,
-    skillImportProxy,
-    enableSessionRebuild,
-    fakeIpExceptions,
-    updateFakeIpExceptions,
-    allowedCidrs,
-    updateAllowedCidrs,
-    storeToolPayload,
-    bearerKeys,
-    loading,
-    error,
-    setError,
-    triggerRefresh,
-    fetchSettings,
-    updateRoutingConfig,
-    updateInstallConfig,
-    updateSmartRoutingConfig,
-    updateSmartRoutingConfigBatch,
-    updateToolResultCompressionConfig,
-    updateToolResultCompressionConfigBatch,
-    updateFileStagingConfigBatch,
-    updateRoutingConfigBatch,
-    updateMCPRouterConfig,
-    updateMCPRouterConfigBatch,
-    updateOAuthServerConfig,
-    updateOAuthServerConfigBatch,
-    updateBetterAuthConfigBatch,
-    updateNameSeparator,
-    updateSessionRebuild,
-    updateStoreToolPayload,
-    exportMCPSettings,
-    refreshBearerKeys,
-    createBearerKey,
-    updateBearerKey,
-    deleteBearerKey,
-  };
+  const runtimeValue = useMemo<RuntimeSettingsContextValue>(
+    () => ({
+      toolPolicies,
+      routingConfig,
+      installConfig,
+      smartRoutingConfig,
+      toolResultCompressionConfig,
+      fileStagingConfig,
+      mcpRouterConfig,
+      oauthServerConfig,
+      allowRegistration,
+      betterAuthConfig,
+      normalizeToolNames,
+      nameSeparator,
+      skillImportProxy,
+      enableSessionRebuild,
+      fakeIpExceptions,
+      allowedCidrs,
+      storeToolPayload,
+      initialLoading,
+      error,
+    }),
+    [
+      toolPolicies,
+      routingConfig,
+      installConfig,
+      smartRoutingConfig,
+      toolResultCompressionConfig,
+      fileStagingConfig,
+      mcpRouterConfig,
+      oauthServerConfig,
+      allowRegistration,
+      betterAuthConfig,
+      normalizeToolNames,
+      nameSeparator,
+      skillImportProxy,
+      enableSessionRebuild,
+      fakeIpExceptions,
+      allowedCidrs,
+      storeToolPayload,
+      initialLoading,
+      error,
+    ],
+  );
 
-  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+  const actionsValue = useMemo<SettingsActionsContextValue>(
+    () => ({
+      bearerKeys,
+      tempRoutingConfig,
+      setTempRoutingConfig,
+      savingSections,
+      isSectionSaving,
+      loading,
+      setError,
+      triggerRefresh,
+      fetchSettings,
+      updateToolPolicies,
+      updateRoutingConfig,
+      updateRoutingConfigBatch,
+      updateInstallConfig,
+      updateInstallConfigBatch,
+      updateSkillImportProxy,
+      updateSmartRoutingConfig,
+      updateSmartRoutingConfigBatch,
+      updateToolResultCompressionConfig,
+      updateToolResultCompressionConfigBatch,
+      updateFileStagingConfigBatch,
+      updateMCPRouterConfig,
+      updateMCPRouterConfigBatch,
+      updateOAuthServerConfig,
+      updateOAuthServerConfigBatch,
+      updateAllowRegistration,
+      updateBetterAuthConfigBatch,
+      updateNameSeparator,
+      updateNormalizeToolNames,
+      updateSessionRebuild,
+      updateFakeIpExceptions,
+      updateAllowedCidrs,
+      updateStoreToolPayload,
+      exportMCPSettings,
+      refreshBearerKeys,
+      createBearerKey,
+      updateBearerKey,
+      deleteBearerKey,
+    }),
+    [
+      bearerKeys,
+      tempRoutingConfig,
+      savingSections,
+      isSectionSaving,
+      loading,
+      triggerRefresh,
+      fetchSettings,
+      updateToolPolicies,
+      updateRoutingConfig,
+      updateRoutingConfigBatch,
+      updateInstallConfig,
+      updateInstallConfigBatch,
+      updateSkillImportProxy,
+      updateSmartRoutingConfig,
+      updateSmartRoutingConfigBatch,
+      updateToolResultCompressionConfig,
+      updateToolResultCompressionConfigBatch,
+      updateFileStagingConfigBatch,
+      updateMCPRouterConfig,
+      updateMCPRouterConfigBatch,
+      updateOAuthServerConfig,
+      updateOAuthServerConfigBatch,
+      updateAllowRegistration,
+      updateBetterAuthConfigBatch,
+      updateNameSeparator,
+      updateNormalizeToolNames,
+      updateSessionRebuild,
+      updateFakeIpExceptions,
+      updateAllowedCidrs,
+      updateStoreToolPayload,
+      exportMCPSettings,
+      refreshBearerKeys,
+      createBearerKey,
+      updateBearerKey,
+      deleteBearerKey,
+    ],
+  );
+
+  return (
+    <RuntimeSettingsContext.Provider value={runtimeValue}>
+      <SettingsActionsContext.Provider value={actionsValue}>
+        {children}
+      </SettingsActionsContext.Provider>
+    </RuntimeSettingsContext.Provider>
+  );
 };

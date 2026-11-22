@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Check, Loader2 } from 'lucide-react';
 import { ChangePasswordCredentials } from '../types';
 import { changePassword } from '../services/authService';
 import { validatePasswordStrength } from '../utils/passwordValidation';
@@ -7,9 +8,14 @@ import { validatePasswordStrength } from '../utils/passwordValidation';
 interface ChangePasswordFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  embedded?: boolean;
 }
 
-const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCancel }) => {
+const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
+  onSuccess,
+  onCancel,
+  embedded = false,
+}) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<ChangePasswordCredentials>({
     currentPassword: '',
@@ -26,8 +32,8 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
     if (name === 'confirmPassword') {
       setConfirmPassword(value);
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-      
+      setFormData((prev) => ({ ...prev, [name]: value }));
+
       // Validate password strength on change for new password
       if (name === 'newPassword') {
         const validation = validatePasswordStrength(value);
@@ -35,6 +41,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
       }
     }
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -67,28 +74,38 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
       } else {
         setError(response.message || t('auth.changePasswordError'));
       }
-    } catch (err) {
+    } catch {
       setError(t('auth.changePasswordError'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">{t('auth.changePassword')}</h2>
+  const content = (
+    <>
+      {!embedded && (
+        <h2 className="mb-4 text-lg font-semibold text-[var(--hub-ink)]">
+          {t('auth.changePassword')}
+        </h2>
+      )}
 
       {success ? (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div
+          role="status"
+          className="rounded-lg border border-emerald-300/70 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+        >
           {t('auth.changePasswordSuccess')}
         </div>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              <p>{error}</p>
+            <div
+              role="alert"
+              className="rounded-lg border border-red-300/70 bg-red-50 px-3.5 py-2.5 text-xs text-red-800 dark:border-red-800/60 dark:bg-red-950/50 dark:text-red-200"
+            >
+              <p className="font-medium">{error}</p>
               {passwordErrors.length > 0 && (
-                <ul className="list-disc list-inside mt-2 space-y-1">
+                <ul className="mt-1.5 list-inside list-disc space-y-0.5">
                   {passwordErrors.map((errorKey) => (
                     <li key={errorKey}>{t(`auth.${errorKey}`)}</li>
                   ))}
@@ -97,42 +114,52 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="currentPassword">
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium text-[var(--hub-ink)]"
+              htmlFor="currentPassword"
+            >
               {t('auth.currentPassword')}
             </label>
             <input
               type="password"
               id="currentPassword"
               name="currentPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
+              autoComplete="current-password"
+              className="hub-input"
               value={formData.currentPassword}
               onChange={handleChange}
               required
+              disabled={isLoading}
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newPassword">
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium text-[var(--hub-ink)]"
+              htmlFor="newPassword"
+            >
               {t('auth.newPassword')}
             </label>
             <input
               type="password"
               id="newPassword"
               name="newPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
+              autoComplete="new-password"
+              className="hub-input"
               value={formData.newPassword}
               onChange={handleChange}
               required
               minLength={8}
+              disabled={isLoading}
             />
             {/* Password strength hints */}
             {formData.newPassword && passwordErrors.length > 0 && (
-              <div className="mt-2 text-sm text-gray-600">
-                <p className="font-semibold mb-1">{t('auth.passwordStrengthHint')}</p>
-                <ul className="list-disc list-inside space-y-1">
+              <div className="mt-2 rounded-md border border-[var(--hub-line)] bg-[var(--hub-bg-2)] p-2.5 text-xs text-[var(--hub-ink-2)]">
+                <p className="mb-1 font-medium">{t('auth.passwordStrengthHint')}</p>
+                <ul className="list-inside list-disc space-y-0.5">
                   {passwordErrors.map((errorKey) => (
-                    <li key={errorKey} className="text-red-600">
+                    <li key={errorKey} className="text-[var(--hub-err)]">
                       {t(`auth.${errorKey}`)}
                     </li>
                   ))}
@@ -140,59 +167,55 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ onSuccess, onCa
               </div>
             )}
             {formData.newPassword && passwordErrors.length === 0 && (
-              <p className="mt-2 text-sm text-green-600">✓ {t('auth.passwordStrengthHint')}</p>
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-[var(--hub-ok)]">
+                <Check size={13} aria-hidden="true" />
+                <span>{t('auth.passwordStrengthHint')}</span>
+              </p>
             )}
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirmPassword">
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium text-[var(--hub-ink)]"
+              htmlFor="confirmPassword"
+            >
               {t('auth.confirmPassword')}
             </label>
             <input
               type="password"
               id="confirmPassword"
               name="confirmPassword"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
+              autoComplete="new-password"
+              className="hub-input"
               value={confirmPassword}
               onChange={handleChange}
               required
               minLength={8}
+              disabled={isLoading}
             />
           </div>
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end gap-2 pt-1">
             {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={isLoading}
-                className="hub-btn"
-              >
+              <button type="button" onClick={onCancel} disabled={isLoading} className="hub-btn">
                 {t('common.cancel')}
               </button>
             )}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="hub-btn primary"
-            >
-              {isLoading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {t('common.save')}
-                </span>
-              ) : (
-                t('common.save')
-              )}
+            <button type="submit" disabled={isLoading} className="hub-btn primary">
+              {isLoading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+              <span>{t('common.save')}</span>
             </button>
           </div>
         </form>
       )}
-    </div>
+    </>
   );
+
+  if (embedded) {
+    return <div className="max-w-lg">{content}</div>;
+  }
+
+  return <div className="hub-card p-5">{content}</div>;
 };
 
 export default ChangePasswordForm;

@@ -17,7 +17,7 @@ import {
   resetToolDescription,
   updateToolHiddenParams,
 } from '@/services/toolService';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import { useToast } from '@/contexts/ToastContext';
 import { Switch } from './ToggleGroup';
 import DynamicForm from './DynamicForm';
@@ -52,7 +52,7 @@ function isEmptyValue(value: any): boolean {
 const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdate, cost }: ToolCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { nameSeparator } = useSettingsData();
+  const { nameSeparator } = useRuntimeSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRunForm, setShowRunForm] = useState(false);
   const [isRunning, setIsRunning] = useState(false);

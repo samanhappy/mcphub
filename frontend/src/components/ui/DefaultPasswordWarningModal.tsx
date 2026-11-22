@@ -18,19 +18,7 @@ const DefaultPasswordWarningModal: React.FC<DefaultPasswordWarningModalProps> = 
 
   const handleGoToSettings = () => {
     onClose();
-    navigate('/settings');
-    // Auto-scroll to password section after a small delay to ensure page is loaded
-    setTimeout(() => {
-      const passwordSection = document.querySelector('[data-section="password"]');
-      if (passwordSection) {
-        passwordSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // If the section is collapsed, expand it
-        const clickTarget = passwordSection.querySelector('[role="button"]');
-        if (clickTarget && !passwordSection.querySelector('.mt-4')) {
-          (clickTarget as HTMLElement).click();
-        }
-      }
-    }, 100);
+    navigate('/settings?category=account&section=password');
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {

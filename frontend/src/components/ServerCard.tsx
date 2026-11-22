@@ -33,7 +33,7 @@ import { toClientSnippetTarget, type ClientSnippetTarget } from '@/utils/mcpClie
 import { copyText } from '@/utils/clipboard';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings, useSettingsActions } from '@/hooks/useSettingsData';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageServer } from '@/utils/serverPermissions';
 import { getServerTagList } from '@/utils/serverTags';
@@ -159,7 +159,8 @@ const ServerCard = ({
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { exportMCPSettings, installConfig } = useSettingsData();
+  const { installConfig } = useRuntimeSettings();
+  const { exportMCPSettings } = useSettingsActions();
   const { auth } = useAuth();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 

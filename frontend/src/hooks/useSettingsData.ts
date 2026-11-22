@@ -1,10 +1,16 @@
-import { useSettings } from '@/contexts/SettingsContext';
+import {
+  useRuntimeSettings,
+  useSettings,
+  useSettingsActions,
+} from '@/contexts/SettingsContext';
 
 /**
  * Hook that provides access to settings data via SettingsContext.
- * This hook is a thin wrapper around useSettings to maintain backward compatibility.
- * The actual data fetching happens once in SettingsProvider, avoiding duplicate API calls.
+ * Maintained for backward compatibility; prefer `useRuntimeSettings` for
+ * read-only consumers and `useSettingsActions` for write operations.
  */
 export const useSettingsData = () => {
   return useSettings();
 };
+
+export { useRuntimeSettings, useSettingsActions };
