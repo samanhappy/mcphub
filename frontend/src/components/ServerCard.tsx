@@ -5,6 +5,8 @@ import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 
 import { useTranslation } from 'react-i18next';
 import {
   ChevronRight,
+  Code2,
+  BookOpen,
   AlertCircle,
   Copy,
   CopyPlus,
@@ -487,6 +489,31 @@ const ServerCard = ({
     server.visibility ?? server.config?.visibility,
   );
   const visibilityOptions = getServerVisibilityOptions(translateVisibility, visibility.value);
+  // Optional repository/documentation links (#1495). Missing links render
+  // nothing at all, so a server without metadata keeps the compact row height.
+  const serverLinks: Array<{
+    key: string;
+    href: string;
+    label: string;
+    Icon: LucideIcon;
+  }> = [];
+  if (server.config?.repositoryUrl) {
+    serverLinks.push({
+      key: 'repository',
+      href: server.config.repositoryUrl,
+      label: t('server.repositoryLink'),
+      Icon: Code2,
+    });
+  }
+  if (server.config?.documentationUrl) {
+    serverLinks.push({
+      key: 'documentation',
+      href: server.config.documentationUrl,
+      label: t('server.documentationLink'),
+      Icon: BookOpen,
+    });
+  }
+
   const capabilitySummaries: CapabilitySummary[] = [
     {
       key: 'tools',
@@ -655,6 +682,25 @@ const ServerCard = ({
                     <span key={tag} className="hub-tag text-[11px]">
                       {tag}
                     </span>
+                  ))}
+                </div>
+              )}
+              {serverLinks.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2" style={{ marginTop: 3 }}>
+                  {serverLinks.map(({ key, href, label, Icon }) => (
+                    <a
+                      key={key}
+                      className="inline-flex items-center gap-1 text-[11.5px] hover:underline"
+                      style={{ color: 'var(--hub-ink-2)' }}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={href}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Icon size={11} aria-hidden="true" />
+                      {label}
+                    </a>
                   ))}
                 </div>
               )}

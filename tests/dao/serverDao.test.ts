@@ -44,6 +44,30 @@ describe('ServerDaoImpl', () => {
     expect(servers.untagged).not.toHaveProperty('tags');
   });
 
+  it('drops malformed hand-edited metadata links for that server only (#1495)', async () => {
+    const dao = new ServerDaoImpl();
+    jest.spyOn(dao as any, 'loadSettings').mockResolvedValue({
+      mcpServers: {
+        mixed: {
+          command: 'node',
+          repositoryUrl: 'https://github.com/owner/repo',
+          documentationUrl: 'not a url',
+        },
+        scalar: { command: 'node', repositoryUrl: 42 },
+        untagged: { command: 'node' },
+      },
+    });
+
+    const servers = Object.fromEntries(
+      (await dao.findAll()).map((server) => [server.name, server]),
+    );
+
+    expect(servers.mixed.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(servers.mixed.documentationUrl).toBeUndefined();
+    expect(servers.scalar.repositoryUrl).toBeUndefined();
+    expect(servers.untagged).not.toHaveProperty('repositoryUrl');
+  });
+
   it('includes explicitly shared group servers in paginated user results', async () => {
     const dao = new ServerDaoImpl();
     jest.spyOn(dao as any, 'getAll').mockResolvedValue([

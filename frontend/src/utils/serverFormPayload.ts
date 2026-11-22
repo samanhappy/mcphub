@@ -262,6 +262,10 @@ export const buildServerPayload = ({
     type: serverType,
     description,
     tags: normalizeTags(formData.tags),
+    // Optional metadata links (#1495). The backend validates the URL shape, so an
+    // empty field is sent as undefined to clear a previously stored link.
+    repositoryUrl: formData.repositoryUrl?.trim() || undefined,
+    documentationUrl: formData.documentationUrl?.trim() || undefined,
     options,
     visibility: formData.visibility ?? 'private',
     sharedWithUserGroups:

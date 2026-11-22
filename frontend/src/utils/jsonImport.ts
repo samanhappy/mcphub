@@ -48,6 +48,8 @@ const KNOWN_KEYS = new Set<keyof ServerConfig | string>([
   'passthroughHeaders',
   'proxy',
   'tags',
+  'repositoryUrl',
+  'documentationUrl',
 ]);
 
 /**
@@ -163,6 +165,22 @@ export const normalizeImportedServers = (parsed: ImportJsonFormat): NormalizeRes
       if (tags.length > 0) {
         normalizedConfig.tags = tags;
       }
+    }
+
+    for (const field of ['repositoryUrl', 'documentationUrl'] as const) {
+      const value = config[field];
+      if (value === undefined) {
+        continue;
+      }
+      if (typeof value !== 'string') {
+        issues.push({ name, message: `"${field}" must be a string URL.` });
+        continue;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        continue;
+      }
+      normalizedConfig[field] = trimmed;
     }
 
     servers.push({ name, config: normalizedConfig });

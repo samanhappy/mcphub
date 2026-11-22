@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "打开文件暂存设置",
     "stagingRestartNotice": "保存后会重连服务器以使更改立即生效。",
     "stagingSaveSuccess": "服务器文件暂存设置已更新",
-    "stagingSaveFailed": "更新服务器文件暂存设置失败"
+    "stagingSaveFailed": "更新服务器文件暂存设置失败",
+    "repositoryUrl": "仓库地址",
+    "repositoryUrlPlaceholder": "https://github.com/owner/repo（可选）",
+    "documentationUrl": "文档地址",
+    "documentationUrlPlaceholder": "https://docs.example.com（可选）",
+    "repositoryLink": "仓库",
+    "documentationLink": "文档"
   },
   "status": {
     "sleeping": "休眠",

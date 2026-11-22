@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "Abrir configuración de almacenamiento temporal",
     "stagingRestartNotice": "Guardar reconecta el servidor para que los cambios surtan efecto de inmediato.",
     "stagingSaveSuccess": "Configuración de almacenamiento temporal del servidor actualizada",
-    "stagingSaveFailed": "No se pudo actualizar el almacenamiento temporal del servidor"
+    "stagingSaveFailed": "No se pudo actualizar el almacenamiento temporal del servidor",
+    "repositoryUrl": "URL del repositorio",
+    "repositoryUrlPlaceholder": "https://github.com/usuario/repositorio (opcional)",
+    "documentationUrl": "URL de la documentación",
+    "documentationUrlPlaceholder": "https://docs.ejemplo.com (opcional)",
+    "repositoryLink": "Repositorio",
+    "documentationLink": "Documentación"
   },
   "status": {
     "sleeping": "En suspensión",

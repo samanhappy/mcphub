@@ -4,6 +4,7 @@ import { ServerConfig } from '../types/index.js';
 import { BaseDao } from './base/BaseDao.js';
 import { JsonFileBaseDao } from './base/JsonFileBaseDao.js';
 import {
+  readStoredMetadataUrl,
   readStoredServerTags,
   unpackStartOnDemandOptions,
 } from '../utils/serverConfigPersistence.js';
@@ -138,6 +139,18 @@ export class ServerDaoImpl extends JsonFileBaseDao implements ServerDao {
         ...config,
         id: config.id ?? legacyServerId(name),
         ...(config.tags !== undefined ? { tags: readStoredServerTags(name, config.tags) } : {}),
+        ...(config.repositoryUrl !== undefined
+          ? { repositoryUrl: readStoredMetadataUrl(name, 'repositoryUrl', config.repositoryUrl) }
+          : {}),
+        ...(config.documentationUrl !== undefined
+          ? {
+              documentationUrl: readStoredMetadataUrl(
+                name,
+                'documentationUrl',
+                config.documentationUrl,
+              ),
+            }
+          : {}),
         options,
         ...(startOnDemand !== undefined ? { startOnDemand } : {}),
         ...(idleTimeoutMs !== undefined ? { idleTimeoutMs } : {}),

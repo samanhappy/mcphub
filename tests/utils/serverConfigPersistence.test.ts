@@ -1,7 +1,10 @@
 import { normalizeServerConfigForPersistence } from '../../src/utils/serverConfigPersistence.js';
 import { ServerConfig, ServerInfo } from '../../src/types/index.js';
 import { hasConnectionRelevantChange } from '../../src/utils/connectionRelevantConfig.js';
-import { readStoredServerTags } from '../../src/utils/serverConfigPersistence.js';
+import {
+  readStoredServerTags,
+  readStoredMetadataUrl,
+} from '../../src/utils/serverConfigPersistence.js';
 import { logger } from '../../src/utils/logger.js';
 
 describe('normalizeServerConfigForPersistence', () => {
@@ -603,5 +606,93 @@ describe('readStoredServerTags (#1506)', () => {
     expect(warn).toHaveBeenCalledTimes(2);
     expect(warn.mock.calls[0][0]).toContain('"hand-edited"');
     expect(warn.mock.calls[1][0]).toContain('"scalar-tags"');
+  });
+});
+
+describe('server metadata links (#1495)', () => {
+  const base: ServerConfig = { type: 'stdio', command: 'npx', args: ['-y', 'pkg'] };
+
+  it('keeps absolute http(s) links and trims surrounding whitespace', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      ...base,
+      repositoryUrl: '  https://github.com/owner/repo  ',
+      documentationUrl: ' https://docs.example.com/guide ',
+    });
+
+    expect(normalized.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(normalized.documentationUrl).toBe('https://docs.example.com/guide');
+  });
+
+  it('treats blank links as absent so clearing them clears the stored value', () => {
+    const normalized = normalizeServerConfigForPersistence({
+      ...base,
+      repositoryUrl: '   ',
+      documentationUrl: '',
+    });
+
+    expect(normalized.repositoryUrl).toBeUndefined();
+    expect(normalized.documentationUrl).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(normalized, 'repositoryUrl')).toBe(true);
+  });
+
+  it('rejects non-URL, non-http and overlong links instead of storing them', () => {
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, repositoryUrl: 'github.com/owner/repo' }),
+    ).toThrow('repositoryUrl must be an absolute http(s) URL');
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, documentationUrl: 'ftp://example.com/doc' }),
+    ).toThrow('documentationUrl must be an absolute http(s) URL');
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        ...base,
+        documentationUrl: `https://example.com/${'x'.repeat(2048)}`,
+      }),
+    ).toThrow('documentationUrl must be at most 2048 characters');
+    expect(() =>
+      normalizeServerConfigForPersistence({
+        ...base,
+        repositoryUrl: 42 as unknown as string,
+      }),
+    ).toThrow('repositoryUrl must be a string URL');
+  });
+
+  it('treats a links-only edit as metadata that needs no reconnect', () => {
+    const existing = { name: 'mongo', ...base, repositoryUrl: 'https://github.com/o/r' };
+
+    expect(
+      hasConnectionRelevantChange(existing, {
+        ...base,
+        repositoryUrl: 'https://github.com/o/r',
+        documentationUrl: 'https://docs.example.com',
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('readStoredMetadataUrl (#1495)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('keeps valid stored links without warning', () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+    expect(readStoredMetadataUrl('valid', 'repositoryUrl', ' https://github.com/o/r ')).toBe(
+      'https://github.com/o/r',
+    );
+    expect(readStoredMetadataUrl('valid', 'documentationUrl', undefined)).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('drops an invalid stored link and warns once per server, field and value', () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+    expect(readStoredMetadataUrl('hand-edited', 'repositoryUrl', 'not a url')).toBeUndefined();
+    expect(readStoredMetadataUrl('hand-edited', 'repositoryUrl', 'not a url')).toBeUndefined();
+    expect(readStoredMetadataUrl('hand-edited', 'documentationUrl', 'javascript:alert(1)')).toBeUndefined();
+
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toContain('"hand-edited"');
+    expect(warn.mock.calls[0][0]).toContain('repositoryUrl');
   });
 });

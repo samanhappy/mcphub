@@ -45,6 +45,68 @@ const normalizeStringArray = (value?: string[]): string[] | undefined => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
+// Optional metadata links (#1495). Only absolute http(s) URLs are accepted so
+// the dashboard never renders a link that cannot open; anything else fails
+// loudly instead of being silently dropped like a free-form note.
+export const METADATA_URL_MAX_LENGTH = 2048;
+
+const normalizeMetadataUrl = (field: string, value: unknown): string | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw new ServerConfigValidationError(`${field} must be a string URL`);
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (trimmed.length > METADATA_URL_MAX_LENGTH) {
+    throw new ServerConfigValidationError(
+      `${field} must be at most ${METADATA_URL_MAX_LENGTH} characters`,
+    );
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new ServerConfigValidationError(`${field} must be an absolute http(s) URL`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new ServerConfigValidationError(`${field} must be an absolute http(s) URL`);
+  }
+  if (!parsed.hostname) {
+    throw new ServerConfigValidationError(`${field} must be an absolute http(s) URL`);
+  }
+  return trimmed;
+};
+
+const warnedStoredMetadataUrls = new Set<string>();
+
+// Hand-edited settings are dropped per field instead of failing the whole read:
+// one bad URL must not make every server unreadable. The warning is deduplicated
+// per server and value so a repeatedly-read bad file logs once.
+export const readStoredMetadataUrl = (
+  serverName: string,
+  field: string,
+  value: unknown,
+): string | undefined => {
+  try {
+    return normalizeMetadataUrl(field, value);
+  } catch (error) {
+    const warningKey = `${serverName}\u0000${field}\u0000${JSON.stringify(value)}`;
+    if (!warnedStoredMetadataUrls.has(warningKey)) {
+      warnedStoredMetadataUrls.add(warningKey);
+      logger.warn(
+        `Ignoring invalid ${field} for server "${serverName}": ${
+          error instanceof Error ? error.message : 'invalid value'
+        }`,
+      );
+    }
+    return undefined;
+  }
+};
+
 export const SERVER_TAG_MAX_LENGTH = 64;
 
 const normalizeTagText = (tag: string): string => tag.trim().replace(/\s+/g, ' ');
@@ -447,6 +509,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
   resolveUpstreamProtocolMode({ ...config, type: normalizedType });
   const description = trimToUndefined(config.description);
   const tags = normalizeServerTags(config.tags);
+  const repositoryUrl = normalizeMetadataUrl('repositoryUrl', config.repositoryUrl);
+  const documentationUrl = normalizeMetadataUrl('documentationUrl', config.documentationUrl);
   const owner = trimToUndefined(config.owner) ?? config.owner;
   const url = trimToUndefined(config.url);
   const command = trimToUndefined(config.command);
@@ -517,6 +581,8 @@ export const normalizeServerConfigForPersistence = (config: ServerConfig): Serve
     credentialTemplate: validateCredentialTemplate({ ...config, type: normalizedType }),
     description,
     tags,
+    repositoryUrl,
+    documentationUrl,
     owner,
     visibility,
     sharedWithUsers,
