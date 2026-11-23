@@ -1,0 +1,36 @@
+frontend/src/components/settings/BearerKeysSection.tsx
+  h_18676a549cd52a 1,58,70,86-90,472,484,516-540,542,544,593-594,745,785,801,809,827,869,925,934,972,990,1010,1036,1063,1122,1140,1152,1171,1183,1200
+frontend/src/components/settings/BetterAuthSection.tsx
+  h_18676a549cd52a 37,56,141,150,170,186,203,223,239,255,283,299,315,331,341,357
+frontend/src/components/settings/FileStagingSection.tsx
+  h_18676a549cd52a 156,177,257,279,293
+frontend/src/components/settings/GeneralSettingsSection.tsx
+  h_18676a549cd52a 49,121,123,221,238,247
+frontend/src/components/settings/InstallMaintenanceSection.tsx
+  h_18676a549cd52a 31-32,106-107,253,270,286,302,315,324,370,386,394
+frontend/src/components/settings/OAuthServerSection.tsx
+  h_18676a549cd52a 28,164,184
+frontend/src/components/settings/RoutingNetworkSection.tsx
+  h_18676a549cd52a 33,66-68,102,111,122,138,146,180,188,196
+frontend/src/components/settings/SmartRoutingSection.tsx
+  h_18676a549cd52a 194,248,546,622,639,659,696,713,732,755,772,790,809,829,851,864,887,914,935,967,986,1015,1041,1077,1096,1106
+frontend/src/components/settings/ToolResultCompressionSection.tsx
+  h_18676a549cd52a 29,48,128,146,171,188,196
+frontend/src/components/settings/UserRegistrationSection.tsx
+  h_18676a549cd52a 17,35
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 20,303,524-525,835,839-841
+frontend/src/contexts/settingsTypes.ts
+  h_18676a549cd52a 2,47,50,61,64-65,161-165,258-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32020b85067554387daaca451c8ebb28ab8d07c8",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
