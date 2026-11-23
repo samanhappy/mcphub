@@ -667,6 +667,22 @@ describe('server metadata links (#1495)', () => {
       }),
     ).toBe(false);
   });
+
+  // `URL()` accepts a scheme with no slashes, but the string we would store is
+  // not what the browser resolves: as an href on an HTTPS dashboard
+  // "https:docs.example.com" becomes "https://hub.example/docs.example.com".
+  it('rejects a scheme with no slashes even though URL() accepts it', () => {
+    expect(new URL('https:docs.example.com', 'https://hub.example/').href).toBe(
+      'https://hub.example/docs.example.com',
+    );
+
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, repositoryUrl: 'https:github.com/o/r' }),
+    ).toThrow('repositoryUrl must be an absolute http(s) URL');
+    expect(() =>
+      normalizeServerConfigForPersistence({ ...base, documentationUrl: 'http:docs.example.com' }),
+    ).toThrow('documentationUrl must be an absolute http(s) URL');
+  });
 });
 
 describe('readStoredMetadataUrl (#1495)', () => {

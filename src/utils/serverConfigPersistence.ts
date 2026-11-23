@@ -50,6 +50,12 @@ const normalizeStringArray = (value?: string[]): string[] | undefined => {
 // loudly instead of being silently dropped like a free-form note.
 export const METADATA_URL_MAX_LENGTH = 2048;
 
+// `new URL("https:docs.example.com")` parses without a base, but the stored
+// string is not what the browser resolves: used as an href on an HTTPS page it
+// becomes "https://hub.example/docs.example.com". Demand the "//" so the value
+// we keep means the same thing wherever it is read back.
+const ABSOLUTE_METADATA_URL = /^https?:\/\//i;
+
 const normalizeMetadataUrl = (field: string, value: unknown): string | undefined => {
   if (value === undefined || value === null) {
     return undefined;
@@ -65,6 +71,9 @@ const normalizeMetadataUrl = (field: string, value: unknown): string | undefined
     throw new ServerConfigValidationError(
       `${field} must be at most ${METADATA_URL_MAX_LENGTH} characters`,
     );
+  }
+  if (!ABSOLUTE_METADATA_URL.test(trimmed)) {
+    throw new ServerConfigValidationError(`${field} must be an absolute http(s) URL`);
   }
   let parsed: URL;
   try {
