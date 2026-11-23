@@ -4,7 +4,7 @@ import ServerForm from './ServerForm'
 import { apiPost } from '../utils/fetchInterceptor'
 import { detectVariables } from '../utils/variableDetection'
 import { buildDuplicateSource, carryOverCapabilityOverrides } from '../utils/serverDuplicate'
-import { useSettingsData } from '../hooks/useSettingsData'
+import { useRuntimeSettings } from '../hooks/useSettingsData'
 import { Server } from '../types'
 
 interface AddServerFormProps {
@@ -24,7 +24,7 @@ const AddServerForm = ({
   onDuplicateCancel,
 }: AddServerFormProps) => {
   const { t } = useTranslation()
-  const { nameSeparator } = useSettingsData()
+  const { nameSeparator } = useRuntimeSettings()
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmationVisible, setConfirmationVisible] = useState(false)

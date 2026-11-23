@@ -11,7 +11,7 @@ import {
 } from '@/utils/mcpClientSnippets';
 import { copyText } from '@/utils/clipboard';
 import { useToast } from '@/contexts/ToastContext';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import { formatTokens, percentSaved } from '@/utils/contextCost';
 
 interface GroupCardProps {
@@ -46,7 +46,7 @@ const GroupCard = ({ group, servers, onEdit, onDelete, cost }: GroupCardProps) =
   const { auth } = useAuth();
   const canManage = !!auth.user && (auth.user.isAdmin || auth.user.username === group.owner);
   const { showToast } = useToast();
-  const { installConfig, nameSeparator, routingConfig } = useSettingsData();
+  const { installConfig, nameSeparator, routingConfig } = useRuntimeSettings();
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

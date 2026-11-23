@@ -489,55 +489,6 @@ input[role='switch']:disabled + .hub-switch { opacity: 0.5; cursor: not-allowed;
 .hub-endpoint .hub-endpoint-copy:hover { background: var(--hub-surface-hover); }
 .hub-endpoint .hub-endpoint-copy.copied { color: var(--hub-ok); }
 
-/* Generic Settings page field rows — flatten heavy gray bg to hair-line */
-/* Only inside the settings page body, scoped via .page-card descendants */
-.page-card .bg-gray-50,
-.page-card .dark\:bg-gray-800.rounded-md {
-  background: var(--hub-bg-2) !important;
-}
-
-/* Scoped redesign for Smart Routing form fields inside Settings */
-.hub-sr-fields > div {
-  padding: 12px 14px !important;
-  border: 1px solid var(--hub-line) !important;
-  border-radius: 8px !important;
-  background: var(--hub-bg-2) !important;
-  box-shadow: none !important;
-}
-.hub-sr-fields h3 {
-  color: var(--hub-ink) !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-}
-.hub-sr-fields h3 .text-red-500 {
-  color: var(--hub-err) !important;
-}
-.hub-sr-fields p {
-  color: var(--hub-ink-3) !important;
-}
-.hub-sr-fields input,
-.hub-sr-fields select {
-  height: 32px !important;
-  padding: 0 10px !important;
-  border-radius: 7px !important;
-  border: 1px solid var(--hub-line) !important;
-  background: var(--hub-surface) !important;
-  color: var(--hub-ink) !important;
-  font-size: 13px !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-  margin-top: 0 !important;
-}
-.hub-sr-fields input.mono,
-.hub-sr-fields select.mono {
-  font-family: var(--hub-mono) !important;
-}
-.hub-sr-fields input:focus,
-.hub-sr-fields select:focus {
-  border-color: var(--hub-ink-2) !important;
-  box-shadow: none !important;
-}
-
 /* ----- Retrofit legacy utility classes to the hub design language ---- */
 
 /* Cards: hair-line border, no lift, no heavy shadow */

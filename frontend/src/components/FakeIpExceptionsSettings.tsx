@@ -21,29 +21,38 @@ export default function FakeIpExceptionsSettings({ value, servers, loading, onSa
   return (
     <form
       aria-labelledby="fake-ip-heading"
-      className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+      className="space-y-3 rounded-lg border border-[var(--hub-line)] bg-[var(--hub-bg-2)] px-3.5 py-3"
       onSubmit={(event) => {
         event.preventDefault();
         void onSave(rules);
       }}
     >
-      <h3 id="fake-ip-heading" className="font-medium text-[var(--hub-ink)]">
-        {t('settings.fakeIp.title')}
-      </h3>
-      <p className="text-sm text-[var(--hub-ink-2)]">{t('settings.fakeIp.description')}</p>
-      <p className="text-xs text-[var(--hub-ink-2)]">{t('settings.fakeIp.warning')}</p>
+      <div>
+        <h3 id="fake-ip-heading" className="text-[13px] font-medium text-[var(--hub-ink)]">
+          {t('settings.fakeIp.title')}
+        </h3>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--hub-ink-3)]">
+          {t('settings.fakeIp.description')}
+        </p>
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          {t('settings.fakeIp.warning')}
+        </p>
+      </div>
       {rules.length === 0 && (
-        <p className="text-sm text-[var(--hub-ink-2)]">{t('settings.fakeIp.empty')}</p>
+        <p className="text-xs text-[var(--hub-ink-3)]">{t('settings.fakeIp.empty')}</p>
       )}
       {rules.map((rule, index) => (
-        <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+        <div key={index} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <div className="min-w-0">
-            <label htmlFor={`fake-ip-server-${index}`} className="block text-sm mb-1">
+            <label
+              htmlFor={`fake-ip-server-${index}`}
+              className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]"
+            >
               {t('settings.fakeIp.server')}
             </label>
             <select
               id={`fake-ip-server-${index}`}
-              className="block w-full min-w-0 py-2 px-3 border border-gray-300 rounded-md form-input"
+              className="hub-input min-w-0"
               value={rule.serverId}
               required
               disabled={loading}
@@ -64,12 +73,15 @@ export default function FakeIpExceptionsSettings({ value, servers, loading, onSa
             </select>
           </div>
           <div className="min-w-0">
-            <label htmlFor={`fake-ip-host-${index}`} className="block text-sm mb-1">
+            <label
+              htmlFor={`fake-ip-host-${index}`}
+              className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]"
+            >
               {t('settings.fakeIp.hostname')}
             </label>
             <input
               id={`fake-ip-host-${index}`}
-              className="block w-full min-w-0 py-2 px-3 border border-gray-300 rounded-md form-input font-mono"
+              className="hub-input mono min-w-0"
               value={rule.hostname}
               placeholder="mcp.example.com"
               required
@@ -88,7 +100,7 @@ export default function FakeIpExceptionsSettings({ value, servers, loading, onSa
           </div>
           <button
             type="button"
-            className="hub-btn w-full sm:w-auto"
+            className="hub-btn danger w-full sm:w-auto"
             aria-label={t('settings.fakeIp.remove', { index: index + 1 })}
             disabled={loading}
             onClick={() => setRules((current) => current.filter((_, i) => i !== index))}
@@ -97,7 +109,7 @@ export default function FakeIpExceptionsSettings({ value, servers, loading, onSa
           </button>
         </div>
       ))}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="button"
           className="hub-btn"

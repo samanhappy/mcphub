@@ -20,11 +20,14 @@ interface ToolPolicyPanelProps {
   bearerKeys: BearerKey[];
   servers: Server[];
   groups: Group[];
+  defaultOpen?: boolean;
+  sectionId?: string;
+  highlighted?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const selectors = ['username', 'keyId', 'groupId', 'serverId', 'tool'] as const;
-const inputClass =
-  'block w-full min-w-0 mt-1 py-2 px-3 border border-gray-300 rounded-md form-input text-sm';
+const inputClass = 'hub-input mt-1';
 
 const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
   nameSeparator,
@@ -37,9 +40,13 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
   bearerKeys,
   servers,
   groups,
+  defaultOpen = false,
+  sectionId = 'tool-policies',
+  highlighted = false,
+  onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [draft, setDraft] = useState<ToolPolicyRule[] | null>(null);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -61,9 +68,16 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
     groupId: options.groupId.map(({ value }) => value),
   });
 
+  const updateDraft = (next: ToolPolicyRule[] | null) => {
+    setDraft(next);
+    if (onDirtyChange) {
+      onDirtyChange(next !== null && JSON.stringify(next) !== JSON.stringify(rules));
+    }
+  };
+
   const change = (index: number, key: keyof ToolPolicyRule, value: string) => {
     setError('');
-    setDraft(
+    updateDraft(
       current.map((rule, i) => {
         if (i !== index) return rule;
         const updated = { ...rule, [key]: value };
@@ -87,7 +101,7 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
     setConfirm(false);
     setSaving(true);
     try {
-      if (await onSave(current)) setDraft(null);
+      if (await onSave(current)) updateDraft(null);
       else setError(t('settings.toolPolicies.saveFailed'));
     } catch {
       setError(t('settings.toolPolicies.saveFailed'));
@@ -97,40 +111,51 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
   };
 
   return (
-    <section className="hub-card mb-6 overflow-hidden" aria-labelledby="tool-policy-heading">
+    <section
+      id={sectionId}
+      data-section={sectionId}
+      className={
+        'hub-card overflow-hidden transition-colors ' +
+        (highlighted ? 'ring-2 ring-[var(--hub-accent)] ring-offset-2 ring-offset-[var(--hub-bg)]' : '')
+      }
+      aria-labelledby="tool-policy-heading"
+    >
       <button
         id="tool-policy-heading"
         type="button"
-        className="flex w-full justify-between items-center py-3 px-5 text-left hover:bg-[var(--hub-surface-hover)]"
+        className="flex w-full justify-between items-center py-3.5 px-5 text-left hover:bg-[var(--hub-surface-hover)]"
         aria-expanded={open}
         aria-controls="tool-policy-content"
         onClick={() => setOpen(!open)}
       >
-        <span className="flex items-center gap-2.5 font-medium">
-          <ShieldCheck size={15} aria-hidden="true" />
+        <span className="flex items-center gap-2.5 text-[14px] font-medium text-[var(--hub-ink)]">
+          <ShieldCheck size={15} className="text-[var(--hub-ink-2)]" aria-hidden="true" />
           {t('settings.toolPolicies.title')}
-          <span className="text-sm text-[var(--hub-ink-3)]">{rules?.length ?? '—'}</span>
+          <span className="hub-tag hub-num">{rules?.length ?? '—'}</span>
+          {dirty && <span className="hub-tag accent">{t('settings.unsavedBadge')}</span>}
         </span>
-        <span aria-hidden="true">{open ? '−' : '+'}</span>
+        <span className="text-[var(--hub-ink-3)]" aria-hidden="true">
+          {open ? '−' : '+'}
+        </span>
       </button>
       {open && (
         <div
           id="tool-policy-content"
-          className="p-4 sm:p-6 border-t border-[var(--hub-line-2)] space-y-4"
+          className="p-4 sm:p-5 border-t border-[var(--hub-line-2)] space-y-4"
         >
-          <p className="text-sm text-[var(--hub-ink-2)]">
+          <p className="text-xs leading-relaxed text-[var(--hub-ink-3)]">
             {t('settings.toolPolicies.description')}
           </p>
-          <div className="rounded-md bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-200">
+          <div className="rounded-lg border border-amber-300/70 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/50 p-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             {t('settings.toolPolicies.semantics')}
           </div>
           {missingReferences.length > 0 && (
             <div
               role="alert"
-              className="rounded-md bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-200 break-all"
+              className="rounded-lg border border-amber-300/70 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/50 p-3 text-xs text-amber-900 dark:text-amber-200 break-all"
             >
               <p>{t('settings.toolPolicies.missingReferences')}</p>
-              <ul className="list-disc pl-5">
+              <ul className="list-disc pl-5 mt-1 space-y-0.5">
                 {missingReferences.map(({ policyId, selector, value }, index) => (
                   <li key={index}>
                     {t('settings.toolPolicies.missingReference', { policyId, selector, value })}
@@ -140,7 +165,7 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
             </div>
           )}
           {rules === undefined ? (
-            <div role="status" className="text-sm">
+            <div role="status" className="text-sm text-[var(--hub-ink-2)]">
               {loadError || t('common.loading')}
               {!loading && (
                 <button type="button" className="hub-btn ml-3" onClick={onRetry}>
@@ -150,23 +175,23 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
             </div>
           ) : (
             <>
-              <fieldset disabled={busy} className="min-w-0 space-y-4">
+              <fieldset disabled={busy} className="min-w-0 space-y-3.5">
                 <legend className="sr-only">{t('settings.toolPolicies.title')}</legend>
                 {current.length === 0 && (
-                  <p className="text-sm text-[var(--hub-ink-2)]">
+                  <p className="text-sm text-[var(--hub-ink-3)]">
                     {t('settings.toolPolicies.empty')}
                   </p>
                 )}
                 {current.map((rule, index) => (
                   <fieldset
                     key={index}
-                    className="min-w-0 rounded-md border border-[var(--hub-line)] p-4"
+                    className="min-w-0 rounded-lg border border-[var(--hub-line)] bg-[var(--hub-bg-2)] p-4"
                   >
-                    <legend className="px-1 text-sm font-medium">
+                    <legend className="px-1 text-xs font-medium text-[var(--hub-ink-2)]">
                       {t('settings.toolPolicies.rule', { number: index + 1 })}
                     </legend>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                      <label className="text-sm min-w-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                      <label className="text-xs font-medium text-[var(--hub-ink-2)] min-w-0">
                         {t('settings.toolPolicies.id')}
                         <input
                           className={inputClass}
@@ -175,7 +200,7 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
                           onChange={(e) => change(index, 'id', e.target.value)}
                         />
                       </label>
-                      <label className="text-sm min-w-0">
+                      <label className="text-xs font-medium text-[var(--hub-ink-2)] min-w-0">
                         {t('settings.toolPolicies.effect')}
                         <select
                           className={inputClass}
@@ -205,7 +230,7 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
                             : options[selector];
                         const selected = choices.find((option) => option.value === rule[selector]);
                         return (
-                          <label key={selector} className="text-sm min-w-0">
+                          <label key={selector} className="text-xs font-medium text-[var(--hub-ink-2)] min-w-0">
                             {t(`settings.toolPolicies.${selector}`)}
                             <input
                               className={inputClass}
@@ -224,7 +249,7 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
                               ))}
                             </datalist>
                             {selected && selector !== 'tool' && (
-                              <span className="block mt-1 text-xs text-[var(--hub-ink-2)] break-all">
+                              <span className="block mt-1 text-xs font-normal text-[var(--hub-ink-3)] break-all">
                                 {selected.label}
                               </span>
                             )}
@@ -235,59 +260,61 @@ const ToolPolicyPanel: React.FC<ToolPolicyPanelProps> = ({
                     <div className="flex justify-end mt-3">
                       <button
                         type="button"
-                        className="hub-btn text-red-600"
+                        className="hub-btn danger sm"
                         aria-label={t('settings.toolPolicies.deleteRule', { number: index + 1 })}
                         onClick={() => {
-                          setDraft(current.filter((_, i) => i !== index));
+                          updateDraft(current.filter((_, i) => i !== index));
                           setError('');
                         }}
                       >
-                        <Trash2 size={14} aria-hidden="true" />
+                        <Trash2 size={13} aria-hidden="true" />
                         {t('common.delete')}
                       </button>
                     </div>
                   </fieldset>
                 ))}
-                <p className="text-xs text-[var(--hub-ink-2)]">
+                <p className="text-xs text-[var(--hub-ink-3)]">
                   {t('settings.toolPolicies.selectorsHint')}
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hub-line-2)] pt-3.5">
                   <button
                     type="button"
                     className="hub-btn"
-                    onClick={() => setDraft([...current, { id: '', effect: 'deny' }])}
+                    onClick={() => updateDraft([...current, { id: '', effect: 'deny' }])}
                   >
                     <Plus size={14} aria-hidden="true" />
                     {t('settings.toolPolicies.add')}
                   </button>
-                  <button
-                    type="button"
-                    className="hub-btn"
-                    disabled={!dirty}
-                    onClick={() => {
-                      setDraft(null);
-                      setError('');
-                    }}
-                  >
-                    {t('common.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    className="hub-btn primary"
-                    disabled={!dirty}
-                    onClick={requestSave}
-                  >
-                    {saving ? t('common.saving') : t('settings.toolPolicies.save')}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="hub-btn"
+                      disabled={!dirty}
+                      onClick={() => {
+                        updateDraft(null);
+                        setError('');
+                      }}
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className="hub-btn primary"
+                      disabled={!dirty}
+                      onClick={requestSave}
+                    >
+                      {saving ? t('common.saving') : t('settings.toolPolicies.save')}
+                    </button>
+                  </div>
                 </div>
               </fieldset>
               {dirty && (
-                <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
+                <p role="status" className="text-xs text-amber-700 dark:text-amber-400">
                   {t('settings.toolPolicies.unsaved')}
                 </p>
               )}
               {error && (
-                <p role="alert" className="text-sm text-red-600">
+                <p role="alert" className="text-xs text-[var(--hub-err)]">
                   {error}
                 </p>
               )}

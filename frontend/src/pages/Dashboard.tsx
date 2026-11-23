@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Plus, ChevronRight, AlertCircle } from 'lucide-react';
 import { useServerData } from '@/hooks/useServerData';
 import { useGroupData } from '@/hooks/useGroupData';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import { useCostData } from '@/hooks/useCostData';
 import { formatTokens } from '@/utils/contextCost';
 import { Server } from '@/types';
@@ -65,7 +65,7 @@ const DashboardPage: React.FC = () => {
     refreshOnMount: true,
   });
   const { groups } = useGroupData();
-  const { installConfig } = useSettingsData();
+  const { installConfig } = useRuntimeSettings();
   const { serverCosts } = useCostData();
 
   const [hasLoaded, setHasLoaded] = React.useState(false);

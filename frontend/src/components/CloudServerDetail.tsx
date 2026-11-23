@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CloudServer, CloudServerTool, ServerConfig } from '@/types';
 import { apiGet } from '@/utils/fetchInterceptor';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import MCPRouterApiKeyError from './MCPRouterApiKeyError';
 import ServerForm from './ServerForm';
 
@@ -26,7 +26,7 @@ const CloudServerDetail: React.FC<CloudServerDetailProps> = ({
   isInstalled = false
 }) => {
   const { t } = useTranslation();
-  const { mcpRouterConfig } = useSettingsData();
+  const { mcpRouterConfig } = useRuntimeSettings();
   const [server, setServer] = useState<CloudServer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

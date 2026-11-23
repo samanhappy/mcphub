@@ -42,8 +42,9 @@ const LanguageSwitch: React.FC = () => {
 
   const handleLanguageChange = (lang: string) => {
     localStorage.setItem('i18nextLng', lang);
+    void i18n.changeLanguage(lang);
+    setCurrentLanguage(lang);
     setLanguageDropdownOpen(false);
-    window.location.reload();
   };
 
   // Always show dropdown for language selection

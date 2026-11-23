@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IGroupServerConfig, Prompt, Resource, Server, ServerCost, Tool } from '@/types';
 import { Wrench, MessageSquare, FileText, Pin } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import { formatTokens } from '@/utils/contextCost';
 import { getToolDescriptionInfo } from '@/utils/toolDescription';
 
@@ -48,7 +48,7 @@ export const ServerToolConfig: React.FC<ServerToolConfigProps> = ({
 }) => {
   const { t } = useTranslation();
   const aliasInputId = React.useId();
-  const { nameSeparator, smartRoutingConfig } = useSettingsData();
+  const { nameSeparator, smartRoutingConfig } = useRuntimeSettings();
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
   // Normalize current value to IGroupServerConfig[] format

@@ -18,7 +18,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useGroupData } from '@/hooks/useGroupData';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings, useSettingsActions } from '@/hooks/useSettingsData';
 import type { ApiResponse } from '@/types';
 import { apiDelete, apiGet, apiPut, apiRequest } from '@/utils/fetchInterceptor';
 import type {
@@ -214,7 +214,8 @@ function SkillImportDialog({
 function SkillProxySettings({ hidden }: { hidden: boolean }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { skillImportProxy, loading, fetchSettings } = useSettingsData();
+  const { skillImportProxy, initialLoading: loading } = useRuntimeSettings();
+  const { fetchSettings } = useSettingsActions();
   const [proxyMode, setProxyMode] = useState('server');
   const [proxyAddress, setProxyAddress] = useState('');
   const [savingSkillProxy, setSavingSkillProxy] = useState(false);

@@ -16,7 +16,7 @@ import {
   resetPromptDescription,
   PromptCallResult,
 } from '@/services/promptService';
-import { useSettingsData } from '@/hooks/useSettingsData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
 import DynamicForm from './DynamicForm';
 import PromptResult from './PromptResult';
 import { useToast } from '@/contexts/ToastContext';
@@ -39,7 +39,7 @@ interface PromptCardProps {
 const PromptCard = ({ prompt, server, readOnly = false, onToggle, onDescriptionUpdate, cost }: PromptCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { nameSeparator } = useSettingsData();
+  const { nameSeparator } = useRuntimeSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRunForm, setShowRunForm] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
