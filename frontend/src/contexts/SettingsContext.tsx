@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
 import type {
   BetterAuthConfig,
+  ExportedMcpSettingsData,
   InstallConfig,
   MCPRouterConfig,
   OAuthServerConfig,
@@ -299,7 +300,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const [storeToolPayload, setStoreToolPayload] = useState<boolean>(true);
   const [bearerKeys, setBearerKeys] = useState<BearerKey[]>([]);
 
-  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [savingSections, setSavingSections] = useState<
     Partial<Record<SettingsSectionKey, boolean>>
   >({});
@@ -520,7 +521,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           showToast(t('settings.systemConfigUpdated'), 'success');
           return true;
         }
-        const message = data.message || data.error || t(fallbackErrorKey) || fallbackMessage;
+        const errorText = (data as ApiResponse<TData> & { error?: string }).error;
+        const message = data.message || errorText || t(fallbackErrorKey) || fallbackMessage;
         setError(message);
         showToast(message, 'error');
         return false;
@@ -830,11 +832,13 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   );
 
   const exportMCPSettings = useCallback(
-    async (serverName?: string) => {
+    async (serverName?: string): Promise<ApiResponse<ExportedMcpSettingsData> | undefined> => {
       setSectionSaving('exportConfig', true);
       setError(null);
       try {
-        return await apiGet(`/mcp-settings/export?serverName=${serverName ? serverName : ''}`);
+        return await apiGet<ApiResponse<ExportedMcpSettingsData>>(
+          `/mcp-settings/export?serverName=${serverName ? serverName : ''}`,
+        );
       } catch (err) {
         console.error('Failed to export MCP settings', { serverName, error: err });
         const errorMessage = err instanceof Error ? err.message : 'Failed to export MCP settings';

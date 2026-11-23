@@ -26,7 +26,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const { toolResultCompressionConfig } = useRuntimeSettings();
+  const { toolResultCompressionConfig, initialLoading } = useRuntimeSettings();
   const {
     isSectionSaving,
     updateToolResultCompressionConfig,
@@ -45,6 +45,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
 
   const draft = useSettingsDraft(remoteForm);
   const saving = isSectionSaving('toolResultCompression');
+  const busy = initialLoading || saving;
 
   useEffect(() => {
     onDirtyChange?.('tool-compression', draft.dirty);
@@ -124,7 +125,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
           label={t('settings.toolResultCompressionEnable') || 'Enable compression'}
           description={t('settings.toolResultCompressionDescription')}
           checked={toolResultCompressionConfig.enabled}
-          disabled={saving}
+          disabled={busy}
           onCheckedChange={(checked) =>
             void updateToolResultCompressionConfig('enabled', checked)
           }
@@ -142,7 +143,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
               setField('strategy', e.target.value as ToolResultCompressionStrategy)
             }
             className={settingsSelectClass}
-            disabled={saving}
+            disabled={busy}
           >
             <option value="auto">Auto</option>
             <option value="json">JSON</option>
@@ -167,7 +168,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
               value={draft.values.minTokens}
               onChange={(e) => setField('minTokens', e.target.value)}
               className={settingsInputClass}
-              disabled={saving}
+              disabled={busy}
             />
           </SettingsRow>
 
@@ -184,7 +185,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
               value={draft.values.maxOutputTokens}
               onChange={(e) => setField('maxOutputTokens', e.target.value)}
               className={settingsInputClass}
-              disabled={saving}
+              disabled={busy}
             />
           </SettingsRow>
         </div>
@@ -192,6 +193,7 @@ export const ToolResultCompressionSection: React.FC<ToolResultCompressionSection
         <SettingsSaveBar
           dirty={draft.dirty}
           saving={saving}
+          disabled={initialLoading}
           onSave={handleSave}
           onDiscard={() => {
             setFieldErrors({});

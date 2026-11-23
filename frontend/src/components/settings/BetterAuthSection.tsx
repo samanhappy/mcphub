@@ -34,7 +34,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const { betterAuthConfig } = useRuntimeSettings();
+  const { betterAuthConfig, initialLoading } = useRuntimeSettings();
   const { isSectionSaving, updateBetterAuthConfigBatch } = useSettingsActions();
 
   const remoteForm = useMemo(
@@ -53,6 +53,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
 
   const draft = useSettingsDraft(remoteForm);
   const saving = isSectionSaving('betterAuth');
+  const busy = initialLoading || saving;
 
   useEffect(() => {
     onDirtyChange?.('better-auth', draft.dirty);
@@ -137,7 +138,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
             label={t('settings.enableBetterAuth') || 'Enable Better Auth'}
             description={t('settings.enableBetterAuthDescription')}
             checked={betterAuthConfig.enabled}
-            disabled={saving}
+            disabled={busy}
             onCheckedChange={(checked) => void updateBetterAuthConfigBatch({ enabled: checked })}
           />
 
@@ -146,7 +147,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
             label={t('settings.disablePasswordLogin')}
             description={t('settings.disablePasswordLoginDescription')}
             checked={betterAuthConfig.disablePasswordLogin}
-            disabled={saving}
+            disabled={busy}
             onCheckedChange={(checked) =>
               void updateBetterAuthConfigBatch({ disablePasswordLogin: checked })
             }
@@ -166,7 +167,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               onChange={(e) => draft.setField('baseUrl', e.target.value)}
               placeholder="https://mcphub.example.com"
               className={`${settingsInputClass} mono`}
-              disabled={saving}
+              disabled={busy}
             />
           </SettingsRow>
 
@@ -182,7 +183,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               onChange={(e) => draft.setField('basePath', e.target.value)}
               placeholder="/api/auth/better"
               className={`${settingsInputClass} mono`}
-              disabled={saving}
+              disabled={busy}
             />
           </SettingsRow>
         </div>
@@ -199,7 +200,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
             onChange={(e) => draft.setField('trustedOrigins', e.target.value)}
             placeholder="https://app.example.com, https://admin.example.com"
             className={`${settingsInputClass} mono`}
-            disabled={saving}
+            disabled={busy}
           />
         </SettingsRow>
 
@@ -219,7 +220,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               label="Google"
               description={t('settings.betterAuthGoogleDescription')}
               checked={betterAuthConfig.providers.google.enabled}
-              disabled={saving}
+              disabled={busy}
               onCheckedChange={(checked) =>
                 void updateBetterAuthConfigBatch({
                   providers: {
@@ -235,7 +236,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               label="GitHub"
               description={t('settings.betterAuthGithubDescription')}
               checked={betterAuthConfig.providers.github.enabled}
-              disabled={saving}
+              disabled={busy}
               onCheckedChange={(checked) =>
                 void updateBetterAuthConfigBatch({
                   providers: {
@@ -251,7 +252,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               label="OIDC"
               description={t('settings.betterAuthOidcDescription')}
               checked={betterAuthConfig.providers.oidc.enabled}
-              disabled={saving}
+              disabled={busy}
               onCheckedChange={(checked) =>
                 void updateBetterAuthConfigBatch({
                   providers: {
@@ -279,7 +280,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
                   onChange={(e) => draft.setField('oidcProviderId', e.target.value)}
                   placeholder="oidc"
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -295,7 +296,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
                   onChange={(e) => draft.setField('oidcDiscoveryUrl', e.target.value)}
                   placeholder="https://issuer.example.com/.well-known/openid-configuration"
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -311,7 +312,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
                   onChange={(e) => draft.setField('oidcScopes', e.target.value)}
                   placeholder="openid, profile, email"
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -327,7 +328,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
                   onChange={(e) => draft.setField('oidcPrompt', e.target.value)}
                   placeholder="login"
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
             </div>
@@ -337,7 +338,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
               label={t('settings.betterAuthOidcPkce') || 'Enable PKCE'}
               description={t('settings.betterAuthOidcPkceDescription')}
               checked={betterAuthConfig.providers.oidc.pkce}
-              disabled={saving}
+              disabled={busy}
               onCheckedChange={(checked) =>
                 void updateBetterAuthConfigBatch({
                   providers: {
@@ -353,6 +354,7 @@ export const BetterAuthSection: React.FC<BetterAuthSectionProps> = ({
         <SettingsSaveBar
           dirty={draft.dirty}
           saving={saving}
+          disabled={initialLoading}
           onSave={handleSave}
           onDiscard={draft.discard}
         />

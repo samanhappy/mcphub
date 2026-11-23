@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { BearerKey, FileStagingConfig } from '@/types';
+import type { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 
@@ -44,10 +44,10 @@ export interface InstallConfig {
 export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
-  basePacingDelayMs?: number;
+  basePacingDelayMs?: number | null;
   embeddingProvider?: 'openai' | 'azure_openai';
   embeddingEncodingFormat?: 'auto' | 'base64' | 'float';
-  embeddingDimensions?: number;
+  embeddingDimensions?: number | null;
   embeddingDimensionsApiPassthrough: boolean;
   llmProviderBaseUrl: string;
   llmProviderApiKey: string;
@@ -58,11 +58,11 @@ export interface SmartRoutingConfig {
   azureOpenaiEmbeddingDeployment?: string;
   azureOpenaiEmbeddingModel?: string;
   progressiveDisclosure: boolean;
-  embeddingMaxTokens?: number;
+  embeddingMaxTokens?: number | null;
   embeddingQueryPrefix?: string;
   embeddingDocumentPrefix?: string;
-  similarityThreshold?: number;
-  fullSchemaTopN?: number;
+  similarityThreshold?: number | null;
+  fullSchemaTopN?: number | null;
   // Unset = server default (title, annotations)
   toolDefinitionFields?: string[];
   /**
@@ -158,6 +158,11 @@ export interface SystemSettings {
   bearerKeys?: BearerKey[];
 }
 
+export type ExportedMcpSettingsData = {
+  mcpServers?: Record<string, Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
 export interface TempRoutingConfig {
   bearerAuthKey: string;
   bearerAuthHeaderName: string;
@@ -250,7 +255,9 @@ export interface SettingsActionsContextValue {
   updateFakeIpExceptions: (value: FakeIpException[]) => Promise<boolean>;
   updateAllowedCidrs: (value: string[]) => Promise<boolean>;
   updateStoreToolPayload: (value: boolean) => Promise<boolean | undefined>;
-  exportMCPSettings: (serverName?: string) => Promise<unknown>;
+  exportMCPSettings: (
+    serverName?: string,
+  ) => Promise<ApiResponse<ExportedMcpSettingsData> | undefined>;
   refreshBearerKeys: () => Promise<void>;
   createBearerKey: (
     payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,

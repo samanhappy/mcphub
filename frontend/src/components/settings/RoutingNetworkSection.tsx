@@ -30,7 +30,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const { routingConfig, allowedCidrs, fakeIpExceptions } = useRuntimeSettings();
+  const { routingConfig, allowedCidrs, fakeIpExceptions, initialLoading } = useRuntimeSettings();
   const {
     isSectionSaving,
     updateRoutingConfig,
@@ -63,6 +63,9 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
   const savingRouting = isSectionSaving('routing');
   const savingCidrs = isSectionSaving('allowedCidrs');
   const savingFakeIp = isSectionSaving('fakeIpExceptions');
+  const routingBusy = initialLoading || savingRouting;
+  const cidrsBusy = initialLoading || savingCidrs;
+  const fakeIpBusy = initialLoading || savingFakeIp;
 
   const handleSaveJsonBodyLimit = async () => {
     const ok = await updateRoutingConfig('jsonBodyLimit', routeDraft.values.jsonBodyLimit);
@@ -96,7 +99,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
               label={t('settings.enableGlobalRoute')}
               description={t('settings.enableGlobalRouteDescription')}
               checked={routingConfig.enableGlobalRoute}
-              disabled={savingRouting}
+              disabled={routingBusy}
               onCheckedChange={(checked) => void updateRoutingConfig('enableGlobalRoute', checked)}
             />
 
@@ -105,7 +108,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
               label={t('settings.enableGroupNameRoute')}
               description={t('settings.enableGroupNameRouteDescription')}
               checked={routingConfig.enableGroupNameRoute}
-              disabled={savingRouting}
+              disabled={routingBusy}
               onCheckedChange={(checked) =>
                 void updateRoutingConfig('enableGroupNameRoute', checked)
               }
@@ -116,7 +119,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
               label={t('settings.skipAuth')}
               description={t('settings.skipAuthDescription')}
               checked={routingConfig.skipAuth}
-              disabled={savingRouting}
+              disabled={routingBusy}
               onCheckedChange={(checked) => void updateRoutingConfig('skipAuth', checked)}
             />
 
@@ -132,7 +135,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
                 onChange={(e) => routeDraft.setField('jsonBodyLimit', e.target.value)}
                 placeholder={t('settings.jsonBodyLimitPlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={savingRouting}
+                disabled={routingBusy}
               />
             </SettingsRow>
           </div>
@@ -140,6 +143,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
           <SettingsSaveBar
             dirty={routeDraft.dirty}
             saving={savingRouting}
+            disabled={initialLoading}
             onSave={handleSaveJsonBodyLimit}
             onDiscard={routeDraft.discard}
           />
@@ -173,7 +177,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
               onChange={(event) => cidrsDraft.setField('allowedCidrsText', event.target.value)}
               placeholder={'192.168.1.0/24\nfd00::/64'}
               rows={4}
-              disabled={savingCidrs}
+              disabled={cidrsBusy}
               className={`${settingsTextareaClass} hub-mono`}
             />
           </SettingsRow>
@@ -181,6 +185,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
           <SettingsSaveBar
             dirty={cidrsDraft.dirty}
             saving={savingCidrs}
+            disabled={initialLoading}
             onSave={handleSaveAllowedCidrs}
             onDiscard={cidrsDraft.discard}
           />
@@ -188,7 +193,7 @@ export const RoutingNetworkSection: React.FC<RoutingNetworkSectionProps> = ({
           <FakeIpExceptionsSettings
             value={fakeIpExceptions}
             servers={servers}
-            loading={savingFakeIp}
+            loading={fakeIpBusy}
             onSave={updateFakeIpExceptions}
           />
         </SettingsCard>

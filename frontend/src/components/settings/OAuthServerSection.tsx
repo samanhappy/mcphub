@@ -25,7 +25,7 @@ export const OAuthServerSection: React.FC<OAuthServerSectionProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const { oauthServerConfig } = useRuntimeSettings();
+  const { oauthServerConfig, initialLoading } = useRuntimeSettings();
   const { isSectionSaving, updateOAuthServerConfig, updateOAuthServerConfigBatch } =
     useSettingsActions();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -161,7 +161,7 @@ export const OAuthServerSection: React.FC<OAuthServerSectionProps> = ({
     }
   };
 
-  const disabledAll = saving || !oauthServerConfig.enabled;
+  const disabledAll = initialLoading || saving || !oauthServerConfig.enabled;
   const dynamicDisabled = disabledAll || !oauthServerConfig.dynamicRegistration.enabled;
 
   return (
@@ -181,7 +181,7 @@ export const OAuthServerSection: React.FC<OAuthServerSectionProps> = ({
             label={t('settings.enableOauthServer')}
             description={t('settings.enableOauthServerDescription')}
             checked={oauthServerConfig.enabled}
-            disabled={saving}
+            disabled={initialLoading || saving}
             onCheckedChange={(checked) => void updateOAuthServerConfig('enabled', checked)}
           />
 

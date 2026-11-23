@@ -14,7 +14,7 @@ export const UserRegistrationSection: React.FC<UserRegistrationSectionProps> = (
   highlightedSection,
 }) => {
   const { t } = useTranslation();
-  const { allowRegistration } = useRuntimeSettings();
+  const { allowRegistration, initialLoading } = useRuntimeSettings();
   const { isSectionSaving, updateAllowRegistration } = useSettingsActions();
 
   return (
@@ -32,7 +32,7 @@ export const UserRegistrationSection: React.FC<UserRegistrationSectionProps> = (
           label={t('settings.allowRegistration')}
           description={t('settings.allowRegistrationDescription')}
           checked={allowRegistration}
-          disabled={isSectionSaving('allowRegistration')}
+          disabled={initialLoading || isSectionSaving('allowRegistration')}
           onCheckedChange={(checked) => void updateAllowRegistration(checked)}
         />
       </SettingsCard>

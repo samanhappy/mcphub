@@ -28,7 +28,8 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { installConfig, skillImportProxy, mcpRouterConfig } = useRuntimeSettings();
+  const { installConfig, skillImportProxy, mcpRouterConfig, initialLoading } =
+    useRuntimeSettings();
   const {
     isSectionSaving,
     updateInstallConfigBatch,
@@ -102,6 +103,8 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
   const savingInstall = isSectionSaving('install');
   const savingRouter = isSectionSaving('mcpRouter');
   const exporting = isSectionSaving('exportConfig');
+  const installBusy = initialLoading || savingInstall;
+  const routerBusy = initialLoading || savingRouter;
 
   const handleSaveInstall = async () => {
     const updates: Partial<{
@@ -247,7 +250,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
               onChange={(e) => installDraft.setField('baseUrl', e.target.value)}
               placeholder={t('settings.baseUrlPlaceholder')}
               className={`${settingsInputClass} mono`}
-              disabled={savingInstall}
+              disabled={installBusy}
             />
           </SettingsRow>
 
@@ -264,7 +267,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                 onChange={(e) => installDraft.setField('pythonIndexUrl', e.target.value)}
                 placeholder={t('settings.pythonIndexUrlPlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={savingInstall}
+                disabled={installBusy}
               />
             </SettingsRow>
 
@@ -280,7 +283,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                 onChange={(e) => installDraft.setField('npmRegistry', e.target.value)}
                 placeholder={t('settings.npmRegistryPlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={savingInstall}
+                disabled={installBusy}
               />
             </SettingsRow>
           </div>
@@ -296,7 +299,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                 className={settingsSelectClass}
                 value={installDraft.values.skillProxyMode}
                 onChange={(e) => installDraft.setField('skillProxyMode', e.target.value)}
-                disabled={savingInstall}
+                disabled={installBusy}
               >
                 <option value="server">{t('skills.proxyServer')}</option>
                 <option value="direct">{t('skills.proxyDirect')}</option>
@@ -309,7 +312,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                   onChange={(e) => installDraft.setField('skillProxyAddress', e.target.value)}
                   placeholder="http://127.0.0.1:7890"
                   className={`${settingsInputClass} mono`}
-                  disabled={savingInstall}
+                  disabled={installBusy}
                 />
               )}
             </div>
@@ -318,6 +321,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
           <SettingsSaveBar
             dirty={installDraft.dirty}
             saving={savingInstall}
+            disabled={initialLoading}
             onSave={handleSaveInstall}
             onDiscard={installDraft.discard}
           />
@@ -363,7 +367,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                 onChange={(e) => routerDraft.setField('apiKey', e.target.value)}
                 placeholder={t('settings.mcpRouterApiKeyPlaceholder')}
                 className={settingsInputClass}
-                disabled={savingRouter}
+                disabled={routerBusy}
               />
             </SettingsRow>
 
@@ -379,7 +383,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
                 onChange={(e) => routerDraft.setField('baseUrl', e.target.value)}
                 placeholder={t('settings.mcpRouterBaseUrlPlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={savingRouter}
+                disabled={routerBusy}
               />
             </SettingsRow>
           </div>
@@ -387,6 +391,7 @@ export const InstallMaintenanceSection: React.FC<InstallMaintenanceSectionProps>
           <SettingsSaveBar
             dirty={routerDraft.dirty}
             saving={savingRouter}
+            disabled={initialLoading}
             onSave={handleSaveRouter}
             onDiscard={routerDraft.discard}
           />

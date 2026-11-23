@@ -191,7 +191,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { smartRoutingConfig, installConfig } = useRuntimeSettings();
+  const { smartRoutingConfig, installConfig, initialLoading } = useRuntimeSettings();
   const { isSectionSaving, updateSmartRoutingConfig, updateSmartRoutingConfigBatch } =
     useSettingsActions();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -245,6 +245,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
 
   const draft = useSettingsDraft(remoteForm);
   const saving = isSectionSaving('smartRouting');
+  const busy = initialLoading || saving;
 
   useEffect(() => {
     onDirtyChange?.('smart-routing', draft.dirty);
@@ -542,7 +543,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 {t('settings.enableSmartRouting')}
               </span>
               <Switch
-                disabled={saving}
+                disabled={busy}
                 checked={smartRoutingConfig.enabled}
                 onCheckedChange={(checked) => void handleEnabledChange(checked)}
               />
@@ -618,7 +619,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 onChange={(e) => setField('dbUrl', e.target.value)}
                 placeholder={t('settings.dbUrlPlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={saving}
+                disabled={busy}
               />
             </SettingsRow>
           )}
@@ -635,7 +636,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 onChange={(e) =>
                   setField('embeddingProvider', e.target.value as 'openai' | 'azure_openai')
                 }
-                disabled={saving}
+                disabled={busy}
               >
                 <option value="openai">OpenAI (or compatible)</option>
                 <option value="azure_openai">Azure OpenAI</option>
@@ -655,7 +656,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                     handlePresetChange(e.target.value as EmbeddingProviderPresetId)
                   }
                   className={settingsSelectClass}
-                  disabled={saving}
+                  disabled={busy}
                 >
                   <option value="openai">
                     {t('settings.embeddingProviderPresetOpenai') || 'OpenAI'}
@@ -692,7 +693,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('llmProviderApiKey', e.target.value)}
                   placeholder={t('settings.llmProviderApiKeyPlaceholder')}
                   className={settingsInputClass}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -709,7 +710,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('embeddingModel', e.target.value)}
                   placeholder={t('settings.embeddingModelPlaceholder')}
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                   required
                 />
               </SettingsRow>
@@ -728,7 +729,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('llmProviderBaseUrl', e.target.value)}
                   placeholder={t('settings.llmProviderBaseUrlPlaceholder')}
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                   required
                 />
               </SettingsRow>
@@ -751,7 +752,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                     'https://YOUR_RESOURCE_NAME.openai.azure.com'
                   }
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -768,7 +769,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('azureOpenaiApiKey', e.target.value)}
                   placeholder={t('settings.azureOpenaiApiKeyPlaceholder') || '***'}
                   className={settingsInputClass}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -786,7 +787,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                     t('settings.azureOpenaiApiVersionPlaceholder') || '2024-02-15-preview'
                   }
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -805,7 +806,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                     'your-embedding-deployment-name'
                   }
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
               </SettingsRow>
 
@@ -825,7 +826,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                     t('settings.azureOpenaiEmbeddingModelPlaceholder') || 'text-embedding-3-small'
                   }
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                   required
                 />
               </SettingsRow>
@@ -847,7 +848,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 onChange={(e) => setField('embeddingDimensions', e.target.value)}
                 placeholder={t('settings.embeddingDimensionsPlaceholder') || 'Empty = model default'}
                 className={settingsInputClass}
-                disabled={saving}
+                disabled={busy}
               />
               <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--hub-line-2)] pt-2.5">
                 <div className="min-w-0">
@@ -860,7 +861,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   </p>
                 </div>
                 <Switch
-                  disabled={saving || !smartRoutingConfig.enabled}
+                  disabled={busy || !smartRoutingConfig.enabled}
                   checked={smartRoutingConfig.embeddingDimensionsApiPassthrough}
                   onCheckedChange={(checked) =>
                     void updateSmartRoutingConfig('embeddingDimensionsApiPassthrough', checked)
@@ -883,7 +884,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 onChange={(e) => setField('basePacingDelayMs', e.target.value)}
                 placeholder={t('settings.basePacingDelayMsPlaceholder') || 'Empty = default 0 ms'}
                 className={settingsInputClass}
-                disabled={saving}
+                disabled={busy}
               />
               <p className="mt-2 text-xs text-[var(--hub-ink-3)]">
                 {(() => {
@@ -910,7 +911,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   )
                 }
                 className={settingsSelectClass}
-                disabled={saving}
+                disabled={busy}
               >
                 <option value="auto">{t('settings.embeddingEncodingFormatAuto') || 'Auto'}</option>
                 <option value="base64">Base64</option>
@@ -931,7 +932,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                 onChange={(e) => setField('embeddingMaxTokens', e.target.value)}
                 placeholder={t('settings.embeddingMaxTokensPlaceholder') || 'Empty = auto by model'}
                 className={settingsInputClass}
-                disabled={saving}
+                disabled={busy}
               />
               <p className="mt-2 text-xs text-[var(--hub-ink-3)]">
                 {draft.values.embeddingMaxTokens.trim()
@@ -963,7 +964,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('embeddingQueryPrefix', e.target.value)}
                   placeholder="task: search result | query: "
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
                 {renderEnvOverrideWarning('embeddingQueryPrefix')}
               </div>
@@ -982,7 +983,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('embeddingDocumentPrefix', e.target.value)}
                   placeholder="title: none | text: "
                   className={`${settingsInputClass} mono`}
-                  disabled={saving}
+                  disabled={busy}
                 />
                 {renderEnvOverrideWarning('embeddingDocumentPrefix')}
               </div>
@@ -1011,7 +1012,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('similarityThreshold', e.target.value)}
                   placeholder={t('settings.similarityThresholdPlaceholder')}
                   className={settingsInputClass}
-                  disabled={saving}
+                  disabled={busy}
                 />
                 {fieldErrors.similarityThreshold && (
                   <p role="alert" className="mt-1 text-xs text-[var(--hub-err)]">
@@ -1037,7 +1038,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   onChange={(e) => setField('fullSchemaTopN', e.target.value)}
                   placeholder={t('settings.fullSchemaTopNPlaceholder')}
                   className={settingsInputClass}
-                  disabled={saving}
+                  disabled={busy}
                 />
                 {fieldErrors.fullSchemaTopN && (
                   <p role="alert" className="mt-1 text-xs text-[var(--hub-err)]">
@@ -1073,7 +1074,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                             ),
                           )
                         }
-                        disabled={saving}
+                        disabled={busy}
                       />
                       {field}
                     </label>
@@ -1092,7 +1093,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
             label={t('settings.progressiveDisclosure')}
             description={t('settings.progressiveDisclosureDescription')}
             checked={smartRoutingConfig.progressiveDisclosure}
-            disabled={saving || !smartRoutingConfig.enabled}
+            disabled={busy || !smartRoutingConfig.enabled}
             onCheckedChange={(checked) =>
               void updateSmartRoutingConfig('progressiveDisclosure', checked)
             }
@@ -1102,6 +1103,7 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
         <SettingsSaveBar
           dirty={draft.dirty}
           saving={saving}
+          disabled={initialLoading}
           onSave={handleSave}
           onDiscard={() => {
             setFieldErrors({});

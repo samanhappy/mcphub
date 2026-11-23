@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Copy, Edit, Key, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { Switch } from '@/components/ui/ToggleGroup';
@@ -55,6 +55,7 @@ interface BearerKeyRowProps {
   ) => Promise<void>;
   onRequestDelete: (key: BearerKey) => void;
   onReset: (key: BearerKey) => void;
+  onEditingChange: (id: string, editing: boolean) => void;
 }
 
 const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
@@ -66,6 +67,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   onSave,
   onRequestDelete,
   onReset,
+  onEditingChange,
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -80,6 +82,11 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const [excludedGroups, setExcludedGroups] = useState<string[]>(keyData.excludedGroups || []);
   const [excludedServers, setExcludedServers] = useState<string[]>(keyData.excludedServers || []);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    onEditingChange(keyData.id, isEditing);
+    return () => onEditingChange(keyData.id, false);
+  }, [keyData.id, isEditing, onEditingChange]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -462,7 +469,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { routingConfig } = useRuntimeSettings();
+  const { routingConfig, initialLoading } = useRuntimeSettings();
   const {
     bearerKeys,
     isSectionSaving,
@@ -474,6 +481,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
   } = useSettingsActions();
 
   const [showAddBearerKeyForm, setShowAddBearerKeyForm] = useState(false);
+  const [editingKeyIds, setEditingKeyIds] = useState<Set<string>>(() => new Set());
   const [keyToReset, setKeyToReset] = useState<BearerKey | null>(null);
   const [keyToDelete, setKeyToDelete] = useState<BearerKey | null>(null);
   const [createdBearerToken, setCreatedBearerToken] = useState('');
@@ -505,10 +513,35 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
   );
   const headerDraft = useSettingsDraft(remoteHeader);
 
+  const handleRowEditingChange = useCallback((id: string, editing: boolean) => {
+    setEditingKeyIds((prev) => {
+      const has = prev.has(id);
+      if (has === editing) return prev;
+      const next = new Set(prev);
+      if (editing) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const hasNewKeyDraft =
+    showAddBearerKeyForm &&
+    (newBearerKey.name.trim().length > 0 ||
+      newBearerKey.owner.length > 0 ||
+      newBearerKey.kind !== 'system' ||
+      newBearerKey.accessType !== 'all' ||
+      !newBearerKey.enabled ||
+      newSelectedGroups.length > 0 ||
+      newSelectedServers.length > 0 ||
+      newSelectedExcludedGroups.length > 0 ||
+      newSelectedExcludedServers.length > 0);
+
+  const sectionDirty = headerDraft.dirty || editingKeyIds.size > 0 || hasNewKeyDraft;
+
   useEffect(() => {
-    onDirtyChange?.('bearer-keys', headerDraft.dirty);
+    onDirtyChange?.('bearer-keys', sectionDirty);
     return () => onDirtyChange?.('bearer-keys', false);
-  }, [headerDraft.dirty, onDirtyChange]);
+  }, [sectionDirty, onDirtyChange]);
 
   const bearerKeyScopeFilterOptions = useMemo(
     () => getBearerKeyScopeFilterOptions(t, bearerKeys, users),
@@ -557,6 +590,8 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
 
   const savingRouting = isSectionSaving('routing');
   const savingKeys = isSectionSaving('bearerKeys');
+  const routingBusy = initialLoading || savingRouting;
+  const keysBusy = initialLoading || savingKeys;
 
   const handleSaveHeaderName = async () => {
     const ok = await updateRoutingConfig(
@@ -707,7 +742,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
             <span className="hub-tag hub-num">{bearerKeys.length}</span>
           </div>
         }
-        dirty={headerDraft.dirty}
+        dirty={sectionDirty}
         overflowVisible
         highlighted={highlightedSection === 'bearer-keys'}
       >
@@ -747,7 +782,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
               label={t('settings.enableBearerAuth') || 'Enable Bearer Authentication'}
               description={t('settings.enableBearerAuthDescription')}
               checked={routingConfig.enableBearerAuth}
-              disabled={savingRouting}
+              disabled={routingBusy}
               onCheckedChange={(checked) => void updateRoutingConfig('enableBearerAuth', checked)}
             />
 
@@ -763,7 +798,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                 onChange={(e) => headerDraft.setField('bearerAuthHeaderName', e.target.value)}
                 placeholder={t('settings.bearerAuthHeaderNamePlaceholder')}
                 className={`${settingsInputClass} mono`}
-                disabled={savingRouting}
+                disabled={routingBusy}
               />
             </SettingsRow>
 
@@ -771,6 +806,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
               <SettingsSaveBar
                 dirty={headerDraft.dirty}
                 saving={savingRouting}
+                disabled={initialLoading}
                 onSave={handleSaveHeaderName}
                 onDiscard={headerDraft.discard}
               />
@@ -788,7 +824,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                 }
                 checked={routingConfig.allowAuthorizationPassthrough}
                 disabled={
-                  savingRouting ||
+                  routingBusy ||
                   (!routingConfig.allowAuthorizationPassthrough && usesDefaultBearerHeader)
                 }
                 onCheckedChange={(checked) =>
@@ -830,6 +866,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
           {!showAddBearerKeyForm && (
             <button
               type="button"
+              disabled={keysBusy}
               onClick={() => setShowAddBearerKeyForm(true)}
               className="hub-btn primary"
             >
@@ -885,7 +922,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   <BearerKeyRow
                     key={key.id}
                     keyData={key}
-                    busy={savingKeys}
+                    busy={keysBusy}
                     availableServers={availableServers}
                     availableGroups={
                       (key.kind ?? 'system') === 'system' ? availableGroups : personalGroupOptions
@@ -894,6 +931,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                     onSave={handleSaveExistingBearerKey}
                     onRequestDelete={setKeyToDelete}
                     onReset={setKeyToReset}
+                    onEditingChange={handleRowEditingChange}
                   />
                 ))}
               </tbody>
@@ -931,7 +969,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   onChange={(e) =>
                     setNewBearerKey((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  disabled={savingKeys}
+                  disabled={keysBusy}
                 />
               </div>
               {isAdmin && (
@@ -949,7 +987,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         accessType: 'all',
                       }))
                     }
-                    disabled={savingKeys}
+                    disabled={keysBusy}
                   >
                     <option value="system">
                       {t('settings.bearerKeyKindSystem') || 'System-level'}
@@ -969,7 +1007,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                     onChange={(e) =>
                       setNewBearerKey((prev) => ({ ...prev, owner: e.target.value }))
                     }
-                    disabled={savingKeys}
+                    disabled={keysBusy}
                   >
                     <option value="">
                       {t('settings.bearerKeySelectOwner') || 'Select user...'}
@@ -995,7 +1033,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   </span>
                   <Switch
                     size="compact"
-                    disabled={savingKeys}
+                    disabled={keysBusy}
                     checked={newBearerKey.enabled}
                     onCheckedChange={(checked) =>
                       setNewBearerKey((prev) => ({ ...prev, enabled: checked }))
@@ -1022,7 +1060,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         | 'exclude',
                     }))
                   }
-                  disabled={savingKeys}
+                  disabled={keysBusy}
                 >
                   <option value="all">
                     {t(
@@ -1081,7 +1119,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         ? t('settings.selectGroups') || 'Select groups...'
                         : t('settings.selectServers') || 'Select servers...'
                     }
-                    disabled={savingKeys || newBearerKey.accessType === 'all'}
+                    disabled={keysBusy || newBearerKey.accessType === 'all'}
                   />
                 </div>
               )}
@@ -1099,7 +1137,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         selected={newSelectedGroups}
                         onChange={setNewSelectedGroups}
                         placeholder={t('settings.selectGroups') || 'Select groups...'}
-                        disabled={savingKeys}
+                        disabled={keysBusy}
                       />
                     </div>
                     <div className="min-w-[200px] flex-1">
@@ -1111,7 +1149,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         selected={newSelectedServers}
                         onChange={setNewSelectedServers}
                         placeholder={t('settings.selectServers') || 'Select servers...'}
-                        disabled={savingKeys}
+                        disabled={keysBusy}
                       />
                     </div>
                   </>
@@ -1130,7 +1168,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         selected={newSelectedExcludedGroups}
                         onChange={setNewSelectedExcludedGroups}
                         placeholder={t('settings.selectGroups') || 'Select groups...'}
-                        disabled={savingKeys}
+                        disabled={keysBusy}
                       />
                     </div>
                     <div className="min-w-[200px] flex-1">
@@ -1142,7 +1180,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                         selected={newSelectedExcludedServers}
                         onChange={setNewSelectedExcludedServers}
                         placeholder={t('settings.selectServers') || 'Select servers...'}
-                        disabled={savingKeys}
+                        disabled={keysBusy}
                       />
                     </div>
                   </>
@@ -1159,7 +1197,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                 <button
                   type="button"
                   onClick={handleCreateBearerKey}
-                  disabled={savingKeys}
+                  disabled={keysBusy}
                   className="hub-btn primary"
                 >
                   {t('settings.addBearerKeyButton') || 'Create Key'}

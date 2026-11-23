@@ -46,6 +46,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
     normalizeToolNames,
     enableSessionRebuild,
     storeToolPayload,
+    initialLoading,
   } = useRuntimeSettings();
   const {
     isSectionSaving,
@@ -117,7 +118,9 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
     }
   };
 
+  const systemBusy = initialLoading || savingSystem || isSectionSaving('nameSeparator');
   const togglesBusy =
+    initialLoading ||
     isSectionSaving('normalizeToolNames') ||
     isSectionSaving('sessionRebuild') ||
     isSectionSaving('storeToolPayload');
@@ -215,7 +218,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
                 onChange={(e) => draft.setField('dashboardName', e.target.value)}
                 maxLength={100}
                 placeholder={t('app.title')}
-                disabled={savingSystem}
+                disabled={systemBusy}
                 className={settingsInputClass}
               />
             </SettingsRow>
@@ -232,7 +235,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
                 onChange={(e) => draft.setField('nameSeparator', e.target.value)}
                 placeholder="-"
                 maxLength={5}
-                disabled={savingSystem || isSectionSaving('nameSeparator')}
+                disabled={systemBusy}
                 className={cn(settingsInputClass, 'mono')}
               />
             </SettingsRow>
@@ -241,6 +244,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
           <SettingsSaveBar
             dirty={draft.dirty}
             saving={savingSystem || isSectionSaving('nameSeparator')}
+            disabled={initialLoading}
             onSave={handleSaveSystem}
             onDiscard={draft.discard}
           />

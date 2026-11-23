@@ -153,7 +153,7 @@ export const FileStagingSection: React.FC<FileStagingSectionProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
-  const { fileStagingConfig } = useRuntimeSettings();
+  const { fileStagingConfig, initialLoading } = useRuntimeSettings();
   const { isSectionSaving, updateFileStagingConfigBatch } = useSettingsActions();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -174,6 +174,7 @@ export const FileStagingSection: React.FC<FileStagingSectionProps> = ({
 
   const draft = useSettingsDraft(remoteForm);
   const saving = isSectionSaving('fileStaging');
+  const busy = initialLoading || saving;
 
   useEffect(() => {
     onDirtyChange?.('file-staging', draft.dirty);
@@ -253,7 +254,7 @@ export const FileStagingSection: React.FC<FileStagingSectionProps> = ({
           label={t('settings.fileStagingEnable') || 'Enable file staging'}
           description={t('settings.fileStagingDescription')}
           checked={fileStagingConfig.enabled}
-          disabled={saving}
+          disabled={busy}
           onCheckedChange={(checked) => void updateFileStagingConfigBatch({ enabled: checked })}
         />
 
@@ -275,7 +276,7 @@ export const FileStagingSection: React.FC<FileStagingSectionProps> = ({
                 value={draft.values[spec.formKey]}
                 onChange={(e) => setField(spec.formKey, e.target.value)}
                 className={settingsInputClass}
-                disabled={saving}
+                disabled={busy}
               />
             </SettingsRow>
           ))}
@@ -289,6 +290,7 @@ export const FileStagingSection: React.FC<FileStagingSectionProps> = ({
         <SettingsSaveBar
           dirty={draft.dirty}
           saving={saving}
+          disabled={initialLoading}
           saveLabel={t('settings.fileStagingSave') || t('common.save')}
           onSave={handleSave}
           onDiscard={() => {
