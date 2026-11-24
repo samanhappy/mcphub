@@ -70,9 +70,9 @@ export const startPersonalOAuthFlow = async (
       const client = new LegacyMcpClient({ name: 'mcphub-personal-oauth', version: '1.0.0' });
       try {
         await client.connect(transport);
-      } catch {
+      } catch (discoveryError) {
         if (!context.config.oauth.pendingAuthorization?.authorizationUrl) {
-          throw new Error('Authorization discovery failed');
+          throw new Error('Authorization discovery failed', { cause: discoveryError });
         }
       } finally {
         await client.close().catch(() => undefined);

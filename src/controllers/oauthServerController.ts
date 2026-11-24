@@ -651,10 +651,12 @@ async function authorizeAndRedirect(
           return;
         }
       } catch (error) {
+        const cause = error instanceof Error && 'cause' in error ? error.cause : undefined;
         logger.error('Failed to start personal upstream OAuth continuation:', {
           serverName: personalServer.name,
           username: user.username,
           error,
+          ...(cause !== undefined ? { cause } : {}),
         });
         res.redirect(
           buildClientErrorRedirectUrl(redirectUri, 'temporarily_unavailable', {
