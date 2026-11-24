@@ -41,16 +41,18 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
   const lastFetchedLimitRef = useRef<number | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  // Stack of request cursors for visited pages: cursorHistory[page - 1] fetched `page` ('' for page 1).
+  const [cursorHistory, setCursorHistory] = useState<string[]>(['']);
   const [totalPages] = useState(1); // Legacy support, not used in cursor pagination
 
   // Fetch registry servers with cursor-based pagination
   const fetchRegistryServers = useCallback(
-    async (cursor?: string, search?: string, limitOverride?: number) => {
+    async (cursor?: string, search?: string, limitOverride?: number, targetPage = 1): Promise<boolean> => {
       const limit =
         limitOverride !== undefined
           ? normalizeMarketPerPage(limitOverride)
           : serversPerPageRef.current;
+      const previousFetchedLimit = lastFetchedLimitRef.current;
 
       try {
         lastFetchedLimitRef.current = limit;
@@ -79,28 +81,38 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
             setHasNextPage(hasMore);
             setNextCursor(data.metadata.nextCursor || null);
 
-            // For display purposes, keep track of all loaded servers
-            if (!cursor) {
-              // First page
+            // Keep loaded items indexed by page offset so navigating back does not duplicate entries
+            if (targetPage <= 1 || !cursor) {
               setAllServers(data.servers);
             } else {
-              // Subsequent pages - append to all servers
-              setAllServers((prev) => [...prev, ...data.servers]);
+              const pageOffset = (targetPage - 1) * limit;
+              setAllServers((prev) => {
+                const updated = prev.slice(0, pageOffset);
+                updated.push(...data.servers);
+                if (prev.length > pageOffset + data.servers.length) {
+                  updated.push(...prev.slice(pageOffset + data.servers.length));
+                }
+                return updated;
+              });
             }
+            return true;
           } else {
-            lastFetchedLimitRef.current = null;
+            lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
             console.error('Invalid registry servers data format', { data });
             setError(t('registry.fetchError'));
+            return false;
           }
         } else {
-          lastFetchedLimitRef.current = null;
+          lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
           setError(t('registry.fetchError'));
+          return false;
         }
       } catch (err) {
-        lastFetchedLimitRef.current = null;
+        lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
         console.error('Error fetching registry servers', { cursor, search, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
+        return false;
       } finally {
         setLoading(false);
       }
@@ -112,29 +124,41 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
   const goToNextPage = useCallback(async () => {
     if (!hasNextPage || !nextCursor) return;
 
-    // Save current cursor to history for back navigation
-    const currentCursor = cursorHistory[cursorHistory.length - 1] || '';
-    setCursorHistory((prev) => [...prev, currentCursor]);
-
-    setCurrentPage((prev) => prev + 1);
-    await fetchRegistryServers(nextCursor, searchQuery);
-  }, [hasNextPage, nextCursor, cursorHistory, searchQuery, fetchRegistryServers]);
+    const targetPage = currentPage + 1;
+    const targetCursor = nextCursor;
+    const succeeded = await fetchRegistryServers(
+      targetCursor,
+      searchQueryRef.current,
+      undefined,
+      targetPage,
+    );
+    if (succeeded) {
+      setCursorHistory((prev) => [...prev, targetCursor]);
+      setCurrentPage(targetPage);
+    }
+  }, [hasNextPage, nextCursor, currentPage, fetchRegistryServers]);
 
   // Navigate to previous page
   const goToPreviousPage = useCallback(async () => {
     if (currentPage <= 1) return;
 
-    // Get the previous cursor from history
-    const newHistory = [...cursorHistory];
-    newHistory.pop(); // Remove current position
-    const previousCursor = newHistory[newHistory.length - 1];
+    // Pop current page's cursor; the new tail is the cursor that fetched the previous page
+    const newHistory = cursorHistory.slice(0, -1);
+    const normalizedHistory = newHistory.length > 0 ? newHistory : [''];
+    const previousCursor = normalizedHistory[normalizedHistory.length - 1] || undefined;
+    const targetPage = currentPage - 1;
 
-    setCursorHistory(newHistory);
-    setCurrentPage((prev) => prev - 1);
-
-    // Fetch with previous cursor (undefined for first page)
-    await fetchRegistryServers(previousCursor || undefined, searchQuery);
-  }, [currentPage, cursorHistory, searchQuery, fetchRegistryServers]);
+    const succeeded = await fetchRegistryServers(
+      previousCursor,
+      searchQueryRef.current,
+      undefined,
+      targetPage,
+    );
+    if (succeeded) {
+      setCursorHistory(normalizedHistory);
+      setCurrentPage(targetPage);
+    }
+  }, [currentPage, cursorHistory, fetchRegistryServers]);
 
   // Change page (legacy support for page number navigation)
   const changePage = useCallback(
@@ -157,9 +181,9 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
       serversPerPageRef.current = normalizedPerPage;
       setServersPerPage(normalizedPerPage);
       setCurrentPage(1);
-      setCursorHistory([]);
+      setCursorHistory(['']);
       setAllServers([]);
-      await fetchRegistryServers(undefined, searchQueryRef.current, normalizedPerPage);
+      await fetchRegistryServers(undefined, searchQueryRef.current, normalizedPerPage, 1);
     },
     [fetchRegistryServers],
   );
@@ -265,10 +289,10 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
       searchQueryRef.current = query;
       setSearchQuery(query);
       setCurrentPage(1);
-      setCursorHistory([]);
+      setCursorHistory(['']);
       setAllServers([]);
 
-      await fetchRegistryServers(undefined, query);
+      await fetchRegistryServers(undefined, query, undefined, 1);
     },
     [fetchRegistryServers],
   );
@@ -278,9 +302,9 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
     searchQueryRef.current = '';
     setSearchQuery('');
     setCurrentPage(1);
-    setCursorHistory([]);
+    setCursorHistory(['']);
     setAllServers([]);
-    await fetchRegistryServers(undefined, '');
+    await fetchRegistryServers(undefined, '', undefined, 1);
   }, [fetchRegistryServers]);
 
   // Fetch on activation and re-fetch if the shared page size changed while inactive
@@ -301,9 +325,9 @@ export const useRegistryData = (options?: UseRegistryDataOptions) => {
 
     if (lastFetchedLimitRef.current !== targetPerPage) {
       setCurrentPage(1);
-      setCursorHistory([]);
+      setCursorHistory(['']);
       setAllServers([]);
-      void fetchRegistryServers(undefined, searchQueryRef.current, targetPerPage);
+      void fetchRegistryServers(undefined, searchQueryRef.current, targetPerPage, 1);
     }
   }, [active, externalServersPerPage, fetchRegistryServers]);
 

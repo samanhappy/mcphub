@@ -205,11 +205,11 @@ describe('Market pagination hooks', () => {
   });
 
   describe('useRegistryData', () => {
-    const makeRegistryResponse = (count: number, nextCursor?: string) => ({
+    const makeRegistryResponse = (count: number, nextCursor?: string, prefix = 'p') => ({
       success: true,
       data: {
         servers: Array.from({ length: count }, (_, i) => ({
-          server: { name: `io.example/server-${i + 1}` },
+          server: { name: `io.example/${prefix}-server-${i + 1}` },
         })),
         metadata: { count, nextCursor },
       },
@@ -264,6 +264,87 @@ describe('Market pagination hooks', () => {
       renderHook(() => useRegistryData({ serversPerPage: 24, active: false }));
       renderHook(() => useRegistryData({ serversPerPage: 24, active: true }));
       expect(apiGet).not.toHaveBeenCalled();
+    });
+
+    it('restores exact page cursors on Prev from page 3 without duplicating allServers', async () => {
+      createMockWindowStorage();
+
+      apiGet.mockImplementation(async (url: string) => {
+        if (url === '/registry/servers?limit=9') return makeRegistryResponse(9, 'c1', 'p1');
+        if (url === '/registry/servers?limit=9&cursor=c1') return makeRegistryResponse(9, 'c2', 'p2');
+        if (url === '/registry/servers?limit=9&cursor=c2') return makeRegistryResponse(4, undefined, 'p3');
+        return { success: false };
+      });
+
+      // Page 1
+      renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      await Promise.resolve();
+      let hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(hook.currentPage).toBe(1);
+      expect(hook.allServers).toHaveLength(9);
+
+      // Page 1 -> Page 2 (cursor=c1)
+      await hook.goToNextPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(hook.currentPage).toBe(2);
+      expect(hook.servers[0].server.name).toBe('io.example/p2-server-1');
+      expect(hook.allServers).toHaveLength(18);
+
+      // Page 2 -> Page 3 (cursor=c2)
+      await hook.goToNextPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(hook.currentPage).toBe(3);
+      expect(hook.servers[0].server.name).toBe('io.example/p3-server-1');
+      expect(hook.allServers).toHaveLength(22);
+
+      // Page 3 -> Page 2 must request cursor=c1 (not page 1) and keep allServers at 22
+      apiGet.mockClear();
+      await hook.goToPreviousPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(apiGet).toHaveBeenCalledWith('/registry/servers?limit=9&cursor=c1');
+      expect(hook.currentPage).toBe(2);
+      expect(hook.servers[0].server.name).toBe('io.example/p2-server-1');
+      expect(hook.allServers).toHaveLength(22);
+
+      // Page 2 -> Page 1 must omit cursor
+      apiGet.mockClear();
+      await hook.goToPreviousPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(apiGet).toHaveBeenCalledWith('/registry/servers?limit=9');
+      expect(hook.currentPage).toBe(1);
+      expect(hook.servers[0].server.name).toBe('io.example/p1-server-1');
+      expect(hook.allServers).toHaveLength(9);
+    });
+
+    it('keeps currentPage and cursor history intact when a Next/Prev request fails', async () => {
+      createMockWindowStorage();
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      apiGet
+        .mockResolvedValueOnce(makeRegistryResponse(9, 'c1', 'p1'))
+        .mockResolvedValueOnce(makeRegistryResponse(9, 'c2', 'p2'))
+        .mockRejectedValueOnce(new Error('network error'))
+        .mockResolvedValueOnce(makeRegistryResponse(9, 'c3', 'p3'));
+
+      renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      await Promise.resolve();
+      let hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+
+      await hook.goToNextPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(hook.currentPage).toBe(2);
+
+      // Failed Next should keep currentPage at 2 so retry still advances to Page 3 with cursor=c2.
+      await hook.goToNextPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(hook.currentPage).toBe(2);
+
+      await hook.goToNextPage();
+      hook = renderHook(() => useRegistryData({ serversPerPage: 9, active: true }));
+      expect(apiGet).toHaveBeenLastCalledWith('/registry/servers?limit=9&cursor=c2');
+      expect(hook.currentPage).toBe(3);
+
+      errorSpy.mockRestore();
     });
   });
 });
