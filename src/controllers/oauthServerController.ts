@@ -632,7 +632,6 @@ async function authorizeAndRedirect(
         sessionVersion: validation.sessionVersion,
         ...(user.approvalId ? { approvalId: user.approvalId } : {}),
         ...(user.approvalContext ? { approvalContext: user.approvalContext } : {}),
-        browserCookieId: cookieId,
         browserNonceHash: hash,
         expiresAt: Date.now() + PERSONAL_OAUTH_FLOW_TTL_MS,
       };

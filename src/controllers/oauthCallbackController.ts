@@ -39,8 +39,8 @@ import { finishPersonalOAuthExchange } from '../services/personalOAuthFlowServic
 import {
   buildClientErrorRedirectUrl,
   clearBrowserNonceCookie,
+  findMatchingBrowserNonceCookie,
   validateContinuationClientRedirect,
-  verifyBrowserNonce,
 } from '../services/personalOAuthContinuationService.js';
 import { issueAuthorizationCodeForContinuation, resolveIssuer } from './oauthServerController.js';
 import { resolveUserSession } from '../utils/userSession.js';
@@ -322,14 +322,15 @@ const handlePersonalOAuthErrorCallback = async (
     if (!continuation) return false;
 
     // Require a matching browser nonce before modifying pending state or redirecting.
-    if (!verifyBrowserNonce(req, continuation)) {
+    const matchedCookieName = findMatchingBrowserNonceCookie(req, continuation);
+    if (!matchedCookieName) {
       return false;
     }
 
     const cleared = await context.clearPendingAuthorizationIfCurrentRevision();
     if (!cleared) return false;
 
-    clearBrowserNonceCookie(req, res, continuation.browserCookieId);
+    clearBrowserNonceCookie(req, res, matchedCookieName);
 
     const client = await validateContinuationClientRedirect(
       continuation.clientId,
@@ -399,7 +400,8 @@ const handlePersonalOAuthCallback = async (
 
     // Bind continuation callback to the initiating browser BEFORE redeeming
     // the upstream code, clearing state, or redirecting to the client.
-    if (!verifyBrowserNonce(req, continuation)) {
+    const matchedCookieName = findMatchingBrowserNonceCookie(req, continuation);
+    if (!matchedCookieName) {
       return 'error';
     }
 
@@ -408,7 +410,7 @@ const handlePersonalOAuthCallback = async (
       errorDescription?: string,
     ): Promise<PersonalOAuthCallbackOutcome> => {
       await context.clearPendingAuthorizationIfCurrentRevision().catch(() => false);
-      clearBrowserNonceCookie(req, res, continuation.browserCookieId);
+      clearBrowserNonceCookie(req, res, matchedCookieName);
       const validClient = await validateContinuationClientRedirect(
         continuation.clientId,
         continuation.redirectUri,
@@ -499,7 +501,7 @@ const handlePersonalOAuthCallback = async (
       return failValidatedContinuation('access_denied');
     }
 
-    clearBrowserNonceCookie(req, res, continuation.browserCookieId);
+    clearBrowserNonceCookie(req, res, matchedCookieName);
 
     // Final revalidation before issuing the MCPHub authorization code.
     const latestServer = await getServerDao().findById(context.serverName);

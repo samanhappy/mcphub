@@ -11,6 +11,7 @@ import type { ServerConfigWithName } from '../dao/ServerDao.js';
 import type { IOAuthClient, PendingPersonalOAuthContinuation } from '../types/index.js';
 
 const CONTINUATION_COOKIE_PREFIX = 'mcphub_cb';
+const CONTINUATION_COOKIE_NAME_PATTERN = /^mcphub_cb(?:_[0-9a-f]{16})?$/;
 
 export const getBrowserNonceCookieName = (cookieId?: string): string =>
   cookieId ? `${CONTINUATION_COOKIE_PREFIX}_${cookieId}` : CONTINUATION_COOKIE_PREFIX;
@@ -24,23 +25,42 @@ export const createBrowserNonce = (): { cookieId: string; nonce: string; hash: s
   return { cookieId, nonce, hash: hashBrowserNonce(nonce) };
 };
 
-export const readBrowserNonceCookie = (req: Request, cookieId?: string): string | undefined => {
+const readContinuationCookies = (req: Request): Array<{ name: string; value: string }> => {
   const rawHeader = req.headers?.cookie;
   if (typeof rawHeader !== 'string' || !rawHeader) {
-    return undefined;
+    return [];
   }
-  const targetName = getBrowserNonceCookieName(cookieId);
+  const cookies: Array<{ name: string; value: string }> = [];
   for (const part of rawHeader.split(';')) {
     const eqIndex = part.indexOf('=');
     if (eqIndex <= 0) continue;
     const name = part.slice(0, eqIndex).trim();
-    if (name !== targetName) continue;
+    if (!CONTINUATION_COOKIE_NAME_PATTERN.test(name)) continue;
     const rawValue = part.slice(eqIndex + 1).trim();
-    if (!rawValue) return undefined;
+    if (!rawValue) continue;
     try {
-      return decodeURIComponent(rawValue);
+      cookies.push({ name, value: decodeURIComponent(rawValue) });
     } catch {
-      return rawValue;
+      cookies.push({ name, value: rawValue });
+    }
+  }
+  return cookies;
+};
+
+/**
+ * Find the per-flow browser cookie matching `continuation.browserNonceHash` and
+ * return its validated cookie name, or `undefined` if no cookie matches.
+ */
+export const findMatchingBrowserNonceCookie = (
+  req: Request,
+  continuation: PendingPersonalOAuthContinuation,
+): string | undefined => {
+  if (!continuation.browserNonceHash) {
+    return undefined;
+  }
+  for (const cookie of readContinuationCookies(req)) {
+    if (safeCompare(hashBrowserNonce(cookie.value), continuation.browserNonceHash)) {
+      return cookie.name;
     }
   }
   return undefined;
@@ -49,13 +69,7 @@ export const readBrowserNonceCookie = (req: Request, cookieId?: string): string 
 export const verifyBrowserNonce = (
   req: Request,
   continuation: PendingPersonalOAuthContinuation,
-): boolean => {
-  const cookieNonce = readBrowserNonceCookie(req, continuation.browserCookieId);
-  if (!cookieNonce || !continuation.browserNonceHash) {
-    return false;
-  }
-  return safeCompare(hashBrowserNonce(cookieNonce), continuation.browserNonceHash);
-};
+): boolean => Boolean(findMatchingBrowserNonceCookie(req, continuation));
 
 const getContinuationCookiePath = (): string => {
   const basePath = normalizeBasePath(process.env.BASE_PATH);
@@ -103,10 +117,17 @@ export const setBrowserNonceCookie = (
   appendSetCookieHeader(res, attributes.join('; '));
 };
 
-export const clearBrowserNonceCookie = (req: Request, res: Response, cookieId?: string): void => {
-  const cookieName = getBrowserNonceCookieName(cookieId);
+export const clearBrowserNonceCookie = (
+  req: Request,
+  res: Response,
+  cookieName: string = CONTINUATION_COOKIE_PREFIX,
+): void => {
+  const safeCookieName = cookieName.replace(/[^a-z0-9_]/g, '');
+  if (!CONTINUATION_COOKIE_NAME_PATTERN.test(safeCookieName)) {
+    return;
+  }
   const attributes = [
-    `${cookieName}=`,
+    `${safeCookieName}=`,
     `Path=${getContinuationCookiePath()}`,
     'Max-Age=0',
     'Expires=Thu, 01 Jan 1970 00:00:00 GMT',

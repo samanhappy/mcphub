@@ -593,7 +593,6 @@ export interface PendingPersonalOAuthContinuation {
     redirectUri: string;
     resource: string;
   };
-  browserCookieId?: string;
   browserNonceHash: string;
   expiresAt: number;
 }
