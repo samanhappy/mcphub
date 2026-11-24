@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { PERMISSIONS } from '../constants/permissions';
 
 interface PermissionCheckerProps {
   permissions: string | string[];
@@ -37,7 +38,10 @@ export const usePermissionCheck = (requiredPermissions: string | string[]): bool
 
   const userPermissions = auth.user.permissions || [];
 
-  if (requiredPermissions === 'x' && !userPermissions.includes('x')) {
+  if (
+    requiredPermissions === PERMISSIONS.USERS_MANAGE &&
+    !userPermissions.includes(PERMISSIONS.USERS_MANAGE)
+  ) {
     return false;
   }
 

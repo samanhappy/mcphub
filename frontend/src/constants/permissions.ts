@@ -1,5 +1,7 @@
 // Predefined permission constants
 export const PERMISSIONS = {
+  // User management permission granted by the server when user administration is enabled
+  USERS_MANAGE: 'x',
   // Settings page permissions
   SETTINGS_SMART_ROUTING: 'settings:smart_routing',
   SETTINGS_ROUTE_CONFIG: 'settings:route_config',
