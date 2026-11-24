@@ -6,7 +6,6 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type {
   IGroup,
@@ -235,11 +234,9 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
     process.env.MCPHUB_SETTING_PATH = path.join(tempDir, 'settings.json');
     process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString('base64');
 
-    const alicePassword = await bcrypt.hash('alice-pass', 4);
-    const bobPassword = await bcrypt.hash('bob-pass', 4);
     users = [
-      { username: 'alice', password: alicePassword, isAdmin: false },
-      { username: 'bob', password: bobPassword, isAdmin: false },
+      { username: 'alice', password: 'alice-hash-v1', isAdmin: false },
+      { username: 'bob', password: 'bob-hash-v1', isAdmin: false },
     ];
     aliceJwt = jwt.sign(
       { user: { username: 'alice', sessionVersion: getUserSessionVersion(users[0]) } },
@@ -665,7 +662,7 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
   it('rejects mid-flow sessionVersion changes, permission revocations, disabled server, and unregistered redirect URIs', async () => {
     // 1. User password changes (sessionVersion changes) mid-flow.
     const flow1 = await startClientAuthorize(aliceJwt, { state: 'pw-change' });
-    users[0] = { ...users[0], password: await bcrypt.hash('new-alice-pass', 4) };
+    users[0] = { ...users[0], password: 'alice-hash-v2' };
     const res1 = await request(app)
       .get('/oauth/callback')
       .set('Cookie', flow1.cookie)

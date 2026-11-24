@@ -456,10 +456,10 @@ async function validateClientRequestForContinuation(
   }
 
   const currentUser = await resolveUserSession(user);
-  if (!currentUser) {
+  if (!currentUser || !user.sessionVersion) {
     return { valid: false, error: 'invalid_grant', errorDescription: 'User no longer exists' };
   }
-  const sessionVersion = getUserSessionVersion(currentUser);
+  const sessionVersion = user.sessionVersion;
 
   if (
     user.approvalId &&
