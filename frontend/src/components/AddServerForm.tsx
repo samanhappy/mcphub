@@ -1,21 +1,21 @@
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ServerForm from './ServerForm'
-import { apiPost } from '../utils/fetchInterceptor'
-import { detectVariables } from '../utils/variableDetection'
-import { buildDuplicateSource, carryOverCapabilityOverrides } from '../utils/serverDuplicate'
-import { useRuntimeSettings } from '../hooks/useSettingsData'
-import { Server } from '../types'
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import ServerForm from './ServerForm';
+import { apiPost } from '../utils/fetchInterceptor';
+import { detectVariables } from '../utils/variableDetection';
+import { buildDuplicateSource, carryOverCapabilityOverrides } from '../utils/serverDuplicate';
+import { useRuntimeSettings } from '../hooks/useSettingsData';
+import { Server } from '../types';
 
 interface AddServerFormProps {
-  onAdd: () => void
+  onAdd: () => void;
   /**
    * Source server for the card's Duplicate action (#1187). Setting it opens the
    * add modal pre-filled from that server and the copy is created through the
    * normal `POST /servers` path; clearing it closes the modal again.
    */
-  duplicateSource?: Server | null
-  onDuplicateCancel?: () => void
+  duplicateSource?: Server | null;
+  onDuplicateCancel?: () => void;
 }
 
 const AddServerForm = ({
@@ -23,85 +23,88 @@ const AddServerForm = ({
   duplicateSource = null,
   onDuplicateCancel,
 }: AddServerFormProps) => {
-  const { t } = useTranslation()
-  const { nameSeparator } = useRuntimeSettings()
-  const [addModalVisible, setAddModalVisible] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [confirmationVisible, setConfirmationVisible] = useState(false)
-  const [pendingPayload, setPendingPayload] = useState<any>(null)
-  const [detectedVariables, setDetectedVariables] = useState<string[]>([])
+  const { t } = useTranslation();
+  const { nameSeparator } = useRuntimeSettings();
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState<any>(null);
+  const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
 
   const duplicatePrefill = useMemo(
     () => (duplicateSource ? buildDuplicateSource(duplicateSource) : null),
     [duplicateSource],
-  )
-  const modalVisible = addModalVisible || duplicateSource !== null
+  );
+  const modalVisible = addModalVisible || duplicateSource !== null;
 
   const resetModalState = () => {
-    setError(null) // Clear any previous errors when toggling modal
-    setConfirmationVisible(false) // Close confirmation dialog
-    setPendingPayload(null) // Clear pending payload
-  }
+    setError(null);
+    setConfirmationVisible(false);
+    setPendingPayload(null);
+    setIsSubmitting(false);
+  };
 
   const closeModal = () => {
-    setAddModalVisible(false)
-    resetModalState()
+    setAddModalVisible(false);
+    resetModalState();
     if (duplicateSource) {
-      onDuplicateCancel?.()
+      onDuplicateCancel?.();
     }
-  }
+  };
 
   const toggleModal = () => {
     if (modalVisible) {
-      closeModal()
-      return
+      closeModal();
+      return;
     }
 
-    setAddModalVisible(true)
-    resetModalState()
-  }
-
-  const handleConfirmSubmit = async () => {
-    if (pendingPayload) {
-      await submitServer(pendingPayload)
-      setConfirmationVisible(false)
-      setPendingPayload(null)
-    }
-  }
+    setAddModalVisible(true);
+    resetModalState();
+  };
 
   const submitServer = async (payload: any) => {
+    setIsSubmitting(true);
     try {
-      setError(null)
-      const result = await apiPost('/servers', payload)
+      setError(null);
+      const result = await apiPost('/servers', payload);
 
       if (!result.success) {
-        // Use specific error message from the response if available
         if (result && result.message) {
-          setError(result.message)
+          setError(result.message);
         } else {
-          setError(t('server.addError'))
+          setError(t('server.addError'));
         }
-        return
+        return;
       }
 
-      closeModal()
-      onAdd()
+      closeModal();
+      onAdd();
     } catch (err) {
-      console.error('Error adding server:', err)
+      console.error('Error adding server:', err);
 
-      // Use friendly error messages based on error type
       if (!navigator.onLine) {
-        setError(t('errors.network'))
-      } else if (err instanceof TypeError && (
-        err.message.includes('NetworkError') ||
-        err.message.includes('Failed to fetch')
-      )) {
-        setError(t('errors.serverConnection'))
+        setError(t('errors.network'));
+      } else if (
+        err instanceof TypeError &&
+        (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))
+      ) {
+        setError(t('errors.serverConnection'));
       } else {
-        setError(t('errors.serverAdd'))
+        setError(t('errors.serverAdd'));
       }
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (pendingPayload && !isSubmitting) {
+      await submitServer(pendingPayload);
+      setConfirmationVisible(false);
+      setPendingPayload(null);
+    }
+  };
 
   const handleSubmit = async (payload: any) => {
     try {
@@ -109,34 +112,37 @@ const AddServerForm = ({
       // get the source's capability overrides re-attached (#1187).
       const nextPayload = duplicateSource
         ? carryOverCapabilityOverrides(payload, duplicateSource, { nameSeparator })
-        : payload
+        : payload;
 
-      // Check for variables in the payload
-      const variables = detectVariables(nextPayload)
+      const variables = detectVariables(nextPayload);
 
       if (variables.length > 0) {
-        // Show confirmation dialog
-        setDetectedVariables(variables)
-        setPendingPayload(nextPayload)
-        setConfirmationVisible(true)
+        setDetectedVariables(variables);
+        setPendingPayload(nextPayload);
+        setConfirmationVisible(true);
       } else {
-        // Submit directly if no variables found
-        await submitServer(nextPayload)
+        await submitServer(nextPayload);
       }
     } catch (err) {
-      console.error('Error processing server submission:', err)
-      setError(t('errors.serverAdd'))
+      console.error('Error processing server submission:', err);
+      setError(t('errors.serverAdd'));
     }
-  }
+  };
 
   return (
     <div>
-      <button
-        onClick={toggleModal}
-        className="hub-btn primary"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      <button onClick={toggleModal} className="hub-btn primary">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-3.5 w-3.5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
         </svg>
         {t('server.add')}
       </button>
@@ -144,13 +150,7 @@ const AddServerForm = ({
       {modalVisible && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           {/* B1: keyed on the source name so switching the duplicate source
-              forces ServerForm to remount. ServerForm seeds its internal state
-              from `initialData` only on mount, so the key guarantees the form
-              re-initializes from the current source in every case. This is
-              defence in depth rather than a reachable defect path: the modal
-              overlay blocks further clicks while it is open, and the
-              ServersPage request-id guard already drops superseded duplicate
-              responses before they can swap the source mid-session. */}
+              forces ServerForm to remount. */}
           <ServerForm
             key={duplicateSource?.name ?? 'add'}
             onSubmit={handleSubmit}
@@ -164,33 +164,41 @@ const AddServerForm = ({
                 : t('server.addServer')
             }
             formError={error}
+            onClearFormError={() => setError(null)}
+            isSubmitting={isSubmitting}
           />
         </div>
       )}
 
       {confirmationVisible && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="hub-card p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+        >
+          <div className="hub-card p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-base font-semibold text-[var(--hub-ink)] mb-3">
               {t('server.confirmVariables')}
             </h3>
-            <p className="text-gray-600 mb-4">
-              {t('server.variablesDetected')}
-            </p>
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/60 rounded p-3 mb-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            <p className="text-sm text-[var(--hub-ink-2)] mb-4">{t('server.variablesDetected')}</p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/60 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2.5">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                <div>
+                  <h4 className="text-xs font-medium text-amber-800 dark:text-amber-300">
                     {t('server.detectedVariables')}:
                   </h4>
-                  <ul className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                  <ul className="mt-1 text-xs text-amber-700 dark:text-amber-200 space-y-0.5">
                     {detectedVariables.map((variable, index) => (
-                      <li key={index} className="font-mono">
+                      <li key={index} className="hub-mono">
                         ${`{${variable}}`}
                       </li>
                     ))}
@@ -198,22 +206,26 @@ const AddServerForm = ({
                 </div>
               </div>
             </div>
-            <p className="text-gray-600 text-sm mb-6">
+            <p className="text-[var(--hub-ink-3)] text-xs mb-5">
               {t('server.confirmVariablesMessage')}
             </p>
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end gap-2">
               <button
+                type="button"
+                disabled={isSubmitting}
                 onClick={() => {
-                  setConfirmationVisible(false)
-                  setPendingPayload(null)
+                  setConfirmationVisible(false);
+                  setPendingPayload(null);
                 }}
                 className="hub-btn"
               >
                 {t('common.cancel')}
               </button>
               <button
+                type="button"
+                disabled={isSubmitting}
                 onClick={handleConfirmSubmit}
-                className="hub-btn primary"
+                className={`hub-btn primary ${isSubmitting ? 'is-loading' : ''}`}
               >
                 {t('server.confirmAndAdd')}
               </button>
@@ -222,7 +234,7 @@ const AddServerForm = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default AddServerForm
+export default AddServerForm;
