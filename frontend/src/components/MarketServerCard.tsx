@@ -45,21 +45,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
     >
       <div className="p-3.5 flex-1 flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
-          <div
-            className="hub-mono"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: 'var(--hub-ink)',
-              color: 'var(--hub-bg)',
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: 600,
-              fontSize: 13,
-              flexShrink: 0,
-            }}
-          >
+          <div className="hub-mono hub-market-avatar">
             {getInitials(server.display_name || server.name)[0] || '?'}
           </div>
           <div className="flex-1 min-w-0">
@@ -72,7 +58,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
               </span>
               {server.is_official && (
                 <span
-                  className="inline-flex items-center gap-0.5"
+                  className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap"
                   style={{
                     fontSize: 10,
                     color: 'var(--hub-accent)',
@@ -93,7 +79,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
             </div>
           </div>
           {featured && (
-            <span className="shrink-0 self-start whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            <span className="shrink-0 self-start whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-[oklch(0.3_0.04_80)] dark:text-[oklch(0.78_0.08_80)]">
               {t('registry.featured')}
             </span>
           )}
@@ -109,15 +95,7 @@ const MarketServerCard: React.FC<MarketServerCardProps> = ({
         {tags.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {tags.map((tag) => (
-              <span
-                key={tag}
-                className="hub-tag"
-                style={{
-                  background: 'oklch(0.96 0.04 145)',
-                  color: 'oklch(0.4 0.1 145)',
-                  border: 0,
-                }}
-              >
+              <span key={tag} className="hub-tag hub-market-tag">
                 #{tag}
               </span>
             ))}

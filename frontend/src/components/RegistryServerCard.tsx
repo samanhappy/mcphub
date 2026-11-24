@@ -64,20 +64,7 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
               }}
             />
           ) : (
-            <div
-              className="hub-mono flex-shrink-0"
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 7,
-                background: 'var(--hub-ink)',
-                color: 'var(--hub-bg)',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 600,
-                fontSize: 13,
-              }}
-            >
+            <div className="hub-mono hub-market-avatar">
               {server.name.charAt(0).toUpperCase()}
             </div>
           )}
@@ -91,11 +78,9 @@ const RegistryServerCard: React.FC<RegistryServerCardProps> = ({ serverEntry, on
               </span>
               {isLatest && (
                 <span
-                  className="inline-flex items-center gap-0.5 flex-shrink-0"
+                  className="hub-market-latest inline-flex items-center gap-0.5 flex-shrink-0"
                   style={{
                     fontSize: 10,
-                    color: 'oklch(0.4 0.13 145)',
-                    background: 'oklch(0.95 0.05 145)',
                     padding: '0 5px',
                     height: 16,
                     borderRadius: 3,
