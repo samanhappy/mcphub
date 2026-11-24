@@ -1,4 +1,3 @@
-import { completePersonalOAuth } from './personalOAuthController.js';
 /**
  * OAuth Callback Controller
  *
@@ -17,6 +16,7 @@ import { completePersonalOAuth } from './personalOAuthController.js';
  */
 
 import { Request, Response } from 'express';
+import { getServerDao } from '../dao/DaoFactory.js';
 import {
   getServerByOAuthState,
   getServerByPendingOAuthState,
@@ -27,6 +27,23 @@ import {
 import { expandServerConfig } from '../services/serverConfigEnvironment.js';
 import { loadServerConfig } from '../services/oauthSettingsStore.js';
 import { withOAuthPendingAuthLock } from '../services/replicaLock.js';
+import { isApprovalGrantValid } from '../services/oauthApprovalService.js';
+import {
+  PersonalOAuthContext,
+  PERSONAL_OAUTH_FLOW_TTL_MS,
+  findPersonalOAuthFlowRecord,
+  hasPersonalOAuth,
+  hasUsablePersonalOAuthGrant,
+} from '../services/personalOAuthService.js';
+import { finishPersonalOAuthExchange } from '../services/personalOAuthFlowService.js';
+import {
+  buildClientErrorRedirectUrl,
+  clearBrowserNonceCookie,
+  validateContinuationClientRedirect,
+  verifyBrowserNonce,
+} from '../services/personalOAuthContinuationService.js';
+import { issueAuthorizationCodeForContinuation, resolveIssuer } from './oauthServerController.js';
+import { resolveUserSession } from '../utils/userSession.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import type { ServerInfo } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -281,6 +298,293 @@ const resolveServerByOAuthState = (state: string): ServerInfo | undefined => {
  * - error: Optional error code if authorization failed
  * - error_description: Optional error description
  */
+const handlePersonalOAuthErrorCallback = async (
+  req: Request,
+  res: Response,
+  stateParam: string,
+): Promise<boolean> => {
+  const record = await findPersonalOAuthFlowRecord(stateParam);
+  if (!record) return false;
+
+  return withOAuthPendingAuthLock(record.context.serverName, record.context.username, async () => {
+    const definition = await getServerDao().findById(record.context.serverName);
+    if (!definition || !hasPersonalOAuth(definition)) return false;
+
+    const context = await PersonalOAuthContext.load(
+      definition.name,
+      record.context.username,
+      definition,
+    );
+    const pending = context.config.oauth.pendingAuthorization;
+    if (!pending || pending.state !== stateParam) return false;
+
+    const continuation = pending.clientContinuation;
+    if (!continuation) return false;
+
+    // Require a matching browser nonce before modifying pending state or redirecting.
+    if (!verifyBrowserNonce(req, continuation)) {
+      return false;
+    }
+
+    const cleared = await context.clearPendingAuthorizationIfCurrentRevision();
+    if (!cleared) return false;
+
+    clearBrowserNonceCookie(req, res);
+
+    const client = await validateContinuationClientRedirect(
+      continuation.clientId,
+      continuation.redirectUri,
+    );
+    if (!client) {
+      return false;
+    }
+
+    res.redirect(
+      buildClientErrorRedirectUrl(continuation.redirectUri, 'access_denied', {
+        state: continuation.state,
+        issuer: await resolveIssuer(req),
+      }),
+    );
+    return true;
+  });
+};
+
+type PersonalOAuthCallbackOutcome = 'redirected' | 'dashboard_success' | 'error' | 'not_found';
+
+const handlePersonalOAuthCallback = async (
+  req: Request,
+  res: Response,
+  stateParam: string,
+  codeParam: string,
+  issParam?: string,
+): Promise<PersonalOAuthCallbackOutcome> => {
+  const record = await findPersonalOAuthFlowRecord(stateParam);
+  if (!record) return 'not_found';
+
+  return withOAuthPendingAuthLock(record.context.serverName, record.context.username, async () => {
+    const definition = await getServerDao().findById(record.context.serverName);
+    if (!definition || !hasPersonalOAuth(definition)) return 'error';
+
+    const context = await PersonalOAuthContext.load(
+      definition.name,
+      record.context.username,
+      definition,
+    );
+    const pending = context.config.oauth.pendingAuthorization;
+    if (!pending || pending.state !== stateParam) {
+      return 'not_found';
+    }
+
+    const continuation = pending.clientContinuation;
+    if (!continuation) {
+      if (!pending.createdAt || Date.now() - pending.createdAt >= PERSONAL_OAUTH_FLOW_TTL_MS) {
+        return 'not_found';
+      }
+      await context.assertCurrent();
+      const issResult = validateAuthorizationIss({
+        iss: issParam,
+        authorizationUrl: pending.authorizationUrl,
+        configuredIssuer: pending.issuer || context.config.oauth.dynamicRegistration?.issuer,
+        issRequired: pending.issRequired,
+      });
+      if (!issResult.valid) {
+        return 'error';
+      }
+      await context.mutate(({ oauth }) => {
+        delete oauth.pendingAuthorization!.state;
+      });
+      await finishPersonalOAuthExchange(context, codeParam, issParam);
+      return 'dashboard_success';
+    }
+
+    // Bind continuation callback to the initiating browser BEFORE redeeming
+    // the upstream code, clearing state, or redirecting to the client.
+    if (!verifyBrowserNonce(req, continuation)) {
+      return 'error';
+    }
+
+    const failValidatedContinuation = async (
+      errorCode: string,
+      errorDescription?: string,
+    ): Promise<PersonalOAuthCallbackOutcome> => {
+      await context.clearPendingAuthorizationIfCurrentRevision().catch(() => false);
+      clearBrowserNonceCookie(req, res);
+      const validClient = await validateContinuationClientRedirect(
+        continuation.clientId,
+        continuation.redirectUri,
+      ).catch(() => undefined);
+      if (validClient) {
+        res.redirect(
+          buildClientErrorRedirectUrl(continuation.redirectUri, errorCode, {
+            errorDescription,
+            state: continuation.state,
+            issuer: await resolveIssuer(req),
+          }),
+        );
+        return 'redirected';
+      }
+      return 'error';
+    };
+
+    const expired =
+      !pending.createdAt ||
+      Date.now() - pending.createdAt >= PERSONAL_OAUTH_FLOW_TTL_MS ||
+      continuation.expiresAt <= Date.now();
+    if (expired) {
+      return failValidatedContinuation('access_denied', 'Authorization session expired');
+    }
+
+    const issResult = validateAuthorizationIss({
+      iss: issParam,
+      authorizationUrl: pending.authorizationUrl,
+      configuredIssuer: pending.issuer || context.config.oauth.dynamicRegistration?.issuer,
+      issRequired: pending.issRequired,
+    });
+    if (!issResult.valid) {
+      return failValidatedContinuation('access_denied', 'Invalid authorization issuer');
+    }
+
+    // Revalidate user, sessionVersion, server config/permissions, client, redirect URI,
+    // and approval BEFORE redeeming the upstream authorization code.
+    try {
+      await context.assertCurrent();
+    } catch {
+      return failValidatedContinuation('access_denied');
+    }
+
+    const preExchangeUser = await resolveUserSession({
+      username: continuation.username,
+      sessionVersion: continuation.sessionVersion,
+    });
+    if (!preExchangeUser) {
+      return failValidatedContinuation('access_denied');
+    }
+
+    const preExchangeClient = await validateContinuationClientRedirect(
+      continuation.clientId,
+      continuation.redirectUri,
+    );
+    if (
+      !preExchangeClient ||
+      (Array.isArray(preExchangeClient.grants) &&
+        !preExchangeClient.grants.includes('authorization_code'))
+    ) {
+      return failValidatedContinuation('access_denied');
+    }
+
+    if (
+      continuation.approvalId &&
+      !(await isApprovalGrantValid(
+        {
+          username: continuation.username,
+          sessionVersion: continuation.sessionVersion,
+          approvalId: continuation.approvalId,
+        },
+        continuation.clientId,
+      ))
+    ) {
+      return failValidatedContinuation('access_denied');
+    }
+
+    // Persist one-time consumption before redeeming the upstream code so
+    // concurrent/replayed callbacks across replicas fail closed.
+    await context.mutate(({ oauth }) => {
+      delete oauth.pendingAuthorization!.state;
+      delete oauth.pendingAuthorization!.clientContinuation;
+    });
+
+    try {
+      await finishPersonalOAuthExchange(context, codeParam, issParam);
+    } catch {
+      return failValidatedContinuation('access_denied');
+    }
+
+    clearBrowserNonceCookie(req, res);
+
+    // Final revalidation before issuing the MCPHub authorization code.
+    const latestServer = await getServerDao().findById(context.serverName);
+    if (!latestServer || !hasPersonalOAuth(latestServer)) {
+      const validClient = await validateContinuationClientRedirect(
+        continuation.clientId,
+        continuation.redirectUri,
+      ).catch(() => undefined);
+      if (validClient) {
+        res.redirect(
+          buildClientErrorRedirectUrl(continuation.redirectUri, 'access_denied', {
+            state: continuation.state,
+            issuer: await resolveIssuer(req),
+          }),
+        );
+        return 'redirected';
+      }
+      return 'error';
+    }
+
+    const refreshedContext = await PersonalOAuthContext.load(
+      latestServer.name,
+      continuation.username,
+      latestServer,
+    );
+    let postExchangeValid = hasUsablePersonalOAuthGrant(refreshedContext);
+    if (postExchangeValid) {
+      try {
+        await refreshedContext.assertCurrent();
+      } catch {
+        postExchangeValid = false;
+      }
+    }
+
+    const finalUser = postExchangeValid
+      ? await resolveUserSession({
+          username: continuation.username,
+          sessionVersion: continuation.sessionVersion,
+        })
+      : null;
+
+    const finalClient = await validateContinuationClientRedirect(
+      continuation.clientId,
+      continuation.redirectUri,
+    ).catch(() => undefined);
+
+    const approvalStillValid =
+      !continuation.approvalId ||
+      (await isApprovalGrantValid(
+        {
+          username: continuation.username,
+          sessionVersion: continuation.sessionVersion,
+          approvalId: continuation.approvalId,
+        },
+        continuation.clientId,
+      ));
+
+    if (
+      !postExchangeValid ||
+      !finalUser ||
+      !finalClient ||
+      (Array.isArray(finalClient.grants) && !finalClient.grants.includes('authorization_code')) ||
+      !approvalStillValid
+    ) {
+      if (finalClient) {
+        res.redirect(
+          buildClientErrorRedirectUrl(continuation.redirectUri, 'access_denied', {
+            state: continuation.state,
+            issuer: await resolveIssuer(req),
+          }),
+        );
+        return 'redirected';
+      }
+      return 'error';
+    }
+
+    const issued = await issueAuthorizationCodeForContinuation(req, res, continuation, {
+      username: continuation.username,
+      isAdmin: !!finalUser.isAdmin,
+      sessionVersion: continuation.sessionVersion,
+    });
+    return issued ? 'redirected' : 'error';
+  });
+};
+
 export const handleOAuthCallback = async (req: Request, res: Response) => {
   try {
     const { code, state, error, error_description } = req.query;
@@ -292,6 +596,17 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 
     // Check for authorization errors
     if (error) {
+      if (stateParam?.startsWith('personal.')) {
+        try {
+          if (await handlePersonalOAuthErrorCallback(req, res, stateParam)) {
+            return;
+          }
+        } catch (continuationError) {
+          logger.error('Failed handling personal OAuth error continuation', {
+            error: continuationError,
+          });
+        }
+      }
       logger.error('OAuth authorization failed', {
         error,
         errorDescription: error_description || '',
@@ -340,30 +655,54 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
         );
     }
 
-    try {
-      if (await completePersonalOAuth(stateParam, codeParam, normalizeQueryParam(req.query.iss))) {
-        return res.send(
-          generateHtmlResponse(
-            t,
-            'success',
-            t('oauthCallback.authorizationSuccessful'),
-            t('server.oauth.personalSuccess'),
-            undefined,
-            true,
-          ),
+    if (stateParam.startsWith('personal.')) {
+      try {
+        const outcome = await handlePersonalOAuthCallback(
+          req,
+          res,
+          stateParam,
+          codeParam,
+          normalizeQueryParam(req.query.iss),
         );
+        if (outcome === 'redirected') {
+          return;
+        }
+        if (outcome === 'dashboard_success') {
+          return res.send(
+            generateHtmlResponse(
+              t,
+              'success',
+              t('oauthCallback.authorizationSuccessful'),
+              t('server.oauth.personalSuccess'),
+              undefined,
+              true,
+            ),
+          );
+        }
+        if (outcome === 'error') {
+          return res
+            .status(400)
+            .send(
+              generateHtmlResponse(
+                t,
+                'error',
+                t('oauthCallback.authorizationFailed'),
+                'Personal authorization failed; reconnect in Dashboard → Servers.',
+              ),
+            );
+        }
+      } catch {
+        return res
+          .status(400)
+          .send(
+            generateHtmlResponse(
+              t,
+              'error',
+              t('oauthCallback.authorizationFailed'),
+              'Personal authorization failed; reconnect in Dashboard → Servers.',
+            ),
+          );
       }
-    } catch {
-      return res
-        .status(400)
-        .send(
-          generateHtmlResponse(
-            t,
-            'error',
-            t('oauthCallback.authorizationFailed'),
-            'Personal authorization failed; reconnect in Dashboard → Servers.',
-          ),
-        );
     }
 
     logger.log('OAuth callback received', { hasCode: true, state: stateParam });

@@ -1,15 +1,19 @@
 import type { Request, Response } from 'express';
-import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import { getServerDao } from '../dao/DaoFactory.js';
 import { authorizationService, type RequestPrincipal } from '../services/authorizationService.js';
-import { credentialBindingEvents } from '../services/credentialBindingService.js';
 import {
   PersonalOAuthContext,
+  PERSONAL_OAUTH_FLOW_TTL_MS,
   hasPersonalOAuth,
-  findPersonalOAuthFlow,
+  findPersonalOAuthFlowRecord,
   disconnectPersonalOAuth,
 } from '../services/personalOAuthService.js';
-import { createTransportFromConfig } from '../services/mcpService.js';
+import { withOAuthPendingAuthLock } from '../services/replicaLock.js';
+import {
+  buildPersonalOAuthAuthorizationUrl,
+  finishPersonalOAuthExchange,
+  startPersonalOAuthFlow,
+} from '../services/personalOAuthFlowService.js';
 import { validateAuthorizationIss } from '../utils/oauthIssuer.js';
 import { CredentialBindingError } from '../utils/credentialTemplate.js';
 
@@ -67,42 +71,18 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
       res.json({ success: true });
       return;
     }
-    const context = await PersonalOAuthContext.load(definition.name, user.username, definition);
+
+    let context: PersonalOAuthContext;
+    let authorizationUrl: string | undefined;
     if (req.method === 'POST') {
-      // Starting a new flow supersedes the previous flow and invalidates live sessions.
-      await context.clearOAuthData(definition.name, 'tokens');
-      await context.clearOAuthData(definition.name, 'verifier');
-      credentialBindingEvents.emit('invalidate', {
-        serverName: definition.name,
-        username: user.username,
-      });
-      const config = context.config;
-      if (config.type === 'openapi') {
-        const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
-        const provider = await MCPHubOAuthProvider.create(definition.name, config);
-        await provider.startOpenApiAuthorization();
-      } else {
-        const transport = await createTransportFromConfig(definition.name, config);
-        const client = new LegacyMcpClient({ name: 'mcphub-personal-oauth', version: '1.0.0' });
-        try {
-          await client.connect(transport);
-        } catch {
-          if (!context.config.oauth.pendingAuthorization?.authorizationUrl)
-            throw new Error('Authorization discovery failed');
-        } finally {
-          await client.close().catch(() => undefined);
-          await transport.close().catch(() => undefined);
-        }
-      }
+      const started = await startPersonalOAuthFlow(definition, user.username);
+      context = started.context;
+      authorizationUrl = started.authorizationUrl;
+    } else {
+      context = await PersonalOAuthContext.load(definition.name, user.username, definition);
+      authorizationUrl = buildPersonalOAuthAuthorizationUrl(definition.name, context);
     }
-    let authorizationUrl = context.authorizationUrl;
-    if (authorizationUrl && context.config.oauth.authorizationRelay) {
-      const callback = new URL(authorizationUrl).searchParams.get('redirect_uri');
-      if (!callback) throw new Error('Missing authorization callback');
-      const relay = new URL(`relay/${encodeURIComponent(definition.name)}`, callback);
-      relay.searchParams.set('state', context.config.oauth.pendingAuthorization!.state!);
-      authorizationUrl = relay.toString();
-    }
+
     res.json({
       success: true,
       data: {
@@ -112,15 +92,13 @@ export const managePersonalOAuth = async (req: Request, res: Response): Promise<
       },
     });
   } catch (error) {
-    res
-      .status(error instanceof CredentialBindingError ? 400 : 502)
-      .json({
-        success: false,
-        message:
-          error instanceof CredentialBindingError
-            ? error.message
-            : 'Unable to prepare personal authorization',
-      });
+    res.status(error instanceof CredentialBindingError ? 400 : 502).json({
+      success: false,
+      message:
+        error instanceof CredentialBindingError
+          ? error.message
+          : 'Unable to prepare personal authorization',
+    });
   }
 };
 
@@ -129,44 +107,45 @@ export const completePersonalOAuth = async (
   code: string,
   iss?: string,
 ): Promise<boolean> => {
-  const context = await findPersonalOAuthFlow(state);
-  if (!context) return false;
-  const pending = context.config.oauth.pendingAuthorization!;
-  const result = validateAuthorizationIss({
-    iss,
-    authorizationUrl: pending.authorizationUrl,
-    configuredIssuer: pending.issuer || context.config.oauth.dynamicRegistration?.issuer,
-    issRequired: pending.issRequired,
-  });
-  if (!result.valid) throw new CredentialBindingError('Invalid authorization issuer');
-  // Persist consumption before redeeming the code: concurrent/replayed callbacks fail closed.
-  await context.mutate(({ oauth }) => {
-    delete oauth.pendingAuthorization!.state;
-  });
-  const config = context.config;
-  if (config.type === 'openapi') {
-    const { MCPHubOAuthProvider } = await import('../services/mcpOAuthProvider.js');
-    const provider = await MCPHubOAuthProvider.create(context.serverName, config);
-    await provider.finishOpenApiAuthorization(code, iss);
-    credentialBindingEvents.emit('invalidate', {
-      serverName: context.serverName,
-      username: context.username,
-    });
-    return true;
-  }
-  const transport = await createTransportFromConfig(context.serverName, config);
-  try {
-    if (!('finishAuth' in transport)) throw new Error('OAuth transport required');
-    await (transport as { finishAuth: (code: string, iss?: string) => Promise<void> }).finishAuth(
-      code,
-      iss,
+  const record = await findPersonalOAuthFlowRecord(state);
+  if (!record || record.expired) return false;
+
+  return withOAuthPendingAuthLock(record.context.serverName, record.context.username, async () => {
+    const definition = await getServerDao().findById(record.context.serverName);
+    if (!definition || !hasPersonalOAuth(definition)) return false;
+    const context = await PersonalOAuthContext.load(
+      definition.name,
+      record.context.username,
+      definition,
     );
-    credentialBindingEvents.emit('invalidate', {
-      serverName: context.serverName,
-      username: context.username,
+    const pending = context.config.oauth.pendingAuthorization;
+    if (
+      !pending ||
+      pending.state !== state ||
+      !pending.createdAt ||
+      Date.now() - pending.createdAt >= PERSONAL_OAUTH_FLOW_TTL_MS
+    ) {
+      return false;
+    }
+    if (pending.clientContinuation) {
+      throw new CredentialBindingError('Browser verification required for client authorization');
+    }
+    await context.assertCurrent();
+
+    const result = validateAuthorizationIss({
+      iss,
+      authorizationUrl: pending.authorizationUrl,
+      configuredIssuer: pending.issuer || context.config.oauth.dynamicRegistration?.issuer,
+      issRequired: pending.issRequired,
     });
+    if (!result.valid) throw new CredentialBindingError('Invalid authorization issuer');
+
+    // Persist consumption before redeeming the code: concurrent/replayed callbacks fail closed.
+    await context.mutate(({ oauth }) => {
+      delete oauth.pendingAuthorization!.state;
+    });
+
+    await finishPersonalOAuthExchange(context, code, iss);
     return true;
-  } finally {
-    await transport.close().catch(() => undefined);
-  }
+  });
 };

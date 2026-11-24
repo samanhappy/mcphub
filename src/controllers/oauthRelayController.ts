@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Agent } from 'undici';
 import { getUserDao } from '../dao/DaoFactory.js';
 import { findPersonalOAuthFlow } from '../services/personalOAuthService.js';
+import { verifyBrowserNonce } from '../services/personalOAuthContinuationService.js';
 
 // Only headers are used; never buffer or forward an upstream page or its cookies.
 const dispatcher = new Agent({ maxHeaderSize: 16_384 });
@@ -23,6 +24,14 @@ export const handleOAuthRelay = async (req: Request, res: Response): Promise<voi
     if (config.owner && !(await getUserDao().findByUsername(config.owner))?.isAdmin)
       throw new Error('Untrusted connector');
     const pending = config.oauth!.pendingAuthorization!;
+    if (pending.clientContinuation) {
+      if (pending.clientContinuation.expiresAt <= Date.now()) {
+        throw new Error('Authorization flow expired');
+      }
+      if (!verifyBrowserNonce(req, pending.clientContinuation)) {
+        throw new Error('Invalid browser session');
+      }
+    }
     const endpoint = config.oauth!.authorizationServerMetadata!.authorization_endpoint;
     const target = new URL(pending.authorizationUrl!);
     const declared = new URL(endpoint);

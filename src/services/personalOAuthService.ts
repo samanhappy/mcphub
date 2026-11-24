@@ -14,6 +14,7 @@ import type { ServerConfig } from '../types/index.js';
 import type { OAuthSettingsContext, ServerConfigWithOAuth } from './oauthSettingsStore.js';
 
 type OAuth = NonNullable<ServerConfig['oauth']>;
+export const PERSONAL_OAUTH_FLOW_TTL_MS = 600_000;
 export const hasPersonalOAuth = (config?: ServerConfig): boolean =>
   config?.oauth?.identityMode === 'personal';
 export const personalOAuthContexts = new WeakMap<ServerConfig, PersonalOAuthContext>();
@@ -33,8 +34,10 @@ export const withPersonalOAuthLock = <T>(
   serverName: string,
   username: string,
   action: () => Promise<T>,
-): Promise<T> => withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
-  serialize(JSON.stringify([serverName, username]), action));
+): Promise<T> =>
+  withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
+    serialize(JSON.stringify([serverName, username]), action),
+  );
 
 export class PersonalAuthorizationRequiredError extends CredentialBindingError {}
 
@@ -74,8 +77,7 @@ const canonicalJson = (value: unknown): string => {
     const entries = Object.keys(value as Record<string, unknown>)
       .sort()
       .map(
-        (key) =>
-          `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+        (key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
       );
     return `{${entries.join(',')}}`;
   }
@@ -137,12 +139,7 @@ export class PersonalOAuthContext {
   }
   static async load(serverName: string, username: string, definition: ServerConfig) {
     const expanded = await expandServerConfig(definition);
-    const context = new PersonalOAuthContext(
-      serverName,
-      username,
-      expanded,
-      fingerprint(expanded),
-    );
+    const context = new PersonalOAuthContext(serverName, username, expanded, fingerprint(expanded));
     const binding = await getCredentialBindingDao().get(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
@@ -198,7 +195,9 @@ export class PersonalOAuthContext {
   }
   get authorizationUrl(): string | undefined {
     const pending = this.config.oauth.pendingAuthorization;
-    return pending?.state && pending.createdAt && Date.now() - pending.createdAt < 600_000
+    return pending?.state &&
+      pending.createdAt &&
+      Date.now() - pending.createdAt < PERSONAL_OAUTH_FLOW_TTL_MS
       ? pending.authorizationUrl
       : undefined;
   }
@@ -327,20 +326,26 @@ export class PersonalOAuthContext {
   ) {
     return this.mutate(({ oauth }) => {
       const existing = oauth.pendingAuthorization;
-      // Mirror oauthSettingsStore.updatePendingAuthorization: the verifier is
-      // bound to its state (drop a stale verifier on state change) and the
-      // flow TTL only refreshes when the state actually changes.
-      const stateChanged =
-        pending.state !== undefined && pending.state !== existing?.state;
+      // Mirror oauthSettingsStore.updatePendingAuthorization: the verifier and
+      // any client sign-in continuation are bound to their state (drop stale
+      // ones on state change) and the flow TTL only refreshes when the state
+      // actually changes.
+      const stateChanged = pending.state !== undefined && pending.state !== existing?.state;
       oauth.pendingAuthorization = {
         ...existing,
         ...pending,
         codeVerifier: pending.codeVerifier ?? (stateChanged ? undefined : existing?.codeVerifier),
+        clientContinuation:
+          pending.clientContinuation ?? (stateChanged ? undefined : existing?.clientContinuation),
         createdAt:
-          pending.createdAt ?? (stateChanged || !existing?.createdAt ? Date.now() : existing.createdAt),
+          pending.createdAt ??
+          (stateChanged || !existing?.createdAt ? Date.now() : existing.createdAt),
       };
       if (oauth.pendingAuthorization.codeVerifier === undefined) {
         delete oauth.pendingAuthorization.codeVerifier;
+      }
+      if (oauth.pendingAuthorization.clientContinuation === undefined) {
+        delete oauth.pendingAuthorization.clientContinuation;
       }
     });
   }
@@ -363,7 +368,49 @@ export class PersonalOAuthContext {
       }
     });
   }
+  /**
+   * Atomically remove `pendingAuthorization` when the stored binding still
+   * matches this context's revision, even if server access or status changed
+   * while the flow was in flight.
+   */
+  async clearPendingAuthorizationIfCurrentRevision(): Promise<boolean> {
+    return withPersonalOAuthLock(this.serverName, this.username, async () => {
+      if (!this.revision) return false;
+      const dao = getCredentialBindingDao();
+      const current = await dao.get(this.serverName, this.username);
+      if (!current || current.encryptedValues !== this.revision) return false;
+      const config = structuredClone(this.config);
+      delete config.oauth.pendingAuthorization;
+      const encryptedValues = await encryptCredentialValues(this.serverName, this.username, {
+        oauthDeclaration: this.declaration,
+        oauth: JSON.stringify(config.oauth),
+      });
+      const saved = await dao.compareAndSave(
+        {
+          serverName: this.serverName,
+          username: this.username,
+          encryptedValues,
+          updatedAt: new Date().toISOString(),
+        },
+        this.revision,
+      );
+      if (!saved) return false;
+      this.revision = encryptedValues;
+      this.config = config;
+      personalOAuthContexts.set(config, this);
+      return true;
+    });
+  }
 }
+
+export const hasUsablePersonalOAuthGrant = (context: PersonalOAuthContext): boolean => {
+  const oauth = context.config.oauth;
+  if (!oauth?.accessToken) return false;
+  if (oauth.accessTokenExpiresAt === undefined || oauth.accessTokenExpiresAt > Date.now()) {
+    return true;
+  }
+  return Boolean(oauth.refreshToken);
+};
 
 export const resolvePersonalOAuth = async (
   serverName: string,
@@ -375,9 +422,14 @@ export const resolvePersonalOAuth = async (
   return { config: context.config, revision: context.version };
 };
 
-export const findPersonalOAuthFlow = async (
+export interface PersonalOAuthFlowRecord {
+  context: PersonalOAuthContext;
+  expired: boolean;
+}
+
+export const findPersonalOAuthFlowRecord = async (
   state: string,
-): Promise<PersonalOAuthContext | undefined> => {
+): Promise<PersonalOAuthFlowRecord | undefined> => {
   if (!state.startsWith('personal.')) return undefined;
   for (const server of await getServerDao().findAll()) {
     if (!hasPersonalOAuth(server)) continue;
@@ -389,17 +441,26 @@ export const findPersonalOAuthFlow = async (
         continue;
       } // One damaged binding must not block another user's callback.
       const pending = context.config.oauth.pendingAuthorization;
-      if (
-        pending?.state === state &&
-        pending.createdAt &&
-        Date.now() - pending.createdAt < 600_000
-      ) {
-        await context.assertCurrent();
-        return context;
+      if (pending?.state === state) {
+        const continuation = pending.clientContinuation;
+        const expired =
+          !pending.createdAt ||
+          Date.now() - pending.createdAt >= PERSONAL_OAUTH_FLOW_TTL_MS ||
+          (continuation !== undefined && continuation.expiresAt <= Date.now());
+        return { context, expired };
       }
     }
   }
   return undefined;
+};
+
+export const findPersonalOAuthFlow = async (
+  state: string,
+): Promise<PersonalOAuthContext | undefined> => {
+  const record = await findPersonalOAuthFlowRecord(state);
+  if (!record || record.expired) return undefined;
+  await record.context.assertCurrent();
+  return record.context;
 };
 
 export const disconnectPersonalOAuth = async (

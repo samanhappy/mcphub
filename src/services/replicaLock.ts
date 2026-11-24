@@ -52,6 +52,7 @@ export const withKeyedLock = async <T>(key: string, action: () => Promise<T>): P
   try {
     return await heldKeyedLocks.run(held, action);
   } finally {
+    held.delete(key);
     release();
     if (keyedQueues.get(key) === next) keyedQueues.delete(key);
   }
