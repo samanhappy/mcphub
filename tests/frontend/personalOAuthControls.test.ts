@@ -15,17 +15,20 @@ jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) =>
 
 test('renders only authorization when disconnected', () => {
   const html = renderToStaticMarkup(createElement(PersonalOAuthControls, { serverName: 'gitlab' }));
-  expect(html).toContain('class="hub-btn whitespace-nowrap"');
-  expect(html).toContain('status.oauthRequired</button>');
+  expect(html).toContain(
+    'hub-status warn hub-server-card-status hub-personal-oauth-trigger hub-personal-oauth-action',
+  );
+  expect(html).toContain('<span class="hub-dot"></span><span class="hub-status-label">status.oauthRequired</span></button>');
   expect(html).not.toContain('server.oauth.personalDisconnect');
-  expect(html).not.toContain('<details>');
+  expect(html).not.toContain('<details');
 });
 
 test('does not allow connecting a disabled server', () => {
   const html = renderToStaticMarkup(
     createElement(PersonalOAuthControls, { serverName: 'gitlab', enabled: false }),
   );
-  expect(html).toMatch(/<button[^>]*disabled=""[^>]*>server.disable<\/button>/);
+  expect(html).toContain('hub-status muted hub-server-card-status hub-personal-oauth-trigger');
+  expect(html).toMatch(/<button[^>]*disabled=""[^>]*>.*server.disable.*<\/button>/);
 });
 
 // Exercise the click handler without adding a DOM renderer dependency.
@@ -81,7 +84,8 @@ test('keeps connected actions inside a disclosure menu', () => {
     const html = renderToStaticMarkup(
       createElement(PersonalOAuthControls, { serverName: 'gitlab' }),
     );
-    expect(html).toContain('<details>');
+    expect(html).toContain('<details');
+    expect(html).toContain('hub-status ok hub-server-card-status hub-personal-oauth-trigger');
     expect(html).toContain('server.oauth.personalReconnect');
     expect(html).toContain('server.oauth.personalDisconnect');
     expect(html).not.toContain('flex-wrap');
