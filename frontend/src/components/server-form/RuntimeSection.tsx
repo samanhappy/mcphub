@@ -74,7 +74,6 @@ export const RuntimeSection: React.FC<RuntimeSectionProps> = ({
               className={`${FORM_CONTROL_CLASS} hub-mono`}
               placeholder="60000"
               min="1000"
-              max="300000"
             />
             <p className="text-xs text-[var(--hub-ink-3)] mt-1">
               {t('server.timeoutDescription')}
@@ -194,7 +193,6 @@ export const RuntimeSection: React.FC<RuntimeSectionProps> = ({
                 className={`${FORM_CONTROL_CLASS} hub-mono max-w-[220px]`}
                 placeholder="60000"
                 min="5000"
-                max="300000"
               />
               <p className="text-xs text-[var(--hub-ink-3)] mt-1">
                 {t(

@@ -397,10 +397,10 @@
     "validationPersonalOAuthRequired": "Personal OAuth requiere Client ID, punto de autorización y punto de token.",
     "validationCredentialSlotNameRequired": "Cada campo de credencial requiere un nombre.",
     "validationCredentialSlotAllowedRequired": "Los campos de credencial URL requieren al menos un valor permitido.",
-    "validationTimeoutRange": "El tiempo de espera debe estar entre 1,000 y 300,000 ms.",
+    "validationTimeoutRange": "El tiempo de espera debe ser al menos 1,000 ms.",
     "validationMaxTotalTimeoutMin": "El tiempo de espera total máximo debe ser al menos 1,000 ms.",
     "validationMaxBufferSizeMin": "El límite de búfer Stdio debe ser un entero positivo.",
-    "validationKeepAliveRange": "El intervalo de verificación debe estar entre 5,000 y 300,000 ms.",
+    "validationKeepAliveRange": "El intervalo de verificación debe ser al menos 5,000 ms.",
     "validationIdleTimeoutMin": "El tiempo de cierre por inactividad debe ser al menos 10,000 ms.",
     "saving": "Guardando…",
     "adding": "Agregando…"

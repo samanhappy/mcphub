@@ -3,7 +3,7 @@ import path from 'path';
 import type { ServerFormData } from '../../frontend/src/types';
 import {
   getAvailableServerFormTabs,
-  getServerFormSectionBadges,
+  getServerFormConfiguredTabs,
   validateServerForm,
 } from '../../frontend/src/utils/serverFormUi';
 
@@ -81,17 +81,17 @@ describe('serverFormUi helpers', () => {
     });
   });
 
-  describe('getServerFormSectionBadges', () => {
-    it('returns zero badges for a clean default stdio server', () => {
+  describe('getServerFormConfiguredTabs', () => {
+    it('marks no optional tabs configured for a clean default stdio server', () => {
       expect(
-        getServerFormSectionBadges({
+        getServerFormConfiguredTabs({
           formData: createBaseForm(),
           serverType: 'stdio',
         }),
-      ).toEqual({ connection: 0, auth: 0, access: 0, runtime: 0 });
+      ).toEqual({ connection: false, auth: false, access: false, runtime: false });
     });
 
-    it('counts configured visibility, credential slots, oauth, and runtime options', () => {
+    it('marks auth, access, and runtime tabs configured when non-default values exist', () => {
       const formData = createBaseForm({
         type: 'streamable-http',
         url: 'https://example.com/mcp',
@@ -108,19 +108,19 @@ describe('serverFormUi helpers', () => {
       });
 
       expect(
-        getServerFormSectionBadges({
+        getServerFormConfiguredTabs({
           formData,
           serverType: 'streamable-http',
         }),
       ).toEqual({
-        connection: 0,
-        auth: 2,
-        access: 3,
-        runtime: 3,
+        connection: false,
+        auth: true,
+        access: true,
+        runtime: true,
       });
     });
 
-    it('counts openapi security, spec security, cookie session, and passthrough headers', () => {
+    it('marks openapi auth configured when security, specSecurity, cookieSession, or passthroughHeaders are set', () => {
       const formData = createBaseForm({
         type: 'openapi',
         openapi: {
@@ -135,15 +135,15 @@ describe('serverFormUi helpers', () => {
       });
 
       expect(
-        getServerFormSectionBadges({
+        getServerFormConfiguredTabs({
           formData,
           serverType: 'openapi',
         }),
       ).toEqual({
-        connection: 0,
-        auth: 4,
-        access: 0,
-        runtime: 0,
+        connection: false,
+        auth: true,
+        access: false,
+        runtime: false,
       });
     });
   });
@@ -245,7 +245,7 @@ describe('serverFormUi helpers', () => {
       });
     });
 
-    it('validates credential slots and runtime bounds on access and runtime tabs', () => {
+    it('validates credential slots and runtime minimums on access and runtime tabs', () => {
       expect(
         validateServerForm({
           formData: createBaseForm({
@@ -271,6 +271,38 @@ describe('serverFormUi helpers', () => {
         messageKey: 'server.validationTimeoutRange',
         focusId: 'timeout',
       });
+    });
+
+    it('allows timeouts above 5 minutes and preserves unchanged stored values during unrelated edits', () => {
+      expect(
+        validateServerForm({
+          formData: createBaseForm({
+            options: { timeout: 600000, resetTimeoutOnProgress: true },
+          }),
+          serverType: 'stdio',
+        }),
+      ).toBeNull();
+
+      expect(
+        validateServerForm({
+          formData: createBaseForm({
+            description: 'Updated description',
+            options: { timeout: 500, maxTotalTimeout: 500, resetTimeoutOnProgress: true },
+            keepAlive: { enabled: true, interval: 1000 },
+            startOnDemand: true,
+            idleTimeoutMs: 5000,
+          }),
+          serverType: 'stdio',
+          initialServerName: 'demo-server',
+          initialConfig: {
+            type: 'stdio',
+            command: 'npx',
+            options: { timeout: 500, maxTotalTimeout: 500 },
+            keepAliveInterval: 1000,
+            idleTimeoutMs: 5000,
+          },
+        }),
+      ).toBeNull();
     });
   });
 

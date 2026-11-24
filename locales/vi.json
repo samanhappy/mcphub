@@ -397,10 +397,10 @@
     "validationPersonalOAuthRequired": "Personal OAuth yêu cầu Client ID, Authorization Endpoint và Token Endpoint.",
     "validationCredentialSlotNameRequired": "Mỗi trường thông tin xác thực cần có tên trường.",
     "validationCredentialSlotAllowedRequired": "Trường xác thực kiểu URL cần ít nhất một giá trị được phép.",
-    "validationTimeoutRange": "Thời gian chờ yêu cầu phải từ 1.000 đến 300.000 ms.",
+    "validationTimeoutRange": "Thời gian chờ yêu cầu phải ít nhất 1.000 ms.",
     "validationMaxTotalTimeoutMin": "Tổng thời gian chờ tối đa phải ít nhất 1.000 ms.",
     "validationMaxBufferSizeMin": "Giới hạn bộ đệm Stdio phải là số nguyên dương.",
-    "validationKeepAliveRange": "Khoảng thời gian kiểm tra sức khỏe phải từ 5.000 đến 300.000 ms.",
+    "validationKeepAliveRange": "Khoảng thời gian kiểm tra sức khỏe phải ít nhất 5.000 ms.",
     "validationIdleTimeoutMin": "Thời gian tắt khi nhàn rỗi phải ít nhất 10.000 ms.",
     "saving": "Đang lưu…",
     "adding": "Đang thêm…"

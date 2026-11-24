@@ -35,7 +35,7 @@ import {
 import { isValidServerName } from '../utils/serverName';
 import {
   getAvailableServerFormTabs,
-  getServerFormSectionBadges,
+  getServerFormConfiguredTabs,
   validateServerForm,
   type ServerFormTab,
   type ServerType,
@@ -385,8 +385,8 @@ const ServerForm = ({
   const isAdmin = auth.user?.isAdmin === true;
 
   const availableTabs = useMemo(() => getAvailableServerFormTabs(serverType), [serverType]);
-  const badges = useMemo(
-    () => getServerFormSectionBadges({ formData, serverType, relayOrigins, relayMetadata }),
+  const configuredTabs = useMemo(
+    () => getServerFormConfiguredTabs({ formData, serverType, relayOrigins, relayMetadata }),
     [formData, serverType, relayOrigins, relayMetadata],
   );
 
@@ -652,6 +652,7 @@ const ServerForm = ({
       formData: normalizedFormData,
       serverType,
       initialServerName: initialData?.name,
+      initialConfig: initialData?.config,
       relayOrigins,
       relayMetadata,
     });
@@ -704,37 +705,38 @@ const ServerForm = ({
     }
   };
 
-  const navItems: Array<{
+  const allNavItems: Array<{
     id: ServerFormTab;
     label: string;
     icon: typeof Plug;
-    badge: number;
+    configured: boolean;
   }> = [
     {
       id: 'connection',
       label: t('server.tabConnection', 'Basic & Connection'),
       icon: Plug,
-      badge: badges.connection,
+      configured: configuredTabs.connection,
     },
     {
       id: 'auth',
       label: t('server.tabAuth', 'Auth & Security'),
       icon: Shield,
-      badge: badges.auth,
+      configured: configuredTabs.auth,
     },
     {
       id: 'access',
       label: t('server.tabAccess', 'Access & Credentials'),
       icon: Users,
-      badge: badges.access,
+      configured: configuredTabs.access,
     },
     {
       id: 'runtime',
       label: t('server.tabRuntime', 'Runtime & Advanced'),
       icon: SlidersHorizontal,
-      badge: badges.runtime,
+      configured: configuredTabs.runtime,
     },
-  ].filter((item) => availableTabs.includes(item.id));
+  ];
+  const navItems = allNavItems.filter((item) => availableTabs.includes(item.id));
 
   const transportBadgeLabel =
     serverType === 'stdio'
@@ -791,7 +793,7 @@ const ServerForm = ({
           aria-label={modalTitle}
           className="hub-server-nav flex md:flex-col gap-1 p-2.5 md:p-3 border-b md:border-b-0 md:border-r md:w-[216px] flex-shrink-0 overflow-x-auto md:overflow-y-auto"
         >
-          {navItems.map(({ id, label, icon: Icon, badge }) => {
+          {navItems.map(({ id, label, icon: Icon, configured }) => {
             const selected = activeTab === id;
             return (
               <button
@@ -808,13 +810,12 @@ const ServerForm = ({
                   <Icon size={14} className="flex-shrink-0 opacity-80" />
                   <span className="truncate">{label}</span>
                 </span>
-                {badge > 0 && (
+                {configured && (
                   <span
-                    className="hub-server-nav-badge"
-                    aria-label={`${badge} ${t('server.configured', 'Configured')}`}
-                  >
-                    {badge}
-                  </span>
+                    className="hub-server-nav-dot"
+                    title={t('server.configured', 'Configured')}
+                    aria-label={t('server.configured', 'Configured')}
+                  />
                 )}
               </button>
             );

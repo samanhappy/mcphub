@@ -1,4 +1,4 @@
-import type { ServerFormData } from '../types';
+import type { ServerConfig, ServerFormData } from '../types';
 import { isValidServerName } from './serverName';
 import { parseOAuthRelayForm } from './oauthRelayForm';
 
@@ -6,11 +6,11 @@ export type ServerType = 'stdio' | 'sse' | 'streamable-http' | 'openapi';
 
 export type ServerFormTab = 'connection' | 'auth' | 'access' | 'runtime';
 
-export interface ServerFormSectionBadges {
-  connection: number;
-  auth: number;
-  access: number;
-  runtime: number;
+export interface ServerFormConfiguredTabs {
+  connection: boolean;
+  auth: boolean;
+  access: boolean;
+  runtime: boolean;
 }
 
 export interface ServerFormValidationIssue {
@@ -37,7 +37,7 @@ export const isValidHttpUrl = (value: string): boolean => {
   }
 };
 
-export const getServerFormSectionBadges = ({
+export const getServerFormConfiguredTabs = ({
   formData,
   serverType,
   relayOrigins = '',
@@ -47,23 +47,17 @@ export const getServerFormSectionBadges = ({
   serverType: ServerType;
   relayOrigins?: string;
   relayMetadata?: string;
-}): ServerFormSectionBadges => {
-  let authCount = 0;
+}): ServerFormConfiguredTabs => {
+  let auth: boolean;
 
   if (serverType === 'openapi') {
     const isPersonalOAuth = formData.oauth?.identityMode === 'personal';
-    if (isPersonalOAuth || (formData.openapi?.securityType && formData.openapi.securityType !== 'none')) {
-      authCount += 1;
-    }
-    if (formData.openapi?.specSecurityType && formData.openapi.specSecurityType !== 'none') {
-      authCount += 1;
-    }
-    if (formData.openapi?.cookieSession) {
-      authCount += 1;
-    }
-    if (formData.openapi?.passthroughHeaders?.trim()) {
-      authCount += 1;
-    }
+    auth =
+      isPersonalOAuth ||
+      Boolean(formData.openapi?.securityType && formData.openapi.securityType !== 'none') ||
+      Boolean(formData.openapi?.specSecurityType && formData.openapi.specSecurityType !== 'none') ||
+      Boolean(formData.openapi?.cookieSession) ||
+      Boolean(formData.openapi?.passthroughHeaders?.trim());
   } else {
     const oauth = formData.oauth;
     const hasOAuth =
@@ -74,56 +68,38 @@ export const getServerFormSectionBadges = ({
       Boolean(oauth?.authorizationRelay) ||
       Boolean(relayOrigins.trim()) ||
       Boolean(relayMetadata.trim());
-    if (hasOAuth) {
-      authCount += 1;
-    }
-    if (
+    const hasPassthrough =
       (serverType === 'sse' || serverType === 'streamable-http') &&
-      formData.passthroughHeaders?.trim()
-    ) {
-      authCount += 1;
-    }
+      Boolean(formData.passthroughHeaders?.trim());
+    auth = hasOAuth || hasPassthrough;
   }
 
-  let accessCount = 0;
-  if (formData.visibility && formData.visibility !== 'private') {
-    accessCount += 1;
-  }
-  const slotCount = formData.credentialTemplate?.length ?? 0;
-  if (slotCount > 0) {
-    accessCount += slotCount;
-  }
+  const access =
+    Boolean(formData.visibility && formData.visibility !== 'private') ||
+    (formData.credentialTemplate?.length ?? 0) > 0;
 
-  let runtimeCount = 0;
+  let runtime = false;
   if (serverType !== 'openapi') {
     const opts = formData.options;
-    if (
+    const hasCustomOptions =
       (opts?.timeout !== undefined && opts.timeout !== 60000) ||
       opts?.maxTotalTimeout !== undefined ||
       opts?.maxBufferSize !== undefined ||
-      opts?.resetTimeoutOnProgress === false
-    ) {
-      runtimeCount += 1;
-    }
-    if (
+      opts?.resetTimeoutOnProgress === false;
+    const hasKeepAlive =
       (serverType === 'sse' || serverType === 'streamable-http') &&
-      formData.keepAlive?.enabled
-    ) {
-      runtimeCount += 1;
-    }
-    if (formData.perSessionClient) {
-      runtimeCount += 1;
-    }
-    if (serverType === 'stdio' && formData.startOnDemand) {
-      runtimeCount += 1;
-    }
+      Boolean(formData.keepAlive?.enabled);
+    const hasLifecycle =
+      Boolean(formData.perSessionClient) ||
+      (serverType === 'stdio' && Boolean(formData.startOnDemand));
+    runtime = hasCustomOptions || hasKeepAlive || hasLifecycle;
   }
 
   return {
-    connection: 0,
-    auth: authCount,
-    access: accessCount,
-    runtime: runtimeCount,
+    connection: false,
+    auth,
+    access,
+    runtime,
   };
 };
 
@@ -131,12 +107,14 @@ export const validateServerForm = ({
   formData,
   serverType,
   initialServerName,
+  initialConfig,
   relayOrigins = '',
   relayMetadata = '',
 }: {
   formData: ServerFormData;
   serverType: ServerType;
   initialServerName?: string | null;
+  initialConfig?: ServerConfig | null;
   relayOrigins?: string;
   relayMetadata?: string;
 }): ServerFormValidationIssue | null => {
@@ -265,9 +243,17 @@ export const validateServerForm = ({
   }
 
   // Runtime & Advanced validations
+  // Preserve unchanged stored numeric settings so editing unrelated fields
+  // (e.g. description or visibility) never blocks valid persisted configs.
   if (serverType !== 'openapi') {
     const timeout = formData.options?.timeout;
-    if (timeout !== undefined && (Number.isNaN(timeout) || timeout < 1000 || timeout > 300000)) {
+    const isUnchangedTimeout =
+      timeout !== undefined && initialConfig?.options?.timeout === timeout;
+    if (
+      timeout !== undefined &&
+      !isUnchangedTimeout &&
+      (!Number.isFinite(timeout) || timeout < 1000)
+    ) {
       return {
         tab: 'runtime',
         messageKey: 'server.validationTimeoutRange',
@@ -276,7 +262,13 @@ export const validateServerForm = ({
     }
 
     const maxTotalTimeout = formData.options?.maxTotalTimeout;
-    if (maxTotalTimeout !== undefined && (Number.isNaN(maxTotalTimeout) || maxTotalTimeout < 1000)) {
+    const isUnchangedMaxTotal =
+      maxTotalTimeout !== undefined && initialConfig?.options?.maxTotalTimeout === maxTotalTimeout;
+    if (
+      maxTotalTimeout !== undefined &&
+      !isUnchangedMaxTotal &&
+      (!Number.isFinite(maxTotalTimeout) || maxTotalTimeout < 1000)
+    ) {
       return {
         tab: 'runtime',
         messageKey: 'server.validationMaxTotalTimeoutMin',
@@ -302,7 +294,13 @@ export const validateServerForm = ({
       formData.keepAlive?.enabled
     ) {
       const interval = formData.keepAlive.interval;
-      if (interval !== undefined && (Number.isNaN(interval) || interval < 5000 || interval > 300000)) {
+      const isUnchangedInterval =
+        interval !== undefined && initialConfig?.keepAliveInterval === interval;
+      if (
+        interval !== undefined &&
+        !isUnchangedInterval &&
+        (!Number.isFinite(interval) || interval < 5000)
+      ) {
         return {
           tab: 'runtime',
           messageKey: 'server.validationKeepAliveRange',
@@ -316,7 +314,13 @@ export const validateServerForm = ({
       (formData.startOnDemand || Boolean(formData.credentialTemplate?.length))
     ) {
       const idleTimeoutMs = formData.idleTimeoutMs;
-      if (idleTimeoutMs !== undefined && (Number.isNaN(idleTimeoutMs) || idleTimeoutMs < 10000)) {
+      const isUnchangedIdleTimeout =
+        idleTimeoutMs !== undefined && initialConfig?.idleTimeoutMs === idleTimeoutMs;
+      if (
+        idleTimeoutMs !== undefined &&
+        !isUnchangedIdleTimeout &&
+        (!Number.isFinite(idleTimeoutMs) || idleTimeoutMs < 10000)
+      ) {
         return {
           tab: 'runtime',
           messageKey: 'server.validationIdleTimeoutMin',

@@ -1443,19 +1443,13 @@ button.hub-btn.primary.is-loading::after {
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
 }
 
-.hub-server-nav-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+.hub-server-nav-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  background: var(--hub-accent-soft);
-  color: var(--hub-accent);
+  flex-shrink: 0;
+  background: var(--hub-accent);
+  box-shadow: 0 0 0 3px var(--hub-accent-soft);
 }
 
 .hub-server-type-option {
