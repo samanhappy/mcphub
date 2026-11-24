@@ -616,7 +616,7 @@ async function authorizeAndRedirect(
         return;
       }
 
-      const { nonce, hash } = createBrowserNonce();
+      const { cookieId, nonce, hash } = createBrowserNonce();
       const clientContinuation: PendingPersonalOAuthContinuation = {
         clientId: validation.clientId,
         redirectUri,
@@ -632,6 +632,7 @@ async function authorizeAndRedirect(
         sessionVersion: validation.sessionVersion,
         ...(user.approvalId ? { approvalId: user.approvalId } : {}),
         ...(user.approvalContext ? { approvalContext: user.approvalContext } : {}),
+        browserCookieId: cookieId,
         browserNonceHash: hash,
         expiresAt: Date.now() + PERSONAL_OAUTH_FLOW_TTL_MS,
       };
@@ -646,7 +647,7 @@ async function authorizeAndRedirect(
           if (!started.authorizationUrl) {
             throw new Error('Missing upstream authorization URL');
           }
-          setBrowserNonceCookie(req, res, nonce);
+          setBrowserNonceCookie(req, res, nonce, cookieId);
           res.redirect(started.authorizationUrl);
           return;
         }

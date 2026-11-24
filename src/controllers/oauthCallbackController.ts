@@ -329,7 +329,7 @@ const handlePersonalOAuthErrorCallback = async (
     const cleared = await context.clearPendingAuthorizationIfCurrentRevision();
     if (!cleared) return false;
 
-    clearBrowserNonceCookie(req, res);
+    clearBrowserNonceCookie(req, res, continuation.browserCookieId);
 
     const client = await validateContinuationClientRedirect(
       continuation.clientId,
@@ -408,7 +408,7 @@ const handlePersonalOAuthCallback = async (
       errorDescription?: string,
     ): Promise<PersonalOAuthCallbackOutcome> => {
       await context.clearPendingAuthorizationIfCurrentRevision().catch(() => false);
-      clearBrowserNonceCookie(req, res);
+      clearBrowserNonceCookie(req, res, continuation.browserCookieId);
       const validClient = await validateContinuationClientRedirect(
         continuation.clientId,
         continuation.redirectUri,
@@ -499,7 +499,7 @@ const handlePersonalOAuthCallback = async (
       return failValidatedContinuation('access_denied');
     }
 
-    clearBrowserNonceCookie(req, res);
+    clearBrowserNonceCookie(req, res, continuation.browserCookieId);
 
     // Final revalidation before issuing the MCPHub authorization code.
     const latestServer = await getServerDao().findById(context.serverName);

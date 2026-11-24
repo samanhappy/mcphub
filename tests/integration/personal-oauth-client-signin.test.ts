@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -135,11 +136,12 @@ import { initOAuthServer, generateCodeChallenge } from '../../src/services/oauth
 import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import { createTransportFromConfig } from '../../src/services/mcpService.js';
 import { PersonalOAuthContext } from '../../src/services/personalOAuthService.js';
-import { PERSONAL_OAUTH_NONCE_COOKIE } from '../../src/services/personalOAuthContinuationService.js';
+import { getBrowserNonceCookieName } from '../../src/services/personalOAuthContinuationService.js';
 import { logger } from '../../src/utils/logger.js';
 
 const UPSTREAM_ISSUER = 'https://login.microsoftonline.example';
 const UPSTREAM_MCP_URL = 'https://graph-mcp.example/mcp';
+const COOKIE_PREFIX = `${getBrowserNonceCookieName()}_`;
 
 const extractCookiePair = (setCookieHeader: string | string[] | undefined): string => {
   const list = Array.isArray(setCookieHeader)
@@ -147,7 +149,7 @@ const extractCookiePair = (setCookieHeader: string | string[] | undefined): stri
     : setCookieHeader
       ? [setCookieHeader]
       : [];
-  const match = list.find((entry) => entry.startsWith(`${PERSONAL_OAUTH_NONCE_COOKIE}=`));
+  const match = list.find((entry) => entry.startsWith(COOKIE_PREFIX));
   if (!match) return '';
   return match.split(';')[0];
 };
@@ -217,6 +219,7 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
 
   const buildApp = () => {
     const instance = express();
+    instance.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     instance.use(express.urlencoded({ extended: false }));
     instance.use(express.json());
     instance.get('/oauth/authorize', getAuthorize);
@@ -342,7 +345,7 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
     expect(started.res.status).toBe(302);
     expect(started.location!.origin).toBe(UPSTREAM_ISSUER);
     expect(started.location!.pathname).toBe('/authorize');
-    expect(started.cookie).toMatch(new RegExp(`^${PERSONAL_OAUTH_NONCE_COOKIE}=.+`));
+    expect(started.cookie).toMatch(new RegExp(`^${COOKIE_PREFIX}[0-9a-f]+=.+`));
     expect(started.res.headers['set-cookie'].join(';')).toContain('HttpOnly');
     expect(started.res.headers['set-cookie'].join(';')).toContain('SameSite=Lax');
 
@@ -470,9 +473,10 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
     expect(missingCookieRes.status).toBe(400);
     expect(tokenExchangeRequests).toHaveLength(0);
 
+    const bobCookieName = bobStarted.cookie.split('=')[0];
     const wrongCookieRes = await request(app)
       .get('/oauth/callback')
-      .set('Cookie', `${PERSONAL_OAUTH_NONCE_COOKIE}=wrong-nonce`)
+      .set('Cookie', `${bobCookieName}=wrong-nonce`)
       .query({ code: 'attacker-code', state: bobState, iss: UPSTREAM_ISSUER });
     expect(wrongCookieRes.status).toBe(400);
     expect(tokenExchangeRequests).toHaveLength(0);
@@ -546,9 +550,10 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
     expect(brokerFetchSpy).not.toHaveBeenCalled();
 
     // Relay with wrong cookie is rejected BEFORE contacting broker.
+    const relayCookieName = started.cookie.split('=')[0];
     const wrongRelay = await request(app)
       .get('/oauth/relay/ms365')
-      .set('Cookie', `${PERSONAL_OAUTH_NONCE_COOKIE}=tampered`)
+      .set('Cookie', `${relayCookieName}=tampered`)
       .query({ state: upstreamState });
     expect(wrongRelay.status).toBe(400);
     expect(brokerFetchSpy).not.toHaveBeenCalled();
@@ -783,5 +788,64 @@ describe('Personal upstream OAuth continuation during client sign-in (#1475)', (
       'https://hermes.example/callback',
     );
     expect(aggregateRes.location!.searchParams.get('code')).toBeTruthy();
+  });
+
+  it('isolates browser nonce cookies across concurrent sign-in flows for different personal-OAuth servers', async () => {
+    const jiraServer = makeMs365Server({ name: 'jira' });
+    servers = [makeMs365Server(), jiraServer];
+
+    const ms365Started = await startClientAuthorize(aliceJwt, {
+      resource: `${publicInstallBaseUrl}/mcp/ms365`,
+      state: 'hermes-ms365',
+    });
+    const jiraStarted = await startClientAuthorize(aliceJwt, {
+      resource: `${publicInstallBaseUrl}/mcp/jira`,
+      state: 'hermes-jira',
+    });
+
+    expect(ms365Started.res.status).toBe(302);
+    expect(jiraStarted.res.status).toBe(302);
+
+    const ms365CookieName = ms365Started.cookie.split('=')[0];
+    const jiraCookieName = jiraStarted.cookie.split('=')[0];
+    expect(ms365CookieName).not.toBe(jiraCookieName);
+
+    // Same browser holds both per-flow cookies at once.
+    const sharedBrowserCookies = `${ms365Started.cookie}; ${jiraStarted.cookie}`;
+
+    // Complete jira first; its callback must clear only jira's cookie.
+    const jiraCallback = await request(app)
+      .get('/oauth/callback')
+      .set('Cookie', sharedBrowserCookies)
+      .query({
+        code: 'code-jira',
+        state: jiraStarted.location!.searchParams.get('state')!,
+        iss: UPSTREAM_ISSUER,
+      });
+    expect(jiraCallback.status).toBe(302);
+    const jiraRedirect = new URL(jiraCallback.headers.location);
+    expect(jiraRedirect.searchParams.get('state')).toBe('hermes-jira');
+    expect(jiraRedirect.searchParams.get('code')).toBeTruthy();
+    expect(jiraCallback.headers['set-cookie'].join(';')).toContain(`${jiraCookieName}=;`);
+    expect(jiraCallback.headers['set-cookie'].join(';')).not.toContain(`${ms365CookieName}=`);
+
+    // Complete ms365 afterward using the remaining ms365 cookie; must still succeed.
+    const ms365Callback = await request(app)
+      .get('/oauth/callback')
+      .set('Cookie', ms365Started.cookie)
+      .query({
+        code: 'code-ms365',
+        state: ms365Started.location!.searchParams.get('state')!,
+        iss: UPSTREAM_ISSUER,
+      });
+    expect(ms365Callback.status).toBe(302);
+    const ms365Redirect = new URL(ms365Callback.headers.location);
+    expect(ms365Redirect.searchParams.get('state')).toBe('hermes-ms365');
+    expect(ms365Redirect.searchParams.get('code')).toBeTruthy();
+
+    const ms365Ctx = await PersonalOAuthContext.load('ms365', 'alice', servers[0]);
+    const jiraCtx = await PersonalOAuthContext.load('jira', 'alice', servers[1]);
+    expect(ms365Ctx.config.oauth.accessToken).toBe('upstream-token-code-ms365');
+    expect(jiraCtx.config.oauth.accessToken).toBe('upstream-token-code-jira');
   });
 });

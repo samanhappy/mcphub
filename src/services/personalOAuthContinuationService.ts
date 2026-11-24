@@ -10,26 +10,31 @@ import { safeCompare } from '../utils/safeCompare.js';
 import type { ServerConfigWithName } from '../dao/ServerDao.js';
 import type { IOAuthClient, PendingPersonalOAuthContinuation } from '../types/index.js';
 
-export const PERSONAL_OAUTH_NONCE_COOKIE = 'mcphub_personal_oauth_nonce';
+const CONTINUATION_COOKIE_PREFIX = 'mcphub_cb';
+
+export const getBrowserNonceCookieName = (cookieId?: string): string =>
+  cookieId ? `${CONTINUATION_COOKIE_PREFIX}_${cookieId}` : CONTINUATION_COOKIE_PREFIX;
 
 export const hashBrowserNonce = (nonce: string): string =>
   createHash('sha256').update(nonce).digest('hex');
 
-export const createBrowserNonce = (): { nonce: string; hash: string } => {
+export const createBrowserNonce = (): { cookieId: string; nonce: string; hash: string } => {
+  const cookieId = randomBytes(8).toString('hex');
   const nonce = randomBytes(32).toString('base64url');
-  return { nonce, hash: hashBrowserNonce(nonce) };
+  return { cookieId, nonce, hash: hashBrowserNonce(nonce) };
 };
 
-export const readBrowserNonceCookie = (req: Request): string | undefined => {
+export const readBrowserNonceCookie = (req: Request, cookieId?: string): string | undefined => {
   const rawHeader = req.headers?.cookie;
   if (typeof rawHeader !== 'string' || !rawHeader) {
     return undefined;
   }
+  const targetName = getBrowserNonceCookieName(cookieId);
   for (const part of rawHeader.split(';')) {
     const eqIndex = part.indexOf('=');
     if (eqIndex <= 0) continue;
     const name = part.slice(0, eqIndex).trim();
-    if (name !== PERSONAL_OAUTH_NONCE_COOKIE) continue;
+    if (name !== targetName) continue;
     const rawValue = part.slice(eqIndex + 1).trim();
     if (!rawValue) return undefined;
     try {
@@ -45,14 +50,14 @@ export const verifyBrowserNonce = (
   req: Request,
   continuation: PendingPersonalOAuthContinuation,
 ): boolean => {
-  const cookieNonce = readBrowserNonceCookie(req);
+  const cookieNonce = readBrowserNonceCookie(req, continuation.browserCookieId);
   if (!cookieNonce || !continuation.browserNonceHash) {
     return false;
   }
   return safeCompare(hashBrowserNonce(cookieNonce), continuation.browserNonceHash);
 };
 
-const getOAuthCookiePath = (): string => {
+const getContinuationCookiePath = (): string => {
   const basePath = normalizeBasePath(process.env.BASE_PATH);
   return `${basePath}/oauth`;
 };
@@ -81,11 +86,13 @@ export const setBrowserNonceCookie = (
   req: Request,
   res: Response,
   nonce: string,
+  cookieId?: string,
   maxAgeSeconds: number = Math.floor(PERSONAL_OAUTH_FLOW_TTL_MS / 1000),
 ): void => {
+  const cookieName = getBrowserNonceCookieName(cookieId);
   const attributes = [
-    `${PERSONAL_OAUTH_NONCE_COOKIE}=${encodeURIComponent(nonce)}`,
-    `Path=${getOAuthCookiePath()}`,
+    `${cookieName}=${encodeURIComponent(nonce)}`,
+    `Path=${getContinuationCookiePath()}`,
     `Max-Age=${maxAgeSeconds}`,
     'HttpOnly',
     'SameSite=Lax',
@@ -96,10 +103,11 @@ export const setBrowserNonceCookie = (
   appendSetCookieHeader(res, attributes.join('; '));
 };
 
-export const clearBrowserNonceCookie = (req: Request, res: Response): void => {
+export const clearBrowserNonceCookie = (req: Request, res: Response, cookieId?: string): void => {
+  const cookieName = getBrowserNonceCookieName(cookieId);
   const attributes = [
-    `${PERSONAL_OAUTH_NONCE_COOKIE}=`,
-    `Path=${getOAuthCookiePath()}`,
+    `${cookieName}=`,
+    `Path=${getContinuationCookiePath()}`,
     'Max-Age=0',
     'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
     'HttpOnly',
