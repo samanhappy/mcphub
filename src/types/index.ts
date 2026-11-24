@@ -577,6 +577,26 @@ export interface StoredCredentialBinding {
 }
 
 // Configuration details for an individual server
+export interface PendingPersonalOAuthContinuation {
+  clientId: string;
+  redirectUri: string;
+  responseType: string;
+  scope?: string;
+  state?: string;
+  resource: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
+  username: string;
+  sessionVersion: string;
+  approvalId?: string;
+  approvalContext?: {
+    redirectUri: string;
+    resource: string;
+  };
+  browserNonceHash: string;
+  expiresAt: number;
+}
+
 export interface ServerConfig {
   id?: string; // Stable policy identity; runtime routing remains name-based.
   credentialTemplate?: CredentialSlot[]; // Metadata only; every slot requires a personal binding.
@@ -684,6 +704,7 @@ export interface ServerConfig {
       codeVerifier?: string;
       discoveryState?: OAuthDiscoveryState;
       createdAt?: number;
+      clientContinuation?: PendingPersonalOAuthContinuation;
     };
   };
   perSessionClient?: boolean; // Dedicated upstream client per legacy session or explicit modern client state

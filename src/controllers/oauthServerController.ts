@@ -1,5 +1,9 @@
-import { findReusableApproval, resolveConsentScopes } from '../services/oauthApprovalService.js';
-import { getUserSessionVersion, resolveJwtUser } from '../utils/userSession.js';
+import {
+  findReusableApproval,
+  isApprovalGrantValid,
+  resolveConsentScopes,
+} from '../services/oauthApprovalService.js';
+import { getUserSessionVersion, resolveJwtUser, resolveUserSession } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import {
   getOAuthServer,
@@ -22,6 +26,18 @@ import {
   type ConsentClientInfo,
 } from '../utils/frontendShell.js';
 import { parseResourceTarget, type ResourceTarget } from '../utils/oauthConsentResource.js';
+import {
+  PersonalOAuthContext,
+  PERSONAL_OAUTH_FLOW_TTL_MS,
+  hasUsablePersonalOAuthGrant,
+} from '../services/personalOAuthService.js';
+import {
+  buildClientErrorRedirectUrl,
+  createBrowserNonce,
+  resolveSingleServerPersonalOAuthTarget,
+  setBrowserNonceCookie,
+} from '../services/personalOAuthContinuationService.js';
+import type { PendingPersonalOAuthContinuation } from '../types/index.js';
 
 const { Request: OAuth2Request, Response: OAuth2Response } = OAuth2Server;
 
@@ -29,6 +45,12 @@ type AuthenticatedUser = {
   username: string;
   isAdmin?: boolean;
   sessionVersion?: string;
+  credentialEligible?: boolean;
+};
+
+type AuthorizeUser = AuthenticatedUser & {
+  approvalId?: string;
+  approvalContext?: { redirectUri: string; resource: string };
 };
 
 /**
@@ -154,7 +176,7 @@ async function validateClientRedirectUri(
  * resolution chain as the RFC 8414 metadata endpoint (`issuer` field) so
  * clients validating `iss` compare against a value they can discover.
  */
-async function resolveIssuer(req: Request): Promise<string | undefined> {
+export async function resolveIssuer(req: Request): Promise<string | undefined> {
   try {
     const systemConfig = await getSystemConfigDao().get();
     return getPublicInstallBaseUrl(req, systemConfig);
@@ -308,31 +330,173 @@ async function resolveResourceTarget(raw: string | undefined): Promise<ResourceT
   }
 }
 
-/**
- * GET /oauth/authorize
- * Display authorization page or handle authorization
- */
-async function authorizeAndRedirect(
+type ValidatedContinuationRequest =
+  | {
+      valid: true;
+      clientId: string;
+      responseType: string;
+      scope?: string;
+      state?: string;
+      codeChallenge?: string;
+      codeChallengeMethod?: string;
+      resource: string;
+      sessionVersion: string;
+    }
+  | {
+      valid: false;
+      error: string;
+      errorDescription: string;
+    };
+
+async function validateClientRequestForContinuation(
+  params: Record<string, unknown> | undefined,
+  user: AuthorizeUser,
+  redirectUri: string,
+  state?: string,
+): Promise<ValidatedContinuationRequest> {
+  const rawClientId = params?.client_id;
+  if (typeof rawClientId !== 'string' || !rawClientId) {
+    return { valid: false, error: 'invalid_request', errorDescription: 'Missing client_id' };
+  }
+  const clientId = isCimdClientId(rawClientId)
+    ? rawClientId
+    : /^[a-zA-Z0-9_-]+$/.test(rawClientId)
+      ? rawClientId
+      : '';
+  if (!clientId) {
+    return { valid: false, error: 'invalid_request', errorDescription: 'Invalid client_id' };
+  }
+
+  const responseType = typeof params?.response_type === 'string' ? params.response_type : '';
+  if (responseType !== 'code') {
+    return {
+      valid: false,
+      error: 'unsupported_response_type',
+      errorDescription: 'Unsupported response_type',
+    };
+  }
+
+  const rawResource = typeof params?.resource === 'string' ? params.resource : '';
+  if (!rawResource) {
+    return { valid: false, error: 'invalid_request', errorDescription: 'Missing resource' };
+  }
+
+  const rawScope =
+    typeof params?.scope === 'string' && params.scope !== '' ? params.scope : undefined;
+  if (rawScope && !/^[\x21\x23-\x5B\x5D-\x7E ]+$/.test(rawScope)) {
+    return { valid: false, error: 'invalid_scope', errorDescription: 'Invalid scope format' };
+  }
+
+  if (state !== undefined && state !== '' && !/^[\x20-\x7E]+$/.test(state)) {
+    return { valid: false, error: 'invalid_request', errorDescription: 'Invalid state format' };
+  }
+
+  const codeChallenge =
+    typeof params?.code_challenge === 'string' && params.code_challenge !== ''
+      ? params.code_challenge
+      : undefined;
+  const codeChallengeMethod =
+    typeof params?.code_challenge_method === 'string' && params.code_challenge_method !== ''
+      ? params.code_challenge_method
+      : undefined;
+
+  if (codeChallenge && !/^[a-zA-Z0-9_\-=]+$/.test(codeChallenge)) {
+    return {
+      valid: false,
+      error: 'invalid_request',
+      errorDescription: 'Invalid code_challenge format',
+    };
+  }
+  if (codeChallengeMethod && !codeChallenge) {
+    return {
+      valid: false,
+      error: 'invalid_request',
+      errorDescription: 'Missing code_challenge',
+    };
+  }
+  if (codeChallenge && codeChallengeMethod !== 'S256') {
+    return {
+      valid: false,
+      error: 'invalid_request',
+      errorDescription: 'PKCE code_challenge_method must be S256',
+    };
+  }
+
+  const client = await findOAuthClientIncludingCimd(clientId);
+  if (!client || !client.redirectUris.includes(redirectUri)) {
+    return { valid: false, error: 'invalid_client', errorDescription: 'Invalid client' };
+  }
+  if (Array.isArray(client.grants) && !client.grants.includes('authorization_code')) {
+    return {
+      valid: false,
+      error: 'unauthorized_client',
+      errorDescription: 'Client is not authorized for authorization_code grant',
+    };
+  }
+  if (!client.clientSecret && (!codeChallenge || codeChallengeMethod !== 'S256')) {
+    return {
+      valid: false,
+      error: 'invalid_request',
+      errorDescription: 'PKCE with code_challenge_method=S256 is required for public clients',
+    };
+  }
+
+  const oauthConfig = (await getSystemConfigDao().get())?.oauthServer;
+  if (oauthConfig?.requireState === true && !state) {
+    return {
+      valid: false,
+      error: 'invalid_request',
+      errorDescription: 'Missing parameter: `state`',
+    };
+  }
+
+  const allowedScopes = oauthConfig?.allowedScopes || ['read', 'write'];
+  if (resolveConsentScopes(rawScope, allowedScopes).length === 0) {
+    return { valid: false, error: 'invalid_scope', errorDescription: 'Invalid scope' };
+  }
+
+  const currentUser = await resolveUserSession(user);
+  if (!currentUser || !user.sessionVersion) {
+    return { valid: false, error: 'invalid_grant', errorDescription: 'User no longer exists' };
+  }
+  const sessionVersion = user.sessionVersion;
+
+  if (
+    user.approvalId &&
+    !(await isApprovalGrantValid(
+      { ...user, username: user.username, sessionVersion },
+      client.clientId,
+    ))
+  ) {
+    return { valid: false, error: 'invalid_grant', errorDescription: 'Consent has been revoked' };
+  }
+
+  return {
+    valid: true,
+    clientId,
+    responseType,
+    scope: rawScope,
+    state: state || undefined,
+    codeChallenge,
+    codeChallengeMethod,
+    resource: rawResource,
+    sessionVersion,
+  };
+}
+
+async function executeOAuthAuthorizeAndRedirect(
   req: Request,
   res: Response,
-  user: AuthenticatedUser & {
-    approvalId?: string;
-    approvalContext?: { redirectUri: string; resource: string };
-  },
+  oauth: OAuth2Server,
+  oauthRequest: OAuth2Server.Request,
+  oauthResponse: OAuth2Server.Response,
+  user: AuthorizeUser,
   redirectUri: string,
   state?: string,
 ): Promise<void> {
-  const oauth = getOAuthServer()!;
-  const request = new OAuth2Request(req);
-  // Both shells submit an empty scope for the configured default permissions.
-  request.query = { ...request.query };
-  request.body = { ...request.body };
-  if (request.query.scope === '') delete request.query.scope;
-  if (request.body.scope === '') delete request.body.scope;
-  const response = new OAuth2Response(res);
   let code;
   try {
-    code = await oauth.authorize(request, response, {
+    code = await oauth.authorize(oauthRequest, oauthResponse, {
       authenticateHandler: { handle: async () => user },
     });
   } catch (error) {
@@ -353,6 +517,177 @@ async function authorizeAndRedirect(
   setIssuerParam(redirectUrl, await resolveIssuer(req));
   if (state) redirectUrl.searchParams.set('state', state);
   res.redirect(redirectUrl.toString());
+}
+
+/**
+ * Issue the MCPHub authorization code after a personal upstream OAuth
+ * continuation finishes and all revalidation checks pass.
+ */
+export async function issueAuthorizationCodeForContinuation(
+  req: Request,
+  res: Response,
+  continuation: PendingPersonalOAuthContinuation,
+  user: AuthenticatedUser,
+): Promise<boolean> {
+  const oauth = getOAuthServer();
+  if (!oauth) {
+    return false;
+  }
+
+  const syntheticBody: Record<string, string> = {
+    client_id: continuation.clientId,
+    redirect_uri: continuation.redirectUri,
+    response_type: continuation.responseType,
+    resource: continuation.resource,
+  };
+  if (continuation.scope) syntheticBody.scope = continuation.scope;
+  if (continuation.state) syntheticBody.state = continuation.state;
+  if (continuation.codeChallenge) syntheticBody.code_challenge = continuation.codeChallenge;
+  if (continuation.codeChallengeMethod) {
+    syntheticBody.code_challenge_method = continuation.codeChallengeMethod;
+  }
+
+  const oauthRequest = new OAuth2Request({
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    method: 'POST',
+    query: {},
+    body: syntheticBody,
+  });
+  const oauthResponse = new OAuth2Response(res);
+
+  await executeOAuthAuthorizeAndRedirect(
+    req,
+    res,
+    oauth,
+    oauthRequest,
+    oauthResponse,
+    {
+      username: user.username,
+      isAdmin: user.isAdmin,
+      sessionVersion: continuation.sessionVersion,
+      ...(continuation.approvalId ? { approvalId: continuation.approvalId } : {}),
+      ...(continuation.approvalContext ? { approvalContext: continuation.approvalContext } : {}),
+    },
+    continuation.redirectUri,
+    continuation.state,
+  );
+  return true;
+}
+
+/**
+ * GET /oauth/authorize
+ * Display authorization page or handle authorization
+ */
+async function authorizeAndRedirect(
+  req: Request,
+  res: Response,
+  user: AuthorizeUser,
+  redirectUri: string,
+  state?: string,
+): Promise<void> {
+  const oauth = getOAuthServer()!;
+  const params = (req.method === 'GET' ? req.query : req.body) as
+    | Record<string, unknown>
+    | undefined;
+  const rawResource = typeof params?.resource === 'string' ? params.resource : undefined;
+
+  const personalServer = await resolveSingleServerPersonalOAuthTarget(rawResource, user);
+  if (personalServer) {
+    const existingContext = await PersonalOAuthContext.load(
+      personalServer.name,
+      user.username,
+      personalServer,
+    );
+    if (!hasUsablePersonalOAuthGrant(existingContext)) {
+      const validation = await validateClientRequestForContinuation(
+        params,
+        user,
+        redirectUri,
+        state,
+      );
+      if (!validation.valid) {
+        res.redirect(
+          buildClientErrorRedirectUrl(redirectUri, validation.error, {
+            errorDescription: validation.errorDescription,
+            state: state || undefined,
+            issuer: await resolveIssuer(req),
+          }),
+        );
+        return;
+      }
+
+      const { cookieId, nonce, hash } = createBrowserNonce();
+      const clientContinuation: PendingPersonalOAuthContinuation = {
+        clientId: validation.clientId,
+        redirectUri,
+        responseType: validation.responseType,
+        ...(validation.scope ? { scope: validation.scope } : {}),
+        ...(validation.state ? { state: validation.state } : {}),
+        resource: validation.resource,
+        ...(validation.codeChallenge ? { codeChallenge: validation.codeChallenge } : {}),
+        ...(validation.codeChallengeMethod
+          ? { codeChallengeMethod: validation.codeChallengeMethod }
+          : {}),
+        username: user.username,
+        sessionVersion: validation.sessionVersion,
+        ...(user.approvalId ? { approvalId: user.approvalId } : {}),
+        ...(user.approvalContext ? { approvalContext: user.approvalContext } : {}),
+        browserNonceHash: hash,
+        expiresAt: Date.now() + PERSONAL_OAUTH_FLOW_TTL_MS,
+      };
+
+      try {
+        const { startPersonalOAuthFlow } = await import('../services/personalOAuthFlowService.js');
+        const started = await startPersonalOAuthFlow(personalServer, user.username, {
+          preserveUsableGrant: true,
+          clientContinuation,
+        });
+        if (!started.alreadyConnected) {
+          if (!started.authorizationUrl) {
+            throw new Error('Missing upstream authorization URL');
+          }
+          setBrowserNonceCookie(req, res, nonce, cookieId);
+          res.redirect(started.authorizationUrl);
+          return;
+        }
+      } catch (error) {
+        const cause = error instanceof Error && 'cause' in error ? error.cause : undefined;
+        logger.error('Failed to start personal upstream OAuth continuation:', {
+          serverName: personalServer.name,
+          username: user.username,
+          error,
+          ...(cause !== undefined ? { cause } : {}),
+        });
+        res.redirect(
+          buildClientErrorRedirectUrl(redirectUri, 'temporarily_unavailable', {
+            errorDescription: 'Unable to prepare personal authorization',
+            state: validation.state,
+            issuer: await resolveIssuer(req),
+          }),
+        );
+        return;
+      }
+    }
+  }
+
+  const request = new OAuth2Request(req);
+  // Both shells submit an empty scope for the configured default permissions.
+  request.query = { ...request.query };
+  request.body = { ...request.body };
+  if (request.query.scope === '') delete request.query.scope;
+  if (request.body.scope === '') delete request.body.scope;
+  const response = new OAuth2Response(res);
+
+  await executeOAuthAuthorizeAndRedirect(
+    req,
+    res,
+    oauth,
+    request,
+    response,
+    user,
+    redirectUri,
+    state,
+  );
 }
 
 export const getAuthorize = async (req: Request, res: Response): Promise<void> => {

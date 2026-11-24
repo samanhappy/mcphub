@@ -61,48 +61,61 @@ export default function PersonalOAuthControls({
   const label = t(
     !enabled ? 'server.disable' : connected ? 'status.online' : 'status.oauthRequired',
   );
-  const buttonClass = 'hub-btn whitespace-nowrap';
+  const kind = !enabled ? 'muted' : connected ? 'ok' : 'warn';
+  const triggerClass = `hub-status ${kind} hub-server-card-status hub-personal-oauth-trigger${
+    kind === 'warn' ? ' hub-personal-oauth-action' : ''
+  }`;
   const menuClass =
-    'block w-full px-2.5 py-1.5 text-[13px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left whitespace-nowrap';
+    'block w-full px-2.5 py-1.5 text-[12px] rounded-md hover:bg-[var(--hub-surface-hover)] text-left whitespace-nowrap';
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative w-full min-w-0" onClick={(e) => e.stopPropagation()}>
       {connected ? (
-        <details>
-          <summary className={`${buttonClass} cursor-pointer list-none`}>
-            {label}
-            <ChevronDown size={12} />
+        <details className="w-full min-w-0">
+          <summary className={`${triggerClass} cursor-pointer list-none`} title={label}>
+            <span className="hub-dot" />
+            <span className="hub-status-label">{label}</span>
+            <ChevronDown size={11} className="shrink-0 opacity-70" />
           </summary>
-          <div className="absolute left-0 top-full mt-1 z-20 hub-card p-1">
+          <div className="absolute left-0 top-full mt-1 z-20 hub-card p-1 min-w-[136px] shadow-md">
             <button
+              type="button"
               className={menuClass}
               disabled={busy || !enabled}
               onClick={() => void act(false)}
             >
               {t('server.oauth.personalReconnect')}
             </button>
-            <button className={menuClass} disabled={busy} onClick={() => void act(true)}>
+            <button
+              type="button"
+              className={menuClass}
+              disabled={busy}
+              onClick={() => void act(true)}
+            >
               {t('server.oauth.personalDisconnect')}
             </button>
           </div>
         </details>
       ) : authorizationUrl && enabled ? (
         <a
-          className={buttonClass}
+          className={`${triggerClass} cursor-pointer`}
           title={t('status.clickToAuthorize')}
           href={authorizationUrl}
           target="_blank"
           rel="noopener noreferrer"
         >
-          {label}
+          <span className="hub-dot" />
+          <span className="hub-status-label">{label}</span>
         </a>
       ) : (
         <button
-          className={buttonClass}
+          type="button"
+          className={`${triggerClass}${busy || !enabled ? '' : ' cursor-pointer'}`}
           disabled={busy || !enabled}
-          title={t('server.oauth.personalConnect')}
+          title={enabled ? t('server.oauth.personalConnect') : label}
           onClick={() => void act(false)}
         >
-          {label}
+          <span className="hub-dot" />
+          <span className="hub-status-label">{label}</span>
         </button>
       )}
     </div>

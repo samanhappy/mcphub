@@ -50,6 +50,29 @@ describe('parseResourceTarget', () => {
     });
   });
 
+  it('maps /sse/{name}, user-scoped targets, and BASE_PATH-prefixed targets', () => {
+    const oldBase = process.env.BASE_PATH;
+    process.env.BASE_PATH = '/hub';
+    try {
+      expect(parseResourceTarget('https://mcphub.example.com/hub/mcp/ms365')).toMatchObject({
+        kind: 'target',
+        name: 'ms365',
+      });
+      expect(parseResourceTarget('https://mcphub.example.com/hub/sse/ms365')).toMatchObject({
+        kind: 'target',
+        name: 'ms365',
+      });
+      expect(parseResourceTarget('https://mcphub.example.com/hub/alice/mcp/ms365')).toMatchObject({
+        kind: 'target',
+        name: 'ms365',
+        user: 'alice',
+      });
+    } finally {
+      if (oldBase === undefined) delete process.env.BASE_PATH;
+      else process.env.BASE_PATH = oldBase;
+    }
+  });
+
   it('surfaces unrecognized URIs as unknown rather than throwing', () => {
     expect(parseResourceTarget('not a url')).toMatchObject({ kind: 'unknown' });
     expect(parseResourceTarget('https://example.com/something/else')).toMatchObject({

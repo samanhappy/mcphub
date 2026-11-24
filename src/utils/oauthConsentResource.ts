@@ -17,6 +17,8 @@ export interface ResourceTarget {
   kind: ResourceTargetKind;
   /** Target name for `/mcp/{name}` resources (e.g. a server or group name). */
   name?: string;
+  /** Optional user prefix for `/{user}/mcp/{name}` resources. */
+  user?: string;
 }
 
 /**
@@ -64,7 +66,7 @@ export function parseResourceTarget(raw: string): ResourceTarget {
     return { raw, path: clean, kind: 'smart' };
   }
 
-  const mcpMatch = clean.match(/^\/mcp\/([^/]+)$/);
+  const mcpMatch = routePath.match(/^\/(?:mcp|sse)\/([^/]+)$/);
   if (mcpMatch) {
     let name = mcpMatch[1];
     try {
@@ -73,6 +75,23 @@ export function parseResourceTarget(raw: string): ResourceTarget {
       // Leave the raw name as-is if it is not valid percent-encoding.
     }
     return { raw, path: clean, kind: 'target', name };
+  }
+
+  const scopedMatch = routePath.match(/^\/([^/]+)\/(?:mcp|sse)\/([^/]+)$/);
+  if (scopedMatch) {
+    let user = scopedMatch[1];
+    let name = scopedMatch[2];
+    try {
+      user = decodeURIComponent(user);
+    } catch {
+      // Leave raw user segment unchanged if not valid percent-encoding.
+    }
+    try {
+      name = decodeURIComponent(name);
+    } catch {
+      // Leave the raw name as-is if it is not valid percent-encoding.
+    }
+    return { raw, path: clean, kind: 'target', name, user };
   }
 
   return { raw, path: clean, kind: 'unknown' };

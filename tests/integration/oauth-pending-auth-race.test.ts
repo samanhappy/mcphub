@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import { withOAuthPendingAuthLock } from '../../src/services/replicaLock.js';
 import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
@@ -167,6 +168,7 @@ describe('concurrent connect() calls', () => {
     await expect(loser.codeVerifier()).rejects.toThrow('superseded');
 
     const app = express();
+    app.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     app.get('/oauth/callback', (req, res) => {
       void handleOAuthCallback(req, res);
     });
@@ -246,6 +248,7 @@ describe('callback waiting on the OAuth lock', () => {
     syncServerInfo();
 
     const app = express();
+    app.use(rateLimit({ windowMs: 60_000, limit: 1000 }));
     app.get('/oauth/callback', (req, res) => {
       void handleOAuthCallback(req, res);
     });
