@@ -1,0 +1,28 @@
+frontend/src/components/MarketServerCard.tsx
+  s_d9efec554eec92::t_176fc03bc827c8 48,82,98
+  s_d9efec554eec92::t_0393e36eb110fe 61
+frontend/src/components/RegistryServerCard.tsx
+  s_d9efec554eec92::t_176fc03bc827c8 67,81
+frontend/src/index.css
+  s_d9efec554eec92::t_176fc03bc827c8 118-149
+frontend/src/components/ui/Pagination.tsx
+  s_d9efec554eec92::t_4d5ff90d0c8a4d 9,16-17,92,114
+frontend/src/pages/HostedMarket.tsx
+  s_d9efec554eec92::t_4d5ff90d0c8a4d 15,21,506-508,514,610-613,650-687
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbe64d0edddf5ffc773e9edafd254858de9f23ec",
+  "prompts": {},
+  "sessions": {
+    "s_d9efec554eec92": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d16-a3bb-76f2-ac42-097e56db4c3a",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
