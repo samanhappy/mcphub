@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RegistryServerEntry,
@@ -7,18 +7,38 @@ import {
   RegistryServerVersionsResponse,
 } from '@/types';
 import { apiGet } from '../utils/fetchInterceptor';
+import {
+  getInitialMarketPerPage,
+  normalizeMarketPerPage,
+  saveMarketPerPage,
+} from '../utils/marketPagination';
 
-export const useRegistryData = () => {
+interface UseRegistryDataOptions {
+  serversPerPage?: number;
+  active?: boolean;
+}
+
+export const useRegistryData = (options?: UseRegistryDataOptions) => {
   const { t } = useTranslation();
+  const active = options?.active ?? true;
+  const externalServersPerPage = options?.serversPerPage;
+
   const [servers, setServers] = useState<RegistryServerEntry[]>([]);
   const [allServers, setAllServers] = useState<RegistryServerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const searchQueryRef = useRef(searchQuery);
 
   // Cursor-based pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [serversPerPage, setServersPerPage] = useState(9);
+  const [serversPerPage, setServersPerPage] = useState(() =>
+    externalServersPerPage !== undefined
+      ? normalizeMarketPerPage(externalServersPerPage)
+      : getInitialMarketPerPage(),
+  );
+  const serversPerPageRef = useRef(serversPerPage);
+  const lastFetchedLimitRef = useRef<number | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
@@ -26,18 +46,24 @@ export const useRegistryData = () => {
 
   // Fetch registry servers with cursor-based pagination
   const fetchRegistryServers = useCallback(
-    async (cursor?: string, search?: string) => {
+    async (cursor?: string, search?: string, limitOverride?: number) => {
+      const limit =
+        limitOverride !== undefined
+          ? normalizeMarketPerPage(limitOverride)
+          : serversPerPageRef.current;
+
       try {
+        lastFetchedLimitRef.current = limit;
         setLoading(true);
         setError(null);
 
         // Build query parameters
         const params = new URLSearchParams();
-        params.append('limit', serversPerPage.toString());
+        params.append('limit', limit.toString());
         if (cursor) {
           params.append('cursor', cursor);
         }
-        const queryToUse = search !== undefined ? search : searchQuery;
+        const queryToUse = search !== undefined ? search : searchQueryRef.current;
         if (queryToUse.trim()) {
           params.append('search', queryToUse.trim());
         }
@@ -49,7 +75,7 @@ export const useRegistryData = () => {
           if (data.servers && Array.isArray(data.servers)) {
             setServers(data.servers);
             // Update pagination state
-            const hasMore = data.metadata.count === serversPerPage && !!data.metadata.nextCursor;
+            const hasMore = data.metadata.count === limit && !!data.metadata.nextCursor;
             setHasNextPage(hasMore);
             setNextCursor(data.metadata.nextCursor || null);
 
@@ -62,21 +88,24 @@ export const useRegistryData = () => {
               setAllServers((prev) => [...prev, ...data.servers]);
             }
           } else {
+            lastFetchedLimitRef.current = null;
             console.error('Invalid registry servers data format', { data });
             setError(t('registry.fetchError'));
           }
         } else {
+          lastFetchedLimitRef.current = null;
           setError(t('registry.fetchError'));
         }
       } catch (err) {
-          console.error('Error fetching registry servers', { cursor, search, err });
+        lastFetchedLimitRef.current = null;
+        console.error('Error fetching registry servers', { cursor, search, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
       } finally {
         setLoading(false);
       }
     },
-    [t, serversPerPage],
+    [t],
   );
 
   // Navigate to next page
@@ -124,13 +153,15 @@ export const useRegistryData = () => {
   // Change items per page
   const changeServersPerPage = useCallback(
     async (newServersPerPage: number) => {
-      setServersPerPage(newServersPerPage);
+      const normalizedPerPage = saveMarketPerPage(newServersPerPage);
+      serversPerPageRef.current = normalizedPerPage;
+      setServersPerPage(normalizedPerPage);
       setCurrentPage(1);
       setCursorHistory([]);
       setAllServers([]);
-      await fetchRegistryServers(undefined, searchQuery);
+      await fetchRegistryServers(undefined, searchQueryRef.current, normalizedPerPage);
     },
-    [searchQuery, fetchRegistryServers],
+    [fetchRegistryServers],
   );
 
   // Fetch server by name
@@ -231,6 +262,7 @@ export const useRegistryData = () => {
   const searchServers = useCallback(
     async (query: string) => {
       console.log('Searching registry servers', { query });
+      searchQueryRef.current = query;
       setSearchQuery(query);
       setCurrentPage(1);
       setCursorHistory([]);
@@ -243,6 +275,7 @@ export const useRegistryData = () => {
 
   // Clear search
   const clearSearch = useCallback(async () => {
+    searchQueryRef.current = '';
     setSearchQuery('');
     setCurrentPage(1);
     setCursorHistory([]);
@@ -250,11 +283,29 @@ export const useRegistryData = () => {
     await fetchRegistryServers(undefined, '');
   }, [fetchRegistryServers]);
 
-  // Initial fetch
+  // Fetch on activation and re-fetch if the shared page size changed while inactive
   useEffect(() => {
-    fetchRegistryServers(undefined, searchQuery);
-    // Only run on mount
-  }, []);
+    const targetPerPage =
+      externalServersPerPage !== undefined
+        ? normalizeMarketPerPage(externalServersPerPage)
+        : serversPerPageRef.current;
+
+    if (targetPerPage !== serversPerPageRef.current) {
+      serversPerPageRef.current = targetPerPage;
+      setServersPerPage(targetPerPage);
+    }
+
+    if (!active) {
+      return;
+    }
+
+    if (lastFetchedLimitRef.current !== targetPerPage) {
+      setCurrentPage(1);
+      setCursorHistory([]);
+      setAllServers([]);
+      void fetchRegistryServers(undefined, searchQueryRef.current, targetPerPage);
+    }
+  }, [active, externalServersPerPage, fetchRegistryServers]);
 
   return {
     servers,

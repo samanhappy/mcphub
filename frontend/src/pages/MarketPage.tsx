@@ -12,6 +12,11 @@ import { useMarketData } from '@/hooks/useMarketData';
 import { useRegistryData } from '@/hooks/useRegistryData';
 import { useToast } from '@/contexts/ToastContext';
 import { apiPost } from '@/utils/fetchInterceptor';
+import {
+  getInitialMarketPerPage,
+  MARKET_PAGE_SIZE_OPTIONS,
+  saveMarketPerPage,
+} from '@/utils/marketPagination';
 import { slugifyServerName } from '@/utils/serverName';
 import MarketServerCard from '@/components/MarketServerCard';
 import MarketServerDetail from '@/components/MarketServerDetail';
@@ -32,6 +37,9 @@ const LegacyMarket: React.FC = () => {
   // The cloud (MCPRouter) tab is hidden; only 'local' and 'registry' remain.
   const currentTab: 'local' | 'registry' =
     searchParams.get('tab') === 'registry' ? 'registry' : 'local';
+  const isLocalTab = currentTab === 'local';
+  const isRegistryTab = currentTab === 'registry';
+  const [sharedServersPerPage, setSharedServersPerPage] = useState(getInitialMarketPerPage);
 
   const {
     servers: localServers,
@@ -53,7 +61,7 @@ const LegacyMarket: React.FC = () => {
     changePage: changeLocalPage,
     serversPerPage: localServersPerPage,
     changeServersPerPage: changeLocalServersPerPage,
-  } = useMarketData();
+  } = useMarketData(sharedServersPerPage);
 
   const {
     servers: registryServers,
@@ -74,7 +82,10 @@ const LegacyMarket: React.FC = () => {
     goToPreviousPage: goToRegistryPreviousPage,
     serversPerPage: registryServersPerPage,
     changeServersPerPage: changeRegistryServersPerPage,
-  } = useRegistryData();
+  } = useRegistryData({
+    serversPerPage: sharedServersPerPage,
+    active: isRegistryTab && !serverName,
+  });
 
   const [selectedServer, setSelectedServer] = useState<MarketServer | null>(null);
   const [selectedRegistryServer, setSelectedRegistryServer] = useState<RegistryServerEntry | null>(
@@ -177,9 +188,10 @@ const LegacyMarket: React.FC = () => {
   };
 
   const handleChangeItemsPerPage = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const v = parseInt(e.target.value, 10);
-    if (currentTab === 'local') changeLocalServersPerPage(v);
-    else changeRegistryServersPerPage(v);
+    const nextPerPage = saveMarketPerPage(parseInt(e.target.value, 10));
+    setSharedServersPerPage(nextPerPage);
+    if (isLocalTab) changeLocalServersPerPage(nextPerPage);
+    else changeRegistryServersPerPage(nextPerPage);
   };
 
   if (selectedServer) {
@@ -207,8 +219,6 @@ const LegacyMarket: React.FC = () => {
     );
   }
 
-  const isLocalTab = currentTab === 'local';
-  const isRegistryTab = currentTab === 'registry';
   const servers = isLocalTab ? localServers : registryServers;
   const allServers = isLocalTab ? allLocalServers : allRegistryServers;
   const categories = isLocalTab ? localCategories : [];
@@ -356,10 +366,11 @@ const LegacyMarket: React.FC = () => {
                       className="hub-input pr-7"
                       style={{ height: 26, width: 70, padding: '0 6px', fontSize: 12 }}
                     >
-                      <option value="6">6</option>
-                      <option value="9">9</option>
-                      <option value="12">12</option>
-                      <option value="24">24</option>
+                      {MARKET_PAGE_SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDown
                       size={11}

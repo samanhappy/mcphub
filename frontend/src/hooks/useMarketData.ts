@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarketServer, ApiResponse, ServerConfig } from '@/types';
 import { apiGet, apiPost } from '../utils/fetchInterceptor';
+import {
+  getInitialMarketPerPage,
+  normalizeMarketPerPage,
+  saveMarketPerPage,
+} from '../utils/marketPagination';
 
-export const useMarketData = () => {
+export const useMarketData = (externalServersPerPage?: number) => {
   const { t } = useTranslation();
   const [servers, setServers] = useState<MarketServer[]>([]);
   const [allServers, setAllServers] = useState<MarketServer[]>([]);
@@ -19,34 +24,17 @@ export const useMarketData = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [serversPerPage, setServersPerPage] = useState(9);
+  const [serversPerPage, setServersPerPage] = useState(() =>
+    externalServersPerPage !== undefined
+      ? normalizeMarketPerPage(externalServersPerPage)
+      : getInitialMarketPerPage(),
+  );
+  const serversPerPageRef = useRef(serversPerPage);
   const [totalPages, setTotalPages] = useState(1);
-
-  // Fetch all market servers
-  const fetchMarketServers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data: ApiResponse<MarketServer[]> = await apiGet('/market/servers');
-
-      if (data && data.success && Array.isArray(data.data)) {
-        setAllServers(data.data);
-        // Apply pagination to the fetched data
-        applyPagination(data.data, currentPage);
-      } else {
-        console.error('Invalid market servers data format', { data });
-        setError(t('market.fetchError'));
-      }
-    } catch (err) {
-      console.error('Error fetching market servers', { err });
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
 
   // Apply pagination to data
   const applyPagination = useCallback(
-    (data: MarketServer[], page: number, itemsPerPage = serversPerPage) => {
+    (data: MarketServer[], page: number, itemsPerPage = serversPerPageRef.current) => {
       const totalItems = data.length;
       const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
       setTotalPages(calculatedTotalPages);
@@ -61,8 +49,31 @@ export const useMarketData = () => {
       const paginatedServers = data.slice(startIndex, startIndex + itemsPerPage);
       setServers(paginatedServers);
     },
-    [serversPerPage],
+    [],
   );
+
+  // Fetch all market servers
+  const fetchMarketServers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data: ApiResponse<MarketServer[]> = await apiGet('/market/servers');
+
+      if (data && data.success && Array.isArray(data.data)) {
+        setAllServers(data.data);
+        setCurrentPage(1);
+        // Apply pagination to the fetched data
+        applyPagination(data.data, 1);
+      } else {
+        console.error('Invalid market servers data format', { data });
+        setError(t('market.fetchError'));
+      }
+    } catch (err) {
+      console.error('Error fetching market servers', { err });
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [t, applyPagination]);
 
   // Change page
   const changePage = useCallback(
@@ -312,12 +323,31 @@ export const useMarketData = () => {
   // Change servers per page
   const changeServersPerPage = useCallback(
     (perPage: number) => {
-      setServersPerPage(perPage);
+      const normalizedPerPage = saveMarketPerPage(perPage);
+      serversPerPageRef.current = normalizedPerPage;
+      setServersPerPage(normalizedPerPage);
       setCurrentPage(1);
-      applyPagination(allServers, 1, perPage);
+      applyPagination(allServers, 1, normalizedPerPage);
     },
     [allServers, applyPagination],
   );
+
+  // Keep page size in sync when controlled by a shared preference across tabs
+  useEffect(() => {
+    if (externalServersPerPage === undefined) {
+      return;
+    }
+
+    const normalizedPerPage = normalizeMarketPerPage(externalServersPerPage);
+    if (normalizedPerPage === serversPerPageRef.current) {
+      return;
+    }
+
+    serversPerPageRef.current = normalizedPerPage;
+    setServersPerPage(normalizedPerPage);
+    setCurrentPage(1);
+    applyPagination(allServers, 1, normalizedPerPage);
+  }, [externalServersPerPage, allServers, applyPagination]);
 
   // Load initial data
   useEffect(() => {
