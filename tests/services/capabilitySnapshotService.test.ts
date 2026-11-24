@@ -1,5 +1,7 @@
 import type { CapabilitySnapshot, ServerConfig, ServerInfo } from '../../src/types/index.js';
 const mockRows = new Map<string, CapabilitySnapshot>();
+// Stands in for the process environment a trusted server inherits.
+const mockInherited: Record<string, string> = {};
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getCapabilitySnapshotDao: () => ({
     get: async (name: string, principal: string) =>
@@ -10,7 +12,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
   }),
 }));
 jest.mock('../../src/services/serverConfigEnvironment.js', () => ({
-  getServerEnvironment: async (config: ServerConfig) => ({ PATH: '/bin', ...config.env }),
+  getServerEnvironment: async (config: ServerConfig) => ({ ...mockInherited, ...config.env }),
 }));
 import {
   prepareCapabilitySnapshot,
@@ -34,7 +36,11 @@ const info = (): ServerInfo => ({
   error: null,
   createTime: Date.now(),
 });
-beforeEach(() => mockRows.clear());
+beforeEach(() => {
+  mockRows.clear();
+  for (const key of Object.keys(mockInherited)) delete mockInherited[key];
+  Object.assign(mockInherited, { PATH: '/bin', HOSTNAME: 'container-a' });
+});
 
 test.each([{ discovered: [tool] }, { discovered: [] }])(
   'restores successful raw discovery including empty tools: $discovered',
@@ -102,4 +108,72 @@ test('refresh replaces removed tools and rejects malformed snapshots without pub
   expect(await prepareCapabilitySnapshot(info(), config)).toEqual([]);
   mockRows.get('["demo",""]')!.tools = [{ name: 'invalid' } as never];
   expect(await prepareCapabilitySnapshot(info(), config)).toBeUndefined();
+});
+
+const snapshotThenRecreate = async (server: ServerConfig, hostname = 'container-b') => {
+  const first = info();
+  await prepareCapabilitySnapshot(first, server);
+  recordCapabilitySnapshot(first, [tool]);
+  await flushCapabilitySnapshot(first);
+  mockInherited.HOSTNAME = hostname;
+  const recreated = info();
+  return { tools: await prepareCapabilitySnapshot(recreated, server), recreated };
+};
+
+test('ignores the inherited HOSTNAME that changes on every container recreate', async () => {
+  const { tools, recreated } = await snapshotThenRecreate(config);
+  expect(tools).toEqual([tool]);
+  expect(recreated.capabilityCache?.state).toBe('fresh');
+});
+
+test('still invalidates on other inherited environment changes', async () => {
+  const first = info();
+  await prepareCapabilitySnapshot(first, config);
+  recordCapabilitySnapshot(first, [tool]);
+  await flushCapabilitySnapshot(first);
+  mockInherited.PATH = '/usr/bin';
+  const next = info();
+  expect(await prepareCapabilitySnapshot(next, config)).toBeUndefined();
+  expect(next.capabilityCache?.state).toBe('stale');
+});
+
+test.each([
+  ['an unexpanded ${HOSTNAME} reference', { args: ['server.js', '--host=${HOSTNAME}'] }],
+  ['an unexpanded $HOSTNAME reference', { env: { ...config.env, NODE_NAME: '$HOSTNAME' } }],
+  ['a $HOSTNAME reference followed by lowercase', { args: ['--id=$HOSTNAMEsuffix'] }],
+])('keeps HOSTNAME in the fingerprint for %s', async (_label, changed) => {
+  const { tools, recreated } = await snapshotThenRecreate({ ...config, ...changed });
+  expect(tools).toBeUndefined();
+  expect(recreated.capabilityCache?.state).toBe('stale');
+});
+
+test('an explicit env.HOSTNAME survives a recreate but invalidates when it changes', async () => {
+  const pinned = { ...config, env: { ...config.env, HOSTNAME: 'pinned' } };
+  expect((await snapshotThenRecreate(pinned)).tools).toEqual([tool]);
+  const next = info();
+  expect(
+    await prepareCapabilitySnapshot(next, { ...config, env: { ...config.env, HOSTNAME: 'moved' } }),
+  ).toBeUndefined();
+  expect(next.capabilityCache?.state).toBe('stale');
+});
+
+test('does not treat a longer variable name as a HOSTNAME reference', async () => {
+  const { tools } = await snapshotThenRecreate({
+    ...config,
+    args: ['--a=${HOSTNAME_ALIAS}', '--b=$HOSTNAME_ALIAS'],
+  });
+  expect(tools).toEqual([tool]);
+});
+
+test('invalidates when an expanded HOSTNAME reference changes the launch configuration', async () => {
+  const first = info();
+  await prepareCapabilitySnapshot(first, { ...config, args: ['--host=container-a'] });
+  recordCapabilitySnapshot(first, [tool]);
+  await flushCapabilitySnapshot(first);
+  mockInherited.HOSTNAME = 'container-b';
+  const recreated = info();
+  expect(
+    await prepareCapabilitySnapshot(recreated, { ...config, args: ['--host=container-b'] }),
+  ).toBeUndefined();
+  expect(recreated.capabilityCache?.state).toBe('stale');
 });

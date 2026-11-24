@@ -38,6 +38,17 @@ const stable = (value: unknown): unknown => {
   return value;
 };
 
+// Container runtimes give every instance its own HOSTNAME (the container ID in
+// Docker, the pod name in Kubernetes), so the inherited value would invalidate
+// every snapshot on each recreate or rollout. It still counts when the server
+// declares it in `env` or references it in its launch configuration.
+const INSTANCE_SCOPED_ENV = ['HOSTNAME'];
+
+// Mirrors `expandVarReferences`: `${NAME}`, or `$NAME` not followed by another
+// variable-name character.
+const referencesEnvVar = (serialized: string, name: string): boolean =>
+  serialized.includes(`\${${name}}`) || new RegExp(`\\$${name}(?![A-Z0-9_])`).test(serialized);
+
 export const supportsCapabilitySnapshot = (config?: ServerConfig): boolean =>
   config?.startOnDemand === true && (config.type === 'stdio' || (!config.type && !!config.command));
 
@@ -83,6 +94,14 @@ export const prepareCapabilitySnapshot = async (
       startOnDemand,
       idleTimeoutMs,
     ];
+    const serializedLaunch = JSON.stringify(launch);
+    for (const name of INSTANCE_SCOPED_ENV) {
+      if (
+        !Object.prototype.hasOwnProperty.call(config.env ?? {}, name) &&
+        !referencesEnvVar(serializedLaunch, name)
+      )
+        delete env[name];
+    }
     const declaration = JSON.stringify(stable([1, launch, env, scope?.revision]));
     const parts = previous?.fingerprint.split(':');
     const salt =
