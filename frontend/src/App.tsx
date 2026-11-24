@@ -4,11 +4,18 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ServerProvider } from './contexts/ServerContext';
+import { GroupProvider } from './contexts/GroupContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import EmbeddingSyncAlertListener from './components/EmbeddingSyncAlertListener';
 import { getBasePath } from './utils/runtime';
+import {
+  canManageSkills,
+  canManageUsers,
+  canViewActivity,
+  canViewSystemLogs,
+} from './utils/navigationPermissions';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OAuthConsentPage = lazy(() => import('./pages/OAuthConsentPage'));
@@ -45,62 +52,74 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <ServerProvider>
-          <ToastProvider>
-            <SettingsProvider>
-              <Router basename={basename}>
-                <EmbeddingSyncAlertListener />
-                <Routes>
-                  {/* 公共路由 */}
-                  <Route
-                    path="/login"
-                    element={
-                      <Suspense fallback={<RouteFallback />}>
-                        <LoginPage />
-                      </Suspense>
-                    }
-                  />
+          <GroupProvider>
+            <ToastProvider>
+              <SettingsProvider>
+                <Router basename={basename}>
+                  <EmbeddingSyncAlertListener />
+                  <Routes>
+                    {/* Public routes */}
+                    <Route
+                      path="/login"
+                      element={
+                        <Suspense fallback={<RouteFallback />}>
+                          <LoginPage />
+                        </Suspense>
+                      }
+                    />
 
-                  {/* OAuth consent screen: server injects the consent context
-                      into the SPA shell served at /oauth/authorize */}
-                  <Route
-                    path="/oauth/authorize"
-                    element={
-                      <Suspense fallback={<RouteFallback />}>
-                        <OAuthConsentPage />
-                      </Suspense>
-                    }
-                  />
+                    {/* OAuth consent screen: server injects the consent context
+                        into the SPA shell served at /oauth/authorize */}
+                    <Route
+                      path="/oauth/authorize"
+                      element={
+                        <Suspense fallback={<RouteFallback />}>
+                          <OAuthConsentPage />
+                        </Suspense>
+                      }
+                    />
 
-                  {/* 受保护的路由，使用 MainLayout 作为布局容器 */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<MainLayout />}>
-                      <Route path="/" element={<DashboardPage />} />
-                      <Route path="/oauth-applications" element={<OAuthApprovalsPage />} />
-                      <Route path="/passkeys" element={<PasskeysPage />} />
-                      <Route path="/credentials" element={<CredentialsPage />} />
-                      <Route path="/servers" element={<ServersPage />} />
-                      <Route path="/groups" element={<GroupsPage />} />
-                      <Route path="/prompts" element={<PromptsPage />} />
-                      <Route path="/resources" element={<ResourcesPage />} />
-                      <Route path="/skills" element={<SkillsPage />} />
-                      <Route path="/users" element={<UsersPage />} />
-                      <Route path="/market" element={<MarketPage />} />
-                      <Route path="/market/:serverName" element={<MarketPage />} />
-                      {/* Legacy cloud routes redirect to the local market page */}
-                      <Route path="/cloud" element={<Navigate to="/market" replace />} />
-                      <Route path="/cloud/:serverName" element={<CloudRedirect />} />
-                      <Route path="/logs" element={<LogsPage />} />
-                      <Route path="/activity" element={<ActivityPage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
+                    {/* Protected routes inside MainLayout */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route element={<MainLayout />}>
+                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/oauth-applications" element={<OAuthApprovalsPage />} />
+                        <Route path="/passkeys" element={<PasskeysPage />} />
+                        <Route path="/credentials" element={<CredentialsPage />} />
+                        <Route path="/servers" element={<ServersPage />} />
+                        <Route path="/groups" element={<GroupsPage />} />
+                        <Route path="/prompts" element={<PromptsPage />} />
+                        <Route path="/resources" element={<ResourcesPage />} />
+                        <Route path="/market" element={<MarketPage />} />
+                        <Route path="/market/:serverName" element={<MarketPage />} />
+                        {/* Legacy cloud routes redirect to the local market page */}
+                        <Route path="/cloud" element={<Navigate to="/market" replace />} />
+                        <Route path="/cloud/:serverName" element={<CloudRedirect />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+
+                        {/* Admin / permission-gated routes */}
+                        <Route element={<ProtectedRoute canAccess={canManageSkills} />}>
+                          <Route path="/skills" element={<SkillsPage />} />
+                        </Route>
+                        <Route element={<ProtectedRoute canAccess={canManageUsers} />}>
+                          <Route path="/users" element={<UsersPage />} />
+                        </Route>
+                        <Route element={<ProtectedRoute canAccess={canViewSystemLogs} />}>
+                          <Route path="/logs" element={<LogsPage />} />
+                        </Route>
+                        <Route element={<ProtectedRoute canAccess={canViewActivity} />}>
+                          <Route path="/activity" element={<ActivityPage />} />
+                        </Route>
+                      </Route>
                     </Route>
-                  </Route>
 
-                  {/* 未匹配的路由重定向到首页 */}
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
-              </Router>
-            </SettingsProvider>
-          </ToastProvider>
+                    {/* Fallback redirect */}
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Routes>
+                </Router>
+              </SettingsProvider>
+            </ToastProvider>
+          </GroupProvider>
         </ServerProvider>
       </AuthProvider>
     </ThemeProvider>

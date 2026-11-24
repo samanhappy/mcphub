@@ -1,6 +1,7 @@
 // Permission components unified export
 export { PermissionChecker, usePermissionCheck, usePermissionCheckAll } from './PermissionChecker';
-export { PERMISSIONS } from '../constants/permissions';
+import { PERMISSIONS } from '../constants/permissions';
+export { PERMISSIONS };
 
 // Convenient permission check Hook
 export { useAuth } from '../contexts/AuthContext';
@@ -10,7 +11,10 @@ export const hasPermission = (
   userPermissions: string[] = [],
   requiredPermissions: string | string[],
 ): boolean => {
-  if (requiredPermissions === 'x' && !userPermissions.includes('x')) {
+  if (
+    requiredPermissions === PERMISSIONS.USERS_MANAGE &&
+    !userPermissions.includes(PERMISSIONS.USERS_MANAGE)
+  ) {
     return false;
   }
 

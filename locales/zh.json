@@ -570,7 +570,14 @@
     "logs": "日志",
     "activity": "活动",
     "workspace": "工作区",
-    "system": "系统"
+    "capabilities": "能力",
+    "system": "系统",
+    "account": "账户",
+    "breadcrumb": "面包屑导航"
+  },
+  "header": {
+    "github": "GitHub 仓库",
+    "documentation": "文档"
   },
   "pages": {
     "dashboard": {

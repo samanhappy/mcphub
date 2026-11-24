@@ -569,7 +569,14 @@
     "logs": "Günlükler",
     "activity": "Etkinlik",
     "workspace": "Çalışma Alanı",
-    "system": "Sistem"
+    "capabilities": "Yetenekler",
+    "system": "Sistem",
+    "account": "Hesap",
+    "breadcrumb": "İçerik haritası"
+  },
+  "header": {
+    "github": "GitHub Deposu",
+    "documentation": "Dokümantasyon"
   },
   "pages": {
     "dashboard": {

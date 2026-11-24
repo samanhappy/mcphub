@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowUpRight, CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { ChangelogUpdateInfo } from '@/types';
@@ -93,12 +94,16 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  const dialog = (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="about-dialog-title"
+        onClick={(event) => event.stopPropagation()}
         className="hub-card flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden shadow-xl"
       >
         <div className="p-5 relative shrink-0">
@@ -252,6 +257,8 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(dialog, document.body) : dialog;
 };
 
 export default AboutDialog;

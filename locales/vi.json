@@ -568,7 +568,14 @@
     "logs": "Nhật ký (Logs)",
     "activity": "Hoạt động",
     "workspace": "Không gian làm việc",
-    "system": "Hệ thống"
+    "capabilities": "Khả năng",
+    "system": "Hệ thống",
+    "account": "Tài khoản",
+    "breadcrumb": "Đường dẫn"
+  },
+  "header": {
+    "github": "Kho lưu trữ GitHub",
+    "documentation": "Tài liệu"
   },
   "pages": {
     "dashboard": {

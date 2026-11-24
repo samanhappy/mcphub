@@ -1,72 +1,73 @@
-import { useBranding } from '@/contexts/BrandingContext';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { BookOpen, Menu } from 'lucide-react';
+import { useBranding } from '@/contexts/BrandingContext';
 import ThemeSwitch from '@/components/ui/ThemeSwitch';
 import LanguageSwitch from '@/components/ui/LanguageSwitch';
 import GitHubIcon from '@/components/icons/GitHubIcon';
 import { useEmbeddingSync } from '@/contexts/EmbeddingSyncContext';
+import { resolveBreadcrumbs } from '@/utils/navigationRegistry';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
-const useCrumbs = (): string[] => {
+const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { t } = useTranslation();
   const { dashboardTitle } = useBranding();
   const location = useLocation();
   const params = useParams();
-
-  return useMemo(() => {
-    const path = location.pathname;
-    const root = dashboardTitle;
-    if (path === '/') return [root, t('nav.dashboard')];
-    if (path.startsWith('/oauth-applications')) return [root, t('oauthApprovals.title')];
-    if (path.startsWith('/passkeys')) return [root, t('passkeys.title')];
-    if (path.startsWith('/credentials')) return [root, t('credentials.title')];
-    if (path.startsWith('/servers')) return [root, t('nav.servers')];
-    if (path.startsWith('/groups')) return [root, t('nav.groups')];
-    if (path.startsWith('/prompts')) return [root, t('nav.prompts')];
-    if (path.startsWith('/resources')) return [root, t('nav.resources')];
-    if (path.startsWith('/skills')) return [root, t('skills.title')];
-    if (path.startsWith('/users')) return [root, t('nav.users')];
-    if (path.startsWith('/market')) {
-      const serverName = (params as { serverName?: string }).serverName;
-      const crumbs = [root, t('nav.market')];
-      if (serverName) crumbs.push(serverName);
-      return crumbs;
-    }
-    if (path.startsWith('/logs')) return [root, t('nav.logs')];
-    if (path.startsWith('/activity')) return [root, t('nav.activity')];
-    if (path.startsWith('/settings')) return [root, t('nav.settings')];
-    return [root];
-  }, [location.pathname, params, t, dashboardTitle]);
-};
-
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
-  const { t } = useTranslation();
   const { activeSyncs } = useEmbeddingSync();
-  const crumbs = useCrumbs();
+
+  const crumbs = useMemo(
+    () => resolveBreadcrumbs(location.pathname, params, dashboardTitle, t),
+    [location.pathname, params, dashboardTitle, t],
+  );
 
   return (
     <header className="hub-topbar shrink-0">
       <button
+        type="button"
         onClick={onToggleSidebar}
         className="hub-icon-btn"
         aria-label={t('app.toggleSidebar')}
+        title={t('app.toggleSidebar')}
       >
-        <Menu size={16} />
+        <Menu size={16} aria-hidden="true" />
       </button>
 
-      <div className="hub-crumb flex items-center min-w-0">
-        {crumbs.map((c, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <span className="sep">/</span>}
-            {i === crumbs.length - 1 ? <b className="truncate">{c}</b> : <span className="truncate">{c}</span>}
-          </React.Fragment>
-        ))}
-      </div>
+      <nav
+        aria-label={t('nav.breadcrumb')}
+        className="hub-crumb flex items-center min-w-0"
+      >
+        {crumbs.map((crumb, index) => {
+          const isLast = index === crumbs.length - 1;
+          return (
+            <React.Fragment key={`${crumb.label}-${index}`}>
+              {index > 0 && (
+                <span className="sep" aria-hidden="true">
+                  /
+                </span>
+              )}
+              {isLast ? (
+                <b className="truncate" aria-current="page">
+                  {crumb.label}
+                </b>
+              ) : crumb.to ? (
+                <Link
+                  to={crumb.to}
+                  className="truncate transition-colors hover:text-[var(--hub-ink)]"
+                >
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span className="truncate">{crumb.label}</span>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </nav>
 
       <div className="flex-1 flex justify-center px-2 min-w-0">
         {activeSyncs.length > 0 && (
@@ -112,7 +113,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           target="_blank"
           rel="noopener noreferrer"
           className="hub-icon-btn"
-          aria-label="GitHub Repository"
+          aria-label={t('header.github')}
+          title={t('header.github')}
         >
           <GitHubIcon className="h-4 w-4" />
         </a>
@@ -121,9 +123,10 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           target="_blank"
           rel="noopener noreferrer"
           className="hub-icon-btn"
-          aria-label="Documentation"
+          aria-label={t('header.documentation')}
+          title={t('header.documentation')}
         >
-          <BookOpen className="h-4 w-4" />
+          <BookOpen className="h-4 w-4" aria-hidden="true" />
         </a>
         <ThemeSwitch />
         <LanguageSwitch />

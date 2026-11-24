@@ -64,7 +64,7 @@ const DashboardPage: React.FC = () => {
   const { allServers, error, setError, isLoading, triggerRefresh } = useServerData({
     refreshOnMount: true,
   });
-  const { groups } = useGroupData();
+  const { groups } = useGroupData({ refreshOnMount: true });
   const { installConfig } = useRuntimeSettings();
   const { serverCosts } = useCostData();
 

@@ -569,7 +569,14 @@
     "logs": "Journaux",
     "activity": "Activité",
     "workspace": "Espace de travail",
-    "system": "Système"
+    "capabilities": "Capacités",
+    "system": "Système",
+    "account": "Compte",
+    "breadcrumb": "Fil d'Ariane"
+  },
+  "header": {
+    "github": "Dépôt GitHub",
+    "documentation": "Documentation"
   },
   "pages": {
     "dashboard": {

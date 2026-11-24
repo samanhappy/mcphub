@@ -22,7 +22,7 @@ const GroupsPage: React.FC = () => {
     setError: setGroupError,
     deleteGroup,
     triggerRefresh,
-  } = useGroupData();
+  } = useGroupData({ refreshOnMount: true });
   const { allServers } = useServerData({ refreshOnMount: true });
   const { groupCosts } = useCostData(JSON.stringify([groups, serverCostRevision(allServers)]));
 

@@ -568,7 +568,14 @@
     "logs": "Registros",
     "activity": "Actividad",
     "workspace": "Espacio de trabajo",
-    "system": "Sistema"
+    "capabilities": "Capacidades",
+    "system": "Sistema",
+    "account": "Cuenta",
+    "breadcrumb": "Ruta de navegación"
+  },
+  "header": {
+    "github": "Repositorio de GitHub",
+    "documentation": "Documentación"
   },
   "pages": {
     "dashboard": {
