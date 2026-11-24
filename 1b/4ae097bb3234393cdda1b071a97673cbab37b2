@@ -1,0 +1,18 @@
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 459,462
+tests/integration/oauth-pending-auth-race.test.ts
+  h_18676a549cd52a 2,171,251
+tests/integration/personal-oauth-client-signin.test.ts
+  h_18676a549cd52a 238-239,665
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b4ae097bb3234393cdda1b071a97673cbab37b2",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
