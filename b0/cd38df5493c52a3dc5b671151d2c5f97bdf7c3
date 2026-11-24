@@ -1,0 +1,30 @@
+frontend/src/components/EditServerForm.tsx
+  h_18676a549cd52a 4,16,46-48
+frontend/src/contexts/GroupContext.tsx
+  h_18676a549cd52a 1-9,13-16,18,64,69-75,81-94,97,105-106,109-114,131,140
+frontend/src/hooks/useGroupData.ts
+  h_18676a549cd52a 1,4-16
+frontend/src/pages/Dashboard.tsx
+  h_18676a549cd52a 67
+frontend/src/pages/GroupsPage.tsx
+  h_18676a549cd52a 25
+frontend/src/pages/SettingsPage.tsx
+  h_18676a549cd52a 56
+frontend/src/pages/SkillsPage.tsx
+  h_18676a549cd52a 314-316
+frontend/src/utils/groupCache.ts
+  h_18676a549cd52a 1-10
+tests/frontend/groupContext.test.ts
+  h_18676a549cd52a 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0cd38df5493c52a3dc5b671151d2c5f97bdf7c3",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
