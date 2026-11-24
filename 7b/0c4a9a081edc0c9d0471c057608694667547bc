@@ -1,0 +1,46 @@
+frontend/src/components/AddServerForm.tsx
+  h_18676a549cd52a 1-8,11,17-18,26-33,38-39,42-46,49-50,52,54,58-59,62-64,67,69-70,74,76,78,81-82,84,87-92,94,96-97,99-107,115,117,120-122,124,127-128,130,134-145,153,167-168,174-180,183-192,195-196,199,201,209,212,214-215,217-218,225-226,228,237-238,240
+frontend/src/components/EditServerForm.tsx
+  h_18676a549cd52a 16,19,58-59,66,74-75
+frontend/src/components/ServerForm.tsx
+  h_18676a549cd52a 1,3-10,15,35,37-46,49,54-55,78-79,86-93,100,104,106,108,118,139,150-154,164,195,252,355,383-432,439,445-447,451,455,459-461,465,469,623-624,626-649,651-668,674,676-680,682,694-695,702-703,707-737,739-746,748,750-769,771-780,782-814,816-817,819-856,858-877,879-900,902-912,914-921,923,925-939,941-951,956-962,965-977,980
+frontend/src/components/server-form/AccessSection.tsx
+  h_18676a549cd52a 1-405
+frontend/src/components/server-form/AuthSection.tsx
+  h_18676a549cd52a 1-1032
+frontend/src/components/server-form/ConnectionSection.tsx
+  h_18676a549cd52a 1-458
+frontend/src/components/server-form/FormPrimitives.tsx
+  h_18676a549cd52a 1-333
+frontend/src/components/server-form/RuntimeSection.tsx
+  h_18676a549cd52a 1-311
+frontend/src/index.css
+  h_18676a549cd52a 602,1383-1493
+frontend/src/utils/serverFormUi.ts
+  h_18676a549cd52a 1-330
+locales/en.json
+  h_18676a549cd52a 366-406
+locales/es.json
+  h_18676a549cd52a 366-406
+locales/fr.json
+  h_18676a549cd52a 366-406
+locales/tr.json
+  h_18676a549cd52a 366-406
+locales/vi.json
+  h_18676a549cd52a 366-406
+locales/zh.json
+  h_18676a549cd52a 366-406
+tests/frontend/serverFormUi.test.ts
+  h_18676a549cd52a 1-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b0c4a9a081edc0c9d0471c057608694667547bc",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
