@@ -53,7 +53,7 @@ const SettingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { auth } = useAuth();
   const { allServers: servers } = useServerContext();
-  const { groups } = useGroupData();
+  const { groups } = useGroupData({ refreshOnMount: true });
   const {
     toolPolicies,
     nameSeparator,

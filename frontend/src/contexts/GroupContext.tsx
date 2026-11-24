@@ -1,8 +1,21 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiResponse, Group, IGroupServerConfig } from '@/types';
 import { apiDelete, apiGet, apiPost, apiPut } from '../utils/fetchInterceptor';
+import {
+  getServerNamesFingerprint,
+  shouldRefreshGroupsForServerNames,
+} from '../utils/groupCache';
 import { useAuth } from './AuthContext';
+import { useServerContext } from './ServerContext';
 
 export interface GroupContextType {
   groups: Group[];
@@ -48,17 +61,40 @@ const GroupContext = createContext<GroupContextType | undefined>(undefined);
 export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation();
   const { auth } = useAuth();
+  const { allServers, hasLoadedServers } = useServerContext();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const hasLoadedRef = useRef(false);
+  const previousServerNamesRef = useRef<string | null>(null);
+
+  const serverNamesFingerprint = useMemo(
+    () => getServerNamesFingerprint(allServers),
+    [allServers],
+  );
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
   }, []);
 
+  // Invalidate cached groups whenever the set of server names changes (e.g. server rename/removal).
+  useEffect(() => {
+    if (!auth.isAuthenticated || !hasLoadedServers) {
+      previousServerNamesRef.current = null;
+      return;
+    }
+
+    const previousFingerprint = previousServerNamesRef.current;
+    previousServerNamesRef.current = serverNamesFingerprint;
+    if (shouldRefreshGroupsForServerNames(previousFingerprint, serverNamesFingerprint)) {
+      triggerRefresh();
+    }
+  }, [auth.isAuthenticated, hasLoadedServers, serverNamesFingerprint, triggerRefresh]);
+
   useEffect(() => {
     if (!auth.isAuthenticated) {
+      hasLoadedRef.current = false;
       setGroups([]);
       setLoading(false);
       setError(null);
@@ -66,10 +102,16 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     let active = true;
+    const controller = new AbortController();
+
     const fetchGroups = async () => {
       try {
-        setLoading(true);
-        const data: ApiResponse<Group[]> = await apiGet('/groups');
+        if (!hasLoadedRef.current) {
+          setLoading(true);
+        }
+        const data: ApiResponse<Group[]> = await apiGet('/groups', {
+          signal: controller.signal,
+        });
         if (!active) return;
 
         if (data && data.success && Array.isArray(data.data)) {
@@ -86,6 +128,7 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setGroups([]);
       } finally {
         if (active) {
+          hasLoadedRef.current = true;
           setLoading(false);
         }
       }
@@ -94,6 +137,7 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     void fetchGroups();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [auth.isAuthenticated, auth.user?.username, refreshKey]);
 

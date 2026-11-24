@@ -311,7 +311,9 @@ function SkillManager() {
   const navigate = useNavigate();
   const [revision, setRevision] = useState(0);
   const { t, i18n } = useTranslation();
-  const { groups, loading: groupsLoading, error: groupsError } = useGroupData();
+  const { groups, loading: groupsLoading, error: groupsError } = useGroupData({
+    refreshOnMount: true,
+  });
   const [skills, setSkills] = useState<HostedSkill[]>([]);
   const selected = skills.find((skill) => skill.id === id);
   const importedUrls = new Set(

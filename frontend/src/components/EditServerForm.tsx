@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server } from '@/types';
+import { useGroupData } from '@/hooks/useGroupData';
 import { apiPut } from '../utils/fetchInterceptor';
 import ServerForm from './ServerForm';
 
@@ -12,6 +13,7 @@ interface EditServerFormProps {
 
 const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
   const { t } = useTranslation();
+  const { triggerRefresh: refreshGroups } = useGroupData();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,6 +43,9 @@ const EditServerForm = ({ server, onEdit, onCancel }: EditServerFormProps) => {
         return;
       }
 
+      if (isRenaming) {
+        refreshGroups();
+      }
       onEdit();
     } catch (err) {
       console.error('Error updating server:', err);
