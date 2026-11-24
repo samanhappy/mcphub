@@ -1387,7 +1387,10 @@ button.hub-btn.primary.is-loading::after {
   flex-direction: column;
   width: 100%;
   max-width: 56rem;
+  height: min(720px, calc(100vh - 2rem));
+  height: min(720px, calc(100dvh - 2rem));
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   overflow: hidden;
   border-radius: 12px;
   background: var(--hub-surface);
