@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RegistryServerEntry,
@@ -7,37 +7,65 @@ import {
   RegistryServerVersionsResponse,
 } from '@/types';
 import { apiGet } from '../utils/fetchInterceptor';
+import {
+  getInitialMarketPerPage,
+  normalizeMarketPerPage,
+  saveMarketPerPage,
+} from '../utils/marketPagination';
 
-export const useRegistryData = () => {
+interface UseRegistryDataOptions {
+  serversPerPage?: number;
+  active?: boolean;
+}
+
+export const useRegistryData = (options?: UseRegistryDataOptions) => {
   const { t } = useTranslation();
+  const active = options?.active ?? true;
+  const externalServersPerPage = options?.serversPerPage;
+
   const [servers, setServers] = useState<RegistryServerEntry[]>([]);
   const [allServers, setAllServers] = useState<RegistryServerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const searchQueryRef = useRef(searchQuery);
 
   // Cursor-based pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [serversPerPage, setServersPerPage] = useState(9);
+  const [serversPerPage, setServersPerPage] = useState(() =>
+    externalServersPerPage !== undefined
+      ? normalizeMarketPerPage(externalServersPerPage)
+      : getInitialMarketPerPage(),
+  );
+  const serversPerPageRef = useRef(serversPerPage);
+  const lastFetchedLimitRef = useRef<number | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  // Stack of request cursors for visited pages: cursorHistory[page - 1] fetched `page` ('' for page 1).
+  const [cursorHistory, setCursorHistory] = useState<string[]>(['']);
   const [totalPages] = useState(1); // Legacy support, not used in cursor pagination
 
   // Fetch registry servers with cursor-based pagination
   const fetchRegistryServers = useCallback(
-    async (cursor?: string, search?: string) => {
+    async (cursor?: string, search?: string, limitOverride?: number, targetPage = 1): Promise<boolean> => {
+      const limit =
+        limitOverride !== undefined
+          ? normalizeMarketPerPage(limitOverride)
+          : serversPerPageRef.current;
+      const previousFetchedLimit = lastFetchedLimitRef.current;
+
       try {
+        lastFetchedLimitRef.current = limit;
         setLoading(true);
         setError(null);
 
         // Build query parameters
         const params = new URLSearchParams();
-        params.append('limit', serversPerPage.toString());
+        params.append('limit', limit.toString());
         if (cursor) {
           params.append('cursor', cursor);
         }
-        const queryToUse = search !== undefined ? search : searchQuery;
+        const queryToUse = search !== undefined ? search : searchQueryRef.current;
         if (queryToUse.trim()) {
           params.append('search', queryToUse.trim());
         }
@@ -49,63 +77,88 @@ export const useRegistryData = () => {
           if (data.servers && Array.isArray(data.servers)) {
             setServers(data.servers);
             // Update pagination state
-            const hasMore = data.metadata.count === serversPerPage && !!data.metadata.nextCursor;
+            const hasMore = data.metadata.count === limit && !!data.metadata.nextCursor;
             setHasNextPage(hasMore);
             setNextCursor(data.metadata.nextCursor || null);
 
-            // For display purposes, keep track of all loaded servers
-            if (!cursor) {
-              // First page
+            // Keep loaded items indexed by page offset so navigating back does not duplicate entries
+            if (targetPage <= 1 || !cursor) {
               setAllServers(data.servers);
             } else {
-              // Subsequent pages - append to all servers
-              setAllServers((prev) => [...prev, ...data.servers]);
+              const pageOffset = (targetPage - 1) * limit;
+              setAllServers((prev) => {
+                const updated = prev.slice(0, pageOffset);
+                updated.push(...data.servers);
+                if (prev.length > pageOffset + data.servers.length) {
+                  updated.push(...prev.slice(pageOffset + data.servers.length));
+                }
+                return updated;
+              });
             }
+            return true;
           } else {
+            lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
             console.error('Invalid registry servers data format', { data });
             setError(t('registry.fetchError'));
+            return false;
           }
         } else {
+          lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
           setError(t('registry.fetchError'));
+          return false;
         }
       } catch (err) {
-          console.error('Error fetching registry servers', { cursor, search, err });
+        lastFetchedLimitRef.current = targetPage <= 1 ? null : previousFetchedLimit;
+        console.error('Error fetching registry servers', { cursor, search, err });
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
+        return false;
       } finally {
         setLoading(false);
       }
     },
-    [t, serversPerPage],
+    [t],
   );
 
   // Navigate to next page
   const goToNextPage = useCallback(async () => {
     if (!hasNextPage || !nextCursor) return;
 
-    // Save current cursor to history for back navigation
-    const currentCursor = cursorHistory[cursorHistory.length - 1] || '';
-    setCursorHistory((prev) => [...prev, currentCursor]);
-
-    setCurrentPage((prev) => prev + 1);
-    await fetchRegistryServers(nextCursor, searchQuery);
-  }, [hasNextPage, nextCursor, cursorHistory, searchQuery, fetchRegistryServers]);
+    const targetPage = currentPage + 1;
+    const targetCursor = nextCursor;
+    const succeeded = await fetchRegistryServers(
+      targetCursor,
+      searchQueryRef.current,
+      undefined,
+      targetPage,
+    );
+    if (succeeded) {
+      setCursorHistory((prev) => [...prev, targetCursor]);
+      setCurrentPage(targetPage);
+    }
+  }, [hasNextPage, nextCursor, currentPage, fetchRegistryServers]);
 
   // Navigate to previous page
   const goToPreviousPage = useCallback(async () => {
     if (currentPage <= 1) return;
 
-    // Get the previous cursor from history
-    const newHistory = [...cursorHistory];
-    newHistory.pop(); // Remove current position
-    const previousCursor = newHistory[newHistory.length - 1];
+    // Pop current page's cursor; the new tail is the cursor that fetched the previous page
+    const newHistory = cursorHistory.slice(0, -1);
+    const normalizedHistory = newHistory.length > 0 ? newHistory : [''];
+    const previousCursor = normalizedHistory[normalizedHistory.length - 1] || undefined;
+    const targetPage = currentPage - 1;
 
-    setCursorHistory(newHistory);
-    setCurrentPage((prev) => prev - 1);
-
-    // Fetch with previous cursor (undefined for first page)
-    await fetchRegistryServers(previousCursor || undefined, searchQuery);
-  }, [currentPage, cursorHistory, searchQuery, fetchRegistryServers]);
+    const succeeded = await fetchRegistryServers(
+      previousCursor,
+      searchQueryRef.current,
+      undefined,
+      targetPage,
+    );
+    if (succeeded) {
+      setCursorHistory(normalizedHistory);
+      setCurrentPage(targetPage);
+    }
+  }, [currentPage, cursorHistory, fetchRegistryServers]);
 
   // Change page (legacy support for page number navigation)
   const changePage = useCallback(
@@ -124,13 +177,15 @@ export const useRegistryData = () => {
   // Change items per page
   const changeServersPerPage = useCallback(
     async (newServersPerPage: number) => {
-      setServersPerPage(newServersPerPage);
+      const normalizedPerPage = saveMarketPerPage(newServersPerPage);
+      serversPerPageRef.current = normalizedPerPage;
+      setServersPerPage(normalizedPerPage);
       setCurrentPage(1);
-      setCursorHistory([]);
+      setCursorHistory(['']);
       setAllServers([]);
-      await fetchRegistryServers(undefined, searchQuery);
+      await fetchRegistryServers(undefined, searchQueryRef.current, normalizedPerPage, 1);
     },
-    [searchQuery, fetchRegistryServers],
+    [fetchRegistryServers],
   );
 
   // Fetch server by name
@@ -231,30 +286,50 @@ export const useRegistryData = () => {
   const searchServers = useCallback(
     async (query: string) => {
       console.log('Searching registry servers', { query });
+      searchQueryRef.current = query;
       setSearchQuery(query);
       setCurrentPage(1);
-      setCursorHistory([]);
+      setCursorHistory(['']);
       setAllServers([]);
 
-      await fetchRegistryServers(undefined, query);
+      await fetchRegistryServers(undefined, query, undefined, 1);
     },
     [fetchRegistryServers],
   );
 
   // Clear search
   const clearSearch = useCallback(async () => {
+    searchQueryRef.current = '';
     setSearchQuery('');
     setCurrentPage(1);
-    setCursorHistory([]);
+    setCursorHistory(['']);
     setAllServers([]);
-    await fetchRegistryServers(undefined, '');
+    await fetchRegistryServers(undefined, '', undefined, 1);
   }, [fetchRegistryServers]);
 
-  // Initial fetch
+  // Fetch on activation and re-fetch if the shared page size changed while inactive
   useEffect(() => {
-    fetchRegistryServers(undefined, searchQuery);
-    // Only run on mount
-  }, []);
+    const targetPerPage =
+      externalServersPerPage !== undefined
+        ? normalizeMarketPerPage(externalServersPerPage)
+        : serversPerPageRef.current;
+
+    if (targetPerPage !== serversPerPageRef.current) {
+      serversPerPageRef.current = targetPerPage;
+      setServersPerPage(targetPerPage);
+    }
+
+    if (!active) {
+      return;
+    }
+
+    if (lastFetchedLimitRef.current !== targetPerPage) {
+      setCurrentPage(1);
+      setCursorHistory(['']);
+      setAllServers([]);
+      void fetchRegistryServers(undefined, searchQueryRef.current, targetPerPage, 1);
+    }
+  }, [active, externalServersPerPage, fetchRegistryServers]);
 
   return {
     servers,
