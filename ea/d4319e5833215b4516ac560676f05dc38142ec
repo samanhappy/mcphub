@@ -1,0 +1,18 @@
+frontend/src/components/PersonalOAuthControls.tsx
+  h_18676a549cd52a 64-67,69,71,73-77,79,81,88-93,100,106-107,111-112,114,117-118
+frontend/src/index.css
+  h_18676a549cd52a 289-290,316-320,331-378,474-475,1159-1160
+tests/frontend/personalOAuthControls.test.ts
+  h_18676a549cd52a 18-21,23,30-31,87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ead4319e5833215b4516ac560676f05dc38142ec",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
