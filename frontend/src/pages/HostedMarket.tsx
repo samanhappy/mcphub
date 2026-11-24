@@ -12,12 +12,13 @@ import { useServerContext } from '@/contexts/ServerContext';
 import { useToast } from '@/contexts/ToastContext';
 import type { ServerConfig } from '@/types';
 import { apiGet, apiPost, type ApiResponse } from '@/utils/fetchInterceptor';
+import { MARKET_PAGE_SIZE_OPTIONS } from '@/utils/marketPagination';
 import { slugifyServerName } from '@/utils/serverName';
 import { getServerConfigPermissionError } from '@/utils/serverPermissions';
 
 const CATALOG = '/market/catalog';
 const WEBSITE = 'https://www.mcphub.app/registry';
-const PAGE_SIZE = 12;
+const DEFAULT_PAGE_SIZE = 12;
 const CARD_GRID = 'grid gap-3 md:grid-cols-2 xl:grid-cols-3';
 
 interface CatalogServer {
@@ -502,12 +503,15 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
   const category = filters.get('category') ?? '';
   const transport = filters.get('transport') ?? '';
   const page = Math.max(1, parseInt(filters.get('page') ?? '1', 10) || 1);
+  const pageSize =
+    MARKET_PAGE_SIZE_OPTIONS.find((size) => size === Number(filters.get('pageSize'))) ??
+    DEFAULT_PAGE_SIZE;
   const query = new URLSearchParams({
     q,
     category,
     transport,
     page: String(page),
-    pageSize: String(PAGE_SIZE),
+    pageSize: String(pageSize),
   });
   const { data, loading } = useCatalog<CatalogPage>(`${CATALOG}?${query}`, !hidden);
   const { data: categories, loading: categoriesLoading } = useCatalog<CatalogCategory[]>(
@@ -603,7 +607,10 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
           {t('common.search')}
         </button>
         {(q || category || transport) && (
-          <Link className="hub-btn ghost" to="/market">
+          <Link
+            className="hub-btn ghost"
+            to={pageSize === DEFAULT_PAGE_SIZE ? '/market' : `/market?pageSize=${pageSize}`}
+          >
             {t('common.clear')}
           </Link>
         )}
@@ -632,15 +639,6 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
           </label>
         </div>
         <div className="min-w-0">
-          {data && data.items.length > 0 && (
-            <p className="mb-3 text-sm text-[var(--hub-ink-3)]" role="status">
-              {t('registry.showing', {
-                from: (data.page - 1) * data.pageSize + 1,
-                to: (data.page - 1) * data.pageSize + data.items.length,
-                total: data.total.toLocaleString(),
-              })}
-            </p>
-          )}
           {items.size > 0 && <div className={CARD_GRID}>{Array.from(items, renderCard)}</div>}
           {loading ? (
             <MarketGridSkeleton />
@@ -649,14 +647,44 @@ function HostedMarketList({ filters, hidden }: { filters: URLSearchParams; hidde
           ) : (
             <>
               {items.size === 0 && <p role="status">{t('registry.noServers')}</p>}
-              <Pagination
-                currentPage={data.page}
-                totalPages={Math.ceil(data.total / data.pageSize)}
-                onPageChange={(nextPage) => {
-                  update('page', String(nextPage));
-                  window.scrollTo({ top: 0 });
-                }}
-              />
+              {data.total > 0 && (
+                <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-[var(--hub-ink-3)] xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                  {data.items.length > 0 && (
+                    <p className="col-start-1 row-start-1" role="status">
+                      {t('registry.showing', {
+                        from: (data.page - 1) * data.pageSize + 1,
+                        to: (data.page - 1) * data.pageSize + data.items.length,
+                        total: data.total.toLocaleString(),
+                      })}
+                    </p>
+                  )}
+                  <Pagination
+                    className="col-span-2 row-start-2 xl:col-span-1 xl:col-start-2 xl:row-start-1"
+                    currentPage={data.page}
+                    totalPages={Math.ceil(data.total / data.pageSize)}
+                    onPageChange={(nextPage) => {
+                      update('page', String(nextPage));
+                      window.scrollTo({ top: 0 });
+                    }}
+                  />
+                  <label className="col-start-2 row-start-1 flex items-center justify-self-end gap-2 whitespace-nowrap xl:col-start-3">
+                    {t('registry.perPage')}
+                    <span className="w-[70px]">
+                      <select
+                        className="hub-input"
+                        value={pageSize}
+                        onChange={(event) => update('pageSize', event.target.value)}
+                      >
+                        {MARKET_PAGE_SIZE_OPTIONS.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </label>
+                </div>
+              )}
             </>
           )}
         </div>

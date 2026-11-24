@@ -6,13 +6,15 @@ interface PaginationProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  disabled = false
+  disabled = false,
+  className = 'my-6',
 }) => {
   const { t } = useTranslation();
   // Generate page buttons
@@ -87,7 +89,7 @@ const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap justify-center items-center gap-y-2 my-6">
+    <div className={`flex flex-wrap justify-center items-center gap-y-2 ${className}`}>
       <button
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={disabled || currentPage === 1}
