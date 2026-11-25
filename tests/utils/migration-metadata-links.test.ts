@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { migrateToDatabase } from '../../src/utils/migration.js';
 import { loadOriginalSettings } from '../../src/config/index.js';
 import { initializeDatabase } from '../../src/db/connection.js';
@@ -5,13 +8,16 @@ import { migrateCredentialBindings } from '../../src/utils/credentialBindingMigr
 import { UserRepository } from '../../src/db/repositories/UserRepository.js';
 import { ServerRepository } from '../../src/db/repositories/ServerRepository.js';
 
+let mockSettingsDir = '';
+let mockSettingsPath = '';
+
 jest.mock('../../src/db/connection.js', () => ({ initializeDatabase: jest.fn() }));
 jest.mock('../../src/utils/credentialBindingMigration.js', () => ({
   migrateCredentialBindings: jest.fn(),
 }));
 jest.mock('../../src/config/index.js', () => ({
   loadOriginalSettings: jest.fn(),
-  getSettingsPath: jest.fn(() => '/tmp/mcp_settings.json'),
+  getSettingsPath: jest.fn(() => mockSettingsPath),
 }));
 jest.mock('../../src/utils/settingsSync.js', () => ({ syncSettingsToDatabase: jest.fn() }));
 jest.mock('../../src/dao/DaoFactory.js', () => ({ setDaoFactory: jest.fn() }));
@@ -56,8 +62,14 @@ for (const path of [
 describe('migrateToDatabase metadata links', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSettingsDir = mkdtempSync(join(tmpdir(), 'mcphub-migration-'));
+    mockSettingsPath = join(mockSettingsDir, 'mcp_settings.json');
     jest.mocked(initializeDatabase).mockResolvedValue(undefined);
     jest.mocked(migrateCredentialBindings).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    rmSync(mockSettingsDir, { recursive: true, force: true });
   });
 
   it('seeds every server even when one carries a hand-edited bad link', async () => {
