@@ -79,3 +79,26 @@ export const reconcileKnownTools = (
   const seen = new Set(known);
   return { known, newTools: current.filter((name) => !seen.has(name)) };
 };
+
+/**
+ * Adds a first baseline for each server that has none yet, or returns
+ * undefined when nothing changes. A paged list mounts only the cards of one
+ * page, so this lets servers on other pages get a baseline too.
+ */
+export const seedKnownTools = (
+  known: KnownTools,
+  servers: ToolListSource[],
+  nameSeparator: string,
+): KnownTools | undefined => {
+  let next: KnownTools | undefined;
+  for (const server of servers) {
+    if (knownToolsFor(next ?? known, server.name)) continue;
+    const result = reconcileKnownTools(
+      undefined,
+      getToolNames(server, nameSeparator),
+      server.enabled,
+    );
+    if (result.known) next = { ...(next ?? known), [server.name]: result.known };
+  }
+  return next;
+};

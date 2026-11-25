@@ -5,6 +5,7 @@ import {
   knownToolsStorageKey,
   readKnownTools,
   reconcileKnownTools,
+  seedKnownTools,
   writeKnownTools,
   type ToolListSource,
 } from '../utils/toolChanges';
@@ -60,4 +61,34 @@ export const useNewTools = (
   }, [ready, key, serverName, toolNames]);
 
   return { newTools, acknowledge };
+};
+
+/**
+ * Sets a first baseline for every server in the list, also for servers on
+ * other pages. Set `ready` as for `useNewTools`, and also wait for the list.
+ */
+export const useToolBaselines = (
+  servers: ToolListSource[],
+  nameSeparator: string,
+  username: string | undefined,
+  ready: boolean,
+) => {
+  const key = knownToolsStorageKey(username);
+  // The server list is a new array on every poll, so compare it by value.
+  const signature = JSON.stringify(
+    servers.map(({ name, enabled, tools }) => ({
+      name,
+      enabled,
+      tools: (tools ?? []).map((tool) => ({ name: tool.name })),
+    })),
+  );
+  const sources = useMemo<ToolListSource[]>(() => JSON.parse(signature), [signature]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const store = getStore();
+    if (!store) return;
+    const next = seedKnownTools(readKnownTools(store, key), sources, nameSeparator);
+    if (next) writeKnownTools(store, key, next);
+  }, [ready, key, sources, nameSeparator]);
 };

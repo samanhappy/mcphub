@@ -48,7 +48,7 @@ jest.mock('react', () => ({
   },
 }));
 
-import { useNewTools } from '../../frontend/src/hooks/useNewTools';
+import { useNewTools, useToolBaselines } from '../../frontend/src/hooks/useNewTools';
 import { knownToolsStorageKey } from '../../frontend/src/utils/toolChanges';
 
 const renderHook = <T>(render: () => T): T => {
@@ -151,5 +151,36 @@ describe('useNewTools', () => {
     installStorage({ [key]: JSON.stringify({ github: ['search'] }) });
     const result = renderHook(() => useNewTools(server, '__', 'alice', true));
     expect(result.newTools).toEqual(['merge']);
+  });
+});
+
+describe('useToolBaselines', () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const servers = [server, { name: 'slack', tools: [{ name: 'slack__post' }] }];
+
+  beforeEach(() => {
+    states.length = 0;
+    memos.length = 0;
+    prevEffects.length = 0;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'window', {
+      value: originalWindow,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it('waits until it is ready', () => {
+    const { localStorage } = installStorage();
+    renderHook(() => useToolBaselines(servers, '-', undefined, false));
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('sets a baseline for every server, also servers on other pages', () => {
+    const { data } = installStorage({ [key]: JSON.stringify({ github: ['search'] }) });
+    renderHook(() => useToolBaselines(servers, '__', 'alice', true));
+    expect(JSON.parse(data.get(key) ?? '{}')).toEqual({ github: ['search'], slack: ['post'] });
   });
 });

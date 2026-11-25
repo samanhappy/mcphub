@@ -4,6 +4,7 @@ import {
   knownToolsStorageKey,
   readKnownTools,
   reconcileKnownTools,
+  seedKnownTools,
   writeKnownTools,
 } from '../../frontend/src/utils/toolChanges';
 
@@ -81,6 +82,28 @@ describe('knownToolsFor', () => {
   it('ignores inherited keys, so a server named constructor gets a baseline', () => {
     expect(knownToolsFor({}, 'constructor')).toBeUndefined();
     expect(knownToolsFor({ constructor: ['a'] }, 'constructor')).toEqual(['a']);
+  });
+});
+
+describe('seedKnownTools', () => {
+  const other = { name: 'slack', tools: [{ name: 'slack-post' }] };
+
+  it('adds a baseline only for servers that have none', () => {
+    expect(
+      seedKnownTools({ github: ['search'] }, [server(['search', 'merge']), other], '-'),
+    ).toEqual({
+      github: ['search'],
+      slack: ['post'],
+    });
+  });
+
+  it('returns undefined when nothing changes', () => {
+    expect(seedKnownTools({ slack: ['post'] }, [other], '-')).toBeUndefined();
+  });
+
+  it('skips disabled servers and servers without tools', () => {
+    const disabled = { ...other, enabled: false };
+    expect(seedKnownTools({}, [disabled, server([])], '-')).toBeUndefined();
   });
 });
 
