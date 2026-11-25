@@ -137,6 +137,16 @@ describe('useNewTools', () => {
     expect(localStorage.setItem).not.toHaveBeenCalled();
   });
 
+  it('does not run again when a poll returns the same tools in a new array', () => {
+    const { localStorage } = installStorage();
+    renderHook(() => useNewTools(server, '__', 'alice', true));
+    expect(localStorage.setItem).toHaveBeenCalledTimes(1);
+    const polled = { ...server, tools: server.tools.map((tool) => ({ ...tool })) };
+    renderHook(() => useNewTools(polled, '__', 'alice', true));
+    expect(localStorage.getItem).toHaveBeenCalledTimes(1);
+    expect(localStorage.setItem).toHaveBeenCalledTimes(1);
+  });
+
   it('reports tools that are not in the stored baseline', () => {
     installStorage({ [key]: JSON.stringify({ github: ['search'] }) });
     const result = renderHook(() => useNewTools(server, '__', 'alice', true));

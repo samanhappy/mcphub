@@ -1,16 +1,18 @@
 import {
   getToolNames,
+  knownToolsFor,
   knownToolsStorageKey,
   readKnownTools,
   reconcileKnownTools,
   writeKnownTools,
 } from '../../frontend/src/utils/toolChanges';
 
-const server = (tools: string[], extra: { enabled?: boolean } = {}) => ({
+const server = (tools: string[]) => ({
   name: 'github',
   tools: tools.map((name) => ({ name: `github-${name}` })),
-  ...extra,
 });
+
+const names = (tools: string[]) => getToolNames(server(tools), '-');
 
 const memoryStore = (initial: Record<string, string> = {}) => {
   const data = new Map(Object.entries(initial));
@@ -24,35 +26,36 @@ const memoryStore = (initial: Record<string, string> = {}) => {
 
 describe('reconcileKnownTools', () => {
   it('stores the first tool list as the baseline without new tools', () => {
-    expect(reconcileKnownTools(undefined, server(['search', 'create_issue']), '-')).toEqual({
+    expect(reconcileKnownTools(undefined, names(['search', 'create_issue']))).toEqual({
       known: ['search', 'create_issue'],
       newTools: [],
     });
   });
 
   it('reports tools that are not in the baseline', () => {
-    expect(
-      reconcileKnownTools(['search'], server(['search', 'create_issue', 'merge']), '-'),
-    ).toEqual({ known: ['search'], newTools: ['create_issue', 'merge'] });
+    expect(reconcileKnownTools(['search'], names(['search', 'create_issue', 'merge']))).toEqual({
+      known: ['search'],
+      newTools: ['create_issue', 'merge'],
+    });
   });
 
   it('reports nothing when a reconnect returns the same tools in another order', () => {
-    expect(reconcileKnownTools(['a', 'b'], server(['b', 'a']), '-').newTools).toEqual([]);
+    expect(reconcileKnownTools(['a', 'b'], names(['b', 'a'])).newTools).toEqual([]);
   });
 
   it('does not report a removed tool', () => {
-    expect(reconcileKnownTools(['a', 'b'], server(['a']), '-').newTools).toEqual([]);
+    expect(reconcileKnownTools(['a', 'b'], names(['a'])).newTools).toEqual([]);
   });
 
   it('keeps no baseline while a server has not reported tools', () => {
-    expect(reconcileKnownTools(undefined, server([]), '-')).toEqual({
+    expect(reconcileKnownTools(undefined, names([]))).toEqual({
       known: undefined,
       newTools: [],
     });
   });
 
   it('ignores disabled servers', () => {
-    expect(reconcileKnownTools(['a'], server(['a', 'b'], { enabled: false }), '-')).toEqual({
+    expect(reconcileKnownTools(['a'], names(['a', 'b']), false)).toEqual({
       known: ['a'],
       newTools: [],
     });
@@ -60,7 +63,7 @@ describe('reconcileKnownTools', () => {
 
   it('compares upstream names, so a separator change does not flag every tool', () => {
     const renamed = { name: 'github', tools: [{ name: 'github__a' }, { name: 'github__b' }] };
-    expect(reconcileKnownTools(['a', 'b'], renamed, '__').newTools).toEqual([]);
+    expect(reconcileKnownTools(['a', 'b'], getToolNames(renamed, '__')).newTools).toEqual([]);
   });
 });
 
@@ -71,6 +74,13 @@ describe('getToolNames', () => {
 
   it('uses the backend default separator when the separator is empty', () => {
     expect(getToolNames({ name: 'x', tools: [{ name: 'x-a' }] }, '')).toEqual(['a']);
+  });
+});
+
+describe('knownToolsFor', () => {
+  it('ignores inherited keys, so a server named constructor gets a baseline', () => {
+    expect(knownToolsFor({}, 'constructor')).toBeUndefined();
+    expect(knownToolsFor({ constructor: ['a'] }, 'constructor')).toEqual(['a']);
   });
 });
 

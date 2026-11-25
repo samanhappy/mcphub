@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getToolNames,
+  knownToolsFor,
   knownToolsStorageKey,
   readKnownTools,
   reconcileKnownTools,
@@ -30,29 +31,33 @@ export const useNewTools = (
 ) => {
   const key = knownToolsStorageKey(username);
   const [newTools, setNewTools] = useState<string[]>([]);
-  const signature = getToolNames(server, nameSeparator).join('\n');
+  // The tool list is a new array on every poll, so compare it by value.
+  const signature = JSON.stringify(getToolNames(server, nameSeparator));
+  const toolNames = useMemo<string[]>(() => JSON.parse(signature), [signature]);
+  const serverName = server.name;
+  const enabled = server.enabled;
 
   useEffect(() => {
     if (!ready) return;
     const store = getStore();
     if (!store) return;
     const known = readKnownTools(store, key);
-    const result = reconcileKnownTools(known[server.name], server, nameSeparator);
-    if (result.known && result.known !== known[server.name]) {
-      writeKnownTools(store, key, { ...known, [server.name]: result.known });
+    const previous = knownToolsFor(known, serverName);
+    const result = reconcileKnownTools(previous, toolNames, enabled);
+    if (result.known && result.known !== previous) {
+      writeKnownTools(store, key, { ...known, [serverName]: result.known });
     }
     setNewTools(result.newTools);
-    // The signature stands in for the tool list, which is a new array on every poll.
-  }, [ready, key, server.name, server.enabled, signature, nameSeparator]);
+  }, [ready, key, serverName, enabled, toolNames]);
 
   const acknowledge = useCallback(() => {
     if (!ready) return;
     const store = getStore();
     if (!store) return;
     const known = readKnownTools(store, key);
-    writeKnownTools(store, key, { ...known, [server.name]: getToolNames(server, nameSeparator) });
+    writeKnownTools(store, key, { ...known, [serverName]: toolNames });
     setNewTools([]);
-  }, [ready, key, server.name, signature, nameSeparator]);
+  }, [ready, key, serverName, toolNames]);
 
   return { newTools, acknowledge };
 };

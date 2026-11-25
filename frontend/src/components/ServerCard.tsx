@@ -1075,13 +1075,13 @@ const ServerCard = ({
               <div className="space-y-3 mt-2">
                 {newTools.length > 0 && (
                   <div
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-md"
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-md"
                     style={{ background: 'var(--hub-accent-soft)', color: 'var(--hub-accent)', fontSize: 12 }}
                   >
                     <span>{t('server.newToolsSinceLastReview', { count: newTools.length })}</span>
                     <button
                       type="button"
-                      className="hub-btn sm"
+                      className="hub-btn sm shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         acknowledgeNewTools();
