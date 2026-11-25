@@ -33,9 +33,8 @@ const serialize = async <T>(key: string, action: () => Promise<T>): Promise<T> =
 const personalOAuthLockScope = (serverName: string, username: string) =>
   JSON.stringify(['oauth', serverName, username]);
 /**
- * Serialize one user's binding of a server across replicas. The action runs on the lock
- * connection (see withLockConnection): binding reads are the latest committed state, and
- * binding writes survive the rollback of the request that triggered them.
+ * Serialize one user's binding of a server across replicas. The action runs in the caller's
+ * context; its binding reads and writes go through bindingStore.
  */
 export const withPersonalOAuthLock = <T>(
   serverName: string,
@@ -43,15 +42,28 @@ export const withPersonalOAuthLock = <T>(
   action: () => Promise<T>,
 ): Promise<T> => {
   const scope = personalOAuthLockScope(serverName, username);
-  return withReplicaLock(scope, () =>
-    serialize(JSON.stringify([serverName, username]), () => withLockConnection(scope, action)),
-  );
+  return withReplicaLock(scope, () => serialize(JSON.stringify([serverName, username]), action));
 };
-/** Latest committed binding when the user's replica lock is held, else the caller's view. */
+/**
+ * Binding access for one user and server. While their replica lock is held, it runs on the
+ * lock connection (withLockConnection): reads see the latest committed state, and writes are
+ * committed at once, so a refreshed grant survives the rollback of the request that triggered
+ * it. Otherwise it runs in the caller's context.
+ */
+const bindingStore = (serverName: string, username: string) => {
+  const onLock = <T>(work: () => Promise<T>) =>
+    withLockConnection(personalOAuthLockScope(serverName, username), work);
+  const dao = () => getCredentialBindingDao();
+  return {
+    get: () => onLock(() => dao().get(serverName, username)),
+    compareAndSave: (...args: Parameters<ReturnType<typeof dao>['compareAndSave']>) =>
+      onLock(() => dao().compareAndSave(...args)),
+    save: (...args: Parameters<ReturnType<typeof dao>['save']>) =>
+      onLock(() => dao().save(...args)),
+  };
+};
 const readBinding = (serverName: string, username: string) =>
-  withLockConnection(personalOAuthLockScope(serverName, username), () =>
-    getCredentialBindingDao().get(serverName, username),
-  );
+  bindingStore(serverName, username).get();
 
 export class PersonalAuthorizationRequiredError extends CredentialBindingError {}
 
@@ -154,9 +166,10 @@ export class PersonalOAuthContext {
   static async load(serverName: string, username: string, definition: ServerConfig) {
     const expanded = await expandServerConfig(definition);
     const context = new PersonalOAuthContext(serverName, username, expanded, fingerprint(expanded));
-    // The caller's view (a request snapshot included): a stale binding is detected under
-    // the lock by renewTokens and mutate, before a refresh token is redeemed or written.
-    const binding = await getCredentialBindingDao().get(serverName, username);
+    // Under the user's lock, the latest committed binding (a callback reloading the grant it
+    // just saved); otherwise the caller's view, a request snapshot included: a binding made
+    // stale by a later rotation is rejected under the lock before its token is redeemed.
+    const binding = await readBinding(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
       const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
@@ -238,8 +251,8 @@ export class PersonalOAuthContext {
   async mutate(mutator: (context: OAuthSettingsContext) => void): Promise<ServerConfigWithOAuth> {
     return withPersonalOAuthLock(this.serverName, this.username, async () => {
       await this.assertCurrent();
-      const dao = getCredentialBindingDao();
-      const current = await dao.get(this.serverName, this.username);
+      const dao = bindingStore(this.serverName, this.username);
+      const current = await dao.get();
       if (current?.encryptedValues !== this.revision)
         throw new CredentialBindingError('Personal authorization changed; reconnect');
       const config = structuredClone(this.config);
@@ -386,8 +399,8 @@ export class PersonalOAuthContext {
   async clearPendingAuthorizationIfCurrentRevision(): Promise<boolean> {
     return withPersonalOAuthLock(this.serverName, this.username, async () => {
       if (!this.revision) return false;
-      const dao = getCredentialBindingDao();
-      const current = await dao.get(this.serverName, this.username);
+      const dao = bindingStore(this.serverName, this.username);
+      const current = await dao.get();
       if (!current || current.encryptedValues !== this.revision) return false;
       const config = structuredClone(this.config);
       delete config.oauth.pendingAuthorization;
@@ -479,7 +492,7 @@ export const disconnectPersonalOAuth = async (
 ): Promise<void> => {
   await withPersonalOAuthLock(serverName, username, async () => {
     // Retain an encrypted tombstone so even a pre-save, unbound context becomes stale.
-    await getCredentialBindingDao().save({
+    await bindingStore(serverName, username).save({
       serverName,
       username,
       encryptedValues: await encryptCredentialValues(serverName, username, {}),

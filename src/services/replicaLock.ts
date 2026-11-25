@@ -8,60 +8,86 @@ import { logger } from '../utils/logger.js';
 // Held scopes and the connection holding their advisory lock.
 const heldLocks = new AsyncLocalStorage<Map<string, QueryRunner>>();
 
+/** Drop a connection that may still hold a session lock: pg-pool destroys it, not reuse it. */
+const discard = async (runner: QueryRunner, error: unknown): Promise<void> => {
+  const postgres = runner as QueryRunner & {
+    releasePostgresConnection?: (error: unknown) => Promise<void>;
+  };
+  if (postgres.releasePostgresConnection) await postgres.releasePostgresConnection(error);
+  else await runner.release();
+};
+
 /**
- * Credential-scoped, reentrant lock; it never retries the action after a database failure.
+ * Credential-scoped, reentrant lock across replicas; it never retries the action after a
+ * database failure.
  *
- * The action runs in the caller's context (a request transaction included). Only the work
- * passed to {@link withLockConnection} runs on the lock connection; that work is committed
- * when the lock is released, even if the action fails.
+ * The action runs in the caller's context (a request transaction included). The lock is a
+ * session-level advisory lock on a dedicated connection, with a 10-second timeout on its
+ * acquisition only. That connection also runs the credential work passed to
+ * {@link withLockConnection}, in short transactions of its own.
  */
 export const withReplicaLock = async <T>(scope: string, action: () => Promise<T>): Promise<T> => {
   if (!isReplicaMode() || heldLocks.getStore()?.has(scope)) return action();
   const runner = getAppDataSource().createQueryRunner();
-  const held = new Map(heldLocks.getStore());
   try {
     await runner.connect();
+    // SET LOCAL ends with this transaction: the session lock survives it, the timeout does not.
     await runner.startTransaction();
     await runner.query("SET LOCAL lock_timeout = '10s'");
-    await runner.query('SELECT pg_advisory_xact_lock(209, hashtext($1))', [scope]);
-    held.set(scope, runner);
-    let result: T;
-    try {
-      result = await heldLocks.run(held, action);
-    } catch (error) {
-      await runner
-        .commitTransaction()
-        .catch((commitError) =>
-          logger.error('Failed to commit credential changes after a failed action', commitError),
-        );
-      throw error;
-    }
+    await runner.query('SELECT pg_advisory_lock(209, hashtext($1))', [scope]);
     await runner.commitTransaction();
-    return result;
+  } catch (error) {
+    await discard(runner, error);
+    throw error;
+  }
+  const held = new Map(heldLocks.getStore());
+  held.set(scope, runner);
+  try {
+    return await heldLocks.run(held, action);
   } finally {
     held.delete(scope);
     try {
       if (runner.isTransactionActive) await runner.rollbackTransaction();
-    } finally {
+      await runner.query('SELECT pg_advisory_unlock(209, hashtext($1))', [scope]);
       await runner.release();
+    } catch (error) {
+      logger.error('Failed to release a replica lock; discarding its connection', error);
+      await discard(runner, error);
     }
   }
 };
 
 /**
- * Run `work` on the connection holding the replica lock of `scope`, outside any request
- * transaction: it reads the latest committed state, and its writes are committed when the
- * lock is released, whatever the outcome of the request or of the locked action.
+ * Run credential work on the connection holding the replica lock of `scope`, in its own
+ * transaction committed when `work` returns, outside any request transaction.
  *
- * Use it for credential state that follows irreversible upstream side effects: a refresh
- * rotates the refresh token at the authorization server, so a rolled-back dashboard request
- * must not restore the revoked token, and a REPEATABLE READ snapshot must not hide a
- * rotation made by another request. It reuses the lock connection, so it needs no extra
- * pooled connection. Outside replica mode, or without the lock, `work` runs as is.
+ * Use it for credential reads and writes that follow irreversible upstream side effects: a
+ * refresh rotates the refresh token at the authorization server, so the new grant must be
+ * durable at once (a rolled-back dashboard request must not restore the revoked token) and
+ * reads must see the latest committed state (a REPEATABLE READ snapshot must not hide a
+ * rotation made by another request). The lock connection is already held, so this needs no
+ * extra pooled connection. Without the lock, or outside replica mode, `work` runs in the
+ * caller's context.
+ *
+ * Keep `work` to database operations: it is serialized with the other credential work of
+ * the lock, and nothing it starts should outlive it.
  */
 export const withLockConnection = <T>(scope: string, work: () => Promise<T>): Promise<T> => {
   const runner = heldLocks.getStore()?.get(scope);
-  return runner ? databaseTransaction.run(runner, work) : work();
+  if (!runner) return work();
+  return withKeyedLock(JSON.stringify(['lock-connection', scope]), async () => {
+    // Nested credential work joins the enclosing transaction.
+    if (runner.isTransactionActive) return databaseTransaction.run(runner, work);
+    await runner.startTransaction();
+    try {
+      const result = await databaseTransaction.run(runner, work);
+      await runner.commitTransaction();
+      return result;
+    } catch (error) {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      throw error;
+    }
+  });
 };
 
 /**

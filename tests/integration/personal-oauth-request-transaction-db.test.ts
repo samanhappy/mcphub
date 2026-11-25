@@ -10,14 +10,21 @@ import { CredentialBindingImport } from '../../src/db/entities/CredentialBinding
 import { Server } from '../../src/db/entities/Server.js';
 import { getAppDataSource } from '../../src/db/connection.js';
 import { databaseTransaction } from '../../src/db/transactionContext.js';
-import { PersonalOAuthContext } from '../../src/services/personalOAuthService.js';
+import {
+  hasUsablePersonalOAuthGrant,
+  PersonalOAuthContext,
+  withPersonalOAuthLock,
+} from '../../src/services/personalOAuthService.js';
+import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
+import { withOAuthPendingAuthLock } from '../../src/services/replicaLock.js';
+import { installReplicaSchema } from '../../src/db/replicaSchema.js';
 import { createOAuthProvider, MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import {
   createOAuthFetch,
   fetchScopesFromServer,
 } from '../../src/services/oauthClientRegistration.js';
 import { logger } from '../../src/utils/logger.js';
-import type { ServerConfigWithName } from '../../src/types/index.js';
+import type { ServerConfigWithName, ServerInfo } from '../../src/types/index.js';
 
 // Replica mode: dashboard GET requests run inside a REPEATABLE READ configuration transaction
 // (replicaConfiguration middleware) and may connect personal OAuth servers. A refresh inside
@@ -212,6 +219,8 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     process.env.MCPHUB_REPLICA_MODE = 'true';
     mockSource = createSource();
     await mockSource.initialize();
+    // Revision triggers of replica mode: every binding write updates the mcphub_revision row.
+    await installReplicaSchema(mockSource);
   });
   afterAll(async () => {
     await mockSource.destroy();
@@ -368,4 +377,112 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
       await pool.destroy();
     }
   });
+
+  test('a callback reloads the grant it saved under the lock, committed at once', async () => {
+    // First-time sign-in: no grant yet.
+    await mockSource.getRepository(CredentialBinding).clear();
+    await withOAuthPendingAuthLock('gitlab', 'alice', async () => {
+      const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+      expect(hasUsablePersonalOAuthGrant(context)).toBe(false);
+      await new MCPHubOAuthProvider('gitlab', context.config).saveTokens({
+        access_token: 'access-2',
+        refresh_token: 'refresh-2',
+        token_type: 'Bearer',
+        expires_in: 7200,
+      });
+      // The callback reloads the binding before the lock is released.
+      const reloaded = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+      expect(reloaded.config.oauth.accessToken).toBe('access-2');
+      expect(hasUsablePersonalOAuthGrant(reloaded)).toBe(true);
+      // Committed before the lock is released: visible to other connections, and the
+      // revision row (bumped by the binding trigger) is not held for the rest of the action.
+      const other = mockSource.createQueryRunner();
+      await other.connect();
+      try {
+        const [row] = await other.query(
+          'SELECT "encryptedValues" FROM credential_bindings WHERE "serverName" = $1 AND username = $2',
+          ['gitlab', 'alice'],
+        );
+        expect(row.encryptedValues).toBe(reloaded.version);
+        await other.startTransaction();
+        await other.query("SET LOCAL lock_timeout = '1s'");
+        await other.query('UPDATE mcphub_revision SET version = version + 1 WHERE id = 1');
+        await other.commitTransaction();
+      } finally {
+        if (other.isTransactionActive) await other.rollbackTransaction();
+        await other.release();
+      }
+    });
+  });
+
+  test('a personal runtime initializes on the request connection and one lock connection', async () => {
+    // Two pooled connections: the dashboard request holds one.
+    const pool = createSource(2);
+    await pool.initialize();
+    const shared = mockSource;
+    mockSource = pool;
+    const request = await openRequestTransaction();
+    let configurationRead!: () => void;
+    const configurationReadDone = new Promise<void>((resolve) => (configurationRead = resolve));
+    let otherLock: Promise<void> | undefined;
+    // Runtime initialization outlives the preparation callback that started it under the lock.
+    const runtimes = new PrincipalRuntimeService(
+      async (name) => {
+        // Once the preparation lock is released, the next OAuth lock takes the second connection.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        let otherLockHeld!: () => void;
+        const held = new Promise<void>((resolve) => (otherLockHeld = resolve));
+        otherLock = withPersonalOAuthLock('gitlab', 'bob', async () => {
+          otherLockHeld();
+          await configurationReadDone;
+        });
+        await held;
+        // A configuration read of the initialization: on the request connection.
+        await getAppDataSource().query('SELECT 1');
+        configurationRead();
+        return {
+          name,
+          status: 'connected',
+          tools: [],
+          prompts: [],
+          resources: [],
+        } as unknown as ServerInfo;
+      },
+      () => undefined,
+    );
+    try {
+      const lease = await withinSeconds(
+        10,
+        databaseTransaction.run(request, () => runtimes.acquire('gitlab', { username: 'alice' })),
+      );
+      expect(lease.info.status).toBe('connected');
+      lease.release();
+      await otherLock;
+    } finally {
+      configurationRead();
+      await otherLock?.catch(() => undefined);
+      runtimes.invalidate();
+      await request.rollbackTransaction();
+      await request.release();
+      mockSource = shared;
+      await pool.destroy();
+    }
+  });
+
+  test('saving a refreshed grant waits for a configuration write longer than the lock timeout', async () => {
+    const upstream = rotatingUpstream();
+    jest.mocked(createOAuthFetch).mockResolvedValue(upstream.fetchFn);
+    // A configuration write holds the revision row for longer than the 10-second lock timeout.
+    const configurationWrite = mockSource.createQueryRunner();
+    await configurationWrite.connect();
+    await configurationWrite.startTransaction();
+    await configurationWrite.query('UPDATE mcphub_revision SET version = version + 1 WHERE id = 1');
+    const refresh = listTools(upstream.fetchFn);
+    await new Promise((resolve) => setTimeout(resolve, 11_000));
+    await configurationWrite.commitTransaction();
+    await configurationWrite.release();
+    await expect(refresh).resolves.toEqual(['issues']);
+    expect(upstream.refreshes).toEqual(['refresh-1']);
+    expect((await stored()).refreshToken).toBe('refresh-2');
+  }, 30_000);
 });
