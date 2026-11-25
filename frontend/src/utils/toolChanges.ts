@@ -44,13 +44,13 @@ export const writeKnownTools = (store: KeyValueStore, key: string, known: KnownT
 };
 
 // Compare upstream names, so a change of the name separator does not mark
-// every tool as new.
+// every tool as new. An empty separator falls back to '-', as on the backend.
 export const upstreamToolName = (
   serverName: string,
   toolName: string,
   nameSeparator: string,
 ): string => {
-  const prefix = `${serverName}${nameSeparator}`;
+  const prefix = `${serverName}${nameSeparator || '-'}`;
   return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
 };
 

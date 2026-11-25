@@ -68,6 +68,10 @@ describe('getToolNames', () => {
   it('keeps names that do not carry the server prefix', () => {
     expect(getToolNames({ name: 'x', tools: [{ name: 'plain' }] }, '-')).toEqual(['plain']);
   });
+
+  it('uses the backend default separator when the separator is empty', () => {
+    expect(getToolNames({ name: 'x', tools: [{ name: 'x-a' }] }, '')).toEqual(['a']);
+  });
 });
 
 describe('known tools storage', () => {

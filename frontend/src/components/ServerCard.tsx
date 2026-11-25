@@ -161,13 +161,15 @@ const ServerCard = ({
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { installConfig, nameSeparator } = useRuntimeSettings();
+  const { installConfig, nameSeparator, initialLoading } = useRuntimeSettings();
   const { exportMCPSettings } = useSettingsActions();
   const { auth } = useAuth();
+  // Wait for the real name separator and user, or the baseline can store wrong names.
   const { newTools, acknowledge: acknowledgeNewTools } = useNewTools(
     server,
     nameSeparator,
     auth.user?.username,
+    !initialLoading && !auth.loading,
   );
   const newToolSet = new Set(newTools);
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
