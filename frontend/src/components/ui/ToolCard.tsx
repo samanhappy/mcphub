@@ -30,6 +30,8 @@ import { nextHiddenParams } from '@/utils/hiddenParams';
 interface ToolCardProps {
   server: string;
   tool: Tool;
+  /** Discovered since the user last acknowledged this server's tools (#1496). */
+  isNew?: boolean;
   readOnly?: boolean;
   onToggle?: (toolName: string, enabled: boolean) => void;
   onDescriptionUpdate?: (
@@ -49,7 +51,15 @@ function isEmptyValue(value: any): boolean {
   return false;
 }
 
-const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdate, cost }: ToolCardProps) => {
+const ToolCard = ({
+  tool,
+  server,
+  isNew = false,
+  readOnly = false,
+  onToggle,
+  onDescriptionUpdate,
+  cost,
+}: ToolCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { nameSeparator } = useRuntimeSettings();
@@ -289,6 +299,7 @@ const ToolCard = ({ tool, server, readOnly = false, onToggle, onDescriptionUpdat
           <span className="hub-mono font-medium" style={{ fontSize: 13, color: 'var(--hub-ink)' }}>
             {toolDisplayName}
           </span>
+          {isNew && <span className="hub-tag accent">{t('tool.new')}</span>}
           <button
             className="hub-icon-btn sm"
             onClick={handleCopyToolName}

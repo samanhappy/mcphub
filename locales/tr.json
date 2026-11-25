@@ -403,7 +403,10 @@
     "validationKeepAliveRange": "Sağlık kontrolü aralığı en az 5.000 ms olmalıdır.",
     "validationIdleTimeoutMin": "Boşta kapatma zaman aşımı en az 10.000 ms olmalıdır.",
     "saving": "Kaydediliyor…",
-    "adding": "Ekleniyor…"
+    "adding": "Ekleniyor…",
+    "newToolsCount": "{{count}} yeni",
+    "newToolsSinceLastReview": "Son kontrolünüzden bu yana yeni araçlar: {{count}}",
+    "markToolsSeen": "Görüldü olarak işaretle"
   },
   "status": {
     "sleeping": "Uykuda",
@@ -918,7 +921,8 @@
     "fixJsonBeforeSwitching": "Form moduna geçmeden önce lütfen JSON formatını düzeltin",
     "item": "Öğe {{index}}",
     "addItem": "{{key}} öğesi ekle",
-    "enterKey": "{{key}} girin"
+    "enterKey": "{{key}} girin",
+    "new": "Yeni"
   },
   "prompt": {
     "run": "Getir",
