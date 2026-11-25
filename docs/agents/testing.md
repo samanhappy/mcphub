@@ -40,7 +40,7 @@ node scripts/verify-staging-ssh-boundary.mjs
 
 ## Disposable PostgreSQL integration tests
 
-`personal-oauth-db.test.ts` and `tool-policy-db.test.ts` require a disposable local PostgreSQL database. They modify and clear their tables; never point them at retained data. Without `MCPHUB_TEST_PG_PORT`, these suites are skipped.
+`personal-oauth-db.test.ts`, `personal-oauth-request-transaction-db.test.ts` and `tool-policy-db.test.ts` require a disposable local PostgreSQL database. They modify and clear their tables; never point them at retained data. Without `MCPHUB_TEST_PG_PORT`, these suites are skipped.
 
 ```sh
 docker run --detach --rm --name mcphub-test-pg \
@@ -50,6 +50,6 @@ docker run --detach --rm --name mcphub-test-pg \
 docker port mcphub-test-pg 5432
 docker exec mcphub-test-pg pg_isready -U mcphub_test
 # Once ready, use the printed host port:
-MCPHUB_TEST_PG_PORT=<port> pnpm exec jest tests/integration/personal-oauth-db.test.ts tests/integration/tool-policy-db.test.ts --runInBand
+MCPHUB_TEST_PG_PORT=<port> pnpm exec jest tests/integration/personal-oauth-db.test.ts tests/integration/personal-oauth-request-transaction-db.test.ts tests/integration/tool-policy-db.test.ts --runInBand
 docker stop mcphub-test-pg
 ```

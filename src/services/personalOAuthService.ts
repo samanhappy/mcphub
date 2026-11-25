@@ -1,5 +1,6 @@
 import { validateAuthorizationRelay } from '../utils/oauthServerMetadata.js';
 import { withReplicaLock } from './replicaLock.js';
+import { databaseTransaction } from '../db/transactionContext.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { FetchLike } from '../utils/ssrf.js';
 import { getCredentialBindingDao, getServerDao, getUserDao } from '../dao/DaoFactory.js';
@@ -140,7 +141,11 @@ export class PersonalOAuthContext {
   static async load(serverName: string, username: string, definition: ServerConfig) {
     const expanded = await expandServerConfig(definition);
     const context = new PersonalOAuthContext(serverName, username, expanded, fingerprint(expanded));
-    const binding = await getCredentialBindingDao().get(serverName, username);
+    // Read the latest committed binding, not the snapshot of a request transaction: another
+    // request may have rotated the refresh token since that snapshot was taken.
+    const binding = await databaseTransaction.exit(() =>
+      getCredentialBindingDao().get(serverName, username),
+    );
     if (binding) {
       const values = await decryptCredentialValues(binding);
       const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
