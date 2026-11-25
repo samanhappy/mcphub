@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { getSettingsPath } from '../../src/config/index.js';
+import { expandEnvVars, getSettingsPath, replaceEnvVars } from '../../src/config/index.js';
 /// <reference types="jest" />
 
 // Regression tests for issue #1029: startOnDemand servers could never be woken.
@@ -775,6 +775,47 @@ describe('startOnDemand lifecycle', () => {
         expect.objectContaining({ args: ['changed.js'] }),
       );
       expect(mcpService.getServerByName('demo')?.capabilityCache?.state).toBe('fresh');
+    });
+
+    describe('inherited HOSTNAME with the real config expander (#1550)', () => {
+      const previous = { PATH: process.env.PATH, HOSTNAME: process.env.HOSTNAME };
+      beforeEach(() => {
+        const actual = jest.requireActual('../../src/config/index.js');
+        jest.mocked(expandEnvVars).mockImplementation(actual.expandEnvVars);
+        jest.mocked(replaceEnvVars).mockImplementation(actual.replaceEnvVars);
+        process.env.HOSTNAME = 'container-a';
+      });
+      afterEach(() => {
+        jest.mocked(expandEnvVars).mockImplementation((value: string) => value);
+        jest.mocked(replaceEnvVars).mockImplementation((value: any) => value);
+        for (const [key, value] of Object.entries(previous)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+      });
+      const restartOnNewHost = async () => {
+        await mcpService.initializeClientsFromSettings(false, 'demo');
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+        mockConnect.mockClear();
+        mcpService.setServerInfosForTest([]);
+        process.env.HOSTNAME = 'container-b';
+        await mcpService.initializeClientsFromSettings(false, 'demo');
+      };
+
+      it('invalidates when the stdio PATH expands HOSTNAME to a new directory', async () => {
+        process.env.PATH = '/opt/$HOSTNAME/bin:/usr/bin';
+        await restartOnNewHost();
+        expect(mockConnect).toHaveBeenCalledTimes(1);
+      });
+
+      it('restores when HOSTNAME only appears in a literal env key', async () => {
+        const labelled = { ...ON_DEMAND_CONFIG, env: { LABEL_$HOSTNAME: 'fixed' } };
+        mockFindAll.mockResolvedValue([labelled]);
+        mockFindById.mockResolvedValue(labelled);
+        await restartOnNewHost();
+        expect(mockConnect).not.toHaveBeenCalled();
+        expect(mcpService.getServerByName('demo')?.capabilityCache?.state).toBe('fresh');
+      });
     });
 
     it('never executes a cached tool after wake discovers its removal', async () => {
