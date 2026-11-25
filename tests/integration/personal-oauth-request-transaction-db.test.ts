@@ -16,7 +16,7 @@ import {
   withPersonalOAuthLock,
 } from '../../src/services/personalOAuthService.js';
 import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
-import { withOAuthPendingAuthLock } from '../../src/services/replicaLock.js';
+import { withOAuthPendingAuthLock, withReplicaLock } from '../../src/services/replicaLock.js';
 import { installReplicaSchema } from '../../src/db/replicaSchema.js';
 import { createOAuthProvider, MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import {
@@ -485,4 +485,45 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     expect(upstream.refreshes).toEqual(['refresh-1']);
     expect((await stored()).refreshToken).toBe('refresh-2');
   }, 30_000);
+
+  test('a released lock leaves no advisory lock, whichever backends served it', async () => {
+    const heldAdvisoryLocks = async () =>
+      (
+        await mockSource.query(
+          "SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND granted",
+        )
+      )[0].count;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      // As the renewal and client calls do: the binding is saved under the held lock.
+      await withReplicaLock(JSON.stringify(['oauth', 'gitlab', 'alice']), async () => {
+        // Other clients keep backends busy: behind a transaction pooler (PgBouncer in
+        // transaction mode), the next transactions of the lock connection may get another one.
+        const busy = Promise.all([1, 2, 3].map(() => mockSource.query('SELECT pg_sleep(0.1)')));
+        const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+        await new MCPHubOAuthProvider('gitlab', context.config).saveTokens({
+          access_token: `access-${attempt + 2}`,
+          refresh_token: `refresh-${attempt + 2}`,
+          token_type: 'Bearer',
+          expires_in: 7200,
+        });
+        await busy;
+      });
+      expect(await heldAdvisoryLocks()).toBe(0);
+    }
+    // Another replica takes the lock at once.
+    const otherReplica = mockSource.createQueryRunner();
+    await otherReplica.connect();
+    try {
+      await otherReplica.startTransaction();
+      await otherReplica.query("SET LOCAL lock_timeout = '1s'");
+      await otherReplica.query('SELECT pg_advisory_xact_lock(209, hashtext($1))', [
+        JSON.stringify(['oauth', 'gitlab', 'alice']),
+      ]);
+      await otherReplica.commitTransaction();
+    } finally {
+      if (otherReplica.isTransactionActive) await otherReplica.rollbackTransaction();
+      await otherReplica.release();
+    }
+    expect((await stored()).accessToken).toBe('access-6');
+  });
 });

@@ -51,15 +51,15 @@ export const withPersonalOAuthLock = <T>(
  * it. Otherwise it runs in the caller's context.
  */
 const bindingStore = (serverName: string, username: string) => {
-  const onLock = <T>(work: () => Promise<T>) =>
-    withLockConnection(personalOAuthLockScope(serverName, username), work);
+  const onLock = <T>(work: () => Promise<T>, commit = false) =>
+    withLockConnection(personalOAuthLockScope(serverName, username), work, { commit });
   const dao = () => getCredentialBindingDao();
   return {
     get: () => onLock(() => dao().get(serverName, username)),
     compareAndSave: (...args: Parameters<ReturnType<typeof dao>['compareAndSave']>) =>
-      onLock(() => dao().compareAndSave(...args)),
+      onLock(() => dao().compareAndSave(...args), true),
     save: (...args: Parameters<ReturnType<typeof dao>['save']>) =>
-      onLock(() => dao().save(...args)),
+      onLock(() => dao().save(...args), true),
   };
 };
 const readBinding = (serverName: string, username: string) =>
