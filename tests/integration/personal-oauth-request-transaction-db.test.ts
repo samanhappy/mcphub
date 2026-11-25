@@ -16,7 +16,11 @@ import {
   withPersonalOAuthLock,
 } from '../../src/services/personalOAuthService.js';
 import { PrincipalRuntimeService } from '../../src/services/principalRuntimeService.js';
-import { withOAuthPendingAuthLock, withReplicaLock } from '../../src/services/replicaLock.js';
+import {
+  withLockConnection,
+  withOAuthPendingAuthLock,
+  withReplicaLock,
+} from '../../src/services/replicaLock.js';
 import { installReplicaSchema } from '../../src/db/replicaSchema.js';
 import { createOAuthProvider, MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
 import {
@@ -526,4 +530,67 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     }
     expect((await stored()).accessToken).toBe('access-6');
   });
+
+  test('two overlapping requests save the same binding without waiting for the lock timeout', async () => {
+    // Both requests load the binding, then save a grant: the first write commits and the lock
+    // is taken again while the second request waits for the same binding in this process.
+    const started = Date.now();
+    const results = await Promise.allSettled(
+      ['access-a', 'access-b'].map(async (accessToken) => {
+        const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
+        await new MCPHubOAuthProvider('gitlab', context.config).saveTokens({
+          access_token: accessToken,
+          refresh_token: `refresh-${accessToken}`,
+          token_type: 'Bearer',
+          expires_in: 7200,
+        });
+      }),
+    );
+    // The regression showed as the 10-second lock timeout of the first request.
+    expect(Date.now() - started).toBeLessThan(9_000);
+    // The first write wins; the second one is rejected as stale, never by a lock timeout.
+    expect(results[0].status).toBe('fulfilled');
+    expect(results[1]).toMatchObject({
+      status: 'rejected',
+      reason: expect.objectContaining({ message: 'Personal authorization changed; reconnect' }),
+    });
+    expect((await stored()).accessToken).toBe('access-a');
+  }, 30_000);
+
+  test('a write nested in read-only credential work is committed at once', async () => {
+    const scope = JSON.stringify(['oauth', 'gitlab', 'alice']);
+    const revision = async (source: DataSource) =>
+      Number((await source.query('SELECT version FROM mcphub_revision WHERE id = 1'))[0].version);
+    const before = await revision(mockSource);
+    await withReplicaLock(scope, async () => {
+      await withLockConnection(scope, async () => {
+        await withLockConnection(
+          scope,
+          () => getAppDataSource().query('UPDATE mcphub_revision SET version = version + 1'),
+          { commit: true },
+        );
+      });
+      // Committed before the lock is released: visible to other connections.
+      expect(await revision(mockSource)).toBe(before + 1);
+    });
+    expect(await revision(mockSource)).toBe(before + 1);
+  });
+
+  test('a request of the same process waits for a held lock 10 seconds at most', async () => {
+    const scope = JSON.stringify(['oauth', 'gitlab', 'alice']);
+    let releaseHolder!: () => void;
+    const holderDone = new Promise<void>((resolve) => (releaseHolder = resolve));
+    // A long locked action, such as a tool call.
+    const holder = withReplicaLock(scope, () => holderDone);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const started = Date.now();
+    await expect(withReplicaLock(scope, async () => 'never')).rejects.toThrow(
+      'Timed out waiting for a lock held in this process',
+    );
+    expect(Date.now() - started).toBeGreaterThanOrEqual(9_900);
+    expect(Date.now() - started).toBeLessThan(12_000);
+    releaseHolder();
+    await holder;
+    await expect(withReplicaLock(scope, async () => 'free')).resolves.toBe('free');
+  }, 30_000);
 });
