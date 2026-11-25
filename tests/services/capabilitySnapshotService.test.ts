@@ -13,6 +13,7 @@ jest.mock('../../src/dao/DaoFactory.js', () => ({
 }));
 jest.mock('../../src/services/serverConfigEnvironment.js', () => ({
   getServerEnvironment: async (config: ServerConfig) => ({ ...mockInherited, ...config.env }),
+  resolveStdioPath: () => mockInherited.PATH ?? '',
 }));
 import {
   prepareCapabilitySnapshot,

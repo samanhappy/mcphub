@@ -54,7 +54,11 @@ import {
   PersonalAuthorizationRequiredError,
 } from './personalOAuthService.js';
 import { preserveListFreshness, remainingListTtl } from '../utils/listFreshness.js';
-import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
+import {
+  expandServerConfig,
+  getServerEnvironment,
+  resolveStdioPath,
+} from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isHostedSkillUri, skillsAvailable } from './hostedSkillCatalog.js';
 import { readHostedSkillResource, registerSkillHandlers } from './mcpSkills.js';
@@ -152,7 +156,7 @@ import {
   UpstreamResourceTemplate,
   ToolFileStagingConfig,
 } from '../types/index.js';
-import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
+import { replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { validateMaxBufferSize } from '../utils/stdioOptions.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
@@ -1869,7 +1873,7 @@ export const createTransportFromConfig = async (
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command) {
     // Stdio transport
-    env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
+    env['PATH'] = resolveStdioPath();
 
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();

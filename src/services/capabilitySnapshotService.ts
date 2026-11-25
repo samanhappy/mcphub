@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { z } from 'zod';
 import { specTypeSchemas } from '@modelcontextprotocol/client';
 import { getCapabilitySnapshotDao } from '../dao/DaoFactory.js';
-import { getServerEnvironment } from './serverConfigEnvironment.js';
+import { getServerEnvironment, resolveStdioPath } from './serverConfigEnvironment.js';
 import type { CapabilitySnapshot, ServerConfig, ServerInfo } from '../types/index.js';
 import type { Tool as McpTool } from '@modelcontextprotocol/client';
 import { logger } from '../utils/logger.js';
@@ -41,13 +41,25 @@ const stable = (value: unknown): unknown => {
 // Container runtimes give every instance its own HOSTNAME (the container ID in
 // Docker, the pod name in Kubernetes), so the inherited value would invalidate
 // every snapshot on each recreate or rollout. It still counts when the server
-// declares it in `env` or references it in its launch configuration.
+// declares it in `env`, references it in a launch value, or the stdio PATH
+// expands it (the resolved PATH is fingerprinted below).
 const INSTANCE_SCOPED_ENV = ['HOSTNAME'];
+
+// String values of the launch configuration. `replaceEnvVars` passes keys
+// through literally, so only values can carry a reference.
+const launchValues = (value: unknown): string[] => {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(launchValues);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(launchValues);
+  return [];
+};
 
 // Mirrors `expandVarReferences`: `${NAME}`, or `$NAME` not followed by another
 // variable-name character.
-const referencesEnvVar = (serialized: string, name: string): boolean =>
-  serialized.includes(`\${${name}}`) || new RegExp(`\\$${name}(?![A-Z0-9_])`).test(serialized);
+const referencesEnvVar = (values: string[], name: string): boolean => {
+  const bare = new RegExp(`\\$${name}(?![A-Z0-9_])`);
+  return values.some((value) => value.includes(`\${${name}}`) || bare.test(value));
+};
 
 export const supportsCapabilitySnapshot = (config?: ServerConfig): boolean =>
   config?.startOnDemand === true && (config.type === 'stdio' || (!config.type && !!config.command));
@@ -94,11 +106,13 @@ export const prepareCapabilitySnapshot = async (
       startOnDemand,
       idleTimeoutMs,
     ];
-    const serializedLaunch = JSON.stringify(launch);
+    // Fingerprint the PATH the stdio launcher actually passes to the child.
+    env.PATH = resolveStdioPath();
+    const values = launchValues(launch);
     for (const name of INSTANCE_SCOPED_ENV) {
       if (
         !Object.prototype.hasOwnProperty.call(config.env ?? {}, name) &&
-        !referencesEnvVar(serializedLaunch, name)
+        !referencesEnvVar(values, name)
       )
         delete env[name];
     }
