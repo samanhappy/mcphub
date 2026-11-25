@@ -17,9 +17,10 @@ Infer the repo from `git remote -v`. Read [triage labels](triage-labels.md) befo
 
 1. Read the issue, latest comments, related issues, linked PRs and current code as needed. Look for already shipped fixes, duplicates and overlapping work.
 2. Apply one Type and at least one Area when identifiable. Preserve unrelated labels.
-3. Determine the next action: investigate, ask the maintainer, wait for feedback, or recognize existing implementation. Recommend a priority when supported; only set it with maintainer approval.
-4. For an investigation, report evidence (version/commit, paths, reproduction, test results), remaining uncertainty, and a concrete recommended next step. For a decision, state the question and options. Ask for only the missing user information.
-5. Avoid repeated comments or label churn; update an existing agent-authored status comment when practical. Do not change issue scope or close an issue without authorization.
+3. Default triaged, unapproved work to `agent:investigate`. Check whether the next action is actually user feedback, existing implementation, or an explicit deferral. Recommend a priority when supported; only set it with maintainer approval.
+4. For an investigation, report evidence (version/commit, paths, reproduction, test results), remaining uncertainty, and a concrete recommended next step. Group related issues when they share a design or dependency; do not escalate each proposal independently before analysis. Ask for only the missing user information.
+5. Escalate to `agent:needs-owner` only after the [maintainer decision gate](triage-labels.md#maintainer-decision-gate) passes. Record the exact blocking decision, evidence, viable options, trade-offs and recommendation in the issue or a status comment before changing its state. If further useful analysis is possible, continue investigation rather than escalating. If an existing owner-state issue lacks an actionable decision record, return it to investigation.
+6. Avoid repeated comments or label churn; update an existing agent-authored status comment when practical. Do not change issue scope or close an issue without authorization.
 
 ## Ready gate
 
