@@ -42,7 +42,7 @@ import {
 } from './fileStaging/tools.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isReplicaMode } from '../utils/replicaMode.js';
-import { withKeyedLock, withReplicaLock } from './replicaLock.js';
+import { withKeyedLock, withLockConnection, withReplicaLock } from './replicaLock.js';
 import type { ToolPolicyAudit } from '../types/index.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { observeToolCall } from './metricsService.js';
@@ -4088,7 +4088,9 @@ const protectReplicaOAuthClient = <T extends object>(
         return withReplicaLock(scope, async () => {
           if (personal) {
             await personal.assertCurrent();
-            const binding = await getCredentialBindingDao().get(name, personal.username);
+            const binding = await withLockConnection(scope, () =>
+              getCredentialBindingDao().get(name, personal.username),
+            );
             if (binding?.encryptedValues !== personal.version)
               throw new Error('Personal authorization changed; retry with current credentials');
           }

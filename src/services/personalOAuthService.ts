@@ -1,6 +1,5 @@
 import { validateAuthorizationRelay } from '../utils/oauthServerMetadata.js';
-import { withReplicaLock } from './replicaLock.js';
-import { databaseTransaction } from '../db/transactionContext.js';
+import { withLockConnection, withReplicaLock } from './replicaLock.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { FetchLike } from '../utils/ssrf.js';
 import { getCredentialBindingDao, getServerDao, getUserDao } from '../dao/DaoFactory.js';
@@ -31,13 +30,27 @@ const serialize = async <T>(key: string, action: () => Promise<T>): Promise<T> =
     if (queues.get(key) === next) queues.delete(key);
   }
 };
+const personalOAuthLockScope = (serverName: string, username: string) =>
+  JSON.stringify(['oauth', serverName, username]);
+/**
+ * Serialize one user's binding of a server across replicas. The action runs on the lock
+ * connection (see withLockConnection): binding reads are the latest committed state, and
+ * binding writes survive the rollback of the request that triggered them.
+ */
 export const withPersonalOAuthLock = <T>(
   serverName: string,
   username: string,
   action: () => Promise<T>,
-): Promise<T> =>
-  withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
-    serialize(JSON.stringify([serverName, username]), action),
+): Promise<T> => {
+  const scope = personalOAuthLockScope(serverName, username);
+  return withReplicaLock(scope, () =>
+    serialize(JSON.stringify([serverName, username]), () => withLockConnection(scope, action)),
+  );
+};
+/** Latest committed binding when the user's replica lock is held, else the caller's view. */
+const readBinding = (serverName: string, username: string) =>
+  withLockConnection(personalOAuthLockScope(serverName, username), () =>
+    getCredentialBindingDao().get(serverName, username),
   );
 
 export class PersonalAuthorizationRequiredError extends CredentialBindingError {}
@@ -141,11 +154,9 @@ export class PersonalOAuthContext {
   static async load(serverName: string, username: string, definition: ServerConfig) {
     const expanded = await expandServerConfig(definition);
     const context = new PersonalOAuthContext(serverName, username, expanded, fingerprint(expanded));
-    // Read the latest committed binding, not the snapshot of a request transaction: another
-    // request may have rotated the refresh token since that snapshot was taken.
-    const binding = await databaseTransaction.exit(() =>
-      getCredentialBindingDao().get(serverName, username),
-    );
+    // The caller's view (a request snapshot included): a stale binding is detected under
+    // the lock by renewTokens and mutate, before a refresh token is redeemed or written.
+    const binding = await getCredentialBindingDao().get(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
       const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
@@ -300,10 +311,7 @@ export class PersonalOAuthContext {
     if (!renewal) {
       renewal = (async () => {
         await this.assertCurrent();
-        if (
-          (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
-          this.revision
-        )
+        if ((await readBinding(this.serverName, this.username))?.encryptedValues !== this.revision)
           throw new CredentialBindingError('Personal authorization changed; reconnect');
         await action();
         return this;
@@ -313,10 +321,7 @@ export class PersonalOAuthContext {
     try {
       const renewed = await renewal;
       await this.assertCurrent();
-      if (
-        (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
-        renewed.revision
-      )
+      if ((await readBinding(this.serverName, this.username))?.encryptedValues !== renewed.revision)
         throw new CredentialBindingError('Personal authorization changed; reconnect');
       this.revision = renewed.revision;
       this.config = renewed.config;
@@ -480,6 +485,7 @@ export const disconnectPersonalOAuth = async (
       encryptedValues: await encryptCredentialValues(serverName, username, {}),
       updatedAt: new Date().toISOString(),
     });
-    credentialBindingEvents.emit('invalidate', { serverName, username });
   });
+  // After the lock: the tombstone is committed when listeners reload the binding.
+  credentialBindingEvents.emit('invalidate', { serverName, username });
 };

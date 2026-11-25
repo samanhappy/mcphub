@@ -7,10 +7,15 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { LegacyMcpClient } from '../../src/clients/legacyMcpClient.js';
 import { CredentialBinding } from '../../src/db/entities/CredentialBinding.js';
 import { CredentialBindingImport } from '../../src/db/entities/CredentialBindingImport.js';
+import { Server } from '../../src/db/entities/Server.js';
+import { getAppDataSource } from '../../src/db/connection.js';
 import { databaseTransaction } from '../../src/db/transactionContext.js';
 import { PersonalOAuthContext } from '../../src/services/personalOAuthService.js';
-import { MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
-import { createOAuthFetch } from '../../src/services/oauthClientRegistration.js';
+import { createOAuthProvider, MCPHubOAuthProvider } from '../../src/services/mcpOAuthProvider.js';
+import {
+  createOAuthFetch,
+  fetchScopesFromServer,
+} from '../../src/services/oauthClientRegistration.js';
 import { logger } from '../../src/utils/logger.js';
 import type { ServerConfigWithName } from '../../src/types/index.js';
 
@@ -37,8 +42,13 @@ jest.mock('../../src/db/connection.js', () => ({
   getAppDataSource: () =>
     jest.requireActual('../../src/db/transactionContext.js').scopedDataSource(mockSource),
 }));
+// Personal servers use mockDefinition; shared servers are read from the servers table.
+const findServer = async (name: string) =>
+  name === mockDefinition.name
+    ? mockDefinition
+    : ((await getAppDataSource().getRepository(Server).findOneBy({ name })) ?? undefined);
 jest.mock('../../src/dao/index.js', () => ({
-  getServerDao: () => ({ findById: async () => mockDefinition }),
+  getServerDao: () => ({ findById: findServer }),
   getUserDao: () => ({
     findByUsername: async (username: string) => ({ username, isAdmin: false }),
   }),
@@ -66,6 +76,8 @@ jest.mock('../../src/services/oauthClientRegistration.js', () => ({
   getRegisteredClient: jest.fn(),
   removeRegisteredClient: jest.fn(),
   createOAuthFetch: jest.fn(),
+  fetchScopesFromServer: jest.fn(),
+  initializeOAuthForServer: jest.fn(),
 }));
 
 const issuer = 'http://gitlab.internal.example';
@@ -157,6 +169,33 @@ const openRequestTransaction = async (): Promise<QueryRunner> => {
   return runner;
 };
 
+const createSource = (poolSize?: number) =>
+  new DataSource({
+    type: 'postgres',
+    host: '127.0.0.1',
+    port: Number(process.env.MCPHUB_TEST_PG_PORT),
+    username: 'mcphub_test',
+    password: 'mcphub_test',
+    database: 'mcphub_test',
+    entities: [CredentialBinding, CredentialBindingImport, Server],
+    synchronize: true,
+    ...(poolSize ? { extra: { max: poolSize } } : {}),
+  });
+
+/** Fail instead of hanging on a lock or a connection checkout. */
+const withinSeconds = <T>(seconds: number, promise: Promise<T>): Promise<T> => {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`still waiting after ${seconds}s`)),
+        seconds * 1000,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+};
+
 // This suite runs only against an explicitly supplied disposable local database.
 const dbSuite = process.env.MCPHUB_TEST_PG_PORT ? describe : describe.skip;
 dbSuite('personal OAuth refresh inside a request transaction (replica mode)', () => {
@@ -171,16 +210,7 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     process.env.MCPHUB_SETTING_PATH = path.join(directory, 'settings.json');
     process.env.MCPHUB_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString('base64');
     process.env.MCPHUB_REPLICA_MODE = 'true';
-    mockSource = new DataSource({
-      type: 'postgres',
-      host: '127.0.0.1',
-      port: Number(process.env.MCPHUB_TEST_PG_PORT),
-      username: 'mcphub_test',
-      password: 'mcphub_test',
-      database: 'mcphub_test',
-      entities: [CredentialBinding, CredentialBindingImport],
-      synchronize: true,
-    });
+    mockSource = createSource();
     await mockSource.initialize();
   });
   afterAll(async () => {
@@ -199,6 +229,7 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     jest.spyOn(logger, 'log').mockImplementation(() => undefined);
     jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
     await mockSource.getRepository(CredentialBinding).clear();
+    await mockSource.getRepository(Server).clear();
     const context = await PersonalOAuthContext.load('gitlab', 'alice', mockDefinition);
     // An expired grant, as after a night without activity.
     await new MCPHubOAuthProvider('gitlab', context.config).saveTokens({
@@ -230,16 +261,18 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     expect((await stored()).accessToken).toBe('access-2');
   });
 
-  test('a request does not refresh with a token rotated after its snapshot', async () => {
+  test('a request never redeems a refresh token rotated after its snapshot', async () => {
     const upstream = rotatingUpstream();
     jest.mocked(createOAuthFetch).mockResolvedValue(upstream.fetchFn);
     const request = await openRequestTransaction();
     try {
       // Another request (an MCP tool call) refreshes after the dashboard snapshot was taken.
       await expect(listTools(upstream.fetchFn)).resolves.toEqual(['issues']);
+      // The dashboard request starts from its snapshot; the binding check under the lock
+      // reads the committed rotation and stops it before the token endpoint.
       await expect(
         databaseTransaction.run(request, () => listTools(upstream.fetchFn)),
-      ).resolves.toEqual(['issues']);
+      ).rejects.toThrow('Personal authorization changed');
       await request.commitTransaction();
     } finally {
       if (request.isTransactionActive) await request.rollbackTransaction();
@@ -247,6 +280,8 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     }
     expect(upstream.refreshes).toEqual(['refresh-1']);
     expect((await stored()).refreshToken).toBe('refresh-2');
+    // The next request starts from a new snapshot.
+    await expect(listTools(upstream.fetchFn)).resolves.toEqual(['issues']);
   });
 
   test('a rotation is visible to other requests before the refreshing request ends', async () => {
@@ -264,5 +299,73 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     }
     expect(upstream.refreshes).toEqual(['refresh-1']);
     expect((await stored()).refreshToken).toBe('refresh-2');
+  });
+
+  test('enabling a shared OAuth server saves discovered scopes in the request transaction', async () => {
+    // Shared OAuth settings live in the server row, which the enable request has locked.
+    await mockSource.getRepository(Server).insert({
+      name: 'shared-gitlab',
+      type: 'streamable-http',
+      url: 'https://shared.example/mcp',
+      enabled: false,
+      oauth: { clientId: 'shared-client' },
+    });
+    jest.mocked(createOAuthFetch).mockResolvedValue(fetch);
+    jest.mocked(fetchScopesFromServer).mockResolvedValue(['read_api']);
+    const request = mockSource.createQueryRunner();
+    await request.connect();
+    await request.startTransaction('READ COMMITTED');
+    try {
+      await databaseTransaction.run(request, async () => {
+        await getAppDataSource().getRepository(Server).update(
+          { name: 'shared-gitlab' },
+          {
+            enabled: true,
+          },
+        );
+        const { name: _, ...definition } = (await findServer('shared-gitlab'))!;
+        await withinSeconds(5, createOAuthProvider('shared-gitlab', definition));
+      });
+      await request.commitTransaction();
+    } finally {
+      if (request.isTransactionActive) await request.rollbackTransaction();
+      await request.release();
+    }
+    const saved = await mockSource.getRepository(Server).findOneBy({ name: 'shared-gitlab' });
+    expect(saved?.enabled).toBe(true);
+    expect(saved?.oauth?.scopes).toEqual(['read_api']);
+  });
+
+  test('loading bindings needs no connection beyond the one of the request', async () => {
+    // Every pooled connection is held by a dashboard request listing servers.
+    const pool = createSource(2);
+    await pool.initialize();
+    const shared = mockSource;
+    mockSource = pool;
+    const requests = await Promise.all([1, 2].map(() => openRequestTransaction()));
+    try {
+      const loads = requests.flatMap((request) =>
+        // A linked user (alice) and a user who never linked the server (bob).
+        ['alice', 'bob'].map((username) =>
+          databaseTransaction.run(request, () =>
+            PersonalOAuthContext.load('gitlab', username, mockDefinition),
+          ),
+        ),
+      );
+      const contexts = await withinSeconds(5, Promise.all(loads));
+      expect(contexts.map((context) => context.config.oauth.refreshToken ?? null)).toEqual([
+        'refresh-1',
+        null,
+        'refresh-1',
+        null,
+      ]);
+    } finally {
+      for (const request of requests) {
+        await request.rollbackTransaction();
+        await request.release();
+      }
+      mockSource = shared;
+      await pool.destroy();
+    }
   });
 });
