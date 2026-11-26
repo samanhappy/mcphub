@@ -1,6 +1,6 @@
 import { withKeyedLock } from '../../src/services/replicaLock.js';
 
-const deferred = <T,>() => {
+const deferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -52,4 +52,43 @@ test('nested acquisition of the same key is reentrant', async () => {
     withKeyedLock('server-a', async () => 'nested'),
   );
   await expect(outer).resolves.toBe('nested');
+});
+
+test('a waiter that times out gives its turn up without blocking the queue', async () => {
+  const holder = deferred<void>();
+  const order: string[] = [];
+  const held = withKeyedLock('server-a', async () => {
+    order.push('holder');
+    await holder.promise;
+  });
+  const timedOut = withKeyedLock('server-a', async () => order.push('timed-out'), {
+    timeoutMs: 20,
+  });
+  const later = withKeyedLock('server-a', async () => order.push('later'));
+  await expect(timedOut).rejects.toThrow('Timed out waiting for a lock held in this process');
+  holder.resolve();
+  await held;
+  await later;
+  expect(order).toEqual(['holder', 'later']);
+  // The queue is empty again.
+  await expect(withKeyedLock('server-a', async () => 'free', { timeoutMs: 20 })).resolves.toBe(
+    'free',
+  );
+});
+
+test('a task started inside a non-reentrant holder queues behind it', async () => {
+  const order: string[] = [];
+  let task: Promise<unknown> | undefined;
+  await withKeyedLock(
+    'server-a',
+    async () => {
+      order.push('holder-start');
+      task = withKeyedLock('server-a', async () => order.push('task'), { reentrant: false });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      order.push('holder-end');
+    },
+    { reentrant: false },
+  );
+  await task;
+  expect(order).toEqual(['holder-start', 'holder-end', 'task']);
 });

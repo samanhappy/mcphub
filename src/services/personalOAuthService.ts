@@ -1,5 +1,5 @@
 import { validateAuthorizationRelay } from '../utils/oauthServerMetadata.js';
-import { withReplicaLock } from './replicaLock.js';
+import { withLockConnection, withReplicaLock } from './replicaLock.js';
 import { expandServerConfig } from './serverConfigEnvironment.js';
 import type { FetchLike } from '../utils/ssrf.js';
 import { getCredentialBindingDao, getServerDao, getUserDao } from '../dao/DaoFactory.js';
@@ -30,14 +30,40 @@ const serialize = async <T>(key: string, action: () => Promise<T>): Promise<T> =
     if (queues.get(key) === next) queues.delete(key);
   }
 };
+const personalOAuthLockScope = (serverName: string, username: string) =>
+  JSON.stringify(['oauth', serverName, username]);
+/**
+ * Serialize one user's binding of a server across replicas. The action runs in the caller's
+ * context; its binding reads and writes go through bindingStore.
+ */
 export const withPersonalOAuthLock = <T>(
   serverName: string,
   username: string,
   action: () => Promise<T>,
-): Promise<T> =>
-  withReplicaLock(JSON.stringify(['oauth', serverName, username]), () =>
-    serialize(JSON.stringify([serverName, username]), action),
-  );
+): Promise<T> => {
+  const scope = personalOAuthLockScope(serverName, username);
+  return withReplicaLock(scope, () => serialize(JSON.stringify([serverName, username]), action));
+};
+/**
+ * Binding access for one user and server. While their replica lock is held, it runs on the
+ * lock connection (withLockConnection): reads see the latest committed state, and writes are
+ * committed at once, so a refreshed grant survives the rollback of the request that triggered
+ * it. Otherwise it runs in the caller's context.
+ */
+const bindingStore = (serverName: string, username: string) => {
+  const onLock = <T>(work: () => Promise<T>, commit = false) =>
+    withLockConnection(personalOAuthLockScope(serverName, username), work, { commit });
+  const dao = () => getCredentialBindingDao();
+  return {
+    get: () => onLock(() => dao().get(serverName, username)),
+    compareAndSave: (...args: Parameters<ReturnType<typeof dao>['compareAndSave']>) =>
+      onLock(() => dao().compareAndSave(...args), true),
+    save: (...args: Parameters<ReturnType<typeof dao>['save']>) =>
+      onLock(() => dao().save(...args), true),
+  };
+};
+const readBinding = (serverName: string, username: string) =>
+  bindingStore(serverName, username).get();
 
 export class PersonalAuthorizationRequiredError extends CredentialBindingError {}
 
@@ -140,7 +166,10 @@ export class PersonalOAuthContext {
   static async load(serverName: string, username: string, definition: ServerConfig) {
     const expanded = await expandServerConfig(definition);
     const context = new PersonalOAuthContext(serverName, username, expanded, fingerprint(expanded));
-    const binding = await getCredentialBindingDao().get(serverName, username);
+    // Under the user's lock, the latest committed binding (a callback reloading the grant it
+    // just saved); otherwise the caller's view, a request snapshot included: a binding made
+    // stale by a later rotation is rejected under the lock before its token is redeemed.
+    const binding = await readBinding(serverName, username);
     if (binding) {
       const values = await decryptCredentialValues(binding);
       const legacy = normalizeLegacyDeclaration(values.oauthDeclaration || '');
@@ -222,8 +251,8 @@ export class PersonalOAuthContext {
   async mutate(mutator: (context: OAuthSettingsContext) => void): Promise<ServerConfigWithOAuth> {
     return withPersonalOAuthLock(this.serverName, this.username, async () => {
       await this.assertCurrent();
-      const dao = getCredentialBindingDao();
-      const current = await dao.get(this.serverName, this.username);
+      const dao = bindingStore(this.serverName, this.username);
+      const current = await dao.get();
       if (current?.encryptedValues !== this.revision)
         throw new CredentialBindingError('Personal authorization changed; reconnect');
       const config = structuredClone(this.config);
@@ -295,10 +324,7 @@ export class PersonalOAuthContext {
     if (!renewal) {
       renewal = (async () => {
         await this.assertCurrent();
-        if (
-          (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
-          this.revision
-        )
+        if ((await readBinding(this.serverName, this.username))?.encryptedValues !== this.revision)
           throw new CredentialBindingError('Personal authorization changed; reconnect');
         await action();
         return this;
@@ -308,10 +334,7 @@ export class PersonalOAuthContext {
     try {
       const renewed = await renewal;
       await this.assertCurrent();
-      if (
-        (await getCredentialBindingDao().get(this.serverName, this.username))?.encryptedValues !==
-        renewed.revision
-      )
+      if ((await readBinding(this.serverName, this.username))?.encryptedValues !== renewed.revision)
         throw new CredentialBindingError('Personal authorization changed; reconnect');
       this.revision = renewed.revision;
       this.config = renewed.config;
@@ -376,8 +399,8 @@ export class PersonalOAuthContext {
   async clearPendingAuthorizationIfCurrentRevision(): Promise<boolean> {
     return withPersonalOAuthLock(this.serverName, this.username, async () => {
       if (!this.revision) return false;
-      const dao = getCredentialBindingDao();
-      const current = await dao.get(this.serverName, this.username);
+      const dao = bindingStore(this.serverName, this.username);
+      const current = await dao.get();
       if (!current || current.encryptedValues !== this.revision) return false;
       const config = structuredClone(this.config);
       delete config.oauth.pendingAuthorization;
@@ -469,12 +492,13 @@ export const disconnectPersonalOAuth = async (
 ): Promise<void> => {
   await withPersonalOAuthLock(serverName, username, async () => {
     // Retain an encrypted tombstone so even a pre-save, unbound context becomes stale.
-    await getCredentialBindingDao().save({
+    await bindingStore(serverName, username).save({
       serverName,
       username,
       encryptedValues: await encryptCredentialValues(serverName, username, {}),
       updatedAt: new Date().toISOString(),
     });
-    credentialBindingEvents.emit('invalidate', { serverName, username });
   });
+  // After the lock: the tombstone is committed when listeners reload the binding.
+  credentialBindingEvents.emit('invalidate', { serverName, username });
 };
