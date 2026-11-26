@@ -1,0 +1,102 @@
+---
+title: '代码模式（Code Mode）'
+description: '在 QuickJS WebAssembly 沙箱中运行模型编写的 JavaScript，在单轮调用中编排已授权的 MCPHub 工具'
+---
+
+## 概述
+
+**代码模式（Code Mode）** 是智能路由（`$smart` 与 `$smart/<group>`）的可选能力，允许模型编写简短的异步 JavaScript 脚本，在隔离沙箱内完成工具搜索、循环调用多个上游工具、过滤和聚合中间结果，并仅将最终结果返回给模型。
+
+由于中间原始载荷停留在沙箱内，无需逐条回传到模型上下文窗口，代码模式可以显著减少多步任务的轮次与 Token 消耗，同时完整复用 MCPHub 现有的调用方权限体系。
+
+代码模式**默认关闭**，需由管理员显式启用。
+
+## 暴露的工具
+
+在 **设置 → 智能路由 → 代码模式** 中启用后，`$smart` 与 `$smart/<group>` 路由会暴露以下工具：
+
+- **`execute_code({ code })`**：在隔离的 QuickJS-NG WebAssembly Worker 中运行异步 JavaScript 函数体，返回 `{ value, logs, toolCalls }`。
+- **`execute_code_read({ code })`**（启用代码模式后默认开启，可单独关闭）：运行相同的沙箱，但限制 `tools.call(...)` 仅能调用声明了 `readOnlyHint: true` 且未标记 `destructiveHint: true` 的工具。
+
+原有的智能路由元工具（`search_tools`、`describe_tool`、`call_tool`）保持不变。`describe_tool` 还会根据工具的 `inputSchema` 生成 `typescriptSignature` 字段，帮助模型准确编写 `tools.call(...)` 调用。
+
+<Warning>
+  MCP 的 `readOnlyHint` 与 `destructiveHint` 注解由上游服务器自行声明，**仅作为参考提示**。如需严格的权限隔离边界，请配合 MCPHub 的**工具策略（Tool Policies）**使用。
+</Warning>
+
+## 沙箱 API
+
+脚本作为 `async () => { ... }` 的函数体运行，支持顶层 `await` 与 `return`：
+
+```javascript
+const hits = await tools.search('github pull requests', { limit: 5 });
+const prs = await tools.call('github-list_pull_requests', {
+  owner: 'samanhappy',
+  repo: 'mcphub',
+  state: 'open',
+});
+
+const failing = [];
+for (const pr of prs) {
+  const status = await tools.call('github-get_commit_status', {
+    owner: 'samanhappy',
+    repo: 'mcphub',
+    ref: pr.head.sha,
+  });
+  if (status.state === 'failure') {
+    failing.push({ number: pr.number, title: pr.title });
+  }
+}
+
+console.log(`Checked ${prs.length} PRs`);
+return failing;
+```
+
+### 沙箱内可用全局对象
+
+- `tools.search(query, { limit? })`：执行当前调用方权限范围内的语义工具搜索（`search_tools`）。
+- `tools.call(toolName, args?)`：通过 MCPHub 现有的 `$smart call_tool` 路径调用已授权工具。
+  - 若上游工具返回 `isError: true`，`tools.call` 会抛出 JavaScript `Error`。
+  - 若存在 `structuredContent`，直接返回该结构化对象。
+  - 若返回单个 JSON 文本块，自动解析为 JS 对象；普通文本返回字符串；混合或二进制内容返回原始 `CallToolResult`。
+- `console.log / info / warn / error`：捕获日志（受 `maxLogBytes` 限制），随结果在 `logs` 中返回（超出时标记 `truncatedLogs: true`）。
+
+## 安全模型与隔离边界
+
+- **基于 `worker_threads` 的 QuickJS-NG WebAssembly**：脚本在编译为 WebAssembly 的 QuickJS-NG 引擎中运行，与 Node.js 运行时隔离且不阻塞主事件循环。
+- **无环境能力**：沙箱内无法访问 `fetch`、网络套接字、文件系统（`fs`）、`process`、环境变量、`require`/`import` 或定时器。任何凭据均不会进入沙箱。
+- **不引入新权限面**：每次 `tools.call()` 都通过 `MessagePort` 回到主线程，在当前调用方的实时请求与用户上下文中执行，完整继承分组可见性、Bearer Key 排除与个人 Key 范围、用户作用域运行时、工具策略、`TOOL_CALL_GUARD_ENABLED`、隐藏参数、文件暂存、活动日志，以及对中心内置工具（`mcphub_file_*`）和递归元工具调用的拒绝机制。
+- **中间结果与最终结果压缩**：启用工具结果压缩时，中间 `tools.call()` 结果保持未压缩（受 `maxToolResultBytes` 限制）以确保脚本可稳定解析 JSON，最终 `execute_code` 返回结果在发回模型前统一执行一次压缩。
+- **Elicitation 与 Sampling**：脚本运行期间若上游工具发起 elicitation 请求，将以 `elicitation_unsupported` 明确拒绝。
+
+## 限额与配置
+
+可在 **设置 → 智能路由** 页面或通过环境变量配置：
+
+| 配置项 | 环境变量 | 默认值 | 范围 |
+| --- | --- | --- | --- |
+| 启用代码模式 | `SMART_ROUTING_CODE_MODE_ENABLED` | `false` | `true` / `false` |
+| 启用只读变体 | `SMART_ROUTING_CODE_MODE_READ_ONLY_ENABLED` | `true` | `true` / `false` |
+| 总超时时间（毫秒） | `SMART_ROUTING_CODE_MODE_TIMEOUT_MS` | `30000` | `500–120000` |
+| JS CPU 超时（毫秒） | `SMART_ROUTING_CODE_MODE_CPU_TIMEOUT_MS` | `5000` | `100–30000` |
+| 内存上限（MB） | `SMART_ROUTING_CODE_MODE_MEMORY_LIMIT_MB` | `32` | `4–256` |
+| 单次最大工具调用数 | `SMART_ROUTING_CODE_MODE_MAX_TOOL_CALLS` | `20` | `1–100` |
+| 最大脚本大小（字节） | `SMART_ROUTING_CODE_MODE_MAX_SOURCE_BYTES` | `32768` | `256–262144` |
+| 最大日志大小（字节） | `SMART_ROUTING_CODE_MODE_MAX_LOG_BYTES` | `16384` | `256–131072` |
+| 单次中间结果上限（字节） | `SMART_ROUTING_CODE_MODE_MAX_TOOL_RESULT_BYTES` | `524288` | `4096–4194304` |
+| 最终输出上限（字节） | `SMART_ROUTING_CODE_MODE_MAX_OUTPUT_BYTES` | `65536` | `1024–1048576` |
+| 最大并发执行数 | `SMART_ROUTING_CODE_MODE_MAX_CONCURRENT_RUNS` | `4` | `1–32` |
+
+## 错误类型
+
+执行失败时，`execute_code` 返回 `isError: true` 以及结构化错误 `{ error: { kind, message }, toolCalls }`：
+
+- `disabled`：代码模式或 `execute_code_read` 未启用，或当前路由非 `$smart`。
+- `syntax_error` / `runtime_error`：脚本语法错误或未捕获运行时异常。
+- `timeout` / `cpu_timeout`：超出总超时或 JS CPU 预算（Worker 已强制终止）。
+- `memory_limit`：超出 QuickJS 堆内存上限。
+- `call_budget_exceeded`：超出 `maxToolCalls` 调用次数上限。
+- `source_too_large` / `tool_result_too_large` / `output_too_large`：脚本源码、中间结果或最终输出超出字节限制。
+- `concurrency_limit`：并发沙箱执行数达到上限。
+- `unauthorized` / `readonly_violation`：无权调用目标工具、尝试调用中心内置工具，或在 `execute_code_read` 中调用了非只读工具。
+- `elicitation_unsupported`：上游工具在脚本执行期间发起了 elicitation 请求。

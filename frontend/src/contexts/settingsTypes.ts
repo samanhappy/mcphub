@@ -41,6 +41,50 @@ export interface InstallConfig {
   baseUrl: string;
 }
 
+export interface SmartRoutingCodeModeConfig {
+  enabled: boolean;
+  readOnlyVariantEnabled: boolean;
+  timeoutMs: number;
+  cpuTimeoutMs: number;
+  memoryLimitMb: number;
+  maxToolCalls: number;
+  maxSourceBytes: number;
+  maxLogBytes: number;
+  maxToolResultBytes: number;
+  maxOutputBytes: number;
+  maxConcurrentRuns: number;
+}
+
+export const DEFAULT_SMART_ROUTING_CODE_MODE: SmartRoutingCodeModeConfig = {
+  enabled: false,
+  readOnlyVariantEnabled: true,
+  timeoutMs: 30000,
+  cpuTimeoutMs: 5000,
+  memoryLimitMb: 32,
+  maxToolCalls: 20,
+  maxSourceBytes: 32768,
+  maxLogBytes: 16384,
+  maxToolResultBytes: 524288,
+  maxOutputBytes: 65536,
+  maxConcurrentRuns: 4,
+};
+
+export const mergeSmartRoutingConfigUpdate = (
+  prev: SmartRoutingConfig,
+  updates: Partial<SmartRoutingConfig>,
+): SmartRoutingConfig => ({
+  ...prev,
+  ...updates,
+  ...(updates.codeMode
+    ? {
+        codeMode: {
+          ...(prev.codeMode ?? DEFAULT_SMART_ROUTING_CODE_MODE),
+          ...updates.codeMode,
+        },
+      }
+    : {}),
+});
+
 export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
@@ -65,6 +109,7 @@ export interface SmartRoutingConfig {
   fullSchemaTopN?: number | null;
   // Unset = server default (title, annotations)
   toolDefinitionFields?: string[];
+  codeMode?: SmartRoutingCodeModeConfig;
   /**
    * Read-only metadata from the server (issue #642): fields whose runtime value
    * comes from an environment variable, so whatever is typed into the form for
