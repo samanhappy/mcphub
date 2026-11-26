@@ -33,7 +33,7 @@ curl -X PUT http://localhost:3000/api/system-config \
 
 ### 2. 服务器暂存声明
 
-在服务器上声明适配器。服务器所有者可以为自己的私有服务器设置适配器；添加或移除 `shared` 信任只有管理员可以操作：
+在 **服务器** 页面展开 stdio 服务器卡片，即可选择受信任适配器（`ssh`），管理员还可切换共享信任开关；也可以通过 `PATCH /api/servers/:name/staging` 配置。服务器所有者可以为自己的私有服务器设置或清除（`{"adapter":null}`）适配器；添加或移除 `shared` 信任只有管理员可以操作：
 
 ```bash
 curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
@@ -45,6 +45,8 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
 共享、分组或公开服务器还需要在同一请求中传入 `{"shared":true}`（仅管理员），并配置带按用户槽位的 `credentialTemplate`。
 
 ### 3. 按工具启用
+
+在展开的 stdio 服务器卡片中打开 **工具** 标签页并展开目标工具，即可启用文件暂存，并将每个字符串参数设为 `无`、`输入` 或 `输出`。界面通过 `PATCH /api/servers/:name/file-staging` 保存：
 
 ```bash
 curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
@@ -58,9 +60,9 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
   -d '{"tool":"download","enabled":true,"outputParams":["localPath"]}'
 ```
 
-`file-staging` 路由允许所有者或管理员调用。`tool` 是不带服务器前缀的工具名；省略 `inputParams`/`outputParams` 时会保留已保存的值，因此禁用工具不会丢失声明。两个 PATCH 路由都会对结果做整体校验：启用中的工具仍然要求 `staging.adapter` 和 stdio 服务器。
+`file-staging` 路由允许所有者或管理员调用。`tool` 是不带服务器前缀的工具名；省略 `inputParams`/`outputParams` 时会保留已保存的值，因此禁用工具不会丢失声明；传入 `null` 会显式清除该方向的参数列表。两个 PATCH 路由都会对结果做整体校验：启用中的工具仍然要求 `staging.adapter` 和 stdio 服务器。
 
-Dashboard 只编辑全局设置；服务器级暂存和按工具开启仍使用上述 PATCH 路由。仍可使用整服务器 `PUT /api/servers/:name`（`{"config": ...}`）做批量编辑，但它一旦收到 `tools` 就会替换整个工具对象，因此暂存变更应优先使用 PATCH 路由。
+仍可使用整服务器 `PUT /api/servers/:name`（`{"config": ...}`）做批量编辑，但它一旦收到 `tools` 就会替换整个工具对象，因此暂存变更应优先使用 Dashboard 编辑器或上述 PATCH 路由。
 
 <Warning>
 **启用某个工具的暂存会改变该服务器上所有工具的工作目录。** 只要服务器上有任意一个工具设置了 `fileStaging.enabled`，hub 就会把该服务器的每个 stdio 子进程都启动在调用者对应的暂存根目录中，而不是 hub 的工作目录。依赖相对路径、或读取 hub 旁边文件（包括 `mcp_settings.json`）的工具会因此看到不同的目录，即使当前调用的工具本身没有启用暂存。只打开全局总开关不会改变工作目录，按工具启用才会。已运行的子进程会保留旧的工作目录，直到被重建。两个暂存 PATCH 路由与整服务器保存都会重连服务器，因此启用第一个暂存工具会立即生效：路由会（有界地）等待子进程连接，若本次重启失败则返回 500。按需启动（startOnDemand）的服务器是例外——它在下次工具调用时才启动，路由只能确认配置已保存；只有直接改数据库或设置文件的编辑才需要手动重载（`POST /api/servers/:name/reload`）。
@@ -276,4 +278,4 @@ ${basePath}/staging/download/:token
 
 ## 尚未包含
 
-暂存目前不提供 S3/MinIO 或多节点存储、响应路径自动识别或自动注入 `downloadUrl`、MCP Apps 文件 API、已签发引用的撤销路径、非 SSH 适配器，以及操作系统级隔离。直接调用、嵌套调用与错误记录都会把引用排除在活动记录之外；经 hub 不检查的通道（例如资源读取）传到上游工具的内容不在该保证范围内。Dashboard 的 **设置 → 文件暂存** 可编辑全局设置；服务器级暂存与按工具开启仍需使用上述 PATCH 路由。
+暂存目前不提供 S3/MinIO 或多节点存储、响应路径自动识别或自动注入 `downloadUrl`、MCP Apps 文件 API、已签发引用的撤销路径、非 SSH 适配器，以及操作系统级隔离。直接调用、嵌套调用与错误记录都会把引用排除在活动记录之外；经 hub 不检查的通道（例如资源读取）传到上游工具的内容不在该保证范围内。

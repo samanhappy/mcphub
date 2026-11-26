@@ -406,7 +406,21 @@
     "adding": "Ajout…",
     "newToolsCount": "{{count}} nouveaux",
     "newToolsSinceLastReview": "Nouveaux outils depuis votre dernière consultation : {{count}}",
-    "markToolsSeen": "Marquer comme vus"
+    "markToolsSeen": "Marquer comme vus",
+    "stagingTitle": "Transit de fichiers",
+    "stagingAdapterLabel": "Adaptateur de confiance",
+    "stagingAdapterNone": "Aucun",
+    "stagingAdapterSsh": "SSH (ssh)",
+    "stagingSharedLabel": "Autoriser les utilisateurs partagés",
+    "stagingSharedBadge": "Confiance partagée",
+    "stagingSharedReadOnlyHint": "La confiance partagée est activée. Seuls les administrateurs peuvent la retirer ou effacer l'adaptateur tant qu'elle est active.",
+    "stagingSharedAdminOnly": "Seul un administrateur peut modifier la confiance partagée.",
+    "stagingSharedCredentialSlotsHint": "Le transit partagé nécessite des emplacements d'identifiants par utilisateur (credentialTemplate) afin que chaque utilisateur se connecte avec ses propres identifiants.",
+    "stagingGlobalDisabledBanner": "Le transit de fichiers global est actuellement désactivé. Activez-le dans Paramètres pour qu'il prenne effet.",
+    "stagingOpenGlobalSettings": "Ouvrir les paramètres de transit de fichiers",
+    "stagingRestartNotice": "L'enregistrement reconnecte le serveur pour appliquer immédiatement les modifications.",
+    "stagingSaveSuccess": "Paramètres de transit de fichiers du serveur mis à jour",
+    "stagingSaveFailed": "Échec de la mise à jour du transit de fichiers du serveur"
   },
   "status": {
     "sleeping": "En veille",
@@ -484,7 +498,8 @@
     "inactive": "Inactif",
     "viewAll": "Voir tout",
     "docs": "Docs",
-    "all": "Tout"
+    "all": "Tout",
+    "reset": "Réinitialiser"
   },
   "clientConfig": {
     "title": "Copier la configuration MCP",
@@ -922,7 +937,24 @@
     "item": "Élément {{index}}",
     "addItem": "Ajouter un élément {{key}}",
     "enterKey": "Entrez {{key}}",
-    "new": "Nouveau"
+    "new": "Nouveau",
+    "fileStagingTitle": "Transit de fichiers",
+    "fileStagingBadge": "Transit",
+    "fileStagingEnable": "Activer le transit",
+    "fileStagingHelp": "Choisissez quels paramètres texte acceptent des références d'entrée téléversées (Entrée) ou des destinations de sortie (Sortie).",
+    "fileStagingRequiresAdapter": "Configurez un adaptateur de transit (tel que ssh) sur ce serveur avant d'activer le transit pour un outil.",
+    "fileStagingNoParams": "Cet outil ne possède aucun paramètre texte éligible dans son schéma d'entrée.",
+    "fileStagingDirection": "direction du transit",
+    "fileStagingRoleNone": "Aucun",
+    "fileStagingRoleInput": "Entrée",
+    "fileStagingRoleOutput": "Sortie",
+    "fileStagingHiddenBadge": "Masqué",
+    "fileStagingHiddenParamHint": "Ce paramètre est masqué aux modèles et ne peut pas être utilisé activement pour le transit.",
+    "fileStagingStaleBadge": "Hors schéma",
+    "fileStagingStaleParamHint": "Ce paramètre n'existe plus en tant que chaîne dans le schéma d'entrée. Sélectionnez Aucun pour le retirer.",
+    "fileStagingRestartCwdNotice": "L'activation du transit redémarre ce serveur et exécute chaque processus stdio dans le répertoire de transit de l'utilisateur au lieu du répertoire de travail du hub.",
+    "fileStagingSaveSuccess": "Paramètres de transit de fichiers de l'outil mis à jour",
+    "fileStagingSaveFailed": "Échec de la mise à jour du transit de fichiers de l'outil"
   },
   "prompt": {
     "run": "Obtenir",

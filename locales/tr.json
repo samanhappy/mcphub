@@ -406,7 +406,21 @@
     "adding": "Ekleniyor…",
     "newToolsCount": "{{count}} yeni",
     "newToolsSinceLastReview": "Son kontrolünüzden bu yana yeni araçlar: {{count}}",
-    "markToolsSeen": "Görüldü olarak işaretle"
+    "markToolsSeen": "Görüldü olarak işaretle",
+    "stagingTitle": "Dosya Hazırlama",
+    "stagingAdapterLabel": "Güvenilir bağdaştırıcı",
+    "stagingAdapterNone": "Yok",
+    "stagingAdapterSsh": "SSH (ssh)",
+    "stagingSharedLabel": "Paylaşılan kullanıcılara izin ver",
+    "stagingSharedBadge": "Paylaşılan güven",
+    "stagingSharedReadOnlyHint": "Paylaşılan güven etkin. Yalnızca yöneticiler paylaşılan güveni kaldırabilir veya etkinken bağdaştırıcıyı temizleyebilir.",
+    "stagingSharedAdminOnly": "Paylaşılan güven yalnızca bir yönetici tarafından değiştirilebilir.",
+    "stagingSharedCredentialSlotsHint": "Paylaşılan dosya hazırlama, her kullanıcının kendi kimlik bilgileriyle bağlanması için kullanıcı başına kimlik bilgisi yuvaları (credentialTemplate) gerektirir.",
+    "stagingGlobalDisabledBanner": "Genel dosya hazırlama şu anda devre dışı. Etkili olması için Ayarlar bölümünden etkinleştirin.",
+    "stagingOpenGlobalSettings": "Dosya Hazırlama ayarlarını aç",
+    "stagingRestartNotice": "Kaydetme işlemi değişikliklerin hemen geçerli olması için sunucuyu yeniden bağlar.",
+    "stagingSaveSuccess": "Sunucu dosya hazırlama ayarları güncellendi",
+    "stagingSaveFailed": "Sunucu dosya hazırlama ayarları güncellenemedi"
   },
   "status": {
     "sleeping": "Uykuda",
@@ -484,7 +498,8 @@
     "inactive": "Pasif",
     "viewAll": "Tümünü gör",
     "docs": "Belgeler",
-    "all": "Tümü"
+    "all": "Tümü",
+    "reset": "Sıfırla"
   },
   "clientConfig": {
     "title": "MCP yapılandırmasını kopyala",
@@ -922,7 +937,24 @@
     "item": "Öğe {{index}}",
     "addItem": "{{key}} öğesi ekle",
     "enterKey": "{{key}} girin",
-    "new": "Yeni"
+    "new": "Yeni",
+    "fileStagingTitle": "Dosya Hazırlama",
+    "fileStagingBadge": "Hazırlama",
+    "fileStagingEnable": "Hazırlamayı etkinleştir",
+    "fileStagingHelp": "Hangi metin parametrelerinin yüklenen giriş referanslarını (Giriş) veya çıktı hedeflerini (Çıktı) kabul edeceğini seçin.",
+    "fileStagingRequiresAdapter": "Araç dosya hazırlamasını etkinleştirmeden önce bu sunucuda bir bağdaştırıcı (ör. ssh) yapılandırın.",
+    "fileStagingNoParams": "Bu aracın giriş şemasında uygun metin parametresi yok.",
+    "fileStagingDirection": "hazırlama yönü",
+    "fileStagingRoleNone": "Yok",
+    "fileStagingRoleInput": "Giriş",
+    "fileStagingRoleOutput": "Çıktı",
+    "fileStagingHiddenBadge": "Gizli",
+    "fileStagingHiddenParamHint": "Bu parametre modellerden gizlidir ve etkin olarak hazırlanamaz.",
+    "fileStagingStaleBadge": "Şemada yok",
+    "fileStagingStaleParamHint": "Bu parametre artık araç giriş şemasında metin olarak bulunmuyor. Kaldırmak için Yok seçin.",
+    "fileStagingRestartCwdNotice": "Dosya hazırlamayı etkinleştirmek bu sunucuyu yeniden başlatır ve her stdio alt sürecini hub çalışma dizini yerine çağıran kullanıcının hazırlama dizininde çalıştırır.",
+    "fileStagingSaveSuccess": "Araç dosya hazırlama ayarları güncellendi",
+    "fileStagingSaveFailed": "Araç dosya hazırlama ayarları güncellenemedi"
   },
   "prompt": {
     "run": "Getir",

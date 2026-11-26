@@ -1836,13 +1836,13 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
       res.status(400).json({ success: false, message: 'Enabled status must be a boolean' });
       return;
     }
-    if (inputParams !== undefined && !Array.isArray(inputParams)) {
+    if (inputParams !== undefined && inputParams !== null && !Array.isArray(inputParams)) {
       res
         .status(400)
         .json({ success: false, message: 'inputParams must be an array of parameter names' });
       return;
     }
-    if (outputParams !== undefined && !Array.isArray(outputParams)) {
+    if (outputParams !== undefined && outputParams !== null && !Array.isArray(outputParams)) {
       res
         .status(400)
         .json({ success: false, message: 'outputParams must be an array of parameter names' });
@@ -1857,12 +1857,23 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
     const existing = tools[configKey];
     const existingFileStaging = existing?.fileStaging;
     // Only the supplied lists change; a bare enable/disable keeps the stored
-    // declaration (R33: disabling must not drop params).
+    // declaration (R33: disabling must not drop params). Passing null clears
+    // that direction explicitly, while [] remains a 400 validation error.
     const fileStaging = normalizeToolFileStaging(
       {
         enabled,
-        inputParams: inputParams !== undefined ? inputParams : existingFileStaging?.inputParams,
-        outputParams: outputParams !== undefined ? outputParams : existingFileStaging?.outputParams,
+        inputParams:
+          inputParams === undefined
+            ? existingFileStaging?.inputParams
+            : inputParams === null
+              ? undefined
+              : inputParams,
+        outputParams:
+          outputParams === undefined
+            ? existingFileStaging?.outputParams
+            : outputParams === null
+              ? undefined
+              : outputParams,
       },
       configKey,
     );
@@ -1962,7 +1973,8 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
     const existing = server.staging ?? {};
     const staging = normalizeServerStaging({
       shared: shared !== undefined ? shared : existing.shared,
-      adapter: adapter !== undefined ? adapter : existing.adapter,
+      adapter:
+        adapter === undefined ? existing.adapter : adapter === null ? undefined : adapter,
     });
     assertStagingConfigConsistent({ ...server, staging });
 
@@ -2147,9 +2159,12 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
     const tools: DescribableConfig = { ...(server.tools || {}) };
     const configKey = findToolConfigKey(tools, serverName, toolName, liveToolNames(serverName));
     const { hiddenParams: _previous, ...toolConfig } = tools[configKey] ?? { enabled: true };
-    const nextConfig = hiddenParams.length
-      ? { ...toolConfig, hiddenParams: [...new Set<string>(hiddenParams)] }
-      : toolConfig;
+    const nextConfig = normalizeToolConfig(
+      configKey,
+      hiddenParams.length
+        ? { ...toolConfig, hiddenParams: [...new Set<string>(hiddenParams)] }
+        : toolConfig,
+    );
     if (nextConfig.enabled !== false && Object.keys(nextConfig).every((key) => key === 'enabled')) {
       delete tools[configKey];
     } else {
@@ -2179,6 +2194,13 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
       message: `Tool ${toolName} hidden parameters updated successfully`,
     });
   } catch (error) {
+    if (error instanceof ServerConfigValidationError) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error',

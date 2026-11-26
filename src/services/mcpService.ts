@@ -3139,7 +3139,8 @@ export const getServersInfo = async (
             resolvedType ||
             serverConfig?.description ||
             serverConfig?.tags?.length ||
-            serverConfig?.command
+            serverConfig?.command ||
+            serverConfig?.staging
               ? {
                   ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
@@ -3155,6 +3156,7 @@ export const getServersInfo = async (
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
                   ...(serverConfig?.command ? { command: serverConfig.command } : {}),
+                  ...(serverConfig?.staging ? { staging: { ...serverConfig.staging } } : {}),
                 }
               : undefined,
         };

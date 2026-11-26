@@ -352,6 +352,61 @@ describe('updateToolFileStaging (PATCH /servers/:name/file-staging)', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
   });
+
+  it('clears inputParams or outputParams when null is passed while preserving [] rejection', async () => {
+    resetServer({
+      tools: {
+        transfer: {
+          enabled: true,
+          fileStaging: {
+            enabled: true,
+            inputParams: ['src'],
+            outputParams: ['dest'],
+          },
+        },
+      },
+    });
+    const res = mockRes();
+
+    await updateToolFileStaging(
+      request({ tool: 'transfer', enabled: true, inputParams: null }),
+      res,
+    );
+
+    expect(controllerServerDao.updateTools).toHaveBeenCalledWith('sftp', {
+      transfer: {
+        enabled: true,
+        fileStaging: { enabled: true, outputParams: ['dest'] },
+      },
+    });
+    expect(responseBody(res)).toEqual({
+      success: true,
+      data: {
+        enabled: true,
+        fileStaging: { enabled: true, outputParams: ['dest'] },
+      },
+    });
+
+    // Clearing the remaining direction while disabled succeeds and drops both lists.
+    const res2 = mockRes();
+    await updateToolFileStaging(
+      request({ tool: 'transfer', enabled: false, outputParams: null }),
+      res2,
+    );
+    expect(responseBody(res2)).toEqual({
+      success: true,
+      data: { enabled: true, fileStaging: { enabled: false } },
+    });
+
+    // Clearing both directions while enabled is still rejected with 400.
+    const res3 = mockRes();
+    await updateToolFileStaging(
+      request({ tool: 'transfer', enabled: true, inputParams: null, outputParams: null }),
+      res3,
+    );
+    expect(res3.status).toHaveBeenCalledWith(400);
+    expect(String(responseBody(res3).message)).toContain('requires inputParams or outputParams');
+  });
 });
 
 describe('updateServerStaging (PATCH /servers/:name/staging)', () => {
@@ -441,6 +496,67 @@ describe('updateServerStaging (PATCH /servers/:name/staging)', () => {
     await updateServerStaging(request({}), res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(controllerServerDao.update).not.toHaveBeenCalled();
+  });
+
+  it('allows clearing adapter with null when no tools are enabled and shared is off', async () => {
+    resetServer({
+      staging: { adapter: 'ssh' },
+      tools: {
+        upload: { enabled: true, fileStaging: { enabled: false, inputParams: ['localPath'] } },
+      },
+    });
+    const res = mockRes();
+
+    await updateServerStaging(request({ adapter: null }), res);
+
+    expect(controllerServerDao.update).toHaveBeenCalledWith('sftp', { staging: undefined });
+    expect(responseBody(res)).toEqual({ success: true, data: null });
+    expect(liveServer.config.staging).toBeUndefined();
+  });
+
+  it('allows an admin to clear both shared and adapter in one request', async () => {
+    resetServer({
+      staging: { adapter: 'ssh', shared: true },
+      tools: {},
+    });
+    const res = mockRes();
+
+    await updateServerStaging(
+      request({ shared: false, adapter: null }, { username: 'admin', isAdmin: true }),
+      res,
+    );
+
+    expect(controllerServerDao.update).toHaveBeenCalledWith('sftp', { staging: undefined });
+    expect(responseBody(res)).toEqual({ success: true, data: null });
+  });
+
+  it('rejects adapter: null when shared stays true or when a tool still has fileStaging enabled', async () => {
+    resetServer({
+      staging: { adapter: 'ssh', shared: true },
+      tools: {},
+    });
+    const resShared = mockRes();
+    await updateServerStaging(request({ adapter: null }), resShared);
+    expect(resShared.status).toHaveBeenCalledWith(400);
+    expect(String(responseBody(resShared).message)).toContain('staging.shared requires staging.adapter');
+    expect(controllerServerDao.update).not.toHaveBeenCalled();
+
+    resetServer({
+      staging: { adapter: 'ssh' },
+      tools: {
+        upload: { enabled: true, fileStaging: { enabled: true, inputParams: ['localPath'] } },
+      },
+    });
+    const resEnabledTool = mockRes();
+    await updateServerStaging(request({ adapter: null }), resEnabledTool);
+    expect(resEnabledTool.status).toHaveBeenCalledWith(400);
+    expect(String(responseBody(resEnabledTool).message)).toContain('staging.adapter');
+    expect(controllerServerDao.update).not.toHaveBeenCalled();
+
+    const resEmptyString = mockRes();
+    await updateServerStaging(request({ adapter: '' }), resEmptyString);
+    expect(resEmptyString.status).toHaveBeenCalledWith(400);
     expect(controllerServerDao.update).not.toHaveBeenCalled();
   });
 });

@@ -406,7 +406,21 @@
     "adding": "Adding…",
     "newToolsCount": "{{count}} new",
     "newToolsSinceLastReview": "New tools since you last checked: {{count}}",
-    "markToolsSeen": "Mark as seen"
+    "markToolsSeen": "Mark as seen",
+    "stagingTitle": "File Staging",
+    "stagingAdapterLabel": "Trusted adapter",
+    "stagingAdapterNone": "None",
+    "stagingAdapterSsh": "SSH (ssh)",
+    "stagingSharedLabel": "Allow shared users",
+    "stagingSharedBadge": "Shared trust",
+    "stagingSharedReadOnlyHint": "Shared trust is enabled. Only admins can remove shared trust or clear the adapter while it is active.",
+    "stagingSharedAdminOnly": "Shared trust can only be changed by an admin.",
+    "stagingSharedCredentialSlotsHint": "Shared file staging requires per-user credential slots (credentialTemplate) so each user connects with their own credentials.",
+    "stagingGlobalDisabledBanner": "Global file staging is currently disabled. Enable it in Settings for staging to take effect.",
+    "stagingOpenGlobalSettings": "Open File Staging settings",
+    "stagingRestartNotice": "Saving reconnects the server so changes take effect immediately.",
+    "stagingSaveSuccess": "Server file staging settings updated",
+    "stagingSaveFailed": "Failed to update server file staging settings"
   },
   "status": {
     "sleeping": "Sleeping",
@@ -483,7 +497,8 @@
     "inactive": "Inactive",
     "viewAll": "View all",
     "docs": "Docs",
-    "all": "All"
+    "all": "All",
+    "reset": "Reset"
   },
   "clientConfig": {
     "title": "Copy MCP configuration",
@@ -923,7 +938,24 @@
     "item": "Item {{index}}",
     "addItem": "Add {{key}} item",
     "enterKey": "Enter {{key}}",
-    "new": "New"
+    "new": "New",
+    "fileStagingTitle": "File Staging",
+    "fileStagingBadge": "Staged",
+    "fileStagingEnable": "Enable staging",
+    "fileStagingHelp": "Choose which string parameters accept uploaded input references (Input) or receive output destinations (Output).",
+    "fileStagingRequiresAdapter": "Configure a staging adapter (such as ssh) on this server before enabling tool file staging.",
+    "fileStagingNoParams": "This tool has no eligible string parameters in its input schema.",
+    "fileStagingDirection": "staging direction",
+    "fileStagingRoleNone": "None",
+    "fileStagingRoleInput": "Input",
+    "fileStagingRoleOutput": "Output",
+    "fileStagingHiddenBadge": "Hidden",
+    "fileStagingHiddenParamHint": "This parameter is hidden from models and cannot be actively staged.",
+    "fileStagingStaleBadge": "Not in schema",
+    "fileStagingStaleParamHint": "This parameter is no longer present as a string in the tool input schema. Set it to None to remove it.",
+    "fileStagingRestartCwdNotice": "Enabling file staging restarts this server and runs every stdio child in the calling user's staging directory instead of the hub working directory.",
+    "fileStagingSaveSuccess": "Tool file staging settings updated",
+    "fileStagingSaveFailed": "Failed to update tool file staging settings"
   },
   "prompt": {
     "run": "Get",
