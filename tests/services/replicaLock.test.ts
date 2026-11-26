@@ -61,7 +61,9 @@ test('a waiter that times out gives its turn up without blocking the queue', asy
     order.push('holder');
     await holder.promise;
   });
-  const timedOut = withKeyedLock('server-a', async () => order.push('timed-out'), 20);
+  const timedOut = withKeyedLock('server-a', async () => order.push('timed-out'), {
+    timeoutMs: 20,
+  });
   const later = withKeyedLock('server-a', async () => order.push('later'));
   await expect(timedOut).rejects.toThrow('Timed out waiting for a lock held in this process');
   holder.resolve();
@@ -69,5 +71,24 @@ test('a waiter that times out gives its turn up without blocking the queue', asy
   await later;
   expect(order).toEqual(['holder', 'later']);
   // The queue is empty again.
-  await expect(withKeyedLock('server-a', async () => 'free', 20)).resolves.toBe('free');
+  await expect(withKeyedLock('server-a', async () => 'free', { timeoutMs: 20 })).resolves.toBe(
+    'free',
+  );
+});
+
+test('a task started inside a non-reentrant holder queues behind it', async () => {
+  const order: string[] = [];
+  let task: Promise<unknown> | undefined;
+  await withKeyedLock(
+    'server-a',
+    async () => {
+      order.push('holder-start');
+      task = withKeyedLock('server-a', async () => order.push('task'), { reentrant: false });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      order.push('holder-end');
+    },
+    { reentrant: false },
+  );
+  await task;
+  expect(order).toEqual(['holder-start', 'holder-end', 'task']);
 });

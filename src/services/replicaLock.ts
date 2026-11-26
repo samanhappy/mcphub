@@ -4,10 +4,25 @@ import { getAppDataSource } from '../db/connection.js';
 import { databaseTransaction } from '../db/transactionContext.js';
 import { isReplicaMode } from '../utils/replicaMode.js';
 
-// Held scopes and the connection holding their advisory lock.
-const heldLocks = new AsyncLocalStorage<Map<string, QueryRunner>>();
-// Credential work in progress per lock: nested work joins it, the outermost one commits.
-const lockWork = new AsyncLocalStorage<Map<string, { commit: boolean }>>();
+// Held scopes and their owner: the connection holding the advisory lock, and whether the lock
+// is still live. Tasks started under a lock inherit this map and may run after its release.
+interface LockOwner {
+  runner: QueryRunner;
+  live: boolean;
+}
+const heldLocks = new AsyncLocalStorage<Map<string, LockOwner>>();
+const liveOwner = (scope: string): LockOwner | undefined => {
+  const owner = heldLocks.getStore()?.get(scope);
+  return owner?.live ? owner : undefined;
+};
+const lockConnectionKey = (scope: string) => JSON.stringify(['lock-connection', scope]);
+// Credential work in progress per lock: nested work joins it while it runs, and the outermost
+// work commits. Tasks started under it inherit the marker and may run after it ends.
+interface LockWork {
+  commit: boolean;
+  active: boolean;
+}
+const lockWork = new AsyncLocalStorage<Map<string, LockWork>>();
 // Wait budget for a replica lock: the in-process queue and the database lock together.
 const LOCK_TIMEOUT_MS = 10_000;
 
@@ -42,35 +57,45 @@ const acquire = async (
  * process queue in memory first, without holding a connection; then the lock is a
  * transaction-level advisory lock held by a transaction on a dedicated connection, which also
  * runs the credential work passed to {@link withLockConnection}. Waiting for both fails after
- * 10 seconds.
+ * 10 seconds. Nested calls reenter while the lock is live; a task started under the lock that
+ * calls it after the release queues like any other caller.
  */
 export const withReplicaLock = async <T>(scope: string, action: () => Promise<T>): Promise<T> => {
-  if (!isReplicaMode() || heldLocks.getStore()?.has(scope)) return action();
+  // Reentrant only while the lock is live: a task started under it may resume after the release.
+  if (!isReplicaMode() || liveOwner(scope)) return action();
   // Same-process holders queue here, before the database lock: withLockConnection releases and
   // takes the database lock again after a write, and a request of this process waiting for the
-  // in-process lock while holding the database one would block that new acquisition.
+  // in-process lock while holding the database one would block that new acquisition. Not
+  // reentrant: an inherited queue marker would let a late task skip the queue.
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   return withKeyedLock(
     JSON.stringify(['replica-lock', scope]),
     async () => {
       const runner = getAppDataSource().createQueryRunner();
-      const held = new Map(heldLocks.getStore());
+      const owner: LockOwner = { runner, live: false };
       try {
         await runner.connect();
         await acquire(runner, scope, deadline - Date.now());
-        held.set(scope, runner);
-        return await heldLocks.run(held, action);
+        owner.live = true;
+        return await heldLocks.run(new Map(heldLocks.getStore()).set(scope, owner), action);
       } finally {
-        held.delete(scope);
-        try {
-          // Committed credential writes are already durable (withLockConnection).
-          if (runner.isTransactionActive) await runner.rollbackTransaction();
-        } finally {
-          await runner.release();
-        }
+        owner.live = false;
+        // Wait for credential work still running on the connection, such as a task started under
+        // the lock: committed writes are durable, the rest is rolled back.
+        await withKeyedLock(
+          lockConnectionKey(scope),
+          async () => {
+            try {
+              if (runner.isTransactionActive) await runner.rollbackTransaction();
+            } finally {
+              await runner.release();
+            }
+          },
+          { reentrant: false },
+        );
       }
     },
-    LOCK_TIMEOUT_MS,
+    { timeoutMs: LOCK_TIMEOUT_MS, reentrant: false },
   );
 };
 
@@ -85,10 +110,13 @@ export const withReplicaLock = async <T>(scope: string, action: () => Promise<T>
  * long locked action, such as a tool call, must not keep the replica revision row locked by
  * the binding write), and reads must see the latest committed state (a REPEATABLE READ
  * snapshot must not hide a rotation made by another request). The lock connection is already
- * held, so this needs no extra pooled connection. Without the lock, or outside replica mode,
- * `work` runs in the caller's context.
+ * held, so this needs no extra pooled connection. Without a live lock (outside replica mode,
+ * or work that waited past the release of the lock), `work` runs in the caller's context, as
+ * credential work did before; the binding compare-and-save still rejects stale writes. The
+ * release waits for credential work already running on the lock connection.
  *
- * Nested work joins the enclosing one, and the commit happens when the outermost work ends.
+ * Nested work joins the enclosing one while it runs, and the commit happens when the outermost
+ * work ends.
  *
  * Between that commit and the new acquisition, another replica may take the lock: it then
  * reads the committed grant. If it keeps the lock longer than the timeout, the new acquisition
@@ -101,36 +129,62 @@ export const withLockConnection = <T>(
   work: () => Promise<T>,
   { commit = false }: { commit?: boolean } = {},
 ): Promise<T> => {
-  const runner = heldLocks.getStore()?.get(scope);
-  if (!runner) return work();
-  const key = JSON.stringify(['lock-connection', scope]);
-  return withKeyedLock(key, async () => {
-    if (!runner.isTransactionActive)
-      throw new Error('Replica lock lost after a failed acquisition; retry the request');
-    const enclosing = lockWork.getStore()?.get(key);
-    if (enclosing) enclosing.commit ||= commit;
-    const state = enclosing ?? { commit };
-    await runner.startTransaction(); // SAVEPOINT
-    let result: T;
-    try {
-      result = await lockWork.run(new Map(lockWork.getStore()).set(key, state), () =>
-        databaseTransaction.run(runner, work),
-      );
-      await runner.commitTransaction(); // RELEASE SAVEPOINT
-    } catch (error) {
-      await runner.rollbackTransaction(); // ROLLBACK TO SAVEPOINT
-      throw error;
-    }
-    if (!enclosing && state.commit) {
-      await runner.commitTransaction();
-      await acquire(runner, scope);
-    }
+  const owner = liveOwner(scope);
+  if (!owner) return work();
+  const key = lockConnectionKey(scope);
+  const enclosing = lockWork.getStore()?.get(key);
+  if (enclosing?.active) {
+    // Nested work joins the enclosing work; the outermost one commits.
+    enclosing.commit ||= commit;
+    return inSavepoint(owner.runner, key, enclosing, work);
+  }
+  // Not reentrant: an inherited queue marker would let a late task skip the queue.
+  return withKeyedLock(
+    key,
+    async () => {
+      // The lock may have been released while this work waited for its turn.
+      if (!owner.live) return work();
+      const { runner } = owner;
+      if (!runner.isTransactionActive)
+        throw new Error('Replica lock lost after a failed acquisition; retry the request');
+      const state: LockWork = { commit, active: true };
+      try {
+        const result = await inSavepoint(runner, key, state, work);
+        if (state.commit) {
+          await runner.commitTransaction();
+          await acquire(runner, scope);
+        }
+        return result;
+      } finally {
+        state.active = false;
+      }
+    },
+    { reentrant: false },
+  );
+};
+
+/** Run `work` on the lock connection in a savepoint, rolled back if `work` fails. */
+const inSavepoint = async <T>(
+  runner: QueryRunner,
+  key: string,
+  state: LockWork,
+  work: () => Promise<T>,
+): Promise<T> => {
+  await runner.startTransaction(); // SAVEPOINT
+  try {
+    const result = await lockWork.run(new Map(lockWork.getStore()).set(key, state), () =>
+      databaseTransaction.run(runner, work),
+    );
+    await runner.commitTransaction(); // RELEASE SAVEPOINT
     return result;
-  });
+  } catch (error) {
+    await runner.rollbackTransaction(); // ROLLBACK TO SAVEPOINT
+    throw error;
+  }
 };
 
 /**
- * In-process, reentrant, per-key promise-chain lock. `withReplicaLock` above
+ * In-process, per-key promise-chain lock, reentrant unless `reentrant: false`. `withReplicaLock` above
  * is a no-op outside replica mode because there is no cross-process lock to
  * take; this keeps same-key async work serialized within a single process
  * (e.g. a server's OAuth flows) in both modes.
@@ -141,9 +195,17 @@ const keyedQueues = new Map<string, Promise<unknown>>();
 export const withKeyedLock = async <T>(
   key: string,
   action: () => Promise<T>,
-  timeoutMs?: number,
+  {
+    timeoutMs,
+    reentrant = true,
+  }: {
+    /** Give the turn up and reject after this delay. */
+    timeoutMs?: number;
+    /** Let nested calls of the same async context run at once; otherwise they queue too. */
+    reentrant?: boolean;
+  } = {},
 ): Promise<T> => {
-  if (heldKeyedLocks.getStore()?.has(key)) return action();
+  if (reentrant && heldKeyedLocks.getStore()?.has(key)) return action();
 
   const previous = keyedQueues.get(key) ?? Promise.resolve();
   let release!: () => void;
@@ -174,12 +236,12 @@ export const withKeyedLock = async <T>(
     }
   }
 
-  const held = new Set(heldKeyedLocks.getStore());
-  held.add(key);
+  // A non-reentrant holder leaves no marker for the tasks it starts to inherit.
+  const held = reentrant ? new Set(heldKeyedLocks.getStore()).add(key) : undefined;
   try {
-    return await heldKeyedLocks.run(held, action);
+    return held ? await heldKeyedLocks.run(held, action) : await action();
   } finally {
-    held.delete(key);
+    held?.delete(key);
     release();
     if (keyedQueues.get(key) === next) keyedQueues.delete(key);
   }

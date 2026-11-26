@@ -11,6 +11,7 @@ import { Server } from '../../src/db/entities/Server.js';
 import { getAppDataSource } from '../../src/db/connection.js';
 import { databaseTransaction } from '../../src/db/transactionContext.js';
 import {
+  disconnectPersonalOAuth,
   hasUsablePersonalOAuthGrant,
   PersonalOAuthContext,
   withPersonalOAuthLock,
@@ -593,4 +594,102 @@ dbSuite('personal OAuth refresh inside a request transaction (replica mode)', ()
     await holder;
     await expect(withReplicaLock(scope, async () => 'free')).resolves.toBe('free');
   }, 30_000);
+
+  test('a task resuming during the cleanup of its lock queues like any request', async () => {
+    // Personal runtime initialization: a connection task started under the lock outlives it
+    // and resumes while the lock is being released, with another request of this process
+    // queued for the same binding. Both save credentials (a commit, then a new acquisition).
+    const scope = JSON.stringify(['oauth', 'gitlab', 'alice']);
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const saveCredentials = () =>
+      withPersonalOAuthLock('gitlab', 'alice', async () => {
+        await sleep(400);
+        await withLockConnection(
+          scope,
+          () => getAppDataSource().query('UPDATE mcphub_revision SET version = version + 1'),
+          { commit: true },
+        );
+      });
+    let resumeTask!: () => void;
+    const cleanupStarted = new Promise<void>((resolve) => (resumeTask = resolve));
+    const createQueryRunner = mockSource.createQueryRunner.bind(mockSource);
+    jest.spyOn(mockSource, 'createQueryRunner').mockImplementationOnce((...args) => {
+      const runner = createQueryRunner(...args);
+      const release = runner.release.bind(runner);
+      runner.release = async () => {
+        // The parent lock is being released: let the task resume in this window.
+        resumeTask();
+        await sleep(200);
+        return release();
+      };
+      return runner;
+    });
+    let task: Promise<void> | undefined;
+    const started = Date.now();
+    const parent = withPersonalOAuthLock('gitlab', 'alice', async () => {
+      task = (async () => {
+        await cleanupStarted;
+        await saveCredentials();
+      })();
+    });
+    await sleep(50);
+    const queued = saveCredentials();
+    await parent;
+    const results = await Promise.allSettled([task!, queued]);
+    expect(results.map((result) => result.status)).toEqual(['fulfilled', 'fulfilled']);
+    expect(Date.now() - started).toBeLessThan(9_000);
+  }, 30_000);
+
+  test('credential work still running when the action returns is committed', async () => {
+    const scope = JSON.stringify(['oauth', 'gitlab', 'alice']);
+    const revision = async () =>
+      Number(
+        (await mockSource.query('SELECT version FROM mcphub_revision WHERE id = 1'))[0].version,
+      );
+    const before = await revision();
+    let work: Promise<unknown> | undefined;
+    await withReplicaLock(scope, async () => {
+      // Started under the lock, not awaited by the action.
+      work = withLockConnection(
+        scope,
+        async () => {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          await getAppDataSource().query('UPDATE mcphub_revision SET version = version + 1');
+        },
+        { commit: true },
+      );
+    });
+    // Neither rolled back with the lock nor run on a released connection.
+    await expect(work).resolves.toBeUndefined();
+    expect(await revision()).toBe(before + 1);
+  });
+
+  test('a task started inside credential work commits its own write after that work', async () => {
+    const scope = JSON.stringify(['oauth', 'gitlab', 'alice']);
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const revision = async () =>
+      Number(
+        (await mockSource.query('SELECT version FROM mcphub_revision WHERE id = 1'))[0].version,
+      );
+    const before = await revision();
+    let task: Promise<unknown> | undefined;
+    await withReplicaLock(scope, async () => {
+      await withLockConnection(scope, async () => {
+        // Started inside the work, runs its own write once that work has ended.
+        task = (async () => {
+          await sleep(100);
+          await withLockConnection(
+            scope,
+            () => getAppDataSource().query('UPDATE mcphub_revision SET version = version + 1'),
+            { commit: true },
+          );
+        })();
+      });
+      // The lock is still held when the task writes.
+      await sleep(300);
+      expect(await revision()).toBe(before + 1);
+    });
+    await expect(task).resolves.toBeUndefined();
+    expect(await revision()).toBe(before + 1);
+  });
 });
