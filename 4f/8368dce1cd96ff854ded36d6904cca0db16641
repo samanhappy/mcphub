@@ -1,0 +1,28 @@
+frontend/src/components/settings/SmartRoutingSection.tsx
+  h_18676a549cd52a 1231-1234,1256-1259
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 18-33,642-645,657
+frontend/src/contexts/settingsTypes.ts
+  h_18676a549cd52a 58-87
+src/services/codeMode/quickjsWorkerRunner.ts
+  h_18676a549cd52a 18,27-29,31-33
+src/services/mcpTools.ts
+  h_18676a549cd52a 647-653,658-662,709
+tests/frontend/codeModeSettingsMerge.test.ts
+  h_18676a549cd52a 1-61
+tests/services/codeModeIntegration.test.ts
+  h_18676a549cd52a 358-427
+tests/services/codeModeSandbox.test.ts
+  h_18676a549cd52a 1-4,311-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f8368dce1cd96ff854ded36d6904cca0db16641",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
