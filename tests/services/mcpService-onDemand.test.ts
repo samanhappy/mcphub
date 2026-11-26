@@ -112,11 +112,29 @@ jest.mock('../../src/dao/index.js', () => ({
     get: jest.fn(async () => ({})),
   })),
   getGroupDao: jest.fn(() => ({
-    findByName: jest.fn(async (name: string) =>
-      name === 'solo'
-        ? { id: 'solo', name: 'solo', servers: [{ name: 'demo', alias: 'alias', tools: 'all' }] }
-        : undefined,
-    ),
+    findByName: jest.fn(async (name: string) => {
+      if (name === 'solo') {
+        return { id: 'solo', name: 'solo', servers: [{ name: 'demo', alias: 'alias', tools: 'all' }] };
+      }
+      if (name === 'pair') {
+        return {
+          id: 'pair',
+          name: 'pair',
+          servers: [
+            { name: 'demo', alias: 'alias', tools: 'all' },
+            { name: 'beta', tools: 'all' },
+          ],
+        };
+      }
+      if (name === 'solo-restricted') {
+        return {
+          id: 'solo-restricted',
+          name: 'solo-restricted',
+          servers: [{ name: 'demo', tools: ['other'] }],
+        };
+      }
+      return undefined;
+    }),
     findById: jest.fn(async () => undefined),
   })),
   getBuiltinPromptDao: jest.fn(() => ({
@@ -146,6 +164,7 @@ jest.mock('../../src/config/index.js', () => ({
 }));
 
 import * as mcpService from '../../src/services/mcpService.js';
+import { getDataService } from '../../src/services/services.js';
 
 const ON_DEMAND_CONFIG = {
   name: 'demo',
@@ -855,5 +874,256 @@ describe('startOnDemand lifecycle', () => {
         JSON.parse(fs.readFileSync(`${settingsPath}.capabilities.json`, 'utf8'))[0].tools,
       ).toEqual([]);
     });
+  });
+
+  describe('on-demand wake on empty tool cache (#1563)', () => {
+    const callTool = (
+      operation: 'direct' | 'call_tool',
+      name: string,
+      extra: Record<string, any> = {},
+    ) =>
+      mcpService.handleCallToolRequest(
+        operation === 'direct'
+          ? { params: { name, arguments: {} } }
+          : { params: { name: 'call_tool', arguments: { toolName: name, arguments: {} } } },
+        { sessionId: 'empty-cache-session', ...extra },
+      );
+
+    describe.each(['direct', 'call_tool'] as const)(
+      'recovery after failed startup prime on %s calls',
+      (operation) => {
+        it.each([
+          ['per-server bare name', 'ping', { group: 'demo' }],
+          ['per-server prefixed name', 'demo::ping', { group: 'demo' }],
+          ['single-server group bare name', 'ping', { group: 'solo' }],
+          ['single-server group alias-qualified name', 'alias::ping', { group: 'solo' }],
+          ['multi-server group alias-qualified name', 'alias::ping', { group: 'pair' }],
+          ['aggregate qualified name', 'demo::ping', {}],
+        ])('wakes and succeeds via %s', async (_label, toolName, extra) => {
+          // Simulate a failed startup prime: tools is [], status is disconnected,
+          // and capabilityCache is missing (not fresh).
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            error: 'Failed to start on-demand server: transient startup failure',
+            capabilityCache: { state: 'missing' },
+          });
+          const betaInfo = createSleepingServerInfo({
+            name: 'beta',
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any, betaInfo as any]);
+
+          try {
+            const result = await callTool(operation, toolName, extra);
+            expect(result).toEqual(expect.objectContaining({ isError: false }));
+            expect(result.content[0].text).toBe('pong');
+            expect(mockConnect).toHaveBeenCalledTimes(1);
+            expect(createTransportSpy).toHaveBeenCalledTimes(1);
+            expect(createTransportSpy).toHaveBeenCalledWith('demo', expect.anything());
+            expect(mockCallTool).toHaveBeenCalledWith(
+              expect.objectContaining({ name: 'ping' }),
+              expect.anything(),
+            );
+            expect(demoInfo.status).toBe('connected');
+            expect(demoInfo.activeToolCalls).toBe(0);
+            expect(demoInfo.idleTimeoutId).toBeTruthy();
+            expect(betaInfo.status).toBe('disconnected');
+          } finally {
+            mcpService.closeServer('demo');
+            mcpService.closeServer('beta');
+          }
+        });
+
+        it('coalesces on an in-flight startup prime without double-spawning or premature shutdown', async () => {
+          const connectStarted = deferred<void>();
+          const finishConnect = deferred<void>();
+          mockConnect.mockImplementationOnce(() => {
+            connectStarted.resolve();
+            return finishConnect.promise;
+          });
+          mockFindAll.mockResolvedValue([ON_DEMAND_CONFIG]);
+          mcpService.setServerInfosForTest([]);
+
+          // Start a startup prime in the background (fire-and-forget as on full startup).
+          const primePromise = mcpService.initializeClientsFromSettings(false, 'demo');
+          await connectStarted.promise;
+
+          const demoInfo = mcpService.getServerByName('demo');
+          expect(demoInfo).toBeDefined();
+          expect(demoInfo?.tools).toEqual([]);
+          expect(demoInfo?.spawningPromise).toBeDefined();
+
+          // Issue a tool call while startup prime is still in flight.
+          const callPromise = callTool(operation, 'ping', { group: 'demo' });
+          // Let handleCallToolRequest reach the spawningPromise await and acquire activeToolCalls.
+          await new Promise((resolve) => setImmediate(resolve));
+          expect(demoInfo?.activeToolCalls).toBe(1);
+
+          // Complete the prime; primeOnDemandServers' trailing shutdown must NOT close the server.
+          finishConnect.resolve();
+          const [callResult] = await Promise.all([callPromise, primePromise]);
+
+          try {
+            expect(callResult).toEqual(expect.objectContaining({ isError: false }));
+            expect(callResult.content[0].text).toBe('pong');
+            expect(mockConnect).toHaveBeenCalledTimes(1);
+            expect(mockClient.close).not.toHaveBeenCalled();
+            expect(mockCallTool).toHaveBeenCalledTimes(1);
+            expect(demoInfo?.status).toBe('connected');
+            expect(demoInfo?.activeToolCalls).toBe(0);
+            expect(demoInfo?.idleTimeoutId).toBeTruthy();
+          } finally {
+            mcpService.closeServer('demo');
+          }
+        });
+
+        it('does not re-spawn a server with a fresh empty capability snapshot', async () => {
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            capabilityCache: { state: 'fresh', capturedAt: Date.now() },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any]);
+
+          for (const [toolName, extra] of [
+            ['ping', { group: 'demo' }],
+            ['ping', { group: 'solo' }],
+            ['demo::ping', {}],
+          ] as const) {
+            const result = await callTool(operation, toolName, extra);
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toBe(`Error: Tool not available: ${toolName}`);
+          }
+          expect(mockConnect).not.toHaveBeenCalled();
+          expect(mockCallTool).not.toHaveBeenCalled();
+        });
+
+        it('never wakes disabled or hidden on-demand servers (#1103)', async () => {
+          const disabledInfo = createSleepingServerInfo({
+            enabled: false,
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([disabledInfo as any]);
+
+          const disabledResult = await callTool(operation, 'demo::ping');
+          expect(disabledResult.isError).toBe(true);
+          expect(disabledResult.content[0].text).toBe('Error: Tool not available: demo::ping');
+          expect(mockConnect).not.toHaveBeenCalled();
+
+          // Now test a hidden server filtered out by DataService visibility.
+          const hiddenInfo = createSleepingServerInfo({
+            enabled: true,
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([hiddenInfo as any]);
+          jest.mocked(getDataService).mockImplementation(() => ({
+            filterData: () => [],
+          }) as any);
+
+          try {
+            const hiddenAgg = await callTool(operation, 'demo::ping');
+            expect(hiddenAgg.isError).toBe(true);
+            expect(hiddenAgg.content[0].text).toBe('Error: Tool not available: demo::ping');
+
+            const hiddenPerServer = await callTool(operation, 'ping', { group: 'demo' });
+            expect(hiddenPerServer.isError).toBe(true);
+            expect(hiddenPerServer.content[0].text).toBe('Error: Tool not available: ping');
+
+            expect(mockConnect).not.toHaveBeenCalled();
+            expect(mockCallTool).not.toHaveBeenCalled();
+          } finally {
+            jest.mocked(getDataService).mockImplementation(() => ({
+              filterData: (data: any) => data,
+            }) as any);
+          }
+        });
+
+        it('keeps disabled tools denied after waking an empty-cache server', async () => {
+          const disabledToolConfig = {
+            ...ON_DEMAND_CONFIG,
+            tools: {
+              'demo::ping': { enabled: false },
+            },
+          };
+          mockFindById.mockResolvedValue(disabledToolConfig);
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            config: disabledToolConfig,
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any]);
+
+          try {
+            const result = await callTool(operation, 'demo::ping');
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toBe('Error: Tool not available: demo::ping');
+            expect(mockConnect).toHaveBeenCalledTimes(1);
+            expect(mockCallTool).not.toHaveBeenCalled();
+            expect(demoInfo.activeToolCalls).toBe(0);
+            expect(demoInfo.idleTimeoutId).toBeTruthy();
+          } finally {
+            mcpService.closeServer('demo');
+          }
+        });
+
+        it('keeps group-excluded tools denied after waking an empty-cache server', async () => {
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any]);
+
+          try {
+            const result = await callTool(operation, 'ping', { group: 'solo-restricted' });
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toBe('Error: Tool not available: ping');
+            expect(mockConnect).toHaveBeenCalledTimes(1);
+            expect(mockCallTool).not.toHaveBeenCalled();
+            expect(demoInfo.activeToolCalls).toBe(0);
+            expect(demoInfo.idleTimeoutId).toBeTruthy();
+          } finally {
+            mcpService.closeServer('demo');
+          }
+        });
+
+        it('does not fan-out wake on an ambiguous bare tool name in a multi-server group', async () => {
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          const betaInfo = createSleepingServerInfo({
+            name: 'beta',
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any, betaInfo as any]);
+
+          const result = await callTool(operation, 'ping', { group: 'pair' });
+          expect(result.isError).toBe(true);
+          expect(result.content[0].text).toBe('Error: Tool not available: ping');
+          expect(mockConnect).not.toHaveBeenCalled();
+          expect(mockCallTool).not.toHaveBeenCalled();
+        });
+
+        it('cleans up activeToolCalls and does not arm idle shutdown when wake fails', async () => {
+          mockConnect.mockRejectedValueOnce(new Error('cold start failed'));
+          const demoInfo = createSleepingServerInfo({
+            tools: [],
+            capabilityCache: { state: 'missing' },
+          });
+          mcpService.setServerInfosForTest([demoInfo as any]);
+
+          const result = await callTool(operation, 'demo::ping');
+          expect(result.isError).toBe(true);
+          expect(result.content[0].text).toContain('cold start failed');
+          expect(demoInfo.status).toBe('disconnected');
+          expect(demoInfo.activeToolCalls).toBe(0);
+          expect(demoInfo.idleTimeoutId).toBeFalsy();
+          expect(mockCallTool).not.toHaveBeenCalled();
+        });
+      },
+    );
   });
 });
