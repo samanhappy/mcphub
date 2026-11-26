@@ -1,0 +1,64 @@
+docs/docs.json
+  h_18676a549cd52a 32,84
+docs/features/code-mode.mdx
+  h_18676a549cd52a 1-102
+docs/zh/features/code-mode.mdx
+  h_18676a549cd52a 1-102
+frontend/src/components/settings/SmartRoutingSection.tsx
+  h_18676a549cd52a 151-178,209-217,279-305,383-404,487-509,1210-1315
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 255-267,412-424
+frontend/src/contexts/settingsTypes.ts
+  h_18676a549cd52a 44-57,82
+locales/en.json
+  h_18676a549cd52a 1158-1173
+locales/es.json
+  h_18676a549cd52a 1158-1173
+locales/fr.json
+  h_18676a549cd52a 1158-1173
+locales/tr.json
+  h_18676a549cd52a 1157-1172
+locales/vi.json
+  h_18676a549cd52a 1158-1173
+locales/zh.json
+  h_18676a549cd52a 1161-1176
+package.json
+  h_18676a549cd52a 57,100
+pnpm-lock.yaml
+  h_18676a549cd52a 69-71,198-200,1211-1228,4837-4843,6542-6563,10531-10542
+src/controllers/serverController.ts
+  h_18676a549cd52a 98-103,437-438,460-462,2425-2426,2916-2963
+src/services/codeMode/codeModeService.ts
+  h_18676a549cd52a 1-380
+src/services/codeMode/quickjsWorkerRunner.ts
+  h_18676a549cd52a 1-584
+src/services/codeMode/tsSignature.ts
+  h_18676a549cd52a 1-136
+src/services/codeMode/types.ts
+  h_18676a549cd52a 1-180
+src/services/mcpService.ts
+  h_18676a549cd52a 4036-4037,4712-4715
+src/services/mcpTools.ts
+  h_18676a549cd52a 63-68,111,226,479-485,651-654,789-877,996-1001,1095-1110,1198-1200
+src/services/smartRoutingService.ts
+  h_18676a549cd52a 30-32,228,381-384,467,492,823-832,834-843
+src/utils/smartRouting.ts
+  h_18676a549cd52a 10-15,116-120,450-516
+tests/services/codeModeIntegration.test.ts
+  h_18676a549cd52a 1-358
+tests/services/codeModeSandbox.test.ts
+  h_18676a549cd52a 1-313
+tests/utils/smartRouting.test.ts
+  h_18676a549cd52a 326-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5438282f4a26887d6a95ac4ebbcc2735baf4ea8f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
