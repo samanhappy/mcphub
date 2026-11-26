@@ -78,6 +78,7 @@ Better Auth 的非敏感配置现在既可以来自环境变量，也可以来�
 - `BETTER_AUTH_OIDC_SCOPES`
 - `BETTER_AUTH_OIDC_PKCE`
 - `BETTER_AUTH_OIDC_PROMPT`
+- `BETTER_AUTH_OIDC_TRUST_EMAIL`（可选，默认 `false`；仅控制 Better Auth 内部的提供商账户关联，不会将 Better Auth 会话关联到已有的 MCPHub 本地账户）
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`
 
 本地 OIDC 登录也可以继续在 `systemConfig.auth.betterAuth.providers.oidc` 中配置：
@@ -97,15 +98,17 @@ Better Auth 的非敏感配置现在既可以来自环境变量，也可以来�
 
 ### 本地用户映射规则
 
-Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
+MCPHub 严格仅按会话的 `ssoUserId`（Better Auth `user.id`）将 Better Auth 会话绑定到本地用户。**不会**通过邮箱或用户名匹配来接管或关联已有账户，因此 SSO 身份无法接管本地 `admin`、普通本地账户、转发认证账户或其他 SSO 账户。
+
+当允许自动创建用户（默认开启）且该 `ssoUserId` 尚未绑定时，MCPHub 会按以下顺序确定新用户的 `username`，并创建一个**非管理员**本地用户：
 
 - 优先使用 `email`
 - 其次使用 `name`
-- 最后回退到 provider 返回的 `id`
+- 最后回退到 Better Auth 会话的 `id`
 
-如果本地不存在对应 `username`，MCPHub 会自动创建一个**非管理员**用户。
+如果计算出的 `username` 或 `email` 已被其他账户占用，登录会以失败关闭（fail-closed）方式被拒绝，不会修改或返回已有账户。当 `BETTER_AUTH_DISABLE_AUTO_CREATE`（`systemConfig.auth.betterAuth.disableAutoCreate`）为 `true` 时，所有未绑定的 SSO 身份都会被拒绝，即使其邮箱或名称与已有本地用户一致。
 
-> OIDC / GitHub / Google 登录都不会自动授予管理员权限。只有本地已存在同名且 `isAdmin=true` 的用户，映射后才会拥有管理员权限。
+> OIDC / GitHub / Google 登录都不会自动授予管理员权限；管理员权限仅来自已绑定本地用户记录本身（例如由管理员在控制台中提升该自动创建的 SSO 用户）。`BETTER_AUTH_OIDC_TRUST_EMAIL` 仅控制 Better Auth 内部的提供商账户关联，不会绕过 MCPHub 严格的 `ssoUserId` 绑定规则。
 
 ### 仅允许 SSO 登录
 
