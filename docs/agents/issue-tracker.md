@@ -27,14 +27,26 @@ Use [github-coordinator](../../.agents/skills/github-coordinator/SKILL.md) for g
 
 ## Implementation authorization
 
-`agent:pending` is a unified agent queue for investigation, design and implementation. It does not itself authorize changes to product code. A worker may implement only when the maintainer has explicitly approved the task or provided a bounded standing authorization that covers it. Preserve authorization in the issue, linked comment, or authoritative task instructions. Confirm that:
+`agent:pending` is a unified agent queue for investigation, design and implementation. It does not itself authorize changes to product code. A worker may implement only when the maintainer has explicitly approved the task or the task is covered by the bounded standing approval below. Preserve authorization in the issue, linked comment, or authoritative task instructions. Confirm that:
 
 - Problem, scope, non-goals and acceptance criteria are clear.
 - Relevant dependencies and architecture, security and compatibility decisions are resolved.
 - There is no active overlapping implementation or PR.
 - The work can be verified with tests or a documented validation method.
 
-Without sufficient approval, investigate and propose the next step; escalate only when a concrete decision blocks progress. Do not treat a detailed proposal, old queue label or priority as approval. The maintainer may approve multiple bounded tasks at once. The coordinator can prioritize independently, but cannot grant implementation approval beyond the owner's authorization.
+### Bounded standing approval (`standing_approval:low_risk_fix`)
+
+The coordinator may dispatch a worker directly into `implementation` (to open a PR for `owner:review` — never to merge, release, or push to `main`) under `authorization_ref: "standing_approval:low_risk_fix"` **only** when **all** of the following hold:
+
+- Root cause is verified and the fix path is unambiguous (no product, architecture, or compatibility trade-offs).
+- Scope is small and localized: documentation/typo fixes, targeted test additions, isolated single-module bug fixes, or minor UI defects.
+- **Hard exclusions (must escalate to `owner:decision`):** database schema or migration changes, breaking compatibility changes, authentication/authorization/security model changes, new public APIs/settings/config contracts, broad refactors, or issues already claimed by an external contributor.
+
+If a worker dispatched under `standing_approval:low_risk_fix` discovers during investigation that any exclusion or ambiguity applies, it must stop before editing product code and hand off for `owner:decision`.
+
+Without sufficient approval, investigate and propose the next step; escalate only when a concrete decision blocks progress. Do not treat a detailed proposal, old queue label or priority as approval. The maintainer may approve multiple bounded tasks at once. The coordinator can prioritize independently, but cannot grant implementation approval beyond owner authorization and the standing boundary above.
+
+When dispatching implementation, the coordinator passes `pr_link_mode`: `closes` (`Fixes #<N>`) for internal, feature, or security fixes ready to close on merge, or `refs` (`Refs #<N>`) when post-release external `user:verification` is required before closure.
 
 ## Claim and execute
 
