@@ -16,6 +16,7 @@ Start with the root [AGENTS.md](../../AGENTS.md), then read only the guide that 
 | Domain vocabulary and ADRs | [domain.md](domain.md) |
 | Issue operations | [issue-tracker.md](issue-tracker.md) |
 | Triage labels | [triage-labels.md](triage-labels.md) |
+| Coordinator/worker roles, claims and recovery | [issue-coordination.md](issue-coordination.md) |
 | Security advisory lifecycle | [security-advisories.md](security-advisories.md) |
 
 ## Suggested `docs/` structure
@@ -34,6 +35,7 @@ docs/
 │   ├── domain.md
 │   ├── issue-tracker.md
 │   ├── triage-labels.md
+│   ├── issue-coordination.md
 │   └── security-advisories.md
 ├── adr/                 # Accepted architectural decisions
 ├── development/         # Public developer documentation
