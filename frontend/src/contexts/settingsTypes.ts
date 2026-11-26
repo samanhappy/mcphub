@@ -41,6 +41,20 @@ export interface InstallConfig {
   baseUrl: string;
 }
 
+export interface SmartRoutingCodeModeConfig {
+  enabled: boolean;
+  readOnlyVariantEnabled: boolean;
+  timeoutMs: number;
+  cpuTimeoutMs: number;
+  memoryLimitMb: number;
+  maxToolCalls: number;
+  maxSourceBytes: number;
+  maxLogBytes: number;
+  maxToolResultBytes: number;
+  maxOutputBytes: number;
+  maxConcurrentRuns: number;
+}
+
 export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;
@@ -65,6 +79,7 @@ export interface SmartRoutingConfig {
   fullSchemaTopN?: number | null;
   // Unset = server default (title, annotations)
   toolDefinitionFields?: string[];
+  codeMode?: SmartRoutingCodeModeConfig;
   /**
    * Read-only metadata from the server (issue #642): fields whose runtime value
    * comes from an environment variable, so whatever is typed into the form for

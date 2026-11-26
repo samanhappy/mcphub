@@ -95,6 +95,12 @@ import {
   parseToolDefinitionFields,
 } from '../utils/smartRouting.js';
 import { TOOL_DEFINITION_FIELDS } from '../constants/smartRoutingDefaults.js';
+import {
+  CODE_MODE_LIMIT_BOUNDS,
+  normalizeCodeModeConfig,
+  parseCodeModeInteger,
+  type CodeModeNumericField,
+} from '../services/codeMode/types.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 import { maskBearerKey } from '../utils/bearerKeyToken.js';
@@ -428,8 +434,8 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     // field→env-var mapping lives in exactly one place instead of being repeated
     // here; this endpoint is admin-only and low-traffic, so the extra DAO read is
     // not worth optimising away.
-    const smartRoutingEnvOverriddenFields =
-      (await getSmartRoutingConfig()).envOverriddenFields ?? [];
+    const effectiveSmartRoutingConfig = await getSmartRoutingConfig();
+    const smartRoutingEnvOverriddenFields = effectiveSmartRoutingConfig.envOverriddenFields ?? [];
 
     if (!systemConfig.toolResultCompression) {
       systemConfig.toolResultCompression = {
@@ -451,6 +457,9 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
           ? {
               smartRouting: {
                 ...systemConfig.smartRouting,
+                codeMode: normalizeCodeModeConfig(
+                  systemConfig.smartRouting.codeMode ?? effectiveSmartRoutingConfig.codeMode,
+                ),
                 envOverriddenFields: smartRoutingEnvOverriddenFields,
               },
             }
@@ -2413,7 +2422,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         smartRouting.embeddingMaxTokens === null ||
         smartRouting.similarityThreshold !== undefined ||
         smartRouting.fullSchemaTopN !== undefined ||
-        smartRouting.toolDefinitionFields !== undefined);
+        smartRouting.toolDefinitionFields !== undefined ||
+        (smartRouting.codeMode !== undefined && typeof smartRouting.codeMode === 'object'));
 
     const hasToolResultCompressionUpdate =
       toolResultCompression &&
@@ -2901,6 +2911,54 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
           return;
         }
         systemConfig.smartRouting.toolDefinitionFields = fields;
+      }
+
+      if (smartRouting.codeMode && typeof smartRouting.codeMode === 'object') {
+        const incoming = smartRouting.codeMode as Record<string, unknown>;
+        const nextCodeMode = {
+          ...(systemConfig.smartRouting.codeMode ?? {}),
+        } as Record<string, unknown>;
+
+        if (incoming.enabled !== undefined) {
+          if (typeof incoming.enabled !== 'boolean') {
+            res.status(400).json({
+              success: false,
+              message: 'smartRouting.codeMode.enabled must be a boolean',
+            });
+            return;
+          }
+          nextCodeMode.enabled = incoming.enabled;
+        }
+
+        if (incoming.readOnlyVariantEnabled !== undefined) {
+          if (typeof incoming.readOnlyVariantEnabled !== 'boolean') {
+            res.status(400).json({
+              success: false,
+              message: 'smartRouting.codeMode.readOnlyVariantEnabled must be a boolean',
+            });
+            return;
+          }
+          nextCodeMode.readOnlyVariantEnabled = incoming.readOnlyVariantEnabled;
+        }
+
+        for (const field of Object.keys(CODE_MODE_LIMIT_BOUNDS) as CodeModeNumericField[]) {
+          if (incoming[field] === null) {
+            delete nextCodeMode[field];
+          } else if (incoming[field] !== undefined) {
+            const parsed = parseCodeModeInteger(incoming[field], field);
+            if (parsed === undefined) {
+              const { min, max } = CODE_MODE_LIMIT_BOUNDS[field];
+              res.status(400).json({
+                success: false,
+                message: `smartRouting.codeMode.${field} must be an integer between ${min} and ${max}`,
+              });
+              return;
+            }
+            nextCodeMode[field] = parsed;
+          }
+        }
+
+        systemConfig.smartRouting.codeMode = normalizeCodeModeConfig(nextCodeMode);
       }
 
       // Check if we need to sync embeddings

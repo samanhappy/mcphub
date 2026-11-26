@@ -4033,6 +4033,8 @@ const { handleListToolsRequestImpl, handleCallToolRequestImpl, resolvePinnedSmar
     callToolWithReconnect,
     withoutHiddenArguments,
     withStagingTools,
+    dispatchCodeModeToolCall: (request, extra) =>
+      handleOriginalToolCallRequest(request, extra, extra?.policyGroupId),
   });
 
 const { handleGetPromptRequestImpl, handleListPromptsRequestImpl } = createPromptHandlers({
@@ -4707,7 +4709,10 @@ const withToolPolicy = async (
   const wrapper =
     !upstreamOwnsName && ['call_tool', 'describe_tool'].includes(request.params?.name);
   const requested = wrapper ? request.params.arguments?.toolName : request.params?.name;
-  const targetCall = invocation && (upstreamOwnsName || request.params?.name !== 'search_tools');
+  const nonTargetMetaTool = ['search_tools', 'execute_code', 'execute_code_read'].includes(
+    request.params?.name,
+  );
+  const targetCall = invocation && (upstreamOwnsName || !nonTargetMetaTool);
   let denied: { server: ServerInfo; tool: string; decision: ToolPolicyAudit } | undefined;
   const eligible = candidates.filter((info) => {
     if (extra?.server && info.name !== extra.server) return false;

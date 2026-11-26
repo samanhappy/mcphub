@@ -252,6 +252,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingDocumentPrefix: '',
     similarityThreshold: undefined,
     fullSchemaTopN: undefined,
+    codeMode: {
+      enabled: false,
+      readOnlyVariantEnabled: true,
+      timeoutMs: 30000,
+      cpuTimeoutMs: 5000,
+      memoryLimitMb: 32,
+      maxToolCalls: 20,
+      maxSourceBytes: 32768,
+      maxLogBytes: 16384,
+      maxToolResultBytes: 524288,
+      maxOutputBytes: 65536,
+      maxConcurrentRuns: 4,
+    },
   });
 
   const [toolResultCompressionConfig, setToolResultCompressionConfig] =
@@ -396,6 +409,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           similarityThreshold: sr.similarityThreshold,
           fullSchemaTopN: sr.fullSchemaTopN,
           toolDefinitionFields: sr.toolDefinitionFields,
+          codeMode: {
+            enabled: sr.codeMode?.enabled ?? false,
+            readOnlyVariantEnabled: sr.codeMode?.readOnlyVariantEnabled ?? true,
+            timeoutMs: sr.codeMode?.timeoutMs ?? 30000,
+            cpuTimeoutMs: sr.codeMode?.cpuTimeoutMs ?? 5000,
+            memoryLimitMb: sr.codeMode?.memoryLimitMb ?? 32,
+            maxToolCalls: sr.codeMode?.maxToolCalls ?? 20,
+            maxSourceBytes: sr.codeMode?.maxSourceBytes ?? 32768,
+            maxLogBytes: sr.codeMode?.maxLogBytes ?? 16384,
+            maxToolResultBytes: sr.codeMode?.maxToolResultBytes ?? 524288,
+            maxOutputBytes: sr.codeMode?.maxOutputBytes ?? 65536,
+            maxConcurrentRuns: sr.codeMode?.maxConcurrentRuns ?? 4,
+          },
           envOverriddenFields: sr.envOverriddenFields ?? [],
         });
       }

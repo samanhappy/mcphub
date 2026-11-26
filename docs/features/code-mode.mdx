@@ -1,0 +1,102 @@
+---
+title: 'Code Mode'
+description: 'Run model-written JavaScript in a QuickJS WebAssembly sandbox to orchestrate authorized MCPHub tools in a single turn'
+---
+
+## Overview
+
+**Code Mode** is an opt-in Smart Routing capability (`$smart` and `$smart/<group>`) that lets an LLM write a short async JavaScript snippet to search for tools, call multiple upstream tools in loops, filter or aggregate intermediate payloads, and return only the final answer.
+
+By keeping intermediate payloads inside the sandbox instead of bouncing every raw upstream response back through the model context window, Code Mode reduces multi-step round trips and token consumption while reusing MCPHub's exact caller-scoped authorization pipeline.
+
+Code Mode is **off by default** and must be explicitly enabled by an administrator.
+
+## Exposed Tools
+
+When enabled under **Settings → Smart Routing → Code Mode**, `$smart` and `$smart/<group>` routes expose:
+
+- **`execute_code({ code })`**: Runs an async JavaScript function body in an isolated QuickJS-NG WebAssembly worker and returns `{ value, logs, toolCalls }`.
+- **`execute_code_read({ code })`** *(enabled by default when Code Mode is on; can be toggled off separately)*: Runs the same sandbox, but restricts `tools.call(...)` to tools whose descriptors declare `readOnlyHint: true` and do not set `destructiveHint: true`.
+
+Existing Smart Routing meta-tools (`search_tools`, `describe_tool`, `call_tool`) remain available. `describe_tool` also returns a generated `typescriptSignature` derived from each tool's `inputSchema` to help models write accurate `tools.call(...)` invocations.
+
+<Warning>
+  MCP `readOnlyHint` and `destructiveHint` annotations are **advisory hints self-declared by upstream servers**. For hard security boundaries, configure MCPHub **Tool Policies** in addition to `execute_code_read`.
+</Warning>
+
+## Sandbox API
+
+Scripts run as the body of an `async () => { ... }` function. Top-level `await` and `return` are supported:
+
+```javascript
+const hits = await tools.search('github pull requests', { limit: 5 });
+const prs = await tools.call('github-list_pull_requests', {
+  owner: 'samanhappy',
+  repo: 'mcphub',
+  state: 'open',
+});
+
+const failing = [];
+for (const pr of prs) {
+  const status = await tools.call('github-get_commit_status', {
+    owner: 'samanhappy',
+    repo: 'mcphub',
+    ref: pr.head.sha,
+  });
+  if (status.state === 'failure') {
+    failing.push({ number: pr.number, title: pr.title });
+  }
+}
+
+console.log(`Checked ${prs.length} PRs`);
+return failing;
+```
+
+### Globals Available Inside the Sandbox
+
+- `tools.search(query, { limit? })`: Runs caller-scoped semantic tool search (`search_tools`).
+- `tools.call(toolName, args?)`: Invokes an authorized tool through MCPHub's `$smart call_tool` path.
+  - If the upstream tool returns `isError: true`, `tools.call` throws a JavaScript `Error`.
+  - If `structuredContent` is present, it is returned directly.
+  - Otherwise, a single JSON text block is parsed and returned as a JS value; plain text is returned as a string; mixed/binary results return the raw `CallToolResult`.
+- `console.log / info / warn / error`: Captured up to `maxLogBytes` and returned in `logs` (with `truncatedLogs: true` if capped).
+
+## Security Model & Isolation
+
+- **QuickJS-NG WebAssembly in `worker_threads`:** Guest code executes inside QuickJS-NG compiled to WebAssembly (`quickjs-emscripten`), isolated from Node.js and running off the main event loop.
+- **No ambient capabilities:** The sandbox has no access to `fetch`, network sockets, filesystem (`fs`), `process`, environment variables, `require`/`import`, or timers. Credentials never enter the sandbox.
+- **Zero new permission surface:** Every `tools.call()` bridges back to the main thread inside the caller's live request and user context, enforcing group visibility, bearer-key exclusions and personal-key scopes, user-scoped runtimes, Tool Policies, `TOOL_CALL_GUARD_ENABLED`, hidden parameters, file staging, activity logging, and refusal of hub built-ins (`mcphub_file_*`) and recursive meta-tool calls.
+- **Intermediate vs. final compression:** When Tool Result Compression is enabled, intermediate `tools.call()` payloads stay uncompressed (bounded by `maxToolResultBytes`) so scripts can reliably parse JSON, while the final `execute_code` output is compressed once before returning to the model.
+- **Elicitation & Sampling:** Upstream elicitation requests are rejected with `elicitation_unsupported` while a script is running.
+
+## Limits & Configuration
+
+Configure Code Mode in **Settings → Smart Routing** or via environment variables:
+
+| Setting | Environment Variable | Default | Range |
+| --- | --- | --- | --- |
+| Enable Code Mode | `SMART_ROUTING_CODE_MODE_ENABLED` | `false` | `true` / `false` |
+| Read-Only Variant | `SMART_ROUTING_CODE_MODE_READ_ONLY_ENABLED` | `true` | `true` / `false` |
+| Wall-Clock Timeout (ms) | `SMART_ROUTING_CODE_MODE_TIMEOUT_MS` | `30000` | `500–120000` |
+| JS CPU Timeout (ms) | `SMART_ROUTING_CODE_MODE_CPU_TIMEOUT_MS` | `5000` | `100–30000` |
+| Memory Cap (MB) | `SMART_ROUTING_CODE_MODE_MEMORY_LIMIT_MB` | `32` | `4–256` |
+| Max Tool Calls | `SMART_ROUTING_CODE_MODE_MAX_TOOL_CALLS` | `20` | `1–100` |
+| Max Source Size (bytes) | `SMART_ROUTING_CODE_MODE_MAX_SOURCE_BYTES` | `32768` | `256–262144` |
+| Max Log Size (bytes) | `SMART_ROUTING_CODE_MODE_MAX_LOG_BYTES` | `16384` | `256–131072` |
+| Max Intermediate Result (bytes) | `SMART_ROUTING_CODE_MODE_MAX_TOOL_RESULT_BYTES` | `524288` | `4096–4194304` |
+| Max Final Output (bytes) | `SMART_ROUTING_CODE_MODE_MAX_OUTPUT_BYTES` | `65536` | `1024–1048576` |
+| Max Concurrent Runs | `SMART_ROUTING_CODE_MODE_MAX_CONCURRENT_RUNS` | `4` | `1–32` |
+
+## Error Kinds
+
+When execution fails, `execute_code` returns `isError: true` with a structured error payload `{ error: { kind, message }, toolCalls }`:
+
+- `disabled` — Code Mode or `execute_code_read` is turned off, or the route is not `$smart`.
+- `syntax_error` / `runtime_error` — Invalid JavaScript or uncaught exception.
+- `timeout` / `cpu_timeout` — Wall-clock timeout or JS CPU budget exceeded (worker terminated).
+- `memory_limit` — QuickJS heap limit exceeded.
+- `call_budget_exceeded` — Script exceeded `maxToolCalls`.
+- `source_too_large` / `tool_result_too_large` / `output_too_large` — Payload exceeded configured byte limits.
+- `concurrency_limit` — Too many concurrent sandbox runs active.
+- `unauthorized` / `readonly_violation` — Caller lacks access, attempted to call a hub built-in, or called a non-read-only tool from `execute_code_read`.
+- `elicitation_unsupported` — An upstream tool requested elicitation during script execution.

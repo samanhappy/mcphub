@@ -27,6 +27,9 @@ import { getNameSeparator } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { applyHiddenParams, findToolConfig } from '../utils/toolConfig.js';
 import { STAGING_TOOL_DEFINITIONS } from './fileStaging/tools.js';
+import { buildCodeModeMetaTools } from './codeMode/codeModeService.js';
+import { generateToolTypeScriptSignature } from './codeMode/tsSignature.js';
+import { normalizeCodeModeConfig, type ResolvedCodeModeConfig } from './codeMode/types.js';
 
 // Reference to serverInfos from mcpService - will be set via init
 let serverInfosRef: ServerInfo[] = [];
@@ -222,6 +225,7 @@ export const buildSmartRoutingMetaTools = (
   serversList: string,
   progressiveDisclosure: boolean,
   fullSchemaTopN?: number,
+  codeMode?: ResolvedCodeModeConfig,
 ): any[] => {
   const tools: any[] = [];
 
@@ -374,6 +378,10 @@ Available servers: ${serversList}`,
     );
   }
 
+  if (codeMode?.enabled) {
+    tools.push(...buildCodeModeMetaTools(codeMode, scopeDescription, serversList));
+  }
+
   return tools;
 };
 
@@ -456,6 +464,7 @@ export const getSmartRoutingMetaToolDefinitions = async (
     serversList,
     progressiveDisclosure,
     smartRoutingConfig.fullSchemaTopN,
+    normalizeCodeModeConfig(smartRoutingConfig.codeMode),
   );
 };
 
@@ -480,6 +489,7 @@ export const getSmartRoutingTools = async (
       serversList,
       progressiveDisclosure,
       smartRoutingConfig.fullSchemaTopN,
+      normalizeCodeModeConfig(smartRoutingConfig.codeMode),
     ),
   };
 };
@@ -810,15 +820,27 @@ export const handleDescribeToolRequest = async (
     );
 
     // Return the full definition, with the same fields as a search_tools hit
-    const { toolDefinitionFields } = await getSmartRoutingConfig();
+    const smartRoutingConfig = await getSmartRoutingConfig();
+    const { toolDefinitionFields } = smartRoutingConfig;
+    const codeModeEnabled = normalizeCodeModeConfig(smartRoutingConfig.codeMode).enabled;
+    const projectedName = projectNameForGroup(tool.name, serverInfo.name, serverConfigsByName);
+    const modelFacingTool = buildModelFacingTool(
+      applyHiddenParams(tool, toolConfig),
+      toolConfig?.description || tool.description,
+      getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
+      toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS,
+    );
     const toolInfo = {
-      ...buildModelFacingTool(
-        applyHiddenParams(tool, toolConfig),
-        toolConfig?.description || tool.description,
-        getExposedServerName(serverInfo.name, serverConfigsByName.get(serverInfo.name)),
-        toolDefinitionFields ?? DEFAULT_TOOL_DEFINITION_FIELDS,
-      ),
-      name: projectNameForGroup(tool.name, serverInfo.name, serverConfigsByName),
+      ...modelFacingTool,
+      name: projectedName,
+      ...(codeModeEnabled
+        ? {
+            typescriptSignature: generateToolTypeScriptSignature(
+              projectedName,
+              modelFacingTool.inputSchema,
+            ),
+          }
+        : {}),
     };
 
     return {

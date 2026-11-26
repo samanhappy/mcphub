@@ -60,6 +60,12 @@ import {
 import { containsStagingRef } from './fileStaging/dispatch.js';
 import { isReservedStagingName } from './fileStaging/tools.js';
 import { isStdioServer } from './mcpConnectionLifecycle.js';
+import {
+  CODE_MODE_TOOL_NAMES,
+  handleExecuteCodeRequest,
+  isToolReadOnly,
+} from './codeMode/codeModeService.js';
+import { CodeSandboxError } from './codeMode/types.js';
 
 interface ToolRoutingDependencies {
   getVisibleServerInfos(): ServerInfo[];
@@ -102,6 +108,7 @@ interface ToolRoutingDependencies {
   ): ReturnType<Client['callTool']>;
   withoutHiddenArguments<T>(info: ServerInfo, toolName: string, args: T): T;
   withStagingTools(group: string | undefined, tools: Tool[], extra: unknown): Promise<Tool[]>;
+  dispatchCodeModeToolCall(request: any, extra: any): Promise<any>;
 }
 
 const summarizeToolRequestForLogging = (params: any): Record<string, unknown> => ({
@@ -216,6 +223,7 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     callToolWithReconnect,
     withoutHiddenArguments,
     withStagingTools,
+    dispatchCodeModeToolCall,
   } = dependencies;
 
   // Get server by tool name
@@ -468,7 +476,13 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
 
   // Names the call handler always routes to a meta-tool on a Smart Routing session,
   // whichever of them the current mode lists (see handleCallToolRequestImpl)
-  const SMART_ROUTING_META_TOOL_NAMES = new Set(['search_tools', 'describe_tool', 'call_tool']);
+  const SMART_ROUTING_META_TOOL_NAMES = new Set([
+    'search_tools',
+    'describe_tool',
+    'call_tool',
+    'execute_code',
+    'execute_code_read',
+  ]);
 
   // Each member's pinnedTools, narrowed to its tools selection. Empty when the
   // route is not a $smart/<group> or the group pins nothing.
@@ -634,7 +648,10 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     // cloud-credential-theft payloads in tool call arguments. Disabled by
     // default (TOOL_CALL_GUARD_ENABLED=true to enable); see
     // src/middlewares/toolCallGuard.ts.
-    if (isToolCallGuardEnabled()) {
+    // For Code Mode (`execute_code` / `execute_code_read`), the `code` field holds
+    // sandboxed JS (e.g. template literals) that has no shell/network access; each
+    // inner `tools.call(...)` re-enters this handler and is checked strictly.
+    if (isToolCallGuardEnabled() && !CODE_MODE_TOOL_NAMES.has(request?.params?.name)) {
       try {
         assertToolCallArgumentsSafe(request?.params?.arguments);
       } catch (guardError) {
@@ -769,6 +786,95 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
         return await handleDescribeToolRequest(toolName, sessionId, group);
       }
 
+      // Special handling for Code Mode (execute_code / execute_code_read) on $smart routes
+      if (!upstreamOwnsMetaName && CODE_MODE_TOOL_NAMES.has(request.params.name)) {
+        if (!isSmartRoutingGroup(group)) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: {
+                    kind: 'disabled',
+                    message: 'Code Mode is only available on $smart and $smart/<group> routes.',
+                  },
+                }),
+              },
+            ],
+          };
+        }
+        const readOnly = request.params.name === 'execute_code_read';
+        const codeModeExtra = {
+          ...extra,
+          codeModeSkipCompression: true,
+          codeModeReadOnly: readOnly,
+          mcpReq: extra?.mcpReq
+            ? {
+                ...extra.mcpReq,
+                send: () =>
+                  Promise.reject(
+                    new CodeSandboxError(
+                      'elicitation_unsupported',
+                      'Elicitation requests are not supported while running code mode',
+                    ),
+                  ),
+              }
+            : undefined,
+        };
+        const result = await handleExecuteCodeRequest(
+          {
+            code: request.params.arguments?.code,
+            readOnly,
+          },
+          {
+            group,
+            searchTools: (query, limit) =>
+              handleSearchToolsRequest(query, limit, sessionId, group),
+            callTool: (toolName, args) =>
+              dispatchCodeModeToolCall(
+                {
+                  ...request,
+                  params: {
+                    name: 'call_tool',
+                    arguments: { toolName, arguments: args },
+                  },
+                },
+                codeModeExtra,
+              ),
+            resolveToolMetadata: async (toolName) => {
+              if (getGroupLookupName(group)) {
+                const resolved = await resolveToolInGroup(group, toolName, appsRouteContext);
+                return resolved?.tool;
+              }
+              const matchedServer = getVisibleServerInfos().find(
+                (serverInfo) =>
+                  serverInfo.enabled !== false &&
+                  (serverInfo.status === 'connected' || serverInfo.config?.startOnDemand === true) &&
+                  serverInfo.tools.some((candidate) => candidate.name === toolName),
+              );
+              return matchedServer ? findToolOnServer(matchedServer, toolName, false) : undefined;
+            },
+          },
+        );
+        const duration = Date.now() - startTime;
+        await activityLogger.logToolCall({
+          server: 'mcphub',
+          tool: request.params.name,
+          duration,
+          status: result?.isError ? 'error' : 'success',
+          input: request.params.arguments,
+          output: result,
+          group,
+          username,
+          keyId,
+          keyName,
+          sourceIp,
+          errorMessage: result?.isError ? 'Code mode execution returned error' : undefined,
+        });
+        return result;
+      }
+
       // Special handling for call_tool
       if (!upstreamOwnsMetaName && request.params.name === 'call_tool') {
         const { toolName } = request.params.arguments || {};
@@ -887,6 +993,12 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
           throw new ToolUnavailableError(`Tool not available: ${toolName}`, 'tool-not-found');
         }
         assertToolAvailableForRoute(tool, appsRouteContext);
+        if (extra?.codeModeReadOnly === true && !isToolReadOnly(tool)) {
+          throw new CodeSandboxError(
+            'readonly_violation',
+            `Tool '${toolName}' is not permitted in execute_code_read (requires readOnlyHint: true and destructiveHint !== true)`,
+          );
+        }
 
         // Handle OpenAPI servers differently
         if (targetServerInfo.openApiClient) {
@@ -980,21 +1092,22 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
             hasCredentialTemplate: hasPersonalAuthentication(targetServerInfo.config),
           });
 
-          return await maybeCompressToolResult(
-            {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(result),
-                },
-              ],
-            },
-            {
-              serverName: targetServerInfo.name,
-              toolName: cleanToolName,
-              group,
-            },
-          );
+          const wrappedOpenApiResult = {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result),
+              },
+            ],
+          };
+          if (extra?.codeModeSkipCompression === true) {
+            return wrappedOpenApiResult;
+          }
+          return await maybeCompressToolResult(wrappedOpenApiResult, {
+            serverName: targetServerInfo.name,
+            toolName: cleanToolName,
+            group,
+          });
         }
 
         // Call the tool on the target server (MCP servers)
@@ -1082,6 +1195,9 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
           errorMessage: result.isError ? 'Tool returned error response' : undefined,
         });
 
+        if (extra?.codeModeSkipCompression === true) {
+          return result;
+        }
         return await maybeCompressToolResult(result, {
           serverName: targetServerInfo.name,
           toolName: cleanToolName,
