@@ -1,0 +1,20 @@
+frontend/src/components/ServerStagingEditor.tsx
+  h_18676a549cd52a 12,32,43
+frontend/src/components/ui/ToolFileStagingEditor.tsx
+  h_18676a549cd52a 12,42-49,64
+frontend/src/utils/fileStaging.ts
+  h_18676a549cd52a 154-185
+tests/frontend/fileStaging.test.ts
+  h_18676a549cd52a 8-9,125-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e98c4fe21a476787ea018fc3bf87db220b436950",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
