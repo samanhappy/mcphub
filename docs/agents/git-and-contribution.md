@@ -26,11 +26,13 @@ gh pr comment 123 --attach ./desktop.png --attach ./mobile.png
 - In Markdown and MDX prose, keep each paragraph on one source line and separate paragraphs with a blank line. Do not manually wrap prose to a fixed column width; let the editor or viewer wrap it visually. Preserve intentional line breaks in lists, tables, code blocks, and MDX components.
 - Match the surrounding formatting and apply the same paragraph convention to both English and Chinese documentation. Avoid reformatting unrelated content.
 
-## Issue tracker
+## Issue and PR tracker
 
-GitHub Issues for `samanhappy/mcphub` are operated with `gh`. See [issue-tracker.md](issue-tracker.md) for commands and [triage-labels.md](triage-labels.md) for the canonical labels.
+GitHub Issues and Pull Requests for `samanhappy/mcphub` are operated with `gh`. See [issue-tracker.md](issue-tracker.md) for commands and [triage-labels.md](triage-labels.md) for the canonical labels. See [GitHub coordination](github-coordination.md) for exclusive task ownership and review follow-up.
 
 ## Pull request review
+
+Use the [github-worker skill](../../.agents/skills/github-worker/SKILL.md) for coordinator-assigned review tasks, including standalone external PRs. Record reviewed head/base SHAs, re-review changed heads, and run untrusted contributor code only in an isolated environment without secrets or write-capable credentials. The maintainer retains final merge authority.
 
 Prefer the `gh` CLI over scraping the GitHub web UI or hand-calling the REST API. For a review, read the structured metadata, per-file patches, and the linked issue with:
 
