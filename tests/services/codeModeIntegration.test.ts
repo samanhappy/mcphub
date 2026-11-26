@@ -355,4 +355,74 @@ describe('Code Mode smart routing & dispatch integration', () => {
       }
     }
   });
+
+  it('still enforces toolCallGuard on direct-server upstream tools named execute_code', async () => {
+    const prevGuard = process.env.TOOL_CALL_GUARD_ENABLED;
+    process.env.TOOL_CALL_GUARD_ENABLED = 'true';
+    mockGetSmartRoutingConfig.mockResolvedValue(enabledSmartRoutingConfig({ enabled: false }));
+
+    try {
+      const callToolWithReconnect = jest.fn<any>(async () => ({
+        content: [{ type: 'text', text: 'should not execute' }],
+      }));
+      const serverInfo = {
+        name: 'runner',
+        status: 'connected',
+        enabled: true,
+        client: {},
+        tools: [
+          {
+            name: 'runner-execute_code',
+            description: 'Upstream execute_code tool',
+            inputSchema: { type: 'object', properties: { code: { type: 'string' } } },
+          },
+        ],
+      } as any;
+
+      const handlers = createToolHandlers({
+        getVisibleServerInfos: () => [serverInfo],
+        getVisibleServerByName: (name) => (name === 'runner' ? serverInfo : undefined),
+        getServerByName: (name) => (name === 'runner' ? serverInfo : undefined),
+        getDownstreamServer: () => undefined,
+        getMcpAppsRouteContext: async () => ({ enabled: false }),
+        getFilteredServerInfosForGroup: async () => ({
+          filteredServerInfos: [serverInfo],
+          serverConfigsByName: new Map(),
+        }),
+        findRouteGroup: async () => null,
+        filterToolsByConfig: async (_s, tools) => tools,
+        filterToolsByGroup: async (_g, _s, tools) => tools,
+        resolveDescriptionOverride: (d) => d || '',
+        classifyUnavailableReason: () => 'tool-not-found',
+        beginOnDemandToolCall: () => undefined,
+        ensureServerReady: async () => undefined,
+        acquireClientState: () => ({ id: 'state-1', release: () => undefined }),
+        getOrCreateIsolatedClient: async () => ({ client: {} as any, transport: {} as any }),
+        callToolWithReconnect,
+        withoutHiddenArguments: (_info, _toolName, args) => args,
+        withStagingTools: async (_g, tools) => tools,
+        dispatchCodeModeToolCall: async () => ({}),
+      });
+
+      const response = await handlers.handleCallToolRequestImpl(
+        {
+          params: {
+            name: 'execute_code',
+            arguments: { code: 'echo hi; cat /etc/passwd' },
+          },
+        },
+        { sessionId: 'sess-1', group: 'runner' },
+      );
+
+      expect(response.isError).toBe(true);
+      expect(response.errorCode).toBe(-32001);
+      expect(callToolWithReconnect).not.toHaveBeenCalled();
+    } finally {
+      if (prevGuard === undefined) {
+        delete process.env.TOOL_CALL_GUARD_ENABLED;
+      } else {
+        process.env.TOOL_CALL_GUARD_ENABLED = prevGuard;
+      }
+    }
+  });
 });

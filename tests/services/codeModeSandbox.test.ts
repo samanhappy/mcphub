@@ -1,4 +1,7 @@
-import { QuickJsWorkerSandboxRunner } from '../../src/services/codeMode/quickjsWorkerRunner.js';
+import {
+  QuickJsWorkerSandboxRunner,
+  resolvePackageFileUrl,
+} from '../../src/services/codeMode/quickjsWorkerRunner.js';
 import {
   isToolReadOnly,
   unwrapToolCallResult,
@@ -303,6 +306,19 @@ describe('Code Mode helpers', () => {
 
     const emptySig = generateToolTypeScriptSignature('ping', { type: 'object' });
     expect(emptySig).toBe('await tools.call("ping", args?: Record<string, unknown>): Promise<unknown>');
+  });
+
+  it('resolves sandbox packages relative to the installed module even from a different cwd', () => {
+    const originalCwd = process.cwd;
+    process.cwd = () => '/tmp';
+    try {
+      const quickjsUrl = resolvePackageFileUrl('quickjs-emscripten');
+      const variantUrl = resolvePackageFileUrl('@jitl/quickjs-ng-wasmfile-release-sync');
+      expect(quickjsUrl).toMatch(/^file:\/\/.*quickjs-emscripten/);
+      expect(variantUrl).toMatch(/^file:\/\/.*quickjs-ng-wasmfile-release-sync/);
+    } finally {
+      process.cwd = originalCwd;
+    }
   });
 
   it('preserves CodeSandboxError kind', () => {

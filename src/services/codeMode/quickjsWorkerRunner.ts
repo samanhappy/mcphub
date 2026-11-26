@@ -15,6 +15,7 @@ import { MessageChannel, Worker } from 'node:worker_threads';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { getCurrentModuleDir } from '../../utils/moduleDir.js';
 import {
   CodeSandboxError,
   type CodeSandboxErrorKind,
@@ -23,13 +24,13 @@ import {
   type CodeSandboxRunner,
 } from './types.js';
 
-const resolvePackageFileUrl = (specifier: string): string => {
-  const pkgRequire = createRequire(
-    typeof __filename === 'string'
+export const resolvePackageFileUrl = (specifier: string): string => {
+  const anchor =
+    typeof __filename === 'string' && path.isAbsolute(__filename)
       ? __filename
-      : pathToFileURL(path.join(process.cwd(), 'package.json')).href,
-  );
-  const resolved = pkgRequire.resolve(specifier);
+      : path.join(getCurrentModuleDir(), 'package.json');
+  const moduleRequire = createRequire(anchor);
+  const resolved = moduleRequire.resolve(specifier);
   return pathToFileURL(resolved).href;
 };
 

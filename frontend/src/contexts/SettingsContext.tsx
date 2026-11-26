@@ -15,21 +15,22 @@ import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
-import type {
-  BetterAuthConfig,
-  ExportedMcpSettingsData,
-  InstallConfig,
-  MCPRouterConfig,
-  OAuthServerConfig,
-  RoutingConfig,
-  RuntimeSettingsContextValue,
-  SettingsActionsContextValue,
-  SettingsContextValue,
-  SettingsSectionKey,
-  SmartRoutingConfig,
-  SystemSettings,
-  TempRoutingConfig,
-  ToolResultCompressionConfig,
+import {
+  mergeSmartRoutingConfigUpdate,
+  type BetterAuthConfig,
+  type ExportedMcpSettingsData,
+  type InstallConfig,
+  type MCPRouterConfig,
+  type OAuthServerConfig,
+  type RoutingConfig,
+  type RuntimeSettingsContextValue,
+  type SettingsActionsContextValue,
+  type SettingsContextValue,
+  type SettingsSectionKey,
+  type SmartRoutingConfig,
+  type SystemSettings,
+  type TempRoutingConfig,
+  type ToolResultCompressionConfig,
 } from './settingsTypes';
 
 export type {
@@ -638,7 +639,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       runSystemConfigUpdate(
         'smartRouting',
         { smartRouting: { [key]: value } },
-        () => setSmartRoutingConfig((prev) => ({ ...prev, [key]: value })),
+        () =>
+          setSmartRoutingConfig((prev) =>
+            mergeSmartRoutingConfigUpdate(prev, { [key]: value } as Partial<SmartRoutingConfig>),
+          ),
         'errors.failedToUpdateSmartRoutingConfig',
         'Failed to update smart routing config',
       ),
@@ -650,7 +654,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       runSystemConfigUpdate(
         'smartRouting',
         { smartRouting: updates },
-        () => setSmartRoutingConfig((prev) => ({ ...prev, ...updates })),
+        () => setSmartRoutingConfig((prev) => mergeSmartRoutingConfigUpdate(prev, updates)),
         'errors.failedToUpdateSmartRoutingConfig',
         'Failed to update smart routing config',
       ),

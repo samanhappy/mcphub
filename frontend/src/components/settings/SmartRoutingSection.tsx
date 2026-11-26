@@ -1228,7 +1228,10 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   disabled={busy || !smartRoutingConfig.enabled}
                   checked={smartRoutingConfig.codeMode?.enabled ?? false}
                   onCheckedChange={(checked) =>
-                    void updateSmartRoutingConfig('codeMode', { enabled: checked })
+                    void updateSmartRoutingConfig('codeMode', {
+                      ...(smartRoutingConfig.codeMode ?? CODE_MODE_DEFAULTS),
+                      enabled: checked,
+                    })
                   }
                 />
               </div>
@@ -1250,7 +1253,10 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
                   }
                   checked={smartRoutingConfig.codeMode?.readOnlyVariantEnabled ?? true}
                   onCheckedChange={(checked) =>
-                    void updateSmartRoutingConfig('codeMode', { readOnlyVariantEnabled: checked })
+                    void updateSmartRoutingConfig('codeMode', {
+                      ...(smartRoutingConfig.codeMode ?? CODE_MODE_DEFAULTS),
+                      readOnlyVariantEnabled: checked,
+                    })
                   }
                 />
               </div>

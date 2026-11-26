@@ -55,6 +55,36 @@ export interface SmartRoutingCodeModeConfig {
   maxConcurrentRuns: number;
 }
 
+export const DEFAULT_SMART_ROUTING_CODE_MODE: SmartRoutingCodeModeConfig = {
+  enabled: false,
+  readOnlyVariantEnabled: true,
+  timeoutMs: 30000,
+  cpuTimeoutMs: 5000,
+  memoryLimitMb: 32,
+  maxToolCalls: 20,
+  maxSourceBytes: 32768,
+  maxLogBytes: 16384,
+  maxToolResultBytes: 524288,
+  maxOutputBytes: 65536,
+  maxConcurrentRuns: 4,
+};
+
+export const mergeSmartRoutingConfigUpdate = (
+  prev: SmartRoutingConfig,
+  updates: Partial<SmartRoutingConfig>,
+): SmartRoutingConfig => ({
+  ...prev,
+  ...updates,
+  ...(updates.codeMode
+    ? {
+        codeMode: {
+          ...(prev.codeMode ?? DEFAULT_SMART_ROUTING_CODE_MODE),
+          ...updates.codeMode,
+        },
+      }
+    : {}),
+});
+
 export interface SmartRoutingConfig {
   enabled: boolean;
   dbUrl: string;

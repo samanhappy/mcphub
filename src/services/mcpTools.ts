@@ -644,14 +644,22 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
     const startTime = Date.now();
     const activityLogger = getActivityLoggingService();
 
+    // Extract group early so toolCallGuard only exempts actual $smart Code Mode
+    // invocations (never direct-server or non-$smart routes that may expose an
+    // upstream tool named `execute_code` or `execute_code_read`).
+    const group = getMcpRequestGroup(extra);
+    const isCodeModeInvocation =
+      CODE_MODE_TOOL_NAMES.has(request?.params?.name) && isSmartRoutingGroup(group);
+
     // Opt-in fail-closed guard for high-confidence command-injection / SSRF /
     // cloud-credential-theft payloads in tool call arguments. Disabled by
     // default (TOOL_CALL_GUARD_ENABLED=true to enable); see
     // src/middlewares/toolCallGuard.ts.
-    // For Code Mode (`execute_code` / `execute_code_read`), the `code` field holds
-    // sandboxed JS (e.g. template literals) that has no shell/network access; each
-    // inner `tools.call(...)` re-enters this handler and is checked strictly.
-    if (isToolCallGuardEnabled() && !CODE_MODE_TOOL_NAMES.has(request?.params?.name)) {
+    // For Code Mode (`execute_code` / `execute_code_read`) on $smart routes, the
+    // `code` field holds sandboxed JS (e.g. template literals) that has no
+    // shell/network access; each inner `tools.call(...)` re-enters this handler
+    // and is checked strictly.
+    if (isToolCallGuardEnabled() && !isCodeModeInvocation) {
       try {
         assertToolCallArgumentsSafe(request?.params?.arguments);
       } catch (guardError) {
@@ -698,9 +706,8 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
         typeof id === 'string' && id.length > 0 && !isSyntheticSessionFallback(id),
     );
 
-    // Extract group and key info from request context (set by SSE/HTTP handlers)
+    // Extract user and key info from request context (set by SSE/HTTP handlers)
     // Fallback to extra for backward compatibility (e.g., direct API calls)
-    const group = getMcpRequestGroup(extra);
     const username =
       requestContextService.getUsernameContext() ||
       extra?.username ||
