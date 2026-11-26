@@ -16,6 +16,7 @@ import { getServerDao } from '../dao/index.js';
 import { getNameSeparator } from '../config/index.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import {
+  getExposedServerName,
   getGroupLookupName,
   normalizeToolNameForServer,
   resolveNameFromGroup,
@@ -58,6 +59,7 @@ import {
 } from './smartRoutingService.js';
 import { containsStagingRef } from './fileStaging/dispatch.js';
 import { isReservedStagingName } from './fileStaging/tools.js';
+import { isStdioServer } from './mcpConnectionLifecycle.js';
 
 interface ToolRoutingDependencies {
   getVisibleServerInfos(): ServerInfo[];
@@ -133,6 +135,16 @@ const stripToolServerPrefix = (toolName: string, serverName?: string): string =>
   const prefix = `${serverName}${separator}`;
   return toolName.startsWith(prefix) ? toolName.substring(prefix.length) : toolName;
 };
+
+const needsOnDemandDiscovery = (serverInfo: ServerInfo): boolean =>
+  serverInfo.enabled !== false &&
+  serverInfo.config?.startOnDemand === true &&
+  isStdioServer(serverInfo.config) &&
+  !hasPersonalAuthentication(serverInfo.config) &&
+  ((Boolean(serverInfo.spawningPromise) && serverInfo.tools.length === 0) ||
+    (serverInfo.status !== 'connected' &&
+      (Boolean(serverInfo.spawningPromise) ||
+        (serverInfo.tools.length === 0 && serverInfo.capabilityCache?.state !== 'fresh'))));
 
 export const findToolOnServer = (
   serverInfo: ServerInfo,
@@ -217,6 +229,76 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
   const assertToolAvailableForRoute = (tool: Tool, appsRouteContext: McpAppsRouteContext): void => {
     if (isAppOnlyTool(tool) && !appsRouteContext.enabled) {
       throw new Error(`Tool '${tool.name}' is only available to MCP Apps`);
+    }
+  };
+
+  const findOnDemandDiscoveryCandidate = async (params: {
+    toolName: string;
+    group: string | undefined;
+    appsRouteContext: McpAppsRouteContext;
+    explicitServerName?: string;
+  }): Promise<ServerInfo | undefined> => {
+    const { toolName, group, appsRouteContext, explicitServerName } = params;
+    const lookupGroup = getGroupLookupName(group);
+    const singleServerAppsRoute = !lookupGroup && !!appsRouteContext.serverInfo;
+
+    if (singleServerAppsRoute) {
+      const target = appsRouteContext.serverInfo;
+      return target && needsOnDemandDiscovery(target) ? target : undefined;
+    }
+
+    if (explicitServerName) {
+      const target = getVisibleServerByName(explicitServerName);
+      return target && needsOnDemandDiscovery(target) ? target : undefined;
+    }
+
+    const separator = getNameSeparator();
+    const hasQualifiedPrefix = (prefix: string): boolean =>
+      toolName.startsWith(`${prefix}${separator}`) &&
+      toolName.length > prefix.length + separator.length;
+
+    if (lookupGroup) {
+      const { filteredServerInfos, serverConfigsByName } =
+        await getFilteredServerInfosForGroup(lookupGroup);
+
+      if (filteredServerInfos.length === 1 && serverConfigsByName.size <= 1) {
+        const [onlyServer] = filteredServerInfos;
+        return needsOnDemandDiscovery(onlyServer) ? onlyServer : undefined;
+      }
+
+      const qualifiedMatches = filteredServerInfos.filter((serverInfo) => {
+        const serverConfig = serverConfigsByName.get(serverInfo.name);
+        if (serverConfig?.preserveToolNames) {
+          return false;
+        }
+        return hasQualifiedPrefix(getExposedServerName(serverInfo.name, serverConfig));
+      });
+      if (qualifiedMatches.length === 1 && needsOnDemandDiscovery(qualifiedMatches[0])) {
+        return qualifiedMatches[0];
+      }
+      return undefined;
+    }
+
+    const qualifiedMatches = getVisibleServerInfos().filter(
+      (serverInfo) => serverInfo.enabled !== false && hasQualifiedPrefix(serverInfo.name),
+    );
+    if (qualifiedMatches.length === 1 && needsOnDemandDiscovery(qualifiedMatches[0])) {
+      return qualifiedMatches[0];
+    }
+    return undefined;
+  };
+
+  const wakeOnDemandServer = async (serverInfo: ServerInfo): Promise<void> => {
+    if (serverInfo.spawningPromise) {
+      await serverInfo.spawningPromise;
+    }
+    if (serverInfo.status !== 'connected') {
+      await ensureServerReady(serverInfo);
+    }
+    if (serverInfo.status !== 'connected') {
+      throw new Error(
+        `Failed to start on-demand server '${serverInfo.name}' — check server logs`,
+      );
     }
   };
 
@@ -698,33 +780,79 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
         // Preserve legacy raw aggregate calls; explicit routes use the shared
         // resolver so cached names still obey group filtering.
         const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
-        let targetServerInfo: ServerInfo | undefined;
-        let targetToolName = toolName;
-        let targetTool: Tool | undefined;
-        if (singleServerAppsRoute) {
-          targetServerInfo = appsRouteContext.serverInfo;
-        } else if (extra && extra.server) {
-          targetServerInfo = getVisibleServerByName(extra.server);
-        } else if (getGroupLookupName(group)) {
-          const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext);
-          if (groupTool) {
-            targetServerInfo = groupTool.serverInfo;
-            targetToolName = groupTool.toolName;
-            targetTool = groupTool.tool;
+        const resolveCallToolTarget = async (): Promise<{
+          serverInfo: ServerInfo | undefined;
+          toolName: string;
+          tool: Tool | undefined;
+        }> => {
+          if (singleServerAppsRoute) {
+            const info = appsRouteContext.serverInfo;
+            return {
+              serverInfo: info,
+              toolName,
+              tool: info ? findToolOnServer(info, toolName, true) : undefined,
+            };
           }
-        } else {
+          if (extra && extra.server) {
+            const info = getVisibleServerByName(extra.server);
+            return {
+              serverInfo: info,
+              toolName,
+              tool: info ? findToolOnServer(info, toolName, false) : undefined,
+            };
+          }
+          if (getGroupLookupName(group)) {
+            const groupTool = await resolveToolInGroup(group, toolName, appsRouteContext);
+            if (groupTool) {
+              return {
+                serverInfo: groupTool.serverInfo,
+                toolName: groupTool.toolName,
+                tool: groupTool.tool,
+              };
+            }
+            return { serverInfo: undefined, toolName, tool: undefined };
+          }
           // Find the first server that has this tool.
           // On-demand servers may be sleeping (disconnected) but still advertise
           // their cached tool list — include them as candidates.
-          targetServerInfo = getVisibleServerInfos().find(
+          const matchedServer = getVisibleServerInfos().find(
             (serverInfo) =>
               serverInfo.enabled !== false &&
               (serverInfo.status === 'connected' || serverInfo.config?.startOnDemand === true) &&
               serverInfo.tools.some((tool) => tool.name === toolName),
           );
+          return {
+            serverInfo: matchedServer,
+            toolName,
+            tool: matchedServer ? findToolOnServer(matchedServer, toolName, false) : undefined,
+          };
+        };
+
+        let {
+          serverInfo: targetServerInfo,
+          toolName: targetToolName,
+          tool: targetTool,
+        } = await resolveCallToolTarget();
+
+        if (!targetServerInfo || !targetTool) {
+          const candidate = await findOnDemandDiscoveryCandidate({
+            toolName,
+            group,
+            appsRouteContext,
+            explicitServerName: extra?.server,
+          });
+          if (candidate) {
+            releaseOnDemandToolCall = beginOnDemandToolCall(candidate);
+            await wakeOnDemandServer(candidate);
+            ({
+              serverInfo: targetServerInfo,
+              toolName: targetToolName,
+              tool: targetTool,
+            } = await resolveCallToolTarget());
+          }
         }
 
-        if (!targetServerInfo) {
+        if (!targetServerInfo || !targetTool) {
           throw new ToolUnavailableError(
             `Tool not available: ${toolName}`,
             classifyUnavailableReason(toolName),
@@ -735,7 +863,7 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
 
         // If the target is an on-demand server that is not yet running, wake it up now.
         // Concurrent callers are serialised via ensureServerReady's singleton promise.
-        releaseOnDemandToolCall = beginOnDemandToolCall(targetServerInfo);
+        releaseOnDemandToolCall ??= beginOnDemandToolCall(targetServerInfo);
         if (targetServerInfo.config?.startOnDemand && targetServerInfo.status !== 'connected') {
           await ensureServerReady(targetServerInfo);
           // Re-read status from the mutated serverInfo after async spawn
@@ -966,20 +1094,41 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       // Explicit routes share name resolution and group filtering regardless of
       // Apps support; keep legacy raw aggregate calls compatible.
       const singleServerAppsRoute = !getGroupLookupName(group) && !!appsRouteContext.serverInfo;
-      const groupTool =
-        !singleServerAppsRoute && lookupGroup
-          ? await resolveToolInGroup(group, request.params.name, appsRouteContext)
-          : undefined;
-      const serverInfo = singleServerAppsRoute
-        ? appsRouteContext.serverInfo
-        : (groupTool?.serverInfo ??
-          (lookupGroup ? undefined : getServerByTool(request.params.name)));
-      const routeToolName = groupTool?.toolName ?? request.params.name;
-      let tool =
-        groupTool?.tool ??
-        (serverInfo
-          ? findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute)
-          : undefined);
+      const resolveRegularTool = async () => {
+        const resolvedGroupTool =
+          !singleServerAppsRoute && lookupGroup
+            ? await resolveToolInGroup(group, request.params.name, appsRouteContext)
+            : undefined;
+        const resolvedServerInfo = singleServerAppsRoute
+          ? appsRouteContext.serverInfo
+          : (resolvedGroupTool?.serverInfo ??
+            (lookupGroup ? undefined : getServerByTool(request.params.name)));
+        const resolvedRouteToolName = resolvedGroupTool?.toolName ?? request.params.name;
+        const resolvedTool =
+          resolvedGroupTool?.tool ??
+          (resolvedServerInfo
+            ? findToolOnServer(resolvedServerInfo, resolvedRouteToolName, singleServerAppsRoute)
+            : undefined);
+        return {
+          serverInfo: resolvedServerInfo,
+          routeToolName: resolvedRouteToolName,
+          tool: resolvedTool,
+        };
+      };
+
+      let { serverInfo, routeToolName, tool } = await resolveRegularTool();
+      if (!serverInfo || !tool) {
+        const candidate = await findOnDemandDiscoveryCandidate({
+          toolName: request.params.name,
+          group,
+          appsRouteContext,
+        });
+        if (candidate) {
+          releaseOnDemandToolCall = beginOnDemandToolCall(candidate);
+          await wakeOnDemandServer(candidate);
+          ({ serverInfo, routeToolName, tool } = await resolveRegularTool());
+        }
+      }
       if (!serverInfo || !tool) {
         throw new ToolUnavailableError(
           `Tool not available: ${request.params.name}`,
@@ -992,7 +1141,7 @@ export const createToolHandlers = (dependencies: ToolRoutingDependencies) => {
       // Wake the on-demand server before invoking the tool. It may be asleep with
       // a cached tool list (visible above) but no live client. Mirrors the
       // $smart call_tool path. See #1029.
-      releaseOnDemandToolCall = beginOnDemandToolCall(serverInfo);
+      releaseOnDemandToolCall ??= beginOnDemandToolCall(serverInfo);
       if (serverInfo.config?.startOnDemand && serverInfo.status !== 'connected') {
         await ensureServerReady(serverInfo);
         tool = findToolOnServer(serverInfo, routeToolName, singleServerAppsRoute);
