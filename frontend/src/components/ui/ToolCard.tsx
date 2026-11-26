@@ -23,9 +23,11 @@ import { Switch } from './ToggleGroup';
 import DynamicForm from './DynamicForm';
 import ToolResult from './ToolResult';
 import ResetDescriptionButton from './ResetDescriptionButton';
+import ToolFileStagingEditor from './ToolFileStagingEditor';
 import { formatTokens } from '@/utils/contextCost';
 import { getToolDescriptionInfo } from '@/utils/toolDescription';
 import { nextHiddenParams } from '@/utils/hiddenParams';
+import { upstreamToolName } from '@/utils/toolChanges';
 
 interface ToolCardProps {
   server: string;
@@ -33,12 +35,15 @@ interface ToolCardProps {
   /** Discovered since the user last acknowledged this server's tools (#1496). */
   isNew?: boolean;
   readOnly?: boolean;
+  isStdioServer?: boolean;
+  serverHasStagingAdapter?: boolean;
   onToggle?: (toolName: string, enabled: boolean) => void;
   onDescriptionUpdate?: (
     toolName: string,
     description: string,
     options?: { restored?: boolean },
   ) => void;
+  onFileStagingUpdate?: () => void;
   cost?: number;
 }
 
@@ -56,8 +61,11 @@ const ToolCard = ({
   server,
   isNew = false,
   readOnly = false,
+  isStdioServer = false,
+  serverHasStagingAdapter = false,
   onToggle,
   onDescriptionUpdate,
+  onFileStagingUpdate,
   cost,
 }: ToolCardProps) => {
   const { t } = useTranslation();
@@ -300,6 +308,9 @@ const ToolCard = ({
             {toolDisplayName}
           </span>
           {isNew && <span className="hub-tag accent">{t('tool.new')}</span>}
+          {tool.fileStaging?.enabled && (
+            <span className="hub-tag accent">{t('tool.fileStagingBadge')}</span>
+          )}
           <button
             className="hub-icon-btn sm"
             onClick={handleCopyToolName}
@@ -464,6 +475,19 @@ const ToolCard = ({
                 })}
               </div>
             </div>
+          )}
+
+          {/* File staging configuration (stdio servers) */}
+          {!showRunForm && (isStdioServer || Boolean(tool.fileStaging)) && (
+            <ToolFileStagingEditor
+              serverName={server}
+              toolName={upstreamToolName(server, tool.name, nameSeparator)}
+              tool={tool}
+              hiddenParams={hiddenParams}
+              readOnly={readOnly}
+              serverHasStagingAdapter={serverHasStagingAdapter}
+              onSaved={onFileStagingUpdate}
+            />
           )}
 
           {/* Schema Display */}

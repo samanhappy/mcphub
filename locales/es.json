@@ -406,7 +406,21 @@
     "adding": "Agregando…",
     "newToolsCount": "{{count}} nuevas",
     "newToolsSinceLastReview": "Herramientas nuevas desde tu última revisión: {{count}}",
-    "markToolsSeen": "Marcar como vistas"
+    "markToolsSeen": "Marcar como vistas",
+    "stagingTitle": "Almacenamiento temporal de archivos",
+    "stagingAdapterLabel": "Adaptador de confianza",
+    "stagingAdapterNone": "Ninguno",
+    "stagingAdapterSsh": "SSH (ssh)",
+    "stagingSharedLabel": "Permitir usuarios compartidos",
+    "stagingSharedBadge": "Confianza compartida",
+    "stagingSharedReadOnlyHint": "La confianza compartida está habilitada. Solo los administradores pueden desactivarla o quitar el adaptador mientras esté activa.",
+    "stagingSharedAdminOnly": "Solo un administrador puede cambiar la confianza compartida.",
+    "stagingSharedCredentialSlotsHint": "El almacenamiento temporal compartido requiere ranuras de credenciales por usuario (credentialTemplate) para que cada usuario se conecte con sus propias credenciales.",
+    "stagingGlobalDisabledBanner": "El almacenamiento temporal de archivos global está deshabilitado. Habilítalo en Configuración para que surta efecto.",
+    "stagingOpenGlobalSettings": "Abrir configuración de almacenamiento temporal",
+    "stagingRestartNotice": "Guardar reconecta el servidor para que los cambios surtan efecto de inmediato.",
+    "stagingSaveSuccess": "Configuración de almacenamiento temporal del servidor actualizada",
+    "stagingSaveFailed": "No se pudo actualizar el almacenamiento temporal del servidor"
   },
   "status": {
     "sleeping": "En suspensión",
@@ -483,7 +497,8 @@
     "inactive": "Inactivo",
     "viewAll": "Ver todo",
     "docs": "Documentación",
-    "all": "Todos"
+    "all": "Todos",
+    "reset": "Restablecer"
   },
   "clientConfig": {
     "title": "Copiar configuración MCP",
@@ -923,7 +938,24 @@
     "item": "Elemento {{index}}",
     "addItem": "Añadir elemento {{key}}",
     "enterKey": "Introduce {{key}}",
-    "new": "Nueva"
+    "new": "Nueva",
+    "fileStagingTitle": "Almacenamiento temporal de archivos",
+    "fileStagingBadge": "Temporal",
+    "fileStagingEnable": "Habilitar almacenamiento temporal",
+    "fileStagingHelp": "Elige qué parámetros de texto aceptan referencias de entrada subidas (Entrada) o destinos de salida (Salida).",
+    "fileStagingRequiresAdapter": "Configura un adaptador (como ssh) en este servidor antes de habilitar el almacenamiento temporal de la herramienta.",
+    "fileStagingNoParams": "Esta herramienta no tiene parámetros de texto elegibles en su esquema de entrada.",
+    "fileStagingDirection": "dirección de almacenamiento temporal",
+    "fileStagingRoleNone": "Ninguno",
+    "fileStagingRoleInput": "Entrada",
+    "fileStagingRoleOutput": "Salida",
+    "fileStagingHiddenBadge": "Oculto",
+    "fileStagingHiddenParamHint": "Este parámetro está oculto para los modelos y no puede usarse activamente para almacenamiento temporal.",
+    "fileStagingStaleBadge": "Fuera del esquema",
+    "fileStagingStaleParamHint": "Este parámetro ya no existe como texto en el esquema de entrada. Selecciónalo como Ninguno para quitarlo.",
+    "fileStagingRestartCwdNotice": "Habilitar el almacenamiento temporal reinicia este servidor y ejecuta cada proceso hijo stdio en el directorio temporal del usuario en lugar del directorio de trabajo del hub.",
+    "fileStagingSaveSuccess": "Configuración de almacenamiento temporal de la herramienta actualizada",
+    "fileStagingSaveFailed": "No se pudo actualizar el almacenamiento temporal de la herramienta"
   },
   "prompt": {
     "run": "Obtener",

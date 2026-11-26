@@ -406,7 +406,21 @@
     "adding": "添加中…",
     "newToolsCount": "{{count}} 个新工具",
     "newToolsSinceLastReview": "自上次查看以来的新工具：{{count}} 个",
-    "markToolsSeen": "标记为已查看"
+    "markToolsSeen": "标记为已查看",
+    "stagingTitle": "文件暂存",
+    "stagingAdapterLabel": "受信任适配器",
+    "stagingAdapterNone": "无",
+    "stagingAdapterSsh": "SSH (ssh)",
+    "stagingSharedLabel": "允许共享用户使用",
+    "stagingSharedBadge": "已启用共享信任",
+    "stagingSharedReadOnlyHint": "已启用共享信任。仅管理员可移除共享信任或在共享信任启用时清除适配器。",
+    "stagingSharedAdminOnly": "共享信任仅可由管理员修改。",
+    "stagingSharedCredentialSlotsHint": "共享文件暂存需要配置按用户凭据槽位（credentialTemplate），以确保每位用户使用各自凭据连接。",
+    "stagingGlobalDisabledBanner": "全局文件暂存当前已关闭。请在设置中启用后生效。",
+    "stagingOpenGlobalSettings": "打开文件暂存设置",
+    "stagingRestartNotice": "保存后会重连服务器以使更改立即生效。",
+    "stagingSaveSuccess": "服务器文件暂存设置已更新",
+    "stagingSaveFailed": "更新服务器文件暂存设置失败"
   },
   "status": {
     "sleeping": "休眠",
@@ -485,7 +499,8 @@
     "inactive": "未激活",
     "viewAll": "查看全部",
     "docs": "文档",
-    "all": "全部"
+    "all": "全部",
+    "reset": "重置"
   },
   "clientConfig": {
     "title": "复制 MCP 配置",
@@ -925,7 +940,24 @@
     "item": "项目 {{index}}",
     "addItem": "添加 {{key}} 项目",
     "enterKey": "输入 {{key}}",
-    "new": "新"
+    "new": "新",
+    "fileStagingTitle": "文件暂存",
+    "fileStagingBadge": "已暂存",
+    "fileStagingEnable": "启用暂存",
+    "fileStagingHelp": "选择哪些字符串参数接收上传的输入引用（输入）或写入输出目标（输出）。",
+    "fileStagingRequiresAdapter": "请先在此服务器上配置暂存适配器（如 ssh），再启用工具文件暂存。",
+    "fileStagingNoParams": "此工具的输入 schema 中没有可用的字符串参数。",
+    "fileStagingDirection": "暂存方向",
+    "fileStagingRoleNone": "无",
+    "fileStagingRoleInput": "输入",
+    "fileStagingRoleOutput": "输出",
+    "fileStagingHiddenBadge": "已隐藏",
+    "fileStagingHiddenParamHint": "此参数已对模型隐藏，不能同时启用文件暂存。",
+    "fileStagingStaleBadge": "不在 schema 中",
+    "fileStagingStaleParamHint": "此参数已不再作为字符串存在于当前工具输入 schema 中，设为“无”即可移除。",
+    "fileStagingRestartCwdNotice": "启用文件暂存会重启此服务器，并使该服务器的每个 stdio 子进程在调用用户的暂存目录（而非 hub 工作目录）中运行。",
+    "fileStagingSaveSuccess": "工具文件暂存设置已更新",
+    "fileStagingSaveFailed": "更新工具文件暂存设置失败"
   },
   "prompt": {
     "run": "获取",

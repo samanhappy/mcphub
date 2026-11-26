@@ -1,4 +1,5 @@
 import PersonalOAuthControls from './PersonalOAuthControls';
+import ServerStagingEditor from './ServerStagingEditor';
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -212,6 +213,10 @@ const ServerCard = ({
   const isMcpApp = serverExposesMcpApp(server);
   const enabled = server.enabled !== false;
   const canManage = canManageServer(server, auth.user);
+  const isStdioServer =
+    server.config?.type === 'stdio' ||
+    (!server.config?.type && Boolean(server.config?.command));
+  const serverHasStagingAdapter = Boolean(server.config?.staging?.adapter);
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
@@ -959,6 +964,9 @@ const ServerCard = ({
                 </p>
               </section>
             )}
+            {isStdioServer && canManage && (
+              <ServerStagingEditor server={server} onSaved={onRefresh} />
+            )}
             {/* Capability tabs + endpoint on same row */}
             <div className="flex items-center gap-1 mb-2 flex-wrap">
               {capabilitySummaries.map((tab) => {
@@ -1098,8 +1106,11 @@ const ServerCard = ({
                     tool={tool}
                     isNew={newToolSet.has(upstreamToolName(server.name, tool.name, nameSeparator))}
                     readOnly={!canManage}
+                    isStdioServer={isStdioServer}
+                    serverHasStagingAdapter={serverHasStagingAdapter}
                     onToggle={handleToolToggle}
                     onDescriptionUpdate={handleToolDescriptionUpdate}
+                    onFileStagingUpdate={onRefresh}
                     cost={cost?.items.find((i) => i.kind === 'tool' && i.name === tool.name)?.cost}
                   />
                 ))}

@@ -1,4 +1,8 @@
-import { apiDelete, apiPost, apiPut } from '../utils/fetchInterceptor';
+import { apiDelete, apiPatch, apiPost, apiPut } from '../utils/fetchInterceptor';
+import type {
+  ServerStagingPatchPayload,
+  ToolFileStagingPatchPayload,
+} from '../utils/fileStaging';
 
 export interface ToolCallRequest {
   toolName: string;
@@ -179,6 +183,81 @@ export const resetToolDescription = async (
     };
   } catch (error) {
     console.error('Error resetting tool description', { serverName, toolName, error });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Update server-level file staging trust declaration (PATCH /api/servers/:name/staging)
+ */
+export const updateServerStaging = async (
+  serverName: string,
+  payload: ServerStagingPatchPayload,
+): Promise<{
+  success: boolean;
+  data?: { shared?: boolean; adapter?: 'ssh' } | null;
+  error?: string;
+}> => {
+  try {
+    const response = await apiPatch<any>(
+      `/servers/${encodeURIComponent(serverName)}/staging`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
+        },
+      },
+    );
+
+    return {
+      success: response.success,
+      data: response.data,
+      error: response.success ? undefined : response.message,
+    };
+  } catch (error) {
+    console.error('Error updating server file staging', { serverName, error });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Update per-tool file staging configuration (PATCH /api/servers/:name/file-staging)
+ */
+export const updateToolFileStaging = async (
+  serverName: string,
+  payload: ToolFileStagingPatchPayload,
+): Promise<{
+  success: boolean;
+  data?: {
+    enabled: boolean;
+    fileStaging?: { enabled: boolean; inputParams?: string[]; outputParams?: string[] };
+  };
+  error?: string;
+}> => {
+  try {
+    const response = await apiPatch<any>(
+      `/servers/${encodeURIComponent(serverName)}/file-staging`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
+        },
+      },
+    );
+
+    return {
+      success: response.success,
+      data: response.data,
+      error: response.success ? undefined : response.message,
+    };
+  } catch (error) {
+    console.error('Error updating tool file staging', { serverName, tool: payload.tool, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
