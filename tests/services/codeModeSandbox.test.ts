@@ -210,11 +210,16 @@ describe('QuickJsWorkerSandboxRunner', () => {
 
   it('enforces maxConcurrentRuns', async () => {
     let releaseFirst!: () => void;
+    let signalFirstCall!: () => void;
+    const firstCallStarted = new Promise<void>((resolve) => {
+      signalFirstCall = resolve;
+    });
     const blockingBridge: CodeSandboxBridge = {
       search: async () => [],
       call: async () =>
         new Promise((resolve) => {
           releaseFirst = () => resolve({ done: true });
+          signalFirstCall();
         }),
     };
 
@@ -224,20 +229,22 @@ describe('QuickJsWorkerSandboxRunner', () => {
       bridge: blockingBridge,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    try {
+      await Promise.race([firstCallStarted, firstRun]);
+      await expect(
+        runner.run({
+          code: 'return 1;',
+          limits: { ...baseLimits, maxConcurrentRuns: 1 },
+          bridge: noopBridge,
+        }),
+      ).rejects.toMatchObject({
+        name: 'CodeSandboxError',
+        kind: 'concurrency_limit',
+      });
+    } finally {
+      releaseFirst?.();
+    }
 
-    await expect(
-      runner.run({
-        code: 'return 1;',
-        limits: { ...baseLimits, maxConcurrentRuns: 1 },
-        bridge: noopBridge,
-      }),
-    ).rejects.toMatchObject({
-      name: 'CodeSandboxError',
-      kind: 'concurrency_limit',
-    });
-
-    releaseFirst?.();
     const res = await firstRun;
     expect(res.value).toEqual({ done: true });
   });
