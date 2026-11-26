@@ -9,9 +9,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN apt-get update && apt-get install -y curl gnupg git build-essential procps \
   && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
   && apt-get install -y nodejs \
+  && npm install -g npm@10.9.11 \
+  && npm cache clean --force \
+  && rm -rf /root/.npm \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup \
   CARGO_HOME=/usr/local/cargo \
@@ -43,18 +46,23 @@ RUN uv tool install mcp-server-fetch
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml .pnpmfile.cjs ./
+COPY package.json pnpm-lock.yaml .pnpmfile.cjs pnpm-workspace.yaml ./
 COPY patches ./patches
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
   pnpm config set store-dir /pnpm/store && pnpm fetch --frozen-lockfile
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-  pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile --offline
 
 COPY . .
 
-RUN pnpm build
-# Keep the legacy path available only for user-mounted configuration.
-RUN rm /app/mcp_settings.json
+# Install, build, and prune devDependencies in one layer so build-only packages
+# (such as @esbuild Go binaries and ts-jest/handlebars) are not shipped in the
+# final image. Keep /app/mcp_settings.json absent so the legacy path stays
+# available for user-mounted configuration.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm config set store-dir /pnpm/store \
+  && pnpm install --frozen-lockfile --offline \
+  && pnpm build \
+  && CI=true pnpm prune --prod \
+  && rm -rf /root/.local/share/pnpm /root/.cache/pnpm /root/.npm /app/mcp_settings.json
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
