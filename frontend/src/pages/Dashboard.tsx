@@ -75,10 +75,17 @@ const transportLabel = (t: any, type?: string) => {
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { allServers, error, setError, isLoading, hasLoadedServers, triggerRefresh } =
-    useServerData({
-      refreshOnMount: true,
-    });
+  const {
+    allServers,
+    error,
+    setError,
+    isLoading,
+    hasLoadedServers,
+    fetchAttempts,
+    triggerRefresh,
+  } = useServerData({
+    refreshOnMount: true,
+  });
   const { groups, loading: groupsLoading } = useGroupData({ refreshOnMount: true });
   const { installConfig, initialLoading: settingsLoading } = useRuntimeSettings();
   const { serverCosts, loading: costsLoading } = useCostData();
@@ -109,7 +116,8 @@ const DashboardPage: React.FC = () => {
   const recentServerColumns =
     'minmax(220px,1.9fr) minmax(110px,0.95fr) minmax(120px,0.95fr) 80px 80px 90px 72px';
 
-  const showSkeleton = !hasLoadedServers && !error;
+  const showSkeleton = !hasLoadedServers && fetchAttempts === 0;
+  const serverDataUnavailable = !hasLoadedServers && fetchAttempts > 0;
   const endpointsLoading = showSkeleton || groupsLoading || settingsLoading;
   const dashboardBusy = showSkeleton || isLoading;
 
@@ -126,10 +134,10 @@ const DashboardPage: React.FC = () => {
           ) : (
             <p className="hub-sub">
               {t('pages.dashboard.totalServers')} ·{' '}
-              <span className="hub-num">{error ? '—' : stats.total}</span>
+              <span className="hub-num">{serverDataUnavailable ? '—' : stats.total}</span>
               {'  ·  '}
               {t('pages.dashboard.onlineServers')} ·{' '}
-              <span className="hub-num">{error ? '—' : stats.online}</span>
+              <span className="hub-num">{serverDataUnavailable ? '—' : stats.online}</span>
             </p>
           )}
         </div>
@@ -190,25 +198,28 @@ const DashboardPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-          <Stat label={t('pages.dashboard.totalServers')} value={error ? '—' : stats.total} />
+          <Stat
+            label={t('pages.dashboard.totalServers')}
+            value={serverDataUnavailable ? '—' : stats.total}
+          />
           <Stat
             label={t('pages.dashboard.onlineServers')}
-            value={error ? '—' : stats.online}
+            value={serverDataUnavailable ? '—' : stats.online}
             tone="ok"
           />
           <Stat
             label={t('pages.dashboard.connectingServers')}
-            value={error ? '—' : stats.connecting}
+            value={serverDataUnavailable ? '—' : stats.connecting}
             tone="warn"
           />
           <Stat
             label={t('pages.dashboard.offlineServers')}
-            value={error ? '—' : stats.offline}
+            value={serverDataUnavailable ? '—' : stats.offline}
             tone="err"
           />
           <Stat
             label={t('pages.dashboard.disabledServers')}
-            value={error ? '—' : stats.disabled}
+            value={serverDataUnavailable ? '—' : stats.disabled}
             tone="muted"
           />
           <Stat
