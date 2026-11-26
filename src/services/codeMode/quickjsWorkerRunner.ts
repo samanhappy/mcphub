@@ -11,7 +11,7 @@
  *   `UserContextService`) and reuse the full MCPHub authorization stack.
  */
 
-import { MessageChannel, Worker } from 'node:worker_threads';
+import { Worker } from 'node:worker_threads';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -40,7 +40,8 @@ export const resolvePackageFileUrl = (specifier: string): string => {
  * and `ts-jest` without extra build-copy steps.
  */
 const WORKER_SOURCE = `
-const { workerData } = require('node:worker_threads');
+const { parentPort, workerData } = require('node:worker_threads');
+const port = parentPort;
 
 (async () => {
   const {
@@ -49,7 +50,6 @@ const { workerData } = require('node:worker_threads');
     memoryLimitMb,
     maxLogBytes,
     maxOutputBytes,
-    port,
     quickjsModuleUrl,
     variantModuleUrl,
   } = workerData;
@@ -369,7 +369,7 @@ const { workerData } = require('node:worker_threads');
   pumpJobs();
 })().catch((err) => {
   try {
-    workerData.port.postMessage({
+    parentPort.postMessage({
       type: 'error',
       kind: 'runtime_error',
       message: err && err.message ? err.message : String(err),
@@ -446,7 +446,6 @@ export class QuickJsWorkerSandboxRunner implements CodeSandboxRunner {
     bridge: CodeSandboxRunRequest['bridge'],
   ): Promise<CodeSandboxRunResult> {
     return new Promise<CodeSandboxRunResult>((resolve, reject) => {
-      const { port1: hostPort, port2: workerPort } = new MessageChannel();
       let settled = false;
 
       const worker = new Worker(WORKER_SOURCE, {
@@ -457,18 +456,15 @@ export class QuickJsWorkerSandboxRunner implements CodeSandboxRunner {
           memoryLimitMb: limits.memoryLimitMb,
           maxLogBytes: limits.maxLogBytes,
           maxOutputBytes: limits.maxOutputBytes,
-          port: workerPort,
           quickjsModuleUrl: this.quickjsModuleUrl,
           variantModuleUrl: this.variantModuleUrl,
         },
-        transferList: [workerPort],
       });
 
       const finish = (fn: () => void) => {
         if (settled) return;
         settled = true;
         clearTimeout(wallTimer);
-        hostPort.close();
         void worker.terminate();
         fn();
       };
@@ -484,7 +480,7 @@ export class QuickJsWorkerSandboxRunner implements CodeSandboxRunner {
         );
       }, limits.timeoutMs);
 
-      hostPort.on('message', (msg: WorkerMessage) => {
+      worker.on('message', (msg: WorkerMessage) => {
         if (settled || !msg) return;
 
         if (msg.type === 'rpc') {
@@ -514,14 +510,14 @@ export class QuickJsWorkerSandboxRunner implements CodeSandboxRunner {
                 value = await bridge.call(toolName, args);
               }
               if (!settled) {
-                hostPort.postMessage({ type: 'rpc_reply', rpcId: msg.rpcId, ok: true, value });
+                worker.postMessage({ type: 'rpc_reply', rpcId: msg.rpcId, ok: true, value });
               }
             } catch (err) {
               if (!settled) {
                 const errorKind =
                   err instanceof CodeSandboxError ? err.kind : 'runtime_error';
                 const errorMessage = err instanceof Error ? err.message : String(err);
-                hostPort.postMessage({
+                worker.postMessage({
                   type: 'rpc_reply',
                   rpcId: msg.rpcId,
                   ok: false,

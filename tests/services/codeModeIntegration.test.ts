@@ -338,7 +338,9 @@ describe('Code Mode smart routing & dispatch integration', () => {
         },
       );
 
-      expect(response.isError).not.toBe(true);
+      if (response.isError) {
+        throw new Error(`Unexpected execute_code error: ${JSON.stringify(response.content)}`);
+      }
       const parsed = JSON.parse(response.content[0].text);
       expect(parsed.value.okRes).toEqual({ echoed: { msg: 'PR #42/check' } });
       expect(parsed.value.guardBlocked).toMatch(/blocked|Error/i);
