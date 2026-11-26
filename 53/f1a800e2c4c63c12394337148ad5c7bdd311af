@@ -1,0 +1,39 @@
+frontend/src/pages/Dashboard.tsx
+  s_4c5e5c3aebae12::t_9178cb36d1c277 335
+  s_4c5e5c3aebae12::t_8418f7632295a9 18,20-24,78-81,91-92,194-208,210-214,260-263,267-269,286-289,292-295,298-301
+  s_4c5e5c3aebae12::t_031bab492a5d37 15-17,19,57-64,82-84,112-114,122-134,137-144,146-150,182-186,188,193,209,215-217,309,329-334,336-354
+  s_4c5e5c3aebae12::t_b9a19b5133f2bb 65
+frontend/src/components/ui/AppLoading.tsx
+  s_4c5e5c3aebae12::t_7d94c88559a9ef 1-20,22-29
+  s_4c5e5c3aebae12::t_ca6f0dc5a9efe9 21
+frontend/src/layouts/MainLayout.tsx
+  s_4c5e5c3aebae12::t_7d94c88559a9ef 7,21
+frontend/src/App.tsx
+  s_4c5e5c3aebae12::t_7d94c88559a9ef 11,44
+frontend/src/components/ProtectedRoute.tsx
+  s_4c5e5c3aebae12::t_7d94c88559a9ef 5,21
+frontend/src/index.css
+  s_4c5e5c3aebae12::t_8418f7632295a9 30,56,61-66,69-93,96-115,123-128,131-140,147-189,207-214,267-269,278-280,295-341,354-365,380-389,404-406,439-442,459-462,532-535,744-749,760-762,812-814,865-867,936-938,960,1001-1009,1076-1088,1175-1185,1339-1341,1362,1393-1395,1440-1471,1477-1485,1696-1699,1740-1743
+  s_4c5e5c3aebae12::t_031bab492a5d37 54-55,57-60,67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53f1a800e2c4c63c12394337148ad5c7bdd311af",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4c5e5c3aebae12": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "991bad9b-1fef-47a4-980e-20ccb516e2cc",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
