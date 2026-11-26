@@ -56,3 +56,6 @@ temp-test-config/
 
 # Local transfer staging (never commit)
 .tmp-transfer/
+
+# Local GitHub coordinator state (never commit)
+.agents/state/
