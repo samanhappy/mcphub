@@ -15,34 +15,32 @@ Infer the repo from `git remote -v`. Read [triage labels](triage-labels.md) befo
 
 ## Triage and handoff
 
-1. Read the issue, latest comments, related issues, linked PRs and current code as needed. Look for shipped fixes, duplicates and overlapping work.
-2. Apply one Type and at least one Area when identifiable. Preserve unrelated labels. Recommend priority when supported; only set or change it with maintainer approval.
-3. Default triaged actionable work to `agent:pending`. Use the [workflow labels](triage-labels.md#next-action-exactly-one-after-triage) to identify the party responsible for the next action. Replace the previous workflow label, preserving Type, Area and Priority.
-4. Claim agent work before investigation or implementation. Record evidence (version/commit, paths, reproduction, tests), remaining uncertainty and a concrete next step. Group related issues when they share design or dependencies.
-5. Escalate to `owner:decision` only after the [maintainer decision gate](triage-labels.md#maintainer-decision-gate) passes. Record the specific question, options, trade-offs and recommendation before changing the label. Use `user:feedback` only when an external party must respond or revise a contribution; ask for the missing information or changes. Use `user:verification` after a fix is available when external validation is needed. Use `owner:review` when a deliverable is ready for maintainer review.
-6. After each handoff, record the next action and replace the workflow label. Avoid repeated comments or label churn; update an existing agent-authored status comment when practical. Do not close issues or defer work without maintainer authorization.
+Use [issue-coordinator](../../.agents/skills/issue-coordinator/SKILL.md) for global queue management and [issue-worker](../../.agents/skills/issue-worker/SKILL.md) for individual delivery. The [coordination and claims protocol](issue-coordination.md) is authoritative for dispatch, exclusive ownership, checkpointing, resumption and release.
+
+- Coordinator reads issues, comments, linked PRs and current evidence, checks duplicates/dependencies, and owns Type/Area/Priority/workflow labels. Preserve unrelated labels and respect explicit owner decisions. Default triaged actionable work to `agent:pending`.
+- Workers investigate and report evidence, remaining uncertainty, proposed next-action label and concrete next step for their assigned issue only. Group related issues at the coordinator level instead of duplicating analysis.
+- Use the [maintainer decision gate](triage-labels.md#maintainer-decision-gate) before escalating. Record the specific question, options, trade-offs and recommendation. Request only missing external information. A workflow label tracks the next actor; waiting on owner or user does not release the worker's claim.
+- Avoid repeated comments or label churn. Update claim-specific checkpoints when practical. Do not close issues or defer work without maintainer authorization.
 
 ## Implementation authorization
 
-`agent:pending` is a unified agent queue for investigation, design and implementation. It does not itself authorize changes to product code. An agent may implement only when the maintainer has explicitly approved the task or provided a bounded standing authorization that covers it. Preserve authorization in the issue, linked comment, or authoritative task instructions. Confirm that:
+`agent:pending` is a unified agent queue for investigation, design and implementation. It does not itself authorize changes to product code. A worker may implement only when the maintainer has explicitly approved the task or provided a bounded standing authorization that covers it. Preserve authorization in the issue, linked comment, or authoritative task instructions. Confirm that:
 
 - Problem, scope, non-goals and acceptance criteria are clear.
 - Relevant dependencies and architecture, security and compatibility decisions are resolved.
-- There is no active implementation or overlapping open PR.
+- There is no active overlapping implementation or PR.
 - The work can be verified with tests or a documented validation method.
 
-Without sufficient approval, investigate and propose the next step; escalate only when a concrete decision blocks progress. Do not treat a detailed proposal, old queue label or priority as approval. The maintainer may approve multiple bounded tasks at once and return them to `agent:pending`.
+Without sufficient approval, investigate and propose the next step; escalate only when a concrete decision blocks progress. Do not treat a detailed proposal, old queue label or priority as approval. The maintainer may approve multiple bounded tasks at once. The coordinator can prioritize independently, but cannot grant implementation approval beyond the owner's authorization.
 
 ## Claim and execute
 
-- Candidate queue: `gh issue list --state open --label agent:pending --search 'no:assignee -label:ready-for-human' --limit 100`.
-- Prioritize P0/P1, then P2/P3; unknown priority is not P2. Do not claim deferred, human-only, conflicting-state, already claimed or untriaged issues without explicit instructions.
-- Re-read the issue, assignees, linked/open PRs and claims immediately before starting. Use a single maintainer/dispatcher to grant exclusive claims for concurrent agents. GitHub label updates alone are not an atomic lock. If no dispatcher is available, do not run parallel autonomous claimers.
-- Record the claimant and task scope (investigation or authorized implementation; include branch/worktree when applicable) in a claim comment or assignment. Replace the pending label with `agent:in-progress` and re-read to confirm the claim before work. Stop if another claim or implementation is discovered.
-- Investigate autonomously; implement only within the authorized scope. Follow repository guides, run relevant tests and open a linked PR when implementing. Report test evidence, known limitations and scope deviations.
-- Release the claim at handoff. If further agent work is available but no agent is actively working, use `agent:pending`. If a maintainer decision blocks progress, use `owner:decision`; if a PR or other deliverable is ready for maintainer review, use `owner:review`. If an external contributor must revise a PR, use `user:feedback`. Do not leave issues in progress simply because a PR exists.
-- Review agents report findings and do not merge. Maintainers own merge and closure decisions. After delivery, use `user:verification` when external verification is needed; otherwise close only when authorized or through an authorized PR's closing reference. Follow the private security advisory lifecycle for sensitive issues.
+- Candidate discovery: `gh issue list --state open --label agent:pending --search 'no:assignee -label:ready-for-human' --limit 100` (paginate). This query is not a claim mechanism. The coordinator must reconcile against the canonical ledger before dispatch, including waiting and closed-but-undelivered claims.
+- Only the coordinator assigns or resumes a worker, serially, with the [exclusive claim protocol](issue-coordination.md#exclusive-dispatch-protocol). Workers must verify their grant and current activation; do not self-claim. Use independent worktrees for concurrent implementations.
+- Keep one worker responsible for one issue across investigation, implementation, linked PR review, release and user verification. Pause when blocked; do not release a claim merely because responsibility for the next action changes.
+- Worker reports the proposed handoff and evidence; coordinator updates the labels and registry. Reviewable deliverables go to `owner:review`, requested external changes to `user:feedback`, delivered fixes awaiting reporter validation to `user:verification`. Resume the original worker when it can act again.
+- Review agents report findings and do not merge. Maintainers own merge and closure decisions. Release only after acceptance and completion of follow-up, or explicit owner cancellation/reassignment with the old runtime stopped. Follow the private security advisory lifecycle for sensitive issues.
 
 ## Skill integration
 
-When a skill says "publish to the issue tracker", create a GitHub issue. When a skill says "fetch the relevant ticket", read the issue and its latest comments. Translate skill triage roles using [triage labels](triage-labels.md); a queue label never grants permission to implement.
+When a skill says "publish to the issue tracker", create a GitHub issue if authorized. When a skill says "fetch the relevant ticket", read the issue and its latest comments. Translate skill triage roles using [triage labels](triage-labels.md); a queue label never grants permission to implement.
