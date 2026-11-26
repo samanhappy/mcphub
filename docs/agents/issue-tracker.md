@@ -50,7 +50,7 @@ When dispatching implementation, the coordinator passes `pr_link_mode`: `closes`
 
 ## Claim and execute
 
-- Candidate discovery: `gh issue list --state open --label agent:pending --search 'no:assignee -label:ready-for-human' --limit 100` and `gh pr list --state open --label agent:pending --limit 100` (paginate). Exclude drafts awaiting their authors, human-only work, issues already carrying a current-`main` investigation, and already-tracked tasks. Reconcile against `.agents/state/github-queue.json` before dispatch.
+- Candidate discovery and resumption follow the [coordination protocol](github-coordination.md#dispatch-handoff-and-release), which evaluates the next step against existing evidence and queue reservations.
 - Only the coordinator assigns or resumes a worker, following the [local-first coordination protocol](github-coordination.md#dispatch-handoff-and-release). Workers must not self-claim. Use independent worktrees for concurrent implementations.
 - Keep one tracked task (`issue#<N>` or `pr#<N>`) across investigation, implementation, linked PR review, release and user verification. Pause (`waiting`) when blocked; waiting tasks preserve branch/PR context without consuming `max_concurrent_runs`.
 - Worker returns structured handoff evidence directly to the coordinator; coordinator updates workflow labels and local state. Reviewable deliverables go to `owner:review`, requested external changes to `user:feedback`, delivered fixes awaiting reporter validation to `user:verification`. Resume the same task record and branch/PR when actionable again.
