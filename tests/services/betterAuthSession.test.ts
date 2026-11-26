@@ -515,6 +515,74 @@ describe('resolveBetterAuthUser', () => {
       // Never re-queries findByUsername after createUser failure
       expect(mockFindByUsername).toHaveBeenCalledTimes(1);
     });
+
+    it('should re-query findUserBySsoUserId and return user when a concurrent request creates the same identity before username collision check', async () => {
+      mockSessionGet.mockResolvedValue({
+        user: { id: 'ba-concurrent-user', email: 'concurrent@example.com', name: 'Concurrent' },
+      });
+      const concurrentUser = {
+        username: 'concurrent@example.com',
+        email: 'concurrent@example.com',
+        ssoUserId: 'ba-concurrent-user',
+        isAdmin: false,
+      };
+      mockFindBySsoUserId.mockResolvedValueOnce(undefined).mockResolvedValueOnce(concurrentUser);
+      mockFindByUsername.mockResolvedValue(concurrentUser);
+
+      const result = await resolveBetterAuthUser(makeReq());
+
+      expect(result).toEqual(concurrentUser);
+      expect(mockFindBySsoUserId).toHaveBeenCalledTimes(2);
+      expect(mockFindBySsoUserId).toHaveBeenNthCalledWith(1, 'ba-concurrent-user');
+      expect(mockFindBySsoUserId).toHaveBeenNthCalledWith(2, 'ba-concurrent-user');
+      expect(mockFindByEmail).not.toHaveBeenCalled();
+      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should re-query findUserBySsoUserId and return user when a concurrent request creates the same identity before email collision check', async () => {
+      mockSessionGet.mockResolvedValue({
+        user: { id: 'ba-concurrent-email', email: 'concurrent2@example.com', name: 'Concurrent2' },
+      });
+      const concurrentUser = {
+        username: 'concurrent2@example.com',
+        email: 'concurrent2@example.com',
+        ssoUserId: 'ba-concurrent-email',
+        isAdmin: false,
+      };
+      mockFindBySsoUserId.mockResolvedValueOnce(undefined).mockResolvedValueOnce(concurrentUser);
+      mockFindByUsername.mockResolvedValue(undefined);
+      mockFindByEmail.mockResolvedValue(concurrentUser);
+
+      const result = await resolveBetterAuthUser(makeReq());
+
+      expect(result).toEqual(concurrentUser);
+      expect(mockFindBySsoUserId).toHaveBeenCalledTimes(2);
+      expect(mockFindBySsoUserId).toHaveBeenNthCalledWith(1, 'ba-concurrent-email');
+      expect(mockFindBySsoUserId).toHaveBeenNthCalledWith(2, 'ba-concurrent-email');
+      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should still reject when concurrent username collision belongs to a forward-auth identity', async () => {
+      mockSessionGet.mockResolvedValue({
+        user: { id: 'forward-auth:race', email: 'gw-race@example.com', name: 'GWRace' },
+      });
+      const forwardAuthUser = {
+        username: 'gw-race@example.com',
+        email: 'gw-race@example.com',
+        ssoUserId: 'forward-auth:race',
+        isAdmin: false,
+      };
+      mockFindBySsoUserId.mockResolvedValueOnce(undefined).mockResolvedValueOnce(forwardAuthUser);
+      mockFindByUsername.mockResolvedValue(forwardAuthUser);
+
+      const result = await resolveBetterAuthUser(makeReq());
+
+      expect(result).toBeNull();
+      expect(mockCreateWithHashedPassword).not.toHaveBeenCalled();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
   });
 
   // ── Session edge cases ───────────────────────────────────────

@@ -92,13 +92,29 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
 
   // Fail closed on username or email collision: never adopt or mutate an
   // existing local, admin, forward-auth, or other SSO account.
+  // Re-check by ssoUserId before rejecting so a concurrent first login for the
+  // same SSO identity does not fail with a spurious 401.
   if (await findUserByUsername(username)) {
+    const concurrentUser = rejectForwardAuthUser(await findUserBySsoUserId(ssoUserId));
+    if (concurrentUser === null) {
+      return null;
+    }
+    if (concurrentUser) {
+      return concurrentUser;
+    }
     logger.warn(
       `Better Auth login refused: username "${username}" already belongs to another account`,
     );
     return null;
   }
   if (email && (await findUserByEmail(email))) {
+    const concurrentUser = rejectForwardAuthUser(await findUserBySsoUserId(ssoUserId));
+    if (concurrentUser === null) {
+      return null;
+    }
+    if (concurrentUser) {
+      return concurrentUser;
+    }
     logger.warn(
       `Better Auth login refused: email "${email}" already belongs to another account`,
     );
