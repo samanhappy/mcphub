@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { updateServerStaging } from '@/services/toolService';
 import {
   buildServerStagingPayload,
+  getServerStagingSyncKey,
   isServerStagingDirty,
   type StagingAdapterValue,
 } from '@/utils/fileStaging';
@@ -28,6 +29,7 @@ const ServerStagingEditor = ({ server, onSaved }: ServerStagingEditorProps) => {
   const initialStaging = server.config?.staging;
   const initialAdapter: StagingAdapterValue = initialStaging?.adapter ?? '';
   const initialShared = Boolean(initialStaging?.shared);
+  const syncKey = getServerStagingSyncKey(server.name, initialStaging);
 
   const [draftAdapter, setDraftAdapter] = useState<StagingAdapterValue>(initialAdapter);
   const [draftShared, setDraftShared] = useState<boolean>(initialShared);
@@ -38,7 +40,7 @@ const ServerStagingEditor = ({ server, onSaved }: ServerStagingEditorProps) => {
     setDraftAdapter(initialAdapter);
     setDraftShared(initialShared);
     setError(null);
-  }, [initialAdapter, initialShared, server.name]);
+  }, [syncKey, initialAdapter, initialShared]);
 
   const dirty = isServerStagingDirty(draftAdapter, draftShared, initialStaging, isAdmin);
   const cannotClearBecauseShared = !isAdmin && initialShared;

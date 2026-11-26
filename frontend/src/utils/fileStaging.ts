@@ -151,6 +151,38 @@ export const buildParamRoleMap = (
 const sortedUnique = (values: readonly string[] | undefined): string[] =>
   Array.from(new Set(values ?? [])).sort();
 
+/**
+ * Canonical value key for a tool's stored `fileStaging` config. Used to drive
+ * React sync effects by value rather than object identity so background server
+ * polling (which deserializes fresh objects on every tick) never wipes unsaved
+ * editor drafts or inline errors.
+ */
+export const getToolFileStagingSyncKey = (
+  serverName: string,
+  toolName: string,
+  fileStaging?: Tool['fileStaging'],
+): string =>
+  JSON.stringify({
+    serverName,
+    toolName,
+    enabled: fileStaging?.enabled === true,
+    inputParams: sortedUnique(fileStaging?.inputParams),
+    outputParams: sortedUnique(fileStaging?.outputParams),
+  });
+
+/**
+ * Canonical value key for a server's stored `staging` config.
+ */
+export const getServerStagingSyncKey = (
+  serverName: string,
+  staging?: ServerConfig['staging'],
+): string =>
+  JSON.stringify({
+    serverName,
+    adapter: staging?.adapter ?? '',
+    shared: staging?.shared === true,
+  });
+
 const arraysEqual = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((val, idx) => val === b[idx]);
 

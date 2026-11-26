@@ -9,6 +9,7 @@ import {
   buildParamRoleMap,
   buildStagingParamOptions,
   buildToolFileStagingPayload,
+  getToolFileStagingSyncKey,
   isToolFileStagingDirty,
   type FileStagingParamRole,
 } from '@/utils/fileStaging';
@@ -38,7 +39,14 @@ const ToolFileStagingEditor = ({
   const { showToast } = useToast();
 
   const initialEnabled = tool.fileStaging?.enabled === true;
-  const initialRoles = useMemo(() => buildParamRoleMap(tool.fileStaging), [tool.fileStaging]);
+  const syncKey = getToolFileStagingSyncKey(serverName, tool.name, tool.fileStaging);
+  // Keyed on the canonical value string rather than the `tool.fileStaging`
+  // object reference so background ServerContext polling does not reset
+  // unsaved drafts or inline validation errors.
+  const initialRoles = useMemo(
+    () => buildParamRoleMap(tool.fileStaging),
+    [syncKey],
+  );
   const paramOptions = useMemo(
     () => buildStagingParamOptions(tool.inputSchema, tool.fileStaging, hiddenParams),
     [tool.inputSchema, tool.fileStaging, hiddenParams],
@@ -53,7 +61,7 @@ const ToolFileStagingEditor = ({
     setDraftEnabled(initialEnabled);
     setDraftRoles(initialRoles);
     setError(null);
-  }, [initialEnabled, initialRoles, tool.name]);
+  }, [syncKey, initialEnabled, initialRoles]);
 
   const dirty = isToolFileStagingDirty(draftEnabled, draftRoles, tool.fileStaging);
 

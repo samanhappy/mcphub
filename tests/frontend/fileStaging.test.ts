@@ -5,6 +5,8 @@ import {
   buildStagingParamOptions,
   buildToolFileStagingPayload,
   extractStagingParamCandidates,
+  getServerStagingSyncKey,
+  getToolFileStagingSyncKey,
   isServerStagingDirty,
   isToolFileStagingDirty,
 } from '../../frontend/src/utils/fileStaging';
@@ -119,5 +121,42 @@ describe('frontend fileStaging utils', () => {
       adapter: null,
       shared: false,
     });
+  });
+
+  it('produces stable sync keys across freshly deserialized equal configs and changes on real updates', () => {
+    // Polling returns new object references with identical values: sync key must stay equal.
+    const poll1 = { enabled: true, inputParams: ['b', 'a'], outputParams: ['out'] };
+    const poll2 = { enabled: true, inputParams: ['a', 'b'], outputParams: ['out'] };
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', poll1)).toBe(
+      getToolFileStagingSyncKey('ssh', 'ssh-upload', poll2),
+    );
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', undefined)).toBe(
+      getToolFileStagingSyncKey('ssh', 'ssh-upload', { enabled: false }),
+    );
+
+    // Changing values, tool name, or server name must change the sync key.
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', poll1)).not.toBe(
+      getToolFileStagingSyncKey('ssh', 'ssh-upload', { ...poll1, enabled: false }),
+    );
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', poll1)).not.toBe(
+      getToolFileStagingSyncKey('ssh', 'ssh-upload', { ...poll1, inputParams: ['a'] }),
+    );
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', poll1)).not.toBe(
+      getToolFileStagingSyncKey('ssh', 'ssh-download', poll1),
+    );
+    expect(getToolFileStagingSyncKey('ssh', 'ssh-upload', poll1)).not.toBe(
+      getToolFileStagingSyncKey('ssh2', 'ssh-upload', poll1),
+    );
+
+    // Server staging sync key is also invariant to fresh object references and sensitive to real changes.
+    expect(getServerStagingSyncKey('ssh', { adapter: 'ssh', shared: false })).toBe(
+      getServerStagingSyncKey('ssh', { adapter: 'ssh' }),
+    );
+    expect(getServerStagingSyncKey('ssh', { adapter: 'ssh' })).not.toBe(
+      getServerStagingSyncKey('ssh', { adapter: 'ssh', shared: true }),
+    );
+    expect(getServerStagingSyncKey('ssh', { adapter: 'ssh' })).not.toBe(
+      getServerStagingSyncKey('ssh2', { adapter: 'ssh' }),
+    );
   });
 });
