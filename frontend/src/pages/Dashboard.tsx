@@ -12,11 +12,16 @@ import { Server } from '@/types';
 import { EndpointCopy } from '@/components/ui/EndpointCopy';
 import { ServerStatusDot } from '@/components/ui/StatusDot';
 
-const Stat: React.FC<{ label: string; value: React.ReactNode; tone?: 'ok' | 'warn' | 'err' | 'muted' | 'default' }> = ({
-  label,
-  value,
-  tone = 'default',
-}) => {
+const SkeletonLine: React.FC<{ width?: number | string; height?: number }> = ({
+  width = '100%',
+  height = 10,
+}) => <span aria-hidden="true" className="hub-skeleton block" style={{ width, height }} />;
+
+const Stat: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  tone?: 'ok' | 'warn' | 'err' | 'muted' | 'default';
+}> = ({ label, value, tone = 'default' }) => {
   const toneColor =
     tone === 'ok'
       ? 'oklch(0.4 0.13 145)'
@@ -49,6 +54,15 @@ const Stat: React.FC<{ label: string; value: React.ReactNode; tone?: 'ok' | 'war
   );
 };
 
+const StatSkeleton: React.FC = () => (
+  <div className="hub-card" style={{ padding: '14px 16px', minHeight: 78 }}>
+    <SkeletonLine width="55%" height={11} />
+    <div style={{ marginTop: 12 }}>
+      <SkeletonLine width={36} height={27} />
+    </div>
+  </div>
+);
+
 const transportLabel = (t: any, type?: string) => {
   if (!type) return null;
   if (type === 'stdio') return t('server.typeStdio') || 'stdio';
@@ -61,35 +75,21 @@ const transportLabel = (t: any, type?: string) => {
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { allServers, error, setError, isLoading, triggerRefresh } = useServerData({
-    refreshOnMount: true,
-  });
-  const { groups } = useGroupData({ refreshOnMount: true });
-  const { installConfig } = useRuntimeSettings();
-  const { serverCosts } = useCostData();
-
-  const [hasLoaded, setHasLoaded] = React.useState(false);
-  const loadingStartedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (isLoading) {
-      loadingStartedRef.current = true;
-      return;
-    }
-    if (loadingStartedRef.current) {
-      setHasLoaded(true);
-      return;
-    }
-    if (allServers.length > 0 || error) setHasLoaded(true);
-  }, [isLoading, allServers.length, error]);
+  const { allServers, error, setError, isLoading, hasLoadedServers, triggerRefresh } =
+    useServerData({
+      refreshOnMount: true,
+    });
+  const { groups, loading: groupsLoading } = useGroupData({ refreshOnMount: true });
+  const { installConfig, initialLoading: settingsLoading } = useRuntimeSettings();
+  const { serverCosts, loading: costsLoading } = useCostData();
 
   const stats = useMemo(
     () => ({
       total: allServers.length,
       online: allServers.filter((s: Server) => s.status === 'connected').length,
       disabled: allServers.filter((s: Server) => s.enabled === false).length,
-      offline: allServers.filter(
-        (s: Server) => s.status === 'disconnected' && s.enabled !== false,
-      ).length,
+      offline: allServers.filter((s: Server) => s.status === 'disconnected' && s.enabled !== false)
+        .length,
       connecting: allServers.filter(
         (s: Server) =>
           (s.status === 'connecting' || s.status === 'oauth_required') && s.enabled !== false,
@@ -109,7 +109,9 @@ const DashboardPage: React.FC = () => {
   const recentServerColumns =
     'minmax(220px,1.9fr) minmax(110px,0.95fr) minmax(120px,0.95fr) 80px 80px 90px 72px';
 
-  const showSkeleton = !hasLoaded;
+  const showSkeleton = !hasLoadedServers && !error;
+  const endpointsLoading = showSkeleton || groupsLoading || settingsLoading;
+  const dashboardBusy = showSkeleton || isLoading;
 
   return (
     <div>
@@ -117,17 +119,35 @@ const DashboardPage: React.FC = () => {
       <div className="flex items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="hub-h1">{t('pages.dashboard.title')}</h1>
-          <p className="hub-sub">
-            {t('pages.dashboard.totalServers')} · <span className="hub-num">{stats.total}</span>
-            {'  ·  '}
-            {t('pages.dashboard.onlineServers')} · <span className="hub-num">{stats.online}</span>
-          </p>
+          {showSkeleton ? (
+            <div className="hub-sub" role="status" aria-label={t('app.loading')}>
+              <SkeletonLine width={164} height={12} />
+            </div>
+          ) : (
+            <p className="hub-sub">
+              {t('pages.dashboard.totalServers')} ·{' '}
+              <span className="hub-num">{error ? '—' : stats.total}</span>
+              {'  ·  '}
+              {t('pages.dashboard.onlineServers')} ·{' '}
+              <span className="hub-num">{error ? '—' : stats.online}</span>
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
-          <button className="hub-btn" onClick={() => triggerRefresh()}>
-            <RefreshCw size={13} /> {t('common.refresh')}
+          <button
+            className="hub-btn"
+            onClick={() => triggerRefresh()}
+            disabled={dashboardBusy}
+            aria-busy={dashboardBusy}
+          >
+            <RefreshCw size={13} className={dashboardBusy ? 'animate-spin' : ''} />
+            {t('common.refresh')}
           </button>
-          <button className="hub-btn primary" onClick={() => navigate('/servers')}>
+          <button
+            className="hub-btn primary"
+            onClick={() => navigate('/servers')}
+            disabled={showSkeleton}
+          >
             <Plus size={13} /> {t('server.add')}
           </button>
         </div>
@@ -159,23 +179,42 @@ const DashboardPage: React.FC = () => {
 
       {/* Stat row */}
       {showSkeleton ? (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+        <div
+          className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6"
+          role="status"
+          aria-label={t('app.loading')}
+        >
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="hub-card animate-pulse"
-              style={{ padding: '14px 16px', height: 78 }}
-            />
+            <StatSkeleton key={i} />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-          <Stat label={t('pages.dashboard.totalServers')} value={stats.total} />
-          <Stat label={t('pages.dashboard.onlineServers')} value={stats.online} tone="ok" />
-          <Stat label={t('pages.dashboard.connectingServers')} value={stats.connecting} tone="warn" />
-          <Stat label={t('pages.dashboard.offlineServers')} value={stats.offline} tone="err" />
-          <Stat label={t('pages.dashboard.disabledServers')} value={stats.disabled} tone="muted" />
-          <Stat label={t('cost.totalFootprint')} value={formatTokens(footprint)} />
+          <Stat label={t('pages.dashboard.totalServers')} value={error ? '—' : stats.total} />
+          <Stat
+            label={t('pages.dashboard.onlineServers')}
+            value={error ? '—' : stats.online}
+            tone="ok"
+          />
+          <Stat
+            label={t('pages.dashboard.connectingServers')}
+            value={error ? '—' : stats.connecting}
+            tone="warn"
+          />
+          <Stat
+            label={t('pages.dashboard.offlineServers')}
+            value={error ? '—' : stats.offline}
+            tone="err"
+          />
+          <Stat
+            label={t('pages.dashboard.disabledServers')}
+            value={error ? '—' : stats.disabled}
+            tone="muted"
+          />
+          <Stat
+            label={t('cost.totalFootprint')}
+            value={costsLoading ? <SkeletonLine width={52} height={27} /> : formatTokens(footprint)}
+          />
         </div>
       )}
 
@@ -218,11 +257,16 @@ const DashboardPage: React.FC = () => {
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className="hub-mono truncate"
-                  style={{ fontSize: 13, color: s.enabled === false ? 'var(--hub-ink-3)' : 'var(--hub-ink)' }}
+                  style={{
+                    fontSize: 13,
+                    color: s.enabled === false ? 'var(--hub-ink-3)' : 'var(--hub-ink)',
+                  }}
                 >
                   {s.name}
                 </span>
-                {s.error && <AlertCircle size={13} className="text-[var(--hub-err)] flex-shrink-0" />}
+                {s.error && (
+                  <AlertCircle size={13} className="text-[var(--hub-err)] flex-shrink-0" />
+                )}
               </div>
               <div className="min-w-0">
                 <ServerStatusDot status={s.status} enabled={s.enabled} />
@@ -239,13 +283,22 @@ const DashboardPage: React.FC = () => {
               <div className="hub-num hub-mono" style={{ fontSize: 12.5 }}>
                 {s.tools?.length || 0}
               </div>
-              <div className="hub-num hub-mono" style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
+              <div
+                className="hub-num hub-mono"
+                style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}
+              >
                 {s.prompts?.length || 0}
               </div>
-              <div className="hub-num hub-mono" style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}>
+              <div
+                className="hub-num hub-mono"
+                style={{ fontSize: 12.5, color: 'var(--hub-ink-2)' }}
+              >
                 {s.resources?.length || 0}
               </div>
-              <div className="text-[12px]" style={{ color: s.enabled !== false ? 'var(--hub-ok)' : 'var(--hub-ink-3)' }}>
+              <div
+                className="text-[12px]"
+                style={{ color: s.enabled !== false ? 'var(--hub-ok)' : 'var(--hub-ink-3)' }}
+              >
                 {s.enabled !== false ? '✓' : '—'}
               </div>
             </div>
@@ -253,7 +306,7 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-            {/* Endpoint quick-access */}
+      {/* Endpoint quick-access */}
       <div className="hub-card mb-5" style={{ padding: 16 }}>
         <div className="flex justify-between items-start gap-3 mb-3">
           <div>
@@ -273,17 +326,32 @@ const DashboardPage: React.FC = () => {
             {t('common.docs') || 'Docs'} →
           </a>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          <EndpointCopy label="ALL" url={`${baseUrl}/mcp`} />
-          <EndpointCopy label="SMART" url={`${baseUrl}/mcp/${getSmartRoutingPath()}`} />
-          {groups.slice(0, 2).map((g) => (
-            <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.name}`} />
-          ))}
-          {/* Pad with first server endpoint if there's space */}
-          {groups.length < 2 && allServers[0] && (
-            <EndpointCopy label="SERVER" url={`${baseUrl}/mcp/${allServers[0].name}`} />
-          )}
-        </div>
+        {endpointsLoading ? (
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 gap-2.5"
+            role="status"
+            aria-label={t('app.loading')}
+          >
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="hub-endpoint" aria-hidden="true">
+                <SkeletonLine width={42} height={20} />
+                <SkeletonLine width={`${65 + (i % 2) * 15}%`} height={13} />
+                <SkeletonLine width={20} height={20} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <EndpointCopy label="ALL" url={`${baseUrl}/mcp`} />
+            <EndpointCopy label="SMART" url={`${baseUrl}/mcp/${getSmartRoutingPath()}`} />
+            {groups.slice(0, 2).map((g) => (
+              <EndpointCopy key={g.id} label="GROUP" url={`${baseUrl}/mcp/${g.name}`} />
+            ))}
+            {groups.length < 2 && allServers[0] && (
+              <EndpointCopy label="SERVER" url={`${baseUrl}/mcp/${allServers[0].name}`} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

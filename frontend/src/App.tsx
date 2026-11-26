@@ -8,6 +8,7 @@ import { GroupProvider } from './contexts/GroupContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import AppLoading from './components/ui/AppLoading';
 import EmbeddingSyncAlertListener from './components/EmbeddingSyncAlertListener';
 import { getBasePath } from './utils/runtime';
 import {
@@ -40,11 +41,7 @@ const CloudRedirect: React.FC = () => {
   return <Navigate to={`/market/${serverName}`} replace />;
 };
 
-const RouteFallback: React.FC = () => (
-  <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">
-    Loading...
-  </div>
-);
+const RouteFallback: React.FC = () => <AppLoading fullScreen />;
 
 function App() {
   const basename = getBasePath();
