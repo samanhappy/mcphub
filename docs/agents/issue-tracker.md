@@ -1,12 +1,15 @@
-# Issue tracker: GitHub
+# GitHub issue and PR tracker
 
-Issues and PRDs for this repo live as GitHub issues. Prefer the authenticated `gh` CLI; equivalent authorized GitHub connector operations are acceptable when the CLI is unavailable.
+Issues, PRDs and pull requests form one GitHub task queue. A task may be an issue or a standalone PR. Prefer the authenticated `gh` CLI; equivalent authorized GitHub connector operations are acceptable when the CLI is unavailable.
 
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
 - **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments,assignees,closedByPullRequestsReferences`.
 - **List issues**: `gh issue list --state open --limit 100 --json number,title,body,labels,comments,assignees`; paginate if necessary.
+- **List PRs**: `gh pr list --state open --limit 100 --json number,title,body,labels,isDraft,headRefOid,baseRefOid,reviewDecision,closingIssuesReferences`; paginate if necessary.
+- **Read a PR**: `gh pr view <number> --json number,title,body,labels,isDraft,headRefOid,baseRefOid,reviewDecision,reviews,statusCheckRollup,closingIssuesReferences`; read all review threads and the diff separately.
+- **Label a PR**: `gh pr edit <number> --add-label "..."` / `--remove-label "..."`.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`.
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`.
 - **Close**: `gh issue close <number> --comment "..."` only when authorized.
@@ -15,10 +18,10 @@ Infer the repo from `git remote -v`. Read [triage labels](triage-labels.md) befo
 
 ## Triage and handoff
 
-Use [issue-coordinator](../../.agents/skills/issue-coordinator/SKILL.md) for global queue management and [issue-worker](../../.agents/skills/issue-worker/SKILL.md) for individual delivery. The [coordination and claims protocol](issue-coordination.md) is authoritative for dispatch, exclusive ownership, checkpointing, resumption and release.
+Use [github-coordinator](../../.agents/skills/github-coordinator/SKILL.md) for global queue management and [github-worker](../../.agents/skills/github-worker/SKILL.md) for individual delivery. The [coordination and claims protocol](github-coordination.md) is authoritative for dispatch, exclusive ownership, checkpointing, resumption and release.
 
-- Coordinator reads issues, comments, linked PRs and current evidence, checks duplicates/dependencies, and owns Type/Area/Priority/workflow labels. Preserve unrelated labels and respect explicit owner decisions. Default triaged actionable work to `agent:pending`.
-- Workers investigate and report evidence, remaining uncertainty, proposed next-action label and concrete next step for their assigned issue only. Group related issues at the coordinator level instead of duplicating analysis.
+- Coordinator reads issues, all open PRs, comments, reviews and current evidence, checks duplicates/dependencies, and owns Type/Area/Priority/workflow labels. Preserve unrelated labels and respect explicit owner decisions. Default triaged actionable work, including review-ready external PRs, to `agent:pending`.
+- Workers investigate and report evidence, remaining uncertainty, proposed next-action label and concrete next step for their assigned task only. Group related issues at the coordinator level instead of duplicating analysis.
 - Use the [maintainer decision gate](triage-labels.md#maintainer-decision-gate) before escalating. Record the specific question, options, trade-offs and recommendation. Request only missing external information. A workflow label tracks the next actor; waiting on owner or user does not release the worker's claim.
 - Avoid repeated comments or label churn. Update claim-specific checkpoints when practical. Do not close issues or defer work without maintainer authorization.
 
@@ -35,12 +38,13 @@ Without sufficient approval, investigate and propose the next step; escalate onl
 
 ## Claim and execute
 
-- Candidate discovery: `gh issue list --state open --label agent:pending --search 'no:assignee -label:ready-for-human' --limit 100` (paginate). This query is not a claim mechanism. The coordinator must reconcile against the canonical ledger before dispatch, including waiting and closed-but-undelivered claims.
-- Only the coordinator assigns or resumes a worker, serially, with the [exclusive claim protocol](issue-coordination.md#exclusive-dispatch-protocol). Workers must verify their grant and current activation; do not self-claim. Use independent worktrees for concurrent implementations.
-- Keep one worker responsible for one issue across investigation, implementation, linked PR review, release and user verification. Pause when blocked; do not release a claim merely because responsibility for the next action changes.
+- Candidate discovery: `gh issue list --state open --label agent:pending --search 'no:assignee -label:ready-for-human' --limit 100` and `gh pr list --state open --label agent:pending --limit 100` (paginate). Exclude drafts awaiting their authors, human-only work and existing reservations. This query is not a claim mechanism. The coordinator must reconcile against the canonical ledger before dispatch, including waiting and closed-but-undelivered claims.
+- Only the coordinator assigns or resumes a worker, serially, with the [exclusive claim protocol](github-coordination.md#exclusive-dispatch-protocol). Workers must verify their grant and current activation; do not self-claim. Use independent worktrees for concurrent implementations.
+- Keep one worker responsible for one task (issue or PR) across investigation, implementation, linked PR review, release and user verification. Pause when blocked; do not release a claim merely because responsibility for the next action changes.
 - Worker reports the proposed handoff and evidence; coordinator updates the labels and registry. Reviewable deliverables go to `owner:review`, requested external changes to `user:feedback`, delivered fixes awaiting reporter validation to `user:verification`. Resume the original worker when it can act again.
+- For independent PR review, the worker follows the same PR across revisions, records reviewed head/base SHAs and testing evidence, and does not modify the contributor's branch without separate authorization. Reviewing an external PR does not grant implementation or merge authority. Do not create a synthetic issue merely to track a PR.
 - Review agents report findings and do not merge. Maintainers own merge and closure decisions. Release only after acceptance and completion of follow-up, or explicit owner cancellation/reassignment with the old runtime stopped. Follow the private security advisory lifecycle for sensitive issues.
 
 ## Skill integration
 
-When a skill says "publish to the issue tracker", create a GitHub issue if authorized. When a skill says "fetch the relevant ticket", read the issue and its latest comments. Translate skill triage roles using [triage labels](triage-labels.md); a queue label never grants permission to implement.
+When a skill says "publish to the issue tracker", create a GitHub issue if authorized. When a skill says "fetch the relevant ticket", read the issue or PR and its latest comments/reviews. Translate skill triage roles using [triage labels](triage-labels.md); a queue label never grants permission to implement.

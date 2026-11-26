@@ -1,6 +1,6 @@
 # Triage labels
 
-Use four independent dimensions for open issues: **Type, Area, Priority, Next action**. Labels are a shared queue for maintainers, contributors and agents, not a promise to ship a feature.
+Use four independent dimensions for open issues and PRs: **Type, Area, Priority, Next action**. Labels are a shared queue for maintainers, contributors and agents, not a promise to ship a feature.
 
 ## Type (one primary label)
 
@@ -38,7 +38,7 @@ Unlabeled priority means undecided, not P2. The coordinator may set and revise o
 
 ## Next action (exactly one after triage)
 
-The workflow label answers **who is responsible for the next action, and what is its progress?** It is not the entire task lifecycle. Use a single label from this table on a triaged open issue; replace it when responsibility changes.
+The workflow label answers **who is responsible for the next action, and what is its progress?** It is not the entire task lifecycle. Use a single label from this table on a triaged open issue or PR; replace it when responsibility changes.
 
 | Label | Next action | Color family |
 | --- | --- | --- |
@@ -50,9 +50,9 @@ The workflow label answers **who is responsible for the next action, and what is
 | `user:verification` | External user must validate a delivered fix or behavior | Yellow |
 | `deferred` | Explicitly postponed; no party needs to act now | Gray |
 
-An open issue without a workflow label is untriaged. Closing an issue uses GitHub's native state. Labels describe the current responsibility, not the author, assignee, or origin of the issue. A linked PR does not automatically imply owner review: a draft under active agent work stays in progress; if changes are requested from an external contributor, use user feedback; when a deliverable is ready for maintainer review, use owner review.
+An open issue or PR without a workflow label is untriaged. Closed/merged artifacts use GitHub's native state. Labels describe the current responsibility, not the author, assignee, or origin of the issue. A linked PR does not automatically imply owner review: a draft under active agent work stays in progress; if changes are requested from an external contributor, use user feedback; when a deliverable is ready for maintainer review, use owner review. A review-ready external PR not yet reviewed by a worker belongs in `agent:pending`. After changes are requested, use `user:feedback`; on a new head, return to the same worker for re-review. A related issue and PR may have different next actions but share a single claim; labels never authorize duplicate dispatch.
 
-Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate and [issue coordination](issue-coordination.md) for exclusive claims. Only the coordinator changes workflow labels; workers report proposed handoffs. A waiting label never releases an existing worker claim.
+Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate and [issue coordination](github-coordination.md) for exclusive claims. Only the coordinator changes workflow labels; workers report proposed handoffs. A waiting label never releases an existing worker claim.
 
 ## Maintainer decision gate
 
