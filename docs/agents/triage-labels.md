@@ -25,7 +25,7 @@ Use four independent dimensions for open issues: **Type, Area, Priority, Next ac
 | `area:search` | Embedding, vector search |
 | `area:deployment` | Deployment, Docker, build, supply chain |
 
-## Priority (zero or one; maintainer decides)
+## Priority (zero or one; coordinator manages)
 
 | Label | Meaning |
 | --- | --- |
@@ -34,7 +34,7 @@ Use four independent dimensions for open issues: **Type, Area, Priority, Next ac
 | `priority:p2` | Normal improvement |
 | `priority:p3` | Low priority or long-term work |
 
-Unlabeled priority means undecided, not P2. Agents may recommend priority but must not set or change it without maintainer approval. Use the private advisory process for sensitive vulnerabilities.
+Unlabeled priority means undecided, not P2. The coordinator may set and revise ordinary priorities based on evidence and owner direction; workers recommend changes to the coordinator. Respect explicit owner priority decisions. Priority is not implementation authorization. Use the private advisory process for sensitive vulnerabilities.
 
 ## Next action (exactly one after triage)
 
@@ -52,7 +52,7 @@ The workflow label answers **who is responsible for the next action, and what is
 
 An open issue without a workflow label is untriaged. Closing an issue uses GitHub's native state. Labels describe the current responsibility, not the author, assignee, or origin of the issue. A linked PR does not automatically imply owner review: a draft under active agent work stays in progress; if changes are requested from an external contributor, use user feedback; when a deliverable is ready for maintainer review, use owner review.
 
-Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate.
+Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate and [issue coordination](issue-coordination.md) for exclusive claims. Only the coordinator changes workflow labels; workers report proposed handoffs. A waiting label never releases an existing worker claim.
 
 ## Maintainer decision gate
 
