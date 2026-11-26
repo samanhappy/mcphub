@@ -1,6 +1,6 @@
 # Triage labels
 
-Use four independent dimensions for open issues: **Type, Area, Priority, Agent**. Labels are a shared queue for maintainers, contributors and agents, not a promise to ship a feature.
+Use four independent dimensions for open issues: **Type, Area, Priority, Next action**. Labels are a shared queue for maintainers, contributors and agents, not a promise to ship a feature.
 
 ## Type (one primary label)
 
@@ -36,46 +36,49 @@ Use four independent dimensions for open issues: **Type, Area, Priority, Agent**
 
 Unlabeled priority means undecided, not P2. Agents may recommend priority but must not set or change it without maintainer approval. Use the private advisory process for sensitive vulnerabilities.
 
-## Agent state (zero or one)
+## Next action (exactly one after triage)
 
-| Label | Next action |
-| --- | --- |
-| `agent:investigate` | Default for triaged but unapproved work: investigate, reproduce, evaluate and propose options; no implementation |
-| `agent:needs-owner` | Investigation is complete enough; a documented, concrete maintainer-only decision blocks the next step |
-| `agent:waiting-feedback` | Wait for reporter/user information or validation |
-| `agent:ready` | Maintainer approved a bounded, testable implementation |
-| `agent:in-progress` | Claimed by a contributor or agent, or implementation PR exists |
-| `agent:deferred` | Intentionally postponed by a maintainer |
+The workflow label answers **who is responsible for the next action, and what is its progress?** It is not the entire task lifecycle. Use a single label from this table on a triaged open issue; replace it when responsibility changes.
 
-No agent state means untriaged. Only `agent:ready` authorizes autonomous implementation; explicit maintainer instructions can also authorize a specific task. A detailed proposal, priority label, or community reaction alone is not approval. See [issue tracker](issue-tracker.md) for operational rules.
+| Label | Next action | Color family |
+| --- | --- | --- |
+| `owner:decision` | Maintainer decision, approval, access or closure needed | Purple |
+| `owner:review` | Maintainer review or acceptance of a reviewable deliverable | Purple |
+| `agent:pending` | Available for the agent to pick up and investigate, design or implement within authorization | Blue |
+| `agent:in-progress` | Agent has claimed the task and is actively working | Blue |
+| `user:feedback` | External reporter or contributor must provide information, respond or revise a contribution | Yellow |
+| `user:verification` | External user must validate a delivered fix or behavior | Yellow |
+| `deferred` | Explicitly postponed; no party needs to act now | Gray |
+
+An open issue without a workflow label is untriaged. Closing an issue uses GitHub's native state. Labels describe the current responsibility, not the author, assignee, or origin of the issue. A linked PR does not automatically imply owner review: a draft under active agent work stays in progress; if changes are requested from an external contributor, use user feedback; when a deliverable is ready for maintainer review, use owner review.
+
+Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate.
 
 ## Maintainer decision gate
 
-Do not use `agent:needs-owner` as a backlog or approval-request label for every new feature. A proposal awaiting evaluation belongs in `agent:investigate` unless another state better describes its next action.
+Do not use `owner:decision` as a backlog or a generic request to approve an uninvestigated proposal. Default triaged, actionable work to `agent:pending`.
 
-Use `agent:needs-owner` only when all of the following hold:
+Use `owner:decision` only when all of these hold:
 
-- The agent has completed the necessary investigation, checked current behavior and related work, and stated the evidence and remaining uncertainty.
-- A specific product, scope, architecture or risk decision is genuinely reserved for the maintainer and blocks further useful work.
-- Feasible options, trade-offs and a recommended choice are documented.
-- The issue body or a status comment records the exact decision requested, so the maintainer can respond without repeating the investigation.
+- Necessary investigation is complete enough, including current behavior and related work, with evidence and remaining uncertainty.
+- A concrete maintainer-only decision or action (including access, implementation approval, or closure) blocks further useful work.
+- Viable options, trade-offs and a recommendation are documented when relevant.
+- The issue body or a status comment records the exact requested decision or action.
 
-If any condition is missing, keep or return the issue to `agent:investigate`. Once analysis is sufficient, even a straightforward implementation approval can be a concrete decision if the bounded scope, acceptance criteria and recommendation are recorded. Never self-approve `agent:ready`.
+If any condition is missing, keep the issue in the agent queue unless another party is actually blocking progress. Related issues can share one decision record. Once a decision is made, record it and transfer the issue to the party responsible for the next action.
 
 ## Skill compatibility
 
-When a skill uses canonical roles from mattpocock/skills, translate as follows:
-
 | Skill role | MCPHub label / action |
 | --- | --- |
-| `needs-triage` | Leave untriaged or use `agent:investigate`; escalate to `agent:needs-owner` only after the maintainer decision gate passes |
-| `needs-info` | `agent:waiting-feedback` |
-| `ready-for-agent` | `agent:ready` only after explicit maintainer approval |
-| `ready-for-human` | Retain `ready-for-human` as a human-only exclusion; do not add `agent:ready` |
+| `needs-triage` | Leave untriaged or use `agent:pending` |
+| `needs-info` | `user:feedback` if an external user must respond; otherwise continue agent work |
+| `ready-for-agent` | `agent:pending`; implementation still requires recorded maintainer authorization |
+| `ready-for-human` | Retain as a human-only exclusion; use the appropriate owner workflow label for the next action |
 | `wontfix` | Retain for rejected work; close only with maintainer authorization |
 
-Legacy labels do not by themselves grant implementation permission. Preserve unrelated community labels (e.g. `help wanted`, `good first issue`). Do not introduce a second workflow state under a different prefix. Use GitHub PRs for review and closed issues for completion, not additional agent states.
+Preserve unrelated labels (e.g. `help wanted`, `good first issue`, `ready-for-human`). Do not create a second workflow label. Deprecated labels `agent:investigate`, `agent:ready`, `agent:needs-owner`, `agent:waiting-feedback`, and `agent:deferred` must not be applied to new work. When migrating legacy ready issues, first preserve the original explicit implementation approval in a durable issue record; the new pending label alone is not authorization.
 
 ## Label maintenance
 
-Repository maintainers can run `bash scripts/sync-issue-labels.sh` from a clone with an authenticated `gh` CLI. It creates missing labels and synchronizes custom label descriptions and colors. It does not change any issue assignments or labels on individual issues and does not delete legacy labels.
+Run `bash scripts/sync-issue-labels.sh` with an authenticated maintainer `gh` CLI to provision labels and synchronize their colors and descriptions. The script does not edit individual issues or delete old labels; retain old repository labels for historical issues unless the maintainer explicitly chooses to remove them.

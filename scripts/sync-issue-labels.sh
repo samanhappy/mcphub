@@ -34,10 +34,14 @@ sync_label priority:p1 d93f0b "High priority"
 sync_label priority:p2 fbca04 "Normal priority"
 sync_label priority:p3 e4e669 "Low priority or long-term work"
 
-sync_label agent:investigate c5def5 "Evaluate, investigate or reproduce before approval"
-sync_label agent:needs-owner d4c5f9 "Documented blocking decision requires the maintainer"
-sync_label agent:waiting-feedback fef2c0 "Waiting for reporter or user feedback"
-sync_label agent:ready 0e8a16 "Maintainer-approved, ready to implement"
-sync_label agent:in-progress 0052cc "Claimed or implementation PR exists"
-sync_label agent:deferred ededed "Intentionally postponed"
+# Responsibility and progress: one workflow label per open issue.
+sync_label owner:decision 8250df "Maintainer decision, approval, access or closure needed"
+sync_label owner:review 8250df "Deliverable awaits maintainer review"
+sync_label agent:pending 0969da "Available for agent investigation or authorized implementation"
+sync_label agent:in-progress 0969da "Agent has claimed the task and is actively working"
+sync_label user:feedback fbca04 "Waiting for external information, response or contribution revision"
+sync_label user:verification fbca04 "Waiting for external validation of a delivered fix"
+sync_label deferred ededed "Intentionally postponed; no immediate action"
 ensure_label ready-for-human c5def5 "Human-only implementation; exclude from agent queue"
+
+# Legacy labels are intentionally not deleted; historical issues may still use them.
