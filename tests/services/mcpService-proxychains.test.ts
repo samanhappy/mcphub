@@ -90,7 +90,7 @@ import {
   removeServer,
 } from '../../src/services/mcpService.js';
 
-describe('mcpService proxychains temporary config security (GHSA-h6j2-2774-4v4j)', () => {
+describe('mcpService proxychains temporary config lifecycle', () => {
   const customDirs: string[] = [];
 
   beforeEach(() => {
@@ -158,19 +158,19 @@ describe('mcpService proxychains temporary config security (GHSA-h6j2-2774-4v4j)
   });
 
   it('removes generated config files when removeServer is called', async () => {
-    const configPath = generateProxychainsConfig('poc-proxy-server', {
+    const configPath = generateProxychainsConfig('proxy-remove-server', {
       enabled: true,
       type: 'socks5',
       host: '203.0.113.10',
       port: 1080,
-      username: 'super_secret_proxy_user',
-      password: 'Tr0ub4dor&3-plaintext-password',
+      username: 'proxy_user',
+      password: 'proxy_pass',
     });
 
     expect(configPath).not.toBeNull();
     expect(fs.existsSync(configPath!)).toBe(true);
 
-    const result = await removeServer('poc-proxy-server');
+    const result = await removeServer('proxy-remove-server');
     expect(result.success).toBe(true);
     expect(fs.existsSync(configPath!)).toBe(false);
   });
