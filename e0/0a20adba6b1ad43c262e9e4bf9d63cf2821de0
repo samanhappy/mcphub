@@ -1,0 +1,16 @@
+src/services/mcpService.ts
+  h_18676a549cd52a 261-318,323,366-375,377,1642-1643,1956-1966,1969-1983,3562
+tests/services/mcpService-proxychains.test.ts
+  h_18676a549cd52a 1-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e00a20adba6b1ad43c262e9e4bf9d63cf2821de0",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
