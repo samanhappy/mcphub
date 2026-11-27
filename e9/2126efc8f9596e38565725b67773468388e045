@@ -1,0 +1,18 @@
+src/services/mcpService.ts
+  h_18676a549cd52a 262-263,278-279,281-283,286-294,296-297,302,305-306,309,313,320-366,420,494,540,544,1271,1995,2024-2026,2028-2029
+tests/services/mcpService-prompts.test.ts
+  h_18676a549cd52a 237
+tests/services/mcpService-proxychains.test.ts
+  h_18676a549cd52a 67-70,73-74,90,94-97,99,102-142,144,150,154-157,170-171,178-179,196,199-249,251-269,271,273-274,276-300,303-316,319-321,323-333,367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e92126efc8f9596e38565725b67773468388e045",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
