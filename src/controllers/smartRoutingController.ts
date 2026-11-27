@@ -11,6 +11,7 @@ import {
   initializeDatabase,
   isDatabaseConnected,
 } from '../db/connection.js';
+import { enqueueIndexClear } from '../services/embeddingSyncScheduler.js';
 import {
   getServerToolsForPrincipal,
   getServersInfo,
@@ -362,9 +363,12 @@ export const reindexSmartRouting = async (
       await initializeDatabase();
     }
 
-    // 1. Clear the existing index so every tool is regenerated from scratch.
-    logger.log('Reindex: clearing all vector embeddings');
-    await getAppDataSource().query('DELETE FROM vector_embeddings');
+    // 1. Clear the existing index inside a scheduler-owned exclusive mutation so
+    //    no concurrent background sync can interleave writes with the DELETE.
+    await enqueueIndexClear('Manual smart routing reindex', async () => {
+      logger.log('Reindex: clearing all vector embeddings');
+      await getAppDataSource().query('DELETE FROM vector_embeddings');
+    });
 
     // 2. Re-embed every enabled server.
     const servers = await getServersInfo();

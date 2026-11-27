@@ -49,9 +49,9 @@ import {
 } from '../services/mcpService.js';
 import { clearAllCaches } from '../utils/cacheUtils.js';
 import {
-  removeServerToolEmbeddings,
-  syncAllServerToolsEmbeddings,
-} from '../services/vectorSearchService.js';
+  enqueueServerCleanup,
+  requestFullResync,
+} from '../services/embeddingSyncScheduler.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import appConfig, { getNameSeparator } from '../config/index.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
@@ -1266,7 +1266,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // (with a moved binding, or after a user binds again), or on a reindex.
       // A failure here must not abort the rename.
       try {
-        await removeServerToolEmbeddings(name);
+        await enqueueServerCleanup(name);
       } catch (error) {
         logger.warn('Failed to remove embeddings for renamed server', {
           serverName: name,
@@ -3252,10 +3252,12 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       // If smart routing configuration changed, sync all existing server tools
       if (needsSync) {
         logger.log('SmartRouting configuration changed - syncing all existing server tools...');
-        // Run sync asynchronously to avoid blocking the response
-        syncAllServerToolsEmbeddings().catch((error) => {
-          logger.error('Failed to sync server tools embeddings:', error);
-        });
+        // Run sync asynchronously via the centralized scheduler to avoid blocking the response
+        requestFullResync('SmartRouting configuration changed', { bumpGeneration: true }).catch(
+          (error) => {
+            logger.error('Failed to sync server tools embeddings:', error);
+          },
+        );
       }
     } catch (saveError) {
       logger.error('Failed to save system configuration:', saveError);

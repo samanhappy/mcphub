@@ -273,7 +273,7 @@ describe('MCP Service — embedding syncs per server', () => {
     mockSaveToolsAsVectorEmbeddings.mockResolvedValue(undefined);
   });
 
-  it('runs syncs of one server one after another, and of different servers side by side', async () => {
+  it('serializes syncs strictly one job at a time across servers', async () => {
     let finishFirst!: () => void;
     mockSaveToolsAsVectorEmbeddings.mockImplementationOnce(
       () => new Promise<void>((resolve) => (finishFirst = resolve)),
@@ -282,18 +282,21 @@ describe('MCP Service — embedding syncs per server', () => {
     const first = syncToolsAsVectorEmbeddings('redis', [rawTool('a')]);
     const second = syncToolsAsVectorEmbeddings('redis', [rawTool('b')]);
     const other = syncToolsAsVectorEmbeddings('fetch', [rawTool('c')]);
-    await other;
     await flushPromises();
 
+    // Only the active job runs until it finishes — even for a different server.
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls.map((call) => call[0])).toEqual(['redis']);
+
+    finishFirst();
+    await Promise.all([first, second, other]);
+    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(3);
     expect(mockSaveToolsAsVectorEmbeddings.mock.calls.map((call) => call[0])).toEqual([
+      'redis',
       'redis',
       'fetch',
     ]);
-
-    finishFirst();
-    await Promise.all([first, second]);
-    expect(mockSaveToolsAsVectorEmbeddings).toHaveBeenCalledTimes(3);
-    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[2][1]).toEqual([rawTool('b')]);
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[1][1]).toEqual([rawTool('b')]);
+    expect(mockSaveToolsAsVectorEmbeddings.mock.calls[2][1]).toEqual([rawTool('c')]);
   });
 
   it('keeps the queue moving after a failed sync', async () => {
