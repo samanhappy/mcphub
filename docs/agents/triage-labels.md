@@ -56,12 +56,18 @@ Investigation, design and implementation are internal agent stages, not separate
 
 ## Maintainer decision gate
 
-Do not use `owner:decision` as a backlog or a generic request to approve an uninvestigated proposal. Default triaged, actionable work to `agent:pending`.
+Do not use `owner:decision` as a backlog or a generic request to approve an uninvestigated proposal. Default triaged, actionable work to `agent:pending`. Keep `owner:decision` focused on high-leverage, irreversible, or blocking decisions (target ≤ 3 active items):
 
-Use `owner:decision` only when all of these hold:
+1. **P0 / security / stability risks:** critical vulnerabilities, data corruption, or severe regressions.
+2. **Irreversible or boundary-crossing forks on active priority work:** breaking changes, security/auth/permission-boundary changes, or genuinely mutually-exclusive product/architecture forks where guessing risks wasted implementation.
+3. **Maintainer-only external actions:** releases, closing/rejecting external requests, CI/repo credentials or privileges, or cross-repo ownership.
+
+Unprioritized or non-current-milestone proposals must not accumulate in `owner:decision`; move or keep them as `deferred` (with maintainer confirmation when deferring) rather than using `owner:decision` as a backlog.
+
+Before applying `owner:decision`, verify all of these hold:
 
 - Necessary investigation is complete enough, including current behavior and related work, with evidence and remaining uncertainty.
-- A concrete maintainer-only decision or action (including access, implementation approval, or closure) blocks further useful work.
+- A concrete maintainer-only decision or action from the categories above blocks further useful work.
 - Viable options, trade-offs and a recommendation are documented when relevant.
 - The issue body or a status comment records the exact requested decision or action.
 
