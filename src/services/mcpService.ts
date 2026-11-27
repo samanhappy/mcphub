@@ -259,11 +259,117 @@ const findProxychains4 = (): string | null => {
   return null;
 };
 
+let proxychainsTempDir: string | null = null;
+const trackedProxychainsConfigs = new Set<string>();
+const transportProxychainsConfigs = new WeakMap<object, string>();
+
+const ensureProxychainsTempDir = (): string => {
+  if (proxychainsTempDir && fs.existsSync(proxychainsTempDir)) {
+    fs.chmodSync(proxychainsTempDir, 0o700);
+    return proxychainsTempDir;
+  }
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-proxychains-'));
+  fs.chmodSync(dir, 0o700);
+  proxychainsTempDir = dir;
+  return dir;
+};
+
+/**
+ * Remove a specific tracked proxychains4 temporary config file.
+ * Idempotent; retains the path for retry if unlinking fails with an error other than ENOENT.
+ */
+export const cleanupProxychainsConfigPath = (configPath: string): boolean => {
+  if (!trackedProxychainsConfigs.has(configPath)) {
+    return true;
+  }
+
+  try {
+    fs.unlinkSync(configPath);
+    trackedProxychainsConfigs.delete(configPath);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code === 'ENOENT') {
+      trackedProxychainsConfigs.delete(configPath);
+      return true;
+    }
+    logger.warn(`Failed to remove proxychains4 config: ${configPath}`, error);
+    return false;
+  }
+};
+
+/**
+ * Remove all tracked proxychains4 temporary config files and, once empty, their private directory.
+ */
+export const cleanupAllProxychainsConfigs = (): void => {
+  for (const configPath of [...trackedProxychainsConfigs]) {
+    cleanupProxychainsConfigPath(configPath);
+  }
+
+  if (proxychainsTempDir && trackedProxychainsConfigs.size === 0) {
+    const dirToRemove = proxychainsTempDir;
+    try {
+      fs.rmSync(dirToRemove, { recursive: true, force: true });
+      proxychainsTempDir = null;
+    } catch (error) {
+      logger.warn(`Failed to remove proxychains4 temp directory: ${dirToRemove}`, error);
+    }
+  }
+};
+
+const cleanupTransportProxychainsConfig = (transport: unknown): void => {
+  if (!transport || typeof transport !== 'object') {
+    return;
+  }
+  const configPath = transportProxychainsConfigs.get(transport);
+  if (configPath) {
+    cleanupProxychainsConfigPath(configPath);
+  }
+};
+
+const attachProxychainsConfigCleanup = (
+  transport: { close: () => Promise<void>; start?: () => Promise<void> },
+  configPath: string,
+): void => {
+  transportProxychainsConfigs.set(transport, configPath);
+
+  const originalClose = transport.close.bind(transport);
+  transport.close = () => {
+    let closePromise: Promise<void>;
+    try {
+      closePromise = Promise.resolve(originalClose());
+    } catch (error) {
+      cleanupProxychainsConfigPath(configPath);
+      throw error;
+    }
+    cleanupProxychainsConfigPath(configPath);
+    return closePromise.finally(() => {
+      cleanupProxychainsConfigPath(configPath);
+    });
+  };
+
+  if (typeof transport.start === 'function') {
+    const originalStart = transport.start.bind(transport);
+    transport.start = () => {
+      try {
+        return Promise.resolve(originalStart()).catch((error) => {
+          cleanupProxychainsConfigPath(configPath);
+          throw error;
+        });
+      } catch (error) {
+        cleanupProxychainsConfigPath(configPath);
+        throw error;
+      }
+    };
+  }
+};
+
 /**
  * Generate a temporary proxychains4 configuration file.
  * Returns the path to the generated config file.
  */
-const generateProxychainsConfig = (
+export const generateProxychainsConfig = (
   serverName: string,
   proxyConfig: ProxychainsConfig,
 ): string | null => {
@@ -306,15 +412,14 @@ tcp_connect_time_out 8000
 ${proxyLine}
 `;
 
-  // Create temp directory if needed
-  const tempDir = path.join(os.tmpdir(), 'mcphub-proxychains');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
+  // Create a per-process 0o700 temp directory and write an exclusive 0o600 config file
+  const tempDir = ensureProxychainsTempDir();
+  const safeName = serverName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const configPath = path.join(tempDir, `${safeName}-${randomUUID()}.conf`);
+  fs.writeFileSync(configPath, configContent, { encoding: 'utf-8', mode: 0o600, flag: 'wx' });
 
-  // Write config file
-  const configPath = path.join(tempDir, `${serverName.replace(/[^a-zA-Z0-9-_]/g, '_')}.conf`);
-  fs.writeFileSync(configPath, configContent, 'utf-8');
+  trackedProxychainsConfigs.add(configPath);
+
   logger.log(`[${serverName}] Generated proxychains4 config: ${configPath}`);
 
   return configPath;
@@ -387,7 +492,7 @@ const wrapWithProxychains = (
   command: string,
   args: string[],
   proxyConfig?: ProxychainsConfig,
-): { command: string; args: string[] } => {
+): { command: string; args: string[]; generatedConfigPath?: string } => {
   // Skip if proxy is not enabled or not configured
   if (!proxyConfig?.enabled) {
     return { command, args };
@@ -433,9 +538,11 @@ const wrapWithProxychains = (
     `[${serverName}] Using proxychains4 proxy: ${proxyConfig.type || 'socks5'}://${proxyConfig.host}:${proxyConfig.port}`,
   );
 
+  const generatedConfigPath = proxyConfig.configPath ? undefined : configPath;
   return {
     command: proxychains4Path,
     args: ['-f', configPath, command, ...sanitizedArgs],
+    ...(generatedConfigPath ? { generatedConfigPath } : {}),
   };
 };
 
@@ -1162,6 +1269,7 @@ export const connectClientWithDiagnostics = async (
   try {
     await client.connect(transport, options);
   } catch (error) {
+    cleanupTransportProxychainsConfig(transport);
     throw addStdioErrorContext(error, transport);
   }
 };
@@ -1578,6 +1686,8 @@ export const cleanupAllServers = (): void => {
   Object.keys(servers).forEach((sessionId) => {
     delete servers[sessionId];
   });
+
+  cleanupAllProxychainsConfigs();
 };
 
 const headerValueToString = (value: string | string[] | undefined): string | undefined => {
@@ -1883,34 +1993,44 @@ export const createTransportFromConfig = async (
       logger.log(`[${name}] Injected cache refresh flags for reinstall`);
     }
 
-    const { command: finalCommand, args: finalArgs } = wrapWithProxychains(
+    const { command: finalCommand, args: finalArgs, generatedConfigPath } = wrapWithProxychains(
       name,
       conf.command,
       resolvedArgs,
       conf.proxy,
     );
 
-    // Substitute after expansion and proxy argument cleaning so secrets stay literal.
-    const resolvedStagingArgs = resolveCredentialArguments(conf, finalArgs);
-    if (hasStagedTools(conf)) {
-      // A credential-template args slot must not be able to inject an ssh CLI
-      // option (e.g. --allowed-local-paths=/); validate the argv the child will
-      // actually receive, not just the template.
-      const argsValidation = validateResolvedSshArgs(resolvedStagingArgs);
-      if (!argsValidation.ok) {
-        throw new Error(`File staging argument rejected: ${argsValidation.reason}`);
+    try {
+      // Substitute after expansion and proxy argument cleaning so secrets stay literal.
+      const resolvedStagingArgs = resolveCredentialArguments(conf, finalArgs);
+      if (hasStagedTools(conf)) {
+        // A credential-template args slot must not be able to inject an ssh CLI
+        // option (e.g. --allowed-local-paths=/); validate the argv the child will
+        // actually receive, not just the template.
+        const argsValidation = validateResolvedSshArgs(resolvedStagingArgs);
+        if (!argsValidation.ok) {
+          throw new Error(`File staging argument rejected: ${argsValidation.reason}`);
+        }
       }
-    }
 
-    // Create STDIO transport with potentially wrapped command
-    transport = new StdioClientTransport({
-      cwd: stagingCwd ?? process.cwd(),
-      command: finalCommand,
-      args: resolvedStagingArgs,
-      env: env,
-      stderr: 'pipe',
-      maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
-    });
+      // Create STDIO transport with potentially wrapped command
+      transport = new StdioClientTransport({
+        cwd: stagingCwd ?? process.cwd(),
+        command: finalCommand,
+        args: resolvedStagingArgs,
+        env: env,
+        stderr: 'pipe',
+        maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
+      });
+      if (generatedConfigPath) {
+        attachProxychainsConfigCleanup(transport, generatedConfigPath);
+      }
+    } catch (error) {
+      if (generatedConfigPath) {
+        cleanupProxychainsConfigPath(generatedConfigPath);
+      }
+      throw error;
+    }
     if (transport.stderr && hasPersonalAuthentication(conf)) {
       transport.stderr.on('data', () => undefined); // Personal upstream diagnostics can contain raw credentials.
     } else if (transport.stderr) {
