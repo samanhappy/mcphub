@@ -28,6 +28,12 @@ export class Server {
   tags?: string[];
 
   @Column({ type: 'text', nullable: true })
+  repositoryUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  documentationUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
   url?: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })

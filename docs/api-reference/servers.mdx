@@ -101,6 +101,8 @@ Adds a new MCP server to the configuration.
     - `owner` (string): The owner of the server. Defaults to the current user or `'admin'`.
     - `passthroughHeaders` (string[]): Inbound HTTP header names that should be forwarded to the upstream server.
     - `tags` (string[]): Labels for organizing the dashboard server list. Metadata only; see [MCP Settings](/configuration/mcp-settings).
+    - `repositoryUrl` (string): Absolute `http(s)` URL of the server's source repository. Metadata only; rendered as a link on the server card.
+    - `documentationUrl` (string): Absolute `http(s)` URL of the server's documentation. Metadata only; rendered as a link on the server card.
     - `oauth`, `proxy`, `options`, `description`: Optional advanced settings — see [MCP Settings](/configuration/mcp-settings).
 
 ---

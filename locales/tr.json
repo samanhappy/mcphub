@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "Dosya Hazırlama ayarlarını aç",
     "stagingRestartNotice": "Kaydetme işlemi değişikliklerin hemen geçerli olması için sunucuyu yeniden bağlar.",
     "stagingSaveSuccess": "Sunucu dosya hazırlama ayarları güncellendi",
-    "stagingSaveFailed": "Sunucu dosya hazırlama ayarları güncellenemedi"
+    "stagingSaveFailed": "Sunucu dosya hazırlama ayarları güncellenemedi",
+    "repositoryUrl": "Depo URL'si",
+    "repositoryUrlPlaceholder": "https://github.com/sahip/depo (isteğe bağlı)",
+    "documentationUrl": "Dokümantasyon URL'si",
+    "documentationUrlPlaceholder": "https://docs.ornek.com (isteğe bağlı)",
+    "repositoryLink": "Depo",
+    "documentationLink": "Dokümanlar"
   },
   "status": {
     "sleeping": "Uykuda",

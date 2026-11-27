@@ -169,6 +169,26 @@ describe('templateService', () => {
       expect(template.servers.s1.oauth?.authorizationRelay).toEqual({ allowedRedirectOrigins: ['https://login.example.com'] });
     });
 
+    it('exports repository and documentation links and omits absent ones (#1495)', async () => {
+      mockServerDao.findAll.mockResolvedValue([
+        {
+          name: 's1',
+          command: 'npx',
+          repositoryUrl: 'https://github.com/owner/repo',
+          documentationUrl: 'https://docs.example.com',
+        },
+        { name: 's2', command: 'npx' },
+      ]);
+      mockGroupDao.findAll.mockResolvedValue([{ id: 'g1', name: 'G', servers: ['s1', 's2'] }]);
+
+      const template = await exportTemplate({ name: 'Test' });
+
+      expect(template.servers.s1.repositoryUrl).toBe('https://github.com/owner/repo');
+      expect(template.servers.s1.documentationUrl).toBe('https://docs.example.com');
+      expect(template.servers.s2).not.toHaveProperty('repositoryUrl');
+      expect(template.servers.s2).not.toHaveProperty('documentationUrl');
+    });
+
     it('exports server tags and omits an empty tag list (#1506)', async () => {
       mockServerDao.findAll.mockResolvedValue([
         { name: 's1', command: 'npx', tags: ['db', 'prod'] },

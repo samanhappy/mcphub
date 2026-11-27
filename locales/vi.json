@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "Mở cài đặt Trung chuyển tệp",
     "stagingRestartNotice": "Lưu sẽ kết nối lại máy chủ để thay đổi có hiệu lực ngay lập tức.",
     "stagingSaveSuccess": "Đã cập nhật cài đặt trung chuyển tệp của máy chủ",
-    "stagingSaveFailed": "Cập nhật cài đặt trung chuyển tệp của máy chủ thất bại"
+    "stagingSaveFailed": "Cập nhật cài đặt trung chuyển tệp của máy chủ thất bại",
+    "repositoryUrl": "URL kho lưu trữ",
+    "repositoryUrlPlaceholder": "https://github.com/chu-so/kho (không bắt buộc)",
+    "documentationUrl": "URL tài liệu",
+    "documentationUrlPlaceholder": "https://docs.vi-du.com (không bắt buộc)",
+    "repositoryLink": "Kho lưu trữ",
+    "documentationLink": "Tài liệu"
   },
   "status": {
     "sleeping": "Đang ngủ",

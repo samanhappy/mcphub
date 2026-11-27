@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "Ouvrir les paramètres de transit de fichiers",
     "stagingRestartNotice": "L'enregistrement reconnecte le serveur pour appliquer immédiatement les modifications.",
     "stagingSaveSuccess": "Paramètres de transit de fichiers du serveur mis à jour",
-    "stagingSaveFailed": "Échec de la mise à jour du transit de fichiers du serveur"
+    "stagingSaveFailed": "Échec de la mise à jour du transit de fichiers du serveur",
+    "repositoryUrl": "URL du dépôt",
+    "repositoryUrlPlaceholder": "https://github.com/proprietaire/depot (facultatif)",
+    "documentationUrl": "URL de la documentation",
+    "documentationUrlPlaceholder": "https://docs.exemple.com (facultatif)",
+    "repositoryLink": "Dépôt",
+    "documentationLink": "Documentation"
   },
   "status": {
     "sleeping": "En veille",

@@ -420,7 +420,13 @@
     "stagingOpenGlobalSettings": "Open File Staging settings",
     "stagingRestartNotice": "Saving reconnects the server so changes take effect immediately.",
     "stagingSaveSuccess": "Server file staging settings updated",
-    "stagingSaveFailed": "Failed to update server file staging settings"
+    "stagingSaveFailed": "Failed to update server file staging settings",
+    "repositoryUrl": "Repository URL",
+    "repositoryUrlPlaceholder": "https://github.com/owner/repo (optional)",
+    "documentationUrl": "Documentation URL",
+    "documentationUrlPlaceholder": "https://docs.example.com (optional)",
+    "repositoryLink": "Repository",
+    "documentationLink": "Docs"
   },
   "status": {
     "sleeping": "Sleeping",

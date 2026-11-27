@@ -59,7 +59,9 @@ MCPHub 使用几个配置文件：
       "env": {
         "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
         "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
-      }
+      },
+      "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+      "documentationUrl": "https://github.com/modelcontextprotocol/servers-archived/blob/main/src/slack/README.md"
     }
   }
 }
@@ -86,6 +88,17 @@ MCPHub 使用几个配置文件：
 | `restartDelay` | number  | `5000`          | 重启间延迟（毫秒） |
 | `stdio`        | string  | `pipe`          | stdio 配置         |
 | `perSessionClient` | boolean | `false`     | 为每个下游 MCP 会话创建独立的上游客户端，而不是在所有会话间共享同一个连接。适用于 Playwright 等有状态服务器。参见[会话级客户端隔离](#会话级客户端隔离有状态服务器)。 |
+
+### 服务元数据链接
+
+仪表盘服务器卡片可以显示该服务器的源码仓库和文档入口（[#1495](https://github.com/samanhappy/mcphub/issues/1495)），方便在服务器变多后回查用途与更新日志。两个字段都只用于导航，不参与连接、MCP 端点或分组：
+
+| 字段 | 类型 | 默认值 | 描述 |
+| ---- | ---- | ------ | ---- |
+| `repositoryUrl` | string | 无 | 源码仓库的绝对 `http(s)` URL。 |
+| `documentationUrl` | string | 无 | 文档站点的绝对 `http(s)` URL。 |
+
+非 `http(s)`、无法解析或超过 2048 字符的链接会在保存/导入时被拒绝；未配置时不渲染任何元素，服务器卡片高度不变。若使用 `DB_SYNCHRONIZE=false`，升级前请先执行 `docs/migrations/0011-server-metadata-links.sql`。
 
 ### `type: "openapi"`
 

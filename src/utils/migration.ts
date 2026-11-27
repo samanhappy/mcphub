@@ -1,5 +1,6 @@
 import {
   normalizeServerConfigForPersistence,
+  readStoredMetadataUrl,
   readStoredServerTags,
 } from './serverConfigPersistence.js';
 import { isReplicaMode } from './replicaMode.js';
@@ -154,9 +155,25 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
 
           // Validate trust on the way into the DB: a hand-edited JSON file must
           // not persist an adapter-less shared declaration or a staged tool.
+          // The metadata links go through readStoredMetadataUrl for the same
+          // reason tags do: one hand-edited bad URL must not abort the seed
+          // after users were already written, which would leave every server
+          // that sorts after it missing on the next startup.
           const normalized = normalizeServerConfigForPersistence({
             ...config,
             tags: readStoredServerTags(name, config.tags),
+            repositoryUrl:
+              config.repositoryUrl === undefined
+                ? undefined
+                : readStoredMetadataUrl(name, 'repositoryUrl', config.repositoryUrl),
+            documentationUrl:
+              config.documentationUrl === undefined
+                ? undefined
+                : readStoredMetadataUrl(
+                    name,
+                    'documentationUrl',
+                    config.documentationUrl,
+                  ),
             type: config.type ?? (config.url ? 'sse' : 'stdio'),
           });
           await serverRepo.create({
@@ -165,6 +182,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             type: config.type,
             description: config.description,
             tags: normalized.tags,
+            repositoryUrl: normalized.repositoryUrl,
+            documentationUrl: normalized.documentationUrl,
             url: config.url,
             command: config.command,
             args: config.args,
