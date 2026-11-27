@@ -259,7 +259,8 @@ const findProxychains4 = (): string | null => {
 };
 
 let proxychainsTempDir: string | null = null;
-const generatedProxychainsConfigs = new Map<string, Set<string>>();
+const trackedProxychainsConfigs = new Set<string>();
+const transportProxychainsConfigs = new WeakMap<object, string>();
 
 const ensureProxychainsTempDir = (): string => {
   if (proxychainsTempDir && fs.existsSync(proxychainsTempDir)) {
@@ -274,45 +275,92 @@ const ensureProxychainsTempDir = (): string => {
 };
 
 /**
- * Remove any temporary proxychains4 configuration files generated for a server.
- * Custom user-supplied configPath files are never tracked or removed.
+ * Remove a specific tracked proxychains4 temporary config file.
+ * Idempotent; retains the path for retry if unlinking fails with an error other than ENOENT.
  */
-export const cleanupProxychainsConfig = (serverName: string): void => {
-  const paths = generatedProxychainsConfigs.get(serverName);
-  if (!paths) {
-    return;
+export const cleanupProxychainsConfigPath = (configPath: string): boolean => {
+  if (!trackedProxychainsConfigs.has(configPath)) {
+    return true;
   }
 
-  for (const configPath of paths) {
-    try {
-      fs.unlinkSync(configPath);
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException | undefined)?.code;
-      if (code !== 'ENOENT') {
-        logger.warn(`[${serverName}] Failed to remove proxychains4 config: ${configPath}`, error);
-      }
+  try {
+    fs.unlinkSync(configPath);
+    trackedProxychainsConfigs.delete(configPath);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code === 'ENOENT') {
+      trackedProxychainsConfigs.delete(configPath);
+      return true;
     }
+    logger.warn(`Failed to remove proxychains4 config: ${configPath}`, error);
+    return false;
   }
-
-  generatedProxychainsConfigs.delete(serverName);
 };
 
 /**
- * Remove all temporary proxychains4 configuration files and their private directory.
+ * Remove all tracked proxychains4 temporary config files and, once empty, their private directory.
  */
 export const cleanupAllProxychainsConfigs = (): void => {
-  for (const serverName of [...generatedProxychainsConfigs.keys()]) {
-    cleanupProxychainsConfig(serverName);
+  for (const configPath of [...trackedProxychainsConfigs]) {
+    cleanupProxychainsConfigPath(configPath);
   }
 
-  if (proxychainsTempDir) {
+  if (proxychainsTempDir && trackedProxychainsConfigs.size === 0) {
     const dirToRemove = proxychainsTempDir;
-    proxychainsTempDir = null;
     try {
       fs.rmSync(dirToRemove, { recursive: true, force: true });
+      proxychainsTempDir = null;
     } catch (error) {
       logger.warn(`Failed to remove proxychains4 temp directory: ${dirToRemove}`, error);
     }
+  }
+};
+
+const cleanupTransportProxychainsConfig = (transport: unknown): void => {
+  if (!transport || typeof transport !== 'object') {
+    return;
+  }
+  const configPath = transportProxychainsConfigs.get(transport);
+  if (configPath) {
+    cleanupProxychainsConfigPath(configPath);
+  }
+};
+
+const attachProxychainsConfigCleanup = (
+  transport: { close: () => Promise<void>; start?: () => Promise<void> },
+  configPath: string,
+): void => {
+  transportProxychainsConfigs.set(transport, configPath);
+
+  const originalClose = transport.close.bind(transport);
+  transport.close = () => {
+    let closePromise: Promise<void>;
+    try {
+      closePromise = Promise.resolve(originalClose());
+    } catch (error) {
+      cleanupProxychainsConfigPath(configPath);
+      throw error;
+    }
+    cleanupProxychainsConfigPath(configPath);
+    return closePromise.finally(() => {
+      cleanupProxychainsConfigPath(configPath);
+    });
+  };
+
+  if (typeof transport.start === 'function') {
+    const originalStart = transport.start.bind(transport);
+    transport.start = () => {
+      try {
+        return Promise.resolve(originalStart()).catch((error) => {
+          cleanupProxychainsConfigPath(configPath);
+          throw error;
+        });
+      } catch (error) {
+        cleanupProxychainsConfigPath(configPath);
+        throw error;
+      }
+    };
   }
 };
 
@@ -369,12 +417,7 @@ ${proxyLine}
   const configPath = path.join(tempDir, `${safeName}-${randomUUID()}.conf`);
   fs.writeFileSync(configPath, configContent, { encoding: 'utf-8', mode: 0o600, flag: 'wx' });
 
-  let tracked = generatedProxychainsConfigs.get(serverName);
-  if (!tracked) {
-    tracked = new Set<string>();
-    generatedProxychainsConfigs.set(serverName, tracked);
-  }
-  tracked.add(configPath);
+  trackedProxychainsConfigs.add(configPath);
 
   logger.log(`[${serverName}] Generated proxychains4 config: ${configPath}`);
 
@@ -448,7 +491,7 @@ const wrapWithProxychains = (
   command: string,
   args: string[],
   proxyConfig?: ProxychainsConfig,
-): { command: string; args: string[] } => {
+): { command: string; args: string[]; generatedConfigPath?: string } => {
   // Skip if proxy is not enabled or not configured
   if (!proxyConfig?.enabled) {
     return { command, args };
@@ -494,9 +537,11 @@ const wrapWithProxychains = (
     `[${serverName}] Using proxychains4 proxy: ${proxyConfig.type || 'socks5'}://${proxyConfig.host}:${proxyConfig.port}`,
   );
 
+  const generatedConfigPath = proxyConfig.configPath ? undefined : configPath;
   return {
     command: proxychains4Path,
     args: ['-f', configPath, command, ...sanitizedArgs],
+    ...(generatedConfigPath ? { generatedConfigPath } : {}),
   };
 };
 
@@ -1223,6 +1268,7 @@ export const connectClientWithDiagnostics = async (
   try {
     await client.connect(transport, options);
   } catch (error) {
+    cleanupTransportProxychainsConfig(transport);
     throw addStdioErrorContext(error, transport);
   }
 };
@@ -1946,7 +1992,7 @@ export const createTransportFromConfig = async (
       logger.log(`[${name}] Injected cache refresh flags for reinstall`);
     }
 
-    const { command: finalCommand, args: finalArgs } = wrapWithProxychains(
+    const { command: finalCommand, args: finalArgs, generatedConfigPath } = wrapWithProxychains(
       name,
       conf.command,
       resolvedArgs,
@@ -1975,9 +2021,12 @@ export const createTransportFromConfig = async (
         stderr: 'pipe',
         maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
       });
+      if (generatedConfigPath) {
+        attachProxychainsConfigCleanup(transport, generatedConfigPath);
+      }
     } catch (error) {
-      if (conf.proxy?.enabled && !conf.proxy.configPath) {
-        cleanupProxychainsConfig(name);
+      if (generatedConfigPath) {
+        cleanupProxychainsConfigPath(generatedConfigPath);
       }
       throw error;
     }
@@ -3559,7 +3608,6 @@ export function closeServer(name: string) {
   if (serverInfo) {
     closeServerRuntime(serverInfo);
   }
-  cleanupProxychainsConfig(name);
 }
 
 const { beginOnDemandToolCall, ensureServerReady, shutdownOnDemandServer } =
