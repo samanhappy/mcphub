@@ -7,7 +7,7 @@ import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { authenticateForwardAuthToken } from '../services/forwardAuthService.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
-import { recordBearerKeyUsage } from '../utils/bearerKeyUsage.js';
+import { scheduleBearerKeyUsage } from '../utils/bearerKeyUsage.js';
 import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
@@ -65,7 +65,7 @@ const validateBearerAuth = async (
     return null;
   }
 
-  await recordBearerKeyUsage(matchingKey.id);
+  scheduleBearerKeyUsage(matchingKey.id);
 
   logger.log(
     `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,

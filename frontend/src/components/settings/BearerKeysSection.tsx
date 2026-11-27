@@ -63,6 +63,7 @@ type CreateExpiryPreset = 'none' | '7' | '30' | '90' | '365' | 'custom';
 
 interface BearerKeyRowProps {
   keyData: BearerKey;
+  now: Date;
   busy: boolean;
   availableServers: { value: string; label: string }[];
   availableGroups: { value: string; label: string }[];
@@ -87,6 +88,7 @@ interface BearerKeyRowProps {
 
 const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   keyData,
+  now,
   busy,
   availableServers,
   availableGroups,
@@ -112,10 +114,10 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState<string>('30');
   const [saving, setSaving] = useState(false);
 
-  const expiryState = useMemo(() => getBearerKeyExpiryState(keyData), [keyData]);
+  const expiryState = useMemo(() => getBearerKeyExpiryState(keyData, now), [keyData, now]);
   const lastUsedDisplay = useMemo(
-    () => formatBearerKeyLastUsed(keyData.lastUsedAt, t, i18n.language),
-    [keyData.lastUsedAt, t, i18n.language],
+    () => formatBearerKeyLastUsed(keyData.lastUsedAt, t, i18n.language, now),
+    [keyData.lastUsedAt, t, i18n.language, now],
   );
 
   useEffect(() => {
@@ -633,6 +635,14 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
     useState<BearerKeyScopeFilterValue>('all');
   const [sortBy, setSortBy] = useState<BearerKeySortField>('none');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const [newBearerKey, setNewBearerKey] = useState<{
     name: string;
@@ -704,17 +714,18 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
         filterBearerKeysByScopeFilter(bearerKeys, bearerKeyScopeFilter),
         sortBy,
         sortDirection,
+        now,
       ),
-    [bearerKeys, bearerKeyScopeFilter, sortBy, sortDirection],
+    [bearerKeys, bearerKeyScopeFilter, sortBy, sortDirection, now],
   );
 
   const expiringOrExpiredCount = useMemo(
     () =>
       bearerKeys.filter((key) => {
-        const state = getBearerKeyExpiryState(key);
+        const state = getBearerKeyExpiryState(key, now);
         return state.expired || state.expiringSoon;
       }).length,
-    [bearerKeys],
+    [bearerKeys, now],
   );
 
   const handleToggleSort = (field: Exclude<BearerKeySortField, 'none'>) => {
@@ -1177,6 +1188,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   <BearerKeyRow
                     key={key.id}
                     keyData={key}
+                    now={now}
                     busy={keysBusy}
                     availableServers={availableServers}
                     availableGroups={

@@ -14,7 +14,10 @@ import {
   resetBearerKey,
   updateBearerKey,
 } from '../../src/controllers/bearerKeyController.js';
-import { resetBearerKeyUsageThrottle } from '../../src/utils/bearerKeyUsage.js';
+import {
+  flushPendingBearerKeyUsage,
+  resetBearerKeyUsageThrottle,
+} from '../../src/utils/bearerKeyUsage.js';
 import type { IGroup } from '../../src/types/index.js';
 
 const makeReq = (overrides: Record<string, unknown> = {}): Request => {
@@ -100,6 +103,9 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     clearSettingsCache();
   };
 
+  const getKeyFromList = async (dao: BearerKeyDaoImpl, id: string) =>
+    (await dao.findAll()).find((k) => k.id === id);
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-bearer-expiry-'));
     settingsPath = path.join(tmpDir, 'mcp_settings.json');
@@ -112,7 +118,8 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     writeSettings();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await flushPendingBearerKeyUsage();
     jest.useRealTimers();
     resetBearerKeyUsageThrottle();
     setDaoFactory(new JsonFileDaoFactory());
@@ -143,14 +150,15 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     expect(createdKey.expiresAt).toBe('2026-11-28T08:00:00.000Z');
     const rawToken = createdKey.token as string;
 
-    // 1. Before expiry: Dashboard API succeeds and records lastUsedAt
+    // 1. Before expiry: Dashboard API succeeds and schedules lastUsedAt
     const next = jest.fn();
     const apiRes = makeRes();
     await auth(makeReq({ headers: { authorization: `Bearer ${rawToken}` } }), apiRes, next);
     expect(next).toHaveBeenCalledTimes(1);
+    await flushPendingBearerKeyUsage();
 
     const dao = new BearerKeyDaoImpl();
-    const afterFirstUse = await dao.findById(createdKey.id);
+    const afterFirstUse = await getKeyFromList(dao, createdKey.id);
     expect(afterFirstUse?.lastUsedAt).toBe('2026-11-27T08:00:00.000Z');
 
     // 2. Within 1 minute: throttled (no second write)
@@ -159,7 +167,10 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
       makeReq({ headers: { authorization: `Bearer ${rawToken}` } }),
     );
     expect(mcpResult.valid).toBe(true);
-    expect((await dao.findById(createdKey.id))?.lastUsedAt).toBe('2026-11-27T08:00:00.000Z');
+    await flushPendingBearerKeyUsage();
+    expect((await getKeyFromList(dao, createdKey.id))?.lastUsedAt).toBe(
+      '2026-11-27T08:00:00.000Z',
+    );
 
     // 3. After 1 minute: OpenAPI-style scoped validation succeeds and updates lastUsedAt
     jest.advanceTimersByTime(31_000);
@@ -173,7 +184,10 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
       group,
     );
     expect(openApiAuth.valid).toBe(true);
-    expect((await dao.findById(createdKey.id))?.lastUsedAt).toBe('2026-11-27T08:01:01.000Z');
+    await flushPendingBearerKeyUsage();
+    expect((await getKeyFromList(dao, createdKey.id))?.lastUsedAt).toBe(
+      '2026-11-27T08:01:01.000Z',
+    );
 
     // 4. Advance past expiresAt: rejected identically to disabled key across API, MCP, OpenAPI
     jest.setSystemTime(new Date('2026-11-28T08:00:00.000Z'));
@@ -199,8 +213,82 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     );
     expect(expiredOpenApi).toEqual({ valid: false, reason: 'invalid' });
 
+    await flushPendingBearerKeyUsage();
     // Rejected expired calls must NOT update lastUsedAt
-    expect((await dao.findById(createdKey.id))?.lastUsedAt).toBe('2026-11-27T08:01:01.000Z');
+    expect((await getKeyFromList(dao, createdKey.id))?.lastUsedAt).toBe(
+      '2026-11-27T08:01:01.000Z',
+    );
+  });
+
+  it('fails closed when persisted expiresAt is malformed in mcp_settings.json', async () => {
+    writeSettings({
+      bearerKeys: [
+        {
+          id: 'malformed-str',
+          name: 'corrupted-date-key',
+          token: 'mcphub_corrupted_str_token',
+          enabled: true,
+          kind: 'system',
+          accessType: 'all',
+          expiresAt: 'not-a-valid-date',
+        },
+        {
+          id: 'malformed-empty',
+          name: 'empty-date-key',
+          token: 'mcphub_corrupted_empty_token',
+          enabled: true,
+          kind: 'system',
+          accessType: 'all',
+          expiresAt: '',
+        },
+      ],
+    });
+
+    for (const token of ['mcphub_corrupted_str_token', 'mcphub_corrupted_empty_token']) {
+      const apiNext = jest.fn();
+      const apiRes = makeRes();
+      await auth(makeReq({ headers: { authorization: `Bearer ${token}` } }), apiRes, apiNext);
+      expect(apiNext).not.toHaveBeenCalled();
+      expect(apiRes.statusCode).toBe(401);
+
+      const mcpRes = await validateBearerAuth(
+        makeReq({ headers: { authorization: `Bearer ${token}` } }),
+      );
+      expect(mcpRes).toEqual({ valid: false, reason: 'invalid' });
+    }
+  });
+
+  it('does not block or fail authentication when usage storage write fails', async () => {
+    const dao = new BearerKeyDaoImpl();
+    const created = await dao.create({
+      name: 'resilient-key',
+      token: 'mcphub_resilient_secret',
+      enabled: true,
+      kind: 'system',
+      accessType: 'all',
+    });
+
+    const failingFactory = new JsonFileDaoFactory();
+    const realDao = failingFactory.getBearerKeyDao();
+    jest.spyOn(realDao, 'recordLastUsed').mockRejectedValue(new Error('usage store down'));
+    jest.spyOn(failingFactory, 'getBearerKeyDao').mockReturnValue(realDao);
+    setDaoFactory(failingFactory);
+
+    const next = jest.fn();
+    const apiRes = makeRes();
+    await auth(
+      makeReq({ headers: { authorization: 'Bearer mcphub_resilient_secret' } }),
+      apiRes,
+      next,
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+
+    const mcpRes = await validateBearerAuth(
+      makeReq({ headers: { authorization: 'Bearer mcphub_resilient_secret' } }),
+    );
+    expect(mcpRes.valid).toBe(true);
+    expect(mcpRes.valid && mcpRes.keyId).toBe(created.id);
+    await flushPendingBearerKeyUsage();
   });
 
   it('keeps legacy keys without expiresAt working and preserves/clears expiry on edit and reset', async () => {
@@ -223,6 +311,7 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
       makeReq({ headers: { authorization: 'Bearer mcphub_legacy_secret_value' } }),
     );
     expect(authRes.valid).toBe(true);
+    await flushPendingBearerKeyUsage();
 
     // Set expiry via update
     const setRes = makeRes();
@@ -298,7 +387,8 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
       }),
     );
     expect(rejectedMcp).toEqual({ valid: false, reason: 'invalid' });
-    expect((await dao.findById(scoped.id))?.lastUsedAt).toBeUndefined();
+    await flushPendingBearerKeyUsage();
+    expect((await getKeyFromList(dao, scoped.id))?.lastUsedAt).toBeUndefined();
 
     // Scoped key rejected on Dashboard API
     const next = jest.fn();
@@ -309,7 +399,8 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
       next,
     );
     expect(next).not.toHaveBeenCalled();
-    expect((await dao.findById(scoped.id))?.lastUsedAt).toBeUndefined();
+    await flushPendingBearerKeyUsage();
+    expect((await getKeyFromList(dao, scoped.id))?.lastUsedAt).toBeUndefined();
 
     // Anonymous request with enableBearerAuth=false
     writeSettings({
@@ -334,10 +425,11 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     });
     const anonMcp = await validateBearerAuth(makeReq());
     expect(anonMcp).toEqual({ valid: true });
-    expect((await dao.findById(scoped.id))?.lastUsedAt).toBeUndefined();
+    await flushPendingBearerKeyUsage();
+    expect((await getKeyFromList(dao, scoped.id))?.lastUsedAt).toBeUndefined();
   });
 
-  it('isolates file-mode lastUsedAt from mcp_settings.json and handles concurrent edit/reset/delete', async () => {
+  it('isolates file-mode lastUsedAt from mcp_settings.json and serializes concurrent delete + recordLastUsed', async () => {
     const dao = new BearerKeyDaoImpl();
     const created = await dao.create({
       name: 'isolated-key',
@@ -354,20 +446,26 @@ describe('Bearer key expiry and isolated lastUsedAt (file mode)', () => {
     await expect(dao.recordLastUsed(created.id, usedAt)).resolves.toBe(true);
     expect(fs.readFileSync(settingsPath, 'utf8')).toBe(settingsBefore);
     expect(fs.existsSync(getBearerKeyUsageStorePath())).toBe(true);
-    expect((await dao.findById(created.id))?.lastUsedAt).toBe(usedAt.toISOString());
+    expect((await getKeyFromList(dao, created.id))?.lastUsedAt).toBe(usedAt.toISOString());
 
     // Concurrent edit + usage write preserves both the edit and lastUsedAt
     await Promise.all([
       dao.update(created.id, { name: 'concurrent-rename' }),
       dao.recordLastUsed(created.id, new Date('2026-11-27T09:20:00.000Z')),
     ]);
-    const afterConcurrent = await dao.findById(created.id);
+    const afterConcurrent = await getKeyFromList(dao, created.id);
     expect(afterConcurrent?.name).toBe('concurrent-rename');
     expect(afterConcurrent?.lastUsedAt).toBe('2026-11-27T09:20:00.000Z');
 
-    // Deleting the key cleans up usage and subsequent recordLastUsed never recreates it
-    expect(await dao.delete(created.id)).toBe(true);
-    expect(await dao.recordLastUsed(created.id, new Date('2026-11-27T09:25:00.000Z'))).toBe(false);
+    // Deterministic concurrency regression: start recordLastUsed and delete concurrently,
+    // await both, re-read sidecar from disk, and verify no orphaned entry remains.
+    await Promise.all([
+      dao.recordLastUsed(created.id, new Date('2026-11-27T09:25:00.000Z')),
+      dao.delete(created.id),
+      dao.recordLastUsed(created.id, new Date('2026-11-27T09:30:00.000Z')),
+    ]);
     expect(await dao.findById(created.id)).toBeUndefined();
+    const sidecarAfterDelete = JSON.parse(fs.readFileSync(getBearerKeyUsageStorePath(), 'utf8'));
+    expect(sidecarAfterDelete[created.id]).toBeUndefined();
   });
 });

@@ -29,7 +29,7 @@ import { IUser, IGroup, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
-import { recordBearerKeyUsage } from '../utils/bearerKeyUsage.js';
+import { scheduleBearerKeyUsage } from '../utils/bearerKeyUsage.js';
 import {
   getBearerAuthHeaderValue,
   getBearerTokenFromHeaders,
@@ -568,7 +568,7 @@ export const validateBearerAuth = async (
       }
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey, resolvedGroup);
       if (allowed) {
-        await recordBearerKeyUsage(matchingKey.id);
+        scheduleBearerKeyUsage(matchingKey.id);
         logger.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
@@ -628,7 +628,7 @@ export const validateBearerAuth = async (
       return { valid: false, reason: 'invalid' };
     }
 
-    await recordBearerKeyUsage(matchingKey.id);
+    scheduleBearerKeyUsage(matchingKey.id);
     logger.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );

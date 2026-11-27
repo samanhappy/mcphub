@@ -9,6 +9,31 @@ import { normalizeBearerKeyTimestamp } from '../utils/bearerKeyExpiry.js';
 
 export const getBearerKeyUsageStorePath = (): string => `${getSettingsPath()}.bearer-key-usage.json`;
 
+const MALFORMED_EXPIRES_AT_SENTINEL = 'invalid-expires-at';
+
+// Per-settings-path in-process mutex to serialize key deletions and sidecar usage writes.
+const fileOpQueues = new Map<string, Promise<void>>();
+
+const withSerializedFileOp = async <T>(settingsPath: string, fn: () => Promise<T>): Promise<T> => {
+  const prev = fileOpQueues.get(settingsPath) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = prev.then(() => current);
+  fileOpQueues.set(settingsPath, tail);
+
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (fileOpQueues.get(settingsPath) === tail) {
+      fileOpQueues.delete(settingsPath);
+    }
+  }
+};
+
 /**
  * DAO interface for bearer authentication keys
  */
@@ -100,22 +125,38 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
   }
 
   private normalizeKey(key: BearerKey, usageMap?: Record<string, string>): BearerKey {
-    const expiresAt = normalizeBearerKeyTimestamp(key.expiresAt);
-    const lastUsedAt = usageMap?.[key.id] ?? normalizeBearerKeyTimestamp(key.lastUsedAt);
     const normalized: BearerKey = {
       ...key,
       kind: key.kind ?? 'system',
     };
-    if (expiresAt !== undefined) {
-      normalized.expiresAt = expiresAt;
-    } else {
+
+    // Preserve malformed persisted expiresAt values instead of dropping them so
+    // `isBearerKeyExpired` fails closed rather than turning corrupted data into non-expiring.
+    if (key.expiresAt === undefined || key.expiresAt === null) {
       delete normalized.expiresAt;
+    } else {
+      const normalizedExpiresAt = normalizeBearerKeyTimestamp(key.expiresAt);
+      if (normalizedExpiresAt !== undefined) {
+        normalized.expiresAt = normalizedExpiresAt;
+      } else {
+        normalized.expiresAt =
+          typeof key.expiresAt === 'string' && key.expiresAt.length > 0
+            ? key.expiresAt
+            : MALFORMED_EXPIRES_AT_SENTINEL;
+      }
     }
-    if (lastUsedAt !== undefined) {
-      normalized.lastUsedAt = lastUsedAt;
+
+    if (usageMap) {
+      const lastUsedAt = usageMap[key.id] ?? normalizeBearerKeyTimestamp(key.lastUsedAt);
+      if (lastUsedAt !== undefined) {
+        normalized.lastUsedAt = lastUsedAt;
+      } else {
+        delete normalized.lastUsedAt;
+      }
     } else {
       delete normalized.lastUsedAt;
     }
+
     return normalized;
   }
 
@@ -129,14 +170,14 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
     });
   }
 
-  private async loadKeysWithMigration(): Promise<BearerKey[]> {
+  private async loadKeysWithMigration(includeUsage = false): Promise<BearerKey[]> {
     const settings = await this.loadSettings();
 
     // Treat an existing array (including an empty array) as already migrated.
     // Otherwise, when there are no configured keys, we'd rewrite mcp_settings.json
     // on every request, which also clears the global settings cache.
     if (Array.isArray(settings.bearerKeys)) {
-      const usageMap = this.readUsageMap();
+      const usageMap = includeUsage ? this.readUsageMap() : undefined;
       return settings.bearerKeys.map((key) => this.normalizeKey(key, usageMap));
     }
 
@@ -180,26 +221,27 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
   }
 
   async findAll(): Promise<BearerKey[]> {
-    return await this.loadKeysWithMigration();
+    return await this.loadKeysWithMigration(true);
   }
 
+  // Auth-path lookups skip reading the usage sidecar.
   async findEnabled(): Promise<BearerKey[]> {
-    const keys = await this.loadKeysWithMigration();
+    const keys = await this.loadKeysWithMigration(false);
     return keys.filter((key) => key.enabled);
   }
 
   async findById(id: string): Promise<BearerKey | undefined> {
-    const keys = await this.loadKeysWithMigration();
+    const keys = await this.loadKeysWithMigration(false);
     return keys.find((key) => key.id === id);
   }
 
   async findByToken(token: string): Promise<BearerKey | undefined> {
-    const keys = await this.loadKeysWithMigration();
+    const keys = await this.loadKeysWithMigration(false);
     return keys.find((key) => bearerKeyMatches(key, token));
   }
 
   async findByOwner(owner: string): Promise<BearerKey[]> {
-    const keys = await this.loadKeysWithMigration();
+    const keys = await this.loadKeysWithMigration(true);
     return keys.filter((key) => key.kind === 'user' && key.owner === owner);
   }
 
@@ -270,50 +312,56 @@ export class BearerKeyDaoImpl extends JsonFileBaseDao implements BearerKeyDao {
   }
 
   async delete(id: string): Promise<boolean> {
-    const keys = await this.loadKeysWithMigration();
-    const next = keys.filter((key) => key.id !== id);
-    if (next.length === keys.length) {
-      return false;
-    }
-    await this.saveKeys(next);
-    this.removeUsageEntries([id]);
-    return true;
+    return withSerializedFileOp(getSettingsPath(), async () => {
+      const keys = await this.loadKeysWithMigration(false);
+      const next = keys.filter((key) => key.id !== id);
+      if (next.length === keys.length) {
+        return false;
+      }
+      await this.saveKeys(next);
+      this.removeUsageEntries([id]);
+      return true;
+    });
   }
 
   async deleteByOwner(owner: string): Promise<number> {
-    const keys = await this.loadKeysWithMigration();
-    const removedIds = keys
-      .filter((key) => key.kind === 'user' && key.owner === owner)
-      .map((key) => key.id);
-    const next = keys.filter((key) => key.kind !== 'user' || key.owner !== owner);
-    const deletedCount = keys.length - next.length;
-    if (deletedCount > 0) {
-      await this.saveKeys(next);
-      this.removeUsageEntries(removedIds);
-    }
-    return deletedCount;
+    return withSerializedFileOp(getSettingsPath(), async () => {
+      const keys = await this.loadKeysWithMigration(false);
+      const removedIds = keys
+        .filter((key) => key.kind === 'user' && key.owner === owner)
+        .map((key) => key.id);
+      const next = keys.filter((key) => key.kind !== 'user' || key.owner !== owner);
+      const deletedCount = keys.length - next.length;
+      if (deletedCount > 0) {
+        await this.saveKeys(next);
+        this.removeUsageEntries(removedIds);
+      }
+      return deletedCount;
+    });
   }
 
   async recordLastUsed(id: string, usedAt: Date): Promise<boolean> {
-    const keys = await this.loadKeysWithMigration();
-    if (!keys.some((key) => key.id === id)) {
-      return false;
-    }
     const nextIso = normalizeBearerKeyTimestamp(usedAt);
     if (!nextIso) {
       return false;
     }
-    // Synchronous read-modify-rename on the isolated sidecar cannot interleave in-process
-    // and never touches mcp_settings.json.
-    const usage = this.readUsageMap();
-    const existingMs = usage[id] ? Date.parse(usage[id]) : Number.NEGATIVE_INFINITY;
-    const nextMs = Date.parse(nextIso);
-    if (existingMs >= nextMs) {
-      return false;
-    }
-    usage[id] = nextIso;
-    this.writeUsageMap(usage);
-    return true;
+    return withSerializedFileOp(getSettingsPath(), async () => {
+      // Re-check key existence inside the critical section so a concurrent delete cannot
+      // leave an orphaned usage entry in the sidecar.
+      const keys = await this.loadKeysWithMigration(false);
+      if (!keys.some((key) => key.id === id)) {
+        return false;
+      }
+      const usage = this.readUsageMap();
+      const existingMs = usage[id] ? Date.parse(usage[id]) : Number.NEGATIVE_INFINITY;
+      const nextMs = Date.parse(nextIso);
+      if (existingMs >= nextMs) {
+        return false;
+      }
+      usage[id] = nextIso;
+      this.writeUsageMap(usage);
+      return true;
+    });
   }
 
   async updateServerName(oldName: string, newName: string): Promise<number> {

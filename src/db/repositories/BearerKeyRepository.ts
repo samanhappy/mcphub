@@ -132,11 +132,10 @@ export class BearerKeyRepository {
   }
 
   /**
-   * Delete a bearer key
+   * Delete a bearer key (associated `bearer_key_usage` rows cascade automatically via FK).
    */
   async delete(id: string): Promise<boolean> {
     return this.withRetry(async () => {
-      await this.usageRepository.delete({ keyId: id });
       const result = await this.repository.delete({ id });
       return (result.affected ?? 0) > 0;
     }, 'delete');
@@ -144,13 +143,6 @@ export class BearerKeyRepository {
 
   async deleteByOwner(owner: string): Promise<number> {
     return this.withRetry(async () => {
-      const owned = await this.repository.find({
-        select: { id: true },
-        where: { kind: 'user', owner },
-      });
-      if (owned.length > 0) {
-        await this.usageRepository.delete({ keyId: In(owned.map((row) => row.id)) });
-      }
       const result = await this.repository.delete({ kind: 'user', owner });
       return result.affected ?? 0;
     }, 'deleteByOwner');
@@ -176,25 +168,24 @@ export class BearerKeyRepository {
 
   /**
    * Narrow conditional upsert into the isolated `bearer_key_usage` table.
-   * Only writes if the key still exists in `bearer_keys` and the timestamp advances;
-   * never modifies `bearer_keys` so replica configuration revision is unaffected.
+   * Single bounded best-effort attempt (no retry loop): only writes if the key still exists
+   * in `bearer_keys` and the timestamp advances; never modifies `bearer_keys` so replica
+   * configuration revision is unaffected.
    */
   async recordLastUsed(id: string, usedAt: Date): Promise<boolean> {
-    return this.withRetry(async () => {
-      const rows = (await this.usageRepository.manager.query(
-        `
-        INSERT INTO "bearer_key_usage" ("key_id", "last_used_at")
-        SELECT $1::uuid, $2::timestamptz
-        WHERE EXISTS (SELECT 1 FROM "bearer_keys" WHERE "id" = $1::uuid)
-        ON CONFLICT ("key_id") DO UPDATE
-          SET "last_used_at" = EXCLUDED."last_used_at"
-          WHERE "bearer_key_usage"."last_used_at" < EXCLUDED."last_used_at"
-        RETURNING "key_id"
-        `,
-        [id, usedAt],
-      )) as Array<{ key_id: string }>;
-      return rows.length > 0;
-    }, 'recordLastUsed');
+    const rows = (await this.usageRepository.manager.query(
+      `
+      INSERT INTO "bearer_key_usage" ("key_id", "last_used_at")
+      SELECT $1::uuid, $2::timestamptz
+      WHERE EXISTS (SELECT 1 FROM "bearer_keys" WHERE "id" = $1::uuid)
+      ON CONFLICT ("key_id") DO UPDATE
+        SET "last_used_at" = EXCLUDED."last_used_at"
+        WHERE "bearer_key_usage"."last_used_at" < EXCLUDED."last_used_at"
+      RETURNING "key_id"
+      `,
+      [id, usedAt],
+    )) as Array<{ key_id: string }>;
+    return rows.length > 0;
   }
 }
 

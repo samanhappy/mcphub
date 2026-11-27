@@ -3,6 +3,7 @@ import { BearerKey as BearerKeyModel } from '../types/index.js';
 import { BearerKeyRepository } from '../db/repositories/BearerKeyRepository.js';
 import { SystemConfigRepository } from '../db/repositories/SystemConfigRepository.js';
 import { normalizeBearerKeyTimestamp } from '../utils/bearerKeyExpiry.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Database-backed implementation of BearerKeyDao
@@ -14,11 +15,16 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
     this.repository = new BearerKeyRepository();
   }
 
-  private async loadUsageMap(ids: string[]): Promise<Map<string, Date>> {
+  private async loadUsageMapBestEffort(ids: string[]): Promise<Map<string, Date>> {
     if (ids.length === 0 || typeof this.repository.findUsageByKeyIds !== 'function') {
       return new Map();
     }
-    return this.repository.findUsageByKeyIds(ids);
+    try {
+      return await this.repository.findUsageByKeyIds(ids);
+    } catch (error) {
+      logger.warn('Failed to load bearer key usage metadata:', error);
+      return new Map();
+    }
   }
 
   private toModel(
@@ -48,33 +54,30 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
 
   async findAll(): Promise<BearerKeyModel[]> {
     const entities = await this.repository.findAll();
-    const usage = await this.loadUsageMap(entities.map((e) => e.id));
+    const usage = await this.loadUsageMapBestEffort(entities.map((e) => e.id));
     return entities.map((e) => this.toModel(e, usage.get(e.id)));
   }
 
+  // Auth-path lookups intentionally skip `bearer_key_usage` so usage-table latency or
+  // failures never impact authentication.
   async findEnabled(): Promise<BearerKeyModel[]> {
     const entities = (await this.repository.findAll()).filter((e) => e.enabled);
-    const usage = await this.loadUsageMap(entities.map((e) => e.id));
-    return entities.map((e) => this.toModel(e, usage.get(e.id)));
+    return entities.map((e) => this.toModel(e));
   }
 
   async findById(id: string): Promise<BearerKeyModel | undefined> {
     const entity = await this.repository.findById(id);
-    if (!entity) return undefined;
-    const usage = await this.loadUsageMap([entity.id]);
-    return this.toModel(entity, usage.get(entity.id));
+    return entity ? this.toModel(entity) : undefined;
   }
 
   async findByToken(token: string): Promise<BearerKeyModel | undefined> {
     const entity = await this.repository.findByToken(token);
-    if (!entity) return undefined;
-    const usage = await this.loadUsageMap([entity.id]);
-    return this.toModel(entity, usage.get(entity.id));
+    return entity ? this.toModel(entity) : undefined;
   }
 
   async findByOwner(owner: string): Promise<BearerKeyModel[]> {
     const entities = await this.repository.findByOwner(owner);
-    const usage = await this.loadUsageMap(entities.map((e) => e.id));
+    const usage = await this.loadUsageMapBestEffort(entities.map((e) => e.id));
     return entities.map((e) => this.toModel(e, usage.get(e.id)));
   }
 
@@ -136,7 +139,7 @@ export class BearerKeyDaoDbImpl implements BearerKeyDao {
       ...expiresAtUpdate,
     } as any);
     if (!entity) return null;
-    const usage = await this.loadUsageMap([entity.id]);
+    const usage = await this.loadUsageMapBestEffort([entity.id]);
     return this.toModel(entity as any, usage.get(entity.id));
   }
 

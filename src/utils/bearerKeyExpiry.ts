@@ -69,7 +69,7 @@ export const parseBearerKeyExpiryInput = (
     return { ok: true, specified: false };
   }
 
-  if (hasDays && hasDate && body.expiresInDays !== null && body.expiresAt !== null) {
+  if (hasDays && hasDate) {
     return {
       ok: false,
       message: 'Specify either expiresInDays or expiresAt, not both',
@@ -78,7 +78,7 @@ export const parseBearerKeyExpiryInput = (
 
   if (hasDays) {
     const rawDays = body.expiresInDays;
-    if (rawDays === null || rawDays === '') {
+    if (rawDays === null) {
       return { ok: true, specified: true, expiresAt: null };
     }
     if (
@@ -100,10 +100,10 @@ export const parseBearerKeyExpiryInput = (
   }
 
   const rawDate = body.expiresAt;
-  if (rawDate === null || rawDate === '') {
+  if (rawDate === null) {
     return { ok: true, specified: true, expiresAt: null };
   }
-  if (typeof rawDate !== 'string') {
+  if (typeof rawDate !== 'string' || rawDate.trim().length === 0) {
     return { ok: false, message: 'expiresAt must be an ISO-8601 UTC date string or null' };
   }
   const parsed = Date.parse(rawDate);

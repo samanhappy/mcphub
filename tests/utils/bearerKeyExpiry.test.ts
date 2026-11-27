@@ -14,9 +14,12 @@ jest.mock('../../src/dao/index.js', () => ({
 }));
 
 import {
+  BEARER_KEY_LAST_USED_FAILURE_BACKOFF_MS,
   BEARER_KEY_LAST_USED_THROTTLE_MS,
+  flushPendingBearerKeyUsage,
   recordBearerKeyUsage,
   resetBearerKeyUsageThrottle,
+  scheduleBearerKeyUsage,
 } from '../../src/utils/bearerKeyUsage.js';
 
 describe('bearerKeyExpiry utilities', () => {
@@ -25,7 +28,8 @@ describe('bearerKeyExpiry utilities', () => {
     resetBearerKeyUsageThrottle();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await flushPendingBearerKeyUsage();
     jest.useRealTimers();
   });
 
@@ -53,7 +57,7 @@ describe('bearerKeyExpiry utilities', () => {
       });
     });
 
-    it('treats explicit null or empty string as clearing expiry', () => {
+    it('requires explicit null to clear expiry and rejects empty strings', () => {
       expect(parseBearerKeyExpiryInput({ expiresInDays: null }, fixedNow)).toEqual({
         ok: true,
         specified: true,
@@ -64,11 +68,9 @@ describe('bearerKeyExpiry utilities', () => {
         specified: true,
         expiresAt: null,
       });
-      expect(parseBearerKeyExpiryInput({ expiresInDays: '' }, fixedNow)).toEqual({
-        ok: true,
-        specified: true,
-        expiresAt: null,
-      });
+      expect(parseBearerKeyExpiryInput({ expiresInDays: '' }, fixedNow).ok).toBe(false);
+      expect(parseBearerKeyExpiryInput({ expiresAt: '' }, fixedNow).ok).toBe(false);
+      expect(parseBearerKeyExpiryInput({ expiresAt: '   ' }, fixedNow).ok).toBe(false);
     });
 
     it('accepts valid ISO expiresAt strings and normalizes to UTC', () => {
@@ -81,7 +83,7 @@ describe('bearerKeyExpiry utilities', () => {
       });
     });
 
-    it('rejects out-of-range, non-integer, invalid, or ambiguous expiry inputs', () => {
+    it('rejects out-of-range, non-integer, invalid, or dual expiresInDays + expiresAt inputs', () => {
       expect(parseBearerKeyExpiryInput({ expiresInDays: 0 }, fixedNow).ok).toBe(false);
       expect(parseBearerKeyExpiryInput({ expiresInDays: -5 }, fixedNow).ok).toBe(false);
       expect(parseBearerKeyExpiryInput({ expiresInDays: 3651 }, fixedNow).ok).toBe(false);
@@ -94,6 +96,12 @@ describe('bearerKeyExpiry utilities', () => {
           fixedNow,
         ).ok,
       ).toBe(false);
+      expect(
+        parseBearerKeyExpiryInput({ expiresInDays: 7, expiresAt: null }, fixedNow).ok,
+      ).toBe(false);
+      expect(
+        parseBearerKeyExpiryInput({ expiresInDays: null, expiresAt: null }, fixedNow).ok,
+      ).toBe(false);
     });
   });
 
@@ -102,6 +110,11 @@ describe('bearerKeyExpiry utilities', () => {
       expect(isBearerKeyExpired({})).toBe(false);
       expect(isBearerKeyExpired({ expiresAt: null })).toBe(false);
       expect(isBearerKeyExpired({ expiresAt: undefined })).toBe(false);
+    });
+
+    it('fails closed on malformed expiresAt strings', () => {
+      expect(isBearerKeyExpired({ expiresAt: 'not-a-valid-date' })).toBe(true);
+      expect(isBearerKeyExpired({ expiresAt: 'invalid-expires-at' })).toBe(true);
     });
 
     it('accepts before expiresAt and rejects at/after expiresAt', () => {
@@ -136,7 +149,7 @@ describe('bearerKeyExpiry utilities', () => {
     });
   });
 
-  describe('recordBearerKeyUsage (1-minute throttle & best-effort)', () => {
+  describe('recordBearerKeyUsage & scheduleBearerKeyUsage (throttle + failure backoff)', () => {
     it('writes at most once per key per minute and allows writes after 60s', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-11-27T10:00:00.000Z'));
@@ -160,13 +173,31 @@ describe('bearerKeyExpiry utilities', () => {
       expect(mockRecordLastUsed).toHaveBeenCalledTimes(3);
     });
 
-    it('swallows storage errors and allows retry on next call', async () => {
+    it('enforces bounded failure backoff before retrying after a storage error', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-11-27T10:00:00.000Z'));
+
       mockRecordLastUsed.mockRejectedValueOnce(new Error('disk full'));
       await expect(recordBearerKeyUsage('key-err')).resolves.toBeUndefined();
+      expect(mockRecordLastUsed).toHaveBeenCalledTimes(1);
 
+      // Within failure backoff window: suppressed to prevent failure amplification
+      jest.advanceTimersByTime(BEARER_KEY_LAST_USED_FAILURE_BACKOFF_MS - 1000);
+      await recordBearerKeyUsage('key-err');
+      expect(mockRecordLastUsed).toHaveBeenCalledTimes(1);
+
+      // After backoff window expires: retries cleanly
+      jest.advanceTimersByTime(1000);
       mockRecordLastUsed.mockResolvedValueOnce(true);
       await recordBearerKeyUsage('key-err');
       expect(mockRecordLastUsed).toHaveBeenCalledTimes(2);
+    });
+
+    it('schedules non-blocking best-effort writes without throwing or rejecting', async () => {
+      mockRecordLastUsed.mockRejectedValueOnce(new Error('transient write failure'));
+      expect(() => scheduleBearerKeyUsage('key-bg')).not.toThrow();
+      await expect(flushPendingBearerKeyUsage()).resolves.toBeUndefined();
+      expect(mockRecordLastUsed).toHaveBeenCalledTimes(1);
     });
   });
 });
