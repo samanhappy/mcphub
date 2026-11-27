@@ -1,0 +1,36 @@
+frontend/src/components/settings/BearerKeysSection.tsx
+  h_18676a549cd52a 66,91,117,119-120,638-645,717,719,725,728,1191
+src/dao/BearerKeyDao.ts
+  h_18676a549cd52a 12-36,132-135,137-146,148-155,159,173,180,224,227,229,234,239,244,315-324,328-340,348-364
+src/dao/BearerKeyDaoDbImpl.ts
+  h_18676a549cd52a 6,18,22-27,57,61-62,65,70,75,80,142
+src/db/entities/BearerKeyUsage.ts
+  h_18676a549cd52a 1-2,14-17
+src/db/repositories/BearerKeyRepository.ts
+  h_18676a549cd52a 135,171-173,176-188
+src/middlewares/auth.ts
+  h_18676a549cd52a 10,68
+src/services/sseService.ts
+  h_18676a549cd52a 32,571,631
+src/utils/bearerKeyExpiry.ts
+  h_18676a549cd52a 72,81,103,106
+src/utils/bearerKeyUsage.ts
+  h_18676a549cd52a 5,9-10,13-18,20-24,30,34-43,47,64-68,80,82-83,89,93-103
+tests/dao/bearerKeyExpiryDb.test.ts
+  h_18676a549cd52a 1-2,19-21,42-64,66,68-73,75-79,81,83-86,88,94-106,108,130-131,136-138,147,151-283,285-295
+tests/integration/bearer-key-expiry.test.ts
+  h_18676a549cd52a 17-20,106-108,121-122,153,158,161,170-173,187-190,216,218-291,314,390-391,402-403,428-429,432,449,456,460-466,468-469
+tests/utils/bearerKeyExpiry.test.ts
+  h_18676a549cd52a 17,19,22,31-32,60,71-73,86,99-104,115-119,152,176-179,182-187,189-190,195-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f57a0fa0691b2b6d2b45ac957430697c949e87d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
