@@ -1540,7 +1540,7 @@
       "failedToProcessMcpbFile": "处理 MCPB 文件失败",
       "passkey_unavailable": "只能在已登录的本地账户中管理通行密钥",
       "passkey_password_invalid": "当前密码不正确",
-      "passkey_origin_invalid": "无法确定通行密钥使用的站点地址",
+      "passkey_origin_invalid": "通行密钥要求通过域名以 HTTPS（或 localhost）访问控制台，不支持 IP 地址",
       "passkey_limit_reached": "通行密钥数量已达上限",
       "passkey_invalid_request": "无效的通行密钥请求",
       "passkey_challenge_invalid": "通行密钥请求已过期，请重试",

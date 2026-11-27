@@ -475,6 +475,15 @@ describe('createPasskeyLoginOptions', () => {
     );
   });
 
+  it('answers 400 for an IP address origin without issuing a challenge', async () => {
+    expectFailure(
+      await call(createPasskeyLoginOptions, { headers: { origin: 'http://100.102.254.35:8834' } }),
+      400,
+      'passkey_origin_invalid',
+    );
+    expect(startAuthenticationMock).not.toHaveBeenCalled();
+  });
+
   it('issues a challenge for the request origin', async () => {
     startAuthenticationMock.mockResolvedValue({
       options: { challenge: 'abc' },
