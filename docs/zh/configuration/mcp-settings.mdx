@@ -98,7 +98,7 @@ MCPHub 使用几个配置文件：
 | `repositoryUrl` | string | 无 | 源码仓库的绝对 `http(s)` URL。 |
 | `documentationUrl` | string | 无 | 文档站点的绝对 `http(s)` URL。 |
 
-非 `http(s)`、无法解析或超过 2048 字符的链接会在保存/导入时被拒绝；未配置时不渲染任何元素，服务器卡片高度不变。若使用 `DB_SYNCHRONIZE=false`，升级前请先执行 `docs/migrations/0010-server-metadata-links.sql`。
+非 `http(s)`、无法解析或超过 2048 字符的链接会在保存/导入时被拒绝；未配置时不渲染任何元素，服务器卡片高度不变。若使用 `DB_SYNCHRONIZE=false`，升级前请先执行 `docs/migrations/0011-server-metadata-links.sql`。
 
 ### `type: "openapi"`
 
