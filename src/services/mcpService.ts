@@ -184,6 +184,7 @@ import {
 } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider, MCPHubOAuthProvider } from './mcpOAuthProvider.js';
+import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
 import { initSmartRoutingService, isSmartRoutingGroup } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
 import { filterHostedTools } from './hostedAuthService.js';
@@ -4545,7 +4546,7 @@ const listProjectionInputs = async (group: string | undefined, field: ListField)
   const key = keyId ? await getBearerKeyDao().findById(keyId) : undefined;
   if (
     (user?.username && (!liveUser || Boolean(user.isAdmin) !== Boolean(liveUser.isAdmin))) ||
-    (keyId && !key?.enabled)
+    (keyId && (!key?.enabled || isBearerKeyExpired(key)))
   )
     return undefined;
   const lookupGroup = getGroupLookupName(group);

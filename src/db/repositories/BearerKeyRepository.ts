@@ -1,5 +1,6 @@
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { BearerKey } from '../entities/BearerKey.js';
+import { BearerKeyUsage } from '../entities/BearerKeyUsage.js';
 import { getAppDataSource } from '../connection.js';
 import { withDbRetry, RetryOptions } from '../../utils/dbRetry.js';
 import { hashBearerToken, toStoredToken } from '../../utils/bearerKeyToken.js';
@@ -19,6 +20,9 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
 export class BearerKeyRepository {
   private get repository(): Repository<BearerKey> {
     return getAppDataSource().getRepository(BearerKey);
+  }
+  private get usageRepository(): Repository<BearerKeyUsage> {
+    return getAppDataSource().getRepository(BearerKeyUsage);
   }
   private retryOptions: RetryOptions;
 
@@ -128,7 +132,7 @@ export class BearerKeyRepository {
   }
 
   /**
-   * Delete a bearer key
+   * Delete a bearer key (associated `bearer_key_usage` rows cascade automatically via FK).
    */
   async delete(id: string): Promise<boolean> {
     return this.withRetry(async () => {
@@ -142,6 +146,46 @@ export class BearerKeyRepository {
       const result = await this.repository.delete({ kind: 'user', owner });
       return result.affected ?? 0;
     }, 'deleteByOwner');
+  }
+
+  /**
+   * Look up operational lastUsedAt timestamps for a set of key IDs.
+   */
+  async findUsageByKeyIds(ids: string[]): Promise<Map<string, Date>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+    const rows = await this.withRetry(
+      () => this.usageRepository.find({ where: { keyId: In(ids) } }),
+      'findUsageByKeyIds',
+    );
+    const result = new Map<string, Date>();
+    for (const row of rows) {
+      result.set(row.keyId, row.lastUsedAt);
+    }
+    return result;
+  }
+
+  /**
+   * Narrow conditional upsert into the isolated `bearer_key_usage` table.
+   * Single bounded best-effort attempt (no retry loop): only writes if the key still exists
+   * in `bearer_keys` and the timestamp advances; never modifies `bearer_keys` so replica
+   * configuration revision is unaffected.
+   */
+  async recordLastUsed(id: string, usedAt: Date): Promise<boolean> {
+    const rows = (await this.usageRepository.manager.query(
+      `
+      INSERT INTO "bearer_key_usage" ("key_id", "last_used_at")
+      SELECT $1::uuid, $2::timestamptz
+      WHERE EXISTS (SELECT 1 FROM "bearer_keys" WHERE "id" = $1::uuid)
+      ON CONFLICT ("key_id") DO UPDATE
+        SET "last_used_at" = EXCLUDED."last_used_at"
+        WHERE "bearer_key_usage"."last_used_at" < EXCLUDED."last_used_at"
+      RETURNING "key_id"
+      `,
+      [id, usedAt],
+    )) as Array<{ key_id: string }>;
+    return rows.length > 0;
   }
 }
 

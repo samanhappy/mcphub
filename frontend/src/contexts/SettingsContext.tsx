@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
+import { ApiResponse, BearerKey, BearerKeyWritePayload, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
@@ -896,7 +896,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const createBearerKey = useCallback(
     async (
-      payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+      payload: Pick<BearerKey, 'name'> & BearerKeyWritePayload,
     ): Promise<BearerKey | null> => {
       setSectionSaving('bearerKeys', true);
       try {
@@ -922,7 +922,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const updateBearerKey = useCallback(
     async (
       id: string,
-      updates: Partial<Omit<BearerKey, 'id'>>,
+      updates: BearerKeyWritePayload,
     ): Promise<BearerKey | null> => {
       setSectionSaving('bearerKeys', true);
       try {

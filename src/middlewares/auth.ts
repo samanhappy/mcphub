@@ -6,6 +6,8 @@ import { BearerKey, SystemConfig } from '../types/index.js';
 import { getBetterAuthRuntimeConfig } from '../services/betterAuthConfig.js';
 import { authenticateForwardAuthToken } from '../services/forwardAuthService.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
+import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
+import { scheduleBearerKeyUsage } from '../utils/bearerKeyUsage.js';
 import { getBearerTokenFromHeaders, getForwardAuthTokenFromHeaders } from '../utils/bearerAuth.js';
 import { logger } from '../utils/logger.js';
 
@@ -33,9 +35,9 @@ const validateBearerAuth = async (
   }
 
   const bearerKeyDao = getBearerKeyDao();
-  const enabledKeys = await bearerKeyDao.findEnabled();
+  const enabledKeys = (await bearerKeyDao.findEnabled()).filter((key) => !isBearerKeyExpired(key));
 
-  // If there are no enabled keys, bearer auth via static keys is disabled
+  // If there are no active (enabled and unexpired) keys, bearer auth via static keys is disabled
   if (enabledKeys.length === 0) {
     return null;
   }
@@ -62,6 +64,8 @@ const validateBearerAuth = async (
     );
     return null;
   }
+
+  scheduleBearerKeyUsage(matchingKey.id);
 
   logger.log(
     `Bearer auth succeeded with key id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,

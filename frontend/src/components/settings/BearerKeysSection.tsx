@@ -1,6 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, Edit, Key, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  Copy,
+  Edit,
+  Key,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -15,7 +28,17 @@ import {
   getBearerKeyScopeFilterOptions,
   type BearerKeyScopeFilterValue,
 } from '@/utils/bearerKeyScopeFilter';
-import type { BearerKey, Group, Server, User } from '@/types';
+import {
+  BEARER_KEY_MAX_EXPIRES_IN_DAYS,
+  BEARER_KEY_MIN_EXPIRES_IN_DAYS,
+  formatBearerKeyLastUsed,
+  getBearerKeyExpiryState,
+  sortBearerKeys,
+  validateExpiresInDaysInput,
+  type BearerKeySortField,
+  type SortDirection,
+} from '@/utils/bearerKeyExpiry';
+import type { BearerKey, BearerKeyWritePayload, Group, Server, User } from '@/types';
 import {
   SettingsAlert,
   SettingsCard,
@@ -35,8 +58,12 @@ const parseCommaSeparated = (value: string): string[] | undefined => {
   return parts.length > 0 ? parts : undefined;
 };
 
+type EditExpiryMode = 'keep' | 'set' | 'clear';
+type CreateExpiryPreset = 'none' | '7' | '30' | '90' | '365' | 'custom';
+
 interface BearerKeyRowProps {
   keyData: BearerKey;
+  now: Date;
   busy: boolean;
   availableServers: { value: string; label: string }[];
   availableGroups: { value: string; label: string }[];
@@ -51,6 +78,7 @@ interface BearerKeyRowProps {
       allowedServers: string;
       excludedGroups: string;
       excludedServers: string;
+      expiresInDays?: number | null;
     },
   ) => Promise<void>;
   onRequestDelete: (key: BearerKey) => void;
@@ -60,6 +88,7 @@ interface BearerKeyRowProps {
 
 const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   keyData,
+  now,
   busy,
   availableServers,
   availableGroups,
@@ -69,7 +98,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   onReset,
   onEditingChange,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(keyData.name);
@@ -81,7 +110,15 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
   const [selectedServers, setSelectedServers] = useState<string[]>(keyData.allowedServers || []);
   const [excludedGroups, setExcludedGroups] = useState<string[]>(keyData.excludedGroups || []);
   const [excludedServers, setExcludedServers] = useState<string[]>(keyData.excludedServers || []);
+  const [expiryMode, setExpiryMode] = useState<EditExpiryMode>('keep');
+  const [expiryDaysInput, setExpiryDaysInput] = useState<string>('30');
   const [saving, setSaving] = useState(false);
+
+  const expiryState = useMemo(() => getBearerKeyExpiryState(keyData, now), [keyData, now]);
+  const lastUsedDisplay = useMemo(
+    () => formatBearerKeyLastUsed(keyData.lastUsedAt, t, i18n.language, now),
+    [keyData.lastUsedAt, t, i18n.language, now],
+  );
 
   useEffect(() => {
     onEditingChange(keyData.id, isEditing);
@@ -97,6 +134,8 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       setSelectedServers(keyData.allowedServers || []);
       setExcludedGroups(keyData.excludedGroups || []);
       setExcludedServers(keyData.excludedServers || []);
+      setExpiryMode('keep');
+      setExpiryDaysInput('30');
     }
   }, [keyData, isEditing]);
 
@@ -140,6 +179,22 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
       return;
     }
 
+    let expiresInDays: number | null | undefined = undefined;
+    if (expiryMode === 'clear') {
+      expiresInDays = null;
+    } else if (expiryMode === 'set') {
+      const parsedDays = validateExpiresInDaysInput(expiryDaysInput);
+      if (parsedDays === null || Number.isNaN(parsedDays)) {
+        showToast(
+          t('settings.bearerKeyInvalidExpiresInDays') ||
+            'Expiration must be a whole number of days between 1 and 3650.',
+          'error',
+        );
+        return;
+      }
+      expiresInDays = parsedDays;
+    }
+
     setSaving(true);
     try {
       await onSave(keyData.id, {
@@ -150,6 +205,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         allowedServers: selectedServers.join(', '),
         excludedGroups: excludedGroups.join(', '),
         excludedServers: excludedServers.join(', '),
+        ...(expiresInDays !== undefined ? { expiresInDays } : {}),
       });
       setIsEditing(false);
     } finally {
@@ -203,6 +259,27 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
     return '';
   };
 
+  const expiryLabel = useMemo(() => {
+    if (expiryState.expired) {
+      return t('settings.bearerKeyExpired') || 'Expired';
+    }
+    if (expiryState.daysRemaining === null) {
+      return t('settings.bearerKeyExpirationNever') || 'Never expires';
+    }
+    if (expiryState.daysRemaining === 1) {
+      return t('settings.bearerKeyExpiresInOneDay') || 'Expires in 1 day';
+    }
+    return (
+      t('settings.bearerKeyExpiresInDays', { count: expiryState.daysRemaining }) ||
+      `Expires in ${expiryState.daysRemaining}d`
+    );
+  }, [expiryState.daysRemaining, expiryState.expired, t]);
+
+  const expiryTooltip = keyData.expiresAt ? new Date(keyData.expiresAt).toLocaleString(i18n.language) : undefined;
+  const lastUsedTooltip = keyData.lastUsedAt
+    ? new Date(keyData.lastUsedAt).toLocaleString(i18n.language)
+    : undefined;
+
   return (
     <>
       <tr className="transition-colors hover:bg-[var(--hub-surface-hover)]">
@@ -212,8 +289,34 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
         <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-[var(--hub-ink-2)]">
           {keyData.token}
         </td>
-        <td className="whitespace-nowrap px-4 py-3 text-xs">
-          <SettingsStatusBadge active={keyData.enabled} />
+        <td className="whitespace-nowrap px-4 py-3 text-xs" title={expiryTooltip}>
+          <div className="flex flex-col items-start gap-1">
+            {expiryState.expired ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hub-err-soft,rgba(239,68,68,0.12))] px-2 py-0.5 text-[11px] font-medium text-[var(--hub-err)]">
+                <AlertTriangle size={11} aria-hidden="true" />
+                {t('settings.bearerKeyExpired') || 'Expired'}
+              </span>
+            ) : expiryState.expiringSoon ? (
+              <>
+                <SettingsStatusBadge active={keyData.enabled} />
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  <AlertTriangle size={11} aria-hidden="true" />
+                  {expiryLabel}
+                </span>
+              </>
+            ) : (
+              <>
+                <SettingsStatusBadge active={keyData.enabled} />
+                <span className="text-[11px] text-[var(--hub-ink-3)]">{expiryLabel}</span>
+              </>
+            )}
+          </div>
+        </td>
+        <td
+          className="whitespace-nowrap px-4 py-3 text-xs text-[var(--hub-ink-2)]"
+          title={lastUsedTooltip}
+        >
+          {lastUsedDisplay}
         </td>
         <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--hub-ink-2)]">
           {formatAccessTypeDisplay(keyData)}
@@ -257,7 +360,7 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
 
       {isEditing && (
         <tr>
-          <td colSpan={5} className="border-b border-[var(--hub-line)] bg-[var(--hub-bg-2)] p-4">
+          <td colSpan={6} className="border-b border-[var(--hub-line)] bg-[var(--hub-bg-2)] p-4">
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                 <div className="md:col-span-4">
@@ -299,6 +402,48 @@ const BearerKeyRow: React.FC<BearerKeyRowProps> = ({
                     />
                   </div>
                 </div>
+
+                <div className="w-48">
+                  <label className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]">
+                    {t('settings.bearerKeyExpiration') || 'Expiration'}
+                  </label>
+                  <select
+                    className={settingsSelectClass}
+                    value={expiryMode}
+                    onChange={(e) => setExpiryMode(e.target.value as EditExpiryMode)}
+                    disabled={busy || saving}
+                  >
+                    <option value="keep">
+                      {t('settings.bearerKeyExpirationKeep') || 'Keep current'} ({expiryLabel})
+                    </option>
+                    <option value="set">
+                      {t('settings.bearerKeyExpirationSet') || 'Set expiration'}
+                    </option>
+                    {keyData.expiresAt && (
+                      <option value="clear">
+                        {t('settings.bearerKeyExpirationClear') || 'Clear expiration'}
+                      </option>
+                    )}
+                  </select>
+                </div>
+
+                {expiryMode === 'set' && (
+                  <div className="w-32">
+                    <label className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]">
+                      {t('settings.bearerKeyExpirationDaysLabel') || 'Days (1-3650)'}
+                    </label>
+                    <input
+                      type="number"
+                      min={BEARER_KEY_MIN_EXPIRES_IN_DAYS}
+                      max={BEARER_KEY_MAX_EXPIRES_IN_DAYS}
+                      step={1}
+                      className={settingsInputClass}
+                      value={expiryDaysInput}
+                      onChange={(e) => setExpiryDaysInput(e.target.value)}
+                      disabled={busy || saving}
+                    />
+                  </div>
+                )}
 
                 <div className="w-52">
                   <label className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]">
@@ -488,6 +633,16 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
   const [copiedNewToken, setCopiedNewToken] = useState(false);
   const [bearerKeyScopeFilter, setBearerKeyScopeFilter] =
     useState<BearerKeyScopeFilterValue>('all');
+  const [sortBy, setSortBy] = useState<BearerKeySortField>('none');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const [newBearerKey, setNewBearerKey] = useState<{
     name: string;
@@ -495,12 +650,16 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
     kind: 'system' | 'user';
     owner: string;
     accessType: 'all' | 'groups' | 'servers' | 'custom' | 'exclude';
+    expiryPreset: CreateExpiryPreset;
+    customExpiryDays: string;
   }>({
     name: '',
     enabled: true,
     kind: 'system',
     owner: '',
     accessType: 'all',
+    expiryPreset: 'none',
+    customExpiryDays: '30',
   });
   const [newSelectedGroups, setNewSelectedGroups] = useState<string[]>([]);
   const [newSelectedServers, setNewSelectedServers] = useState<string[]>([]);
@@ -530,6 +689,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
       newBearerKey.owner.length > 0 ||
       newBearerKey.kind !== 'system' ||
       newBearerKey.accessType !== 'all' ||
+      newBearerKey.expiryPreset !== 'none' ||
       !newBearerKey.enabled ||
       newSelectedGroups.length > 0 ||
       newSelectedServers.length > 0 ||
@@ -549,9 +709,33 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
   );
 
   const filteredBearerKeys = useMemo(
-    () => filterBearerKeysByScopeFilter(bearerKeys, bearerKeyScopeFilter),
-    [bearerKeys, bearerKeyScopeFilter],
+    () =>
+      sortBearerKeys(
+        filterBearerKeysByScopeFilter(bearerKeys, bearerKeyScopeFilter),
+        sortBy,
+        sortDirection,
+        now,
+      ),
+    [bearerKeys, bearerKeyScopeFilter, sortBy, sortDirection, now],
   );
+
+  const expiringOrExpiredCount = useMemo(
+    () =>
+      bearerKeys.filter((key) => {
+        const state = getBearerKeyExpiryState(key, now);
+        return state.expired || state.expiringSoon;
+      }).length,
+    [bearerKeys, now],
+  );
+
+  const handleToggleSort = (field: Exclude<BearerKeySortField, 'none'>) => {
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortDirection(field === 'lastUsed' ? 'desc' : 'asc');
+    }
+  };
 
   useEffect(() => {
     if (!bearerKeyScopeFilterOptions.some((option) => option.value === bearerKeyScopeFilter)) {
@@ -653,6 +837,24 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
       return;
     }
 
+    let expiresInDays: number | undefined;
+    if (newBearerKey.expiryPreset !== 'none') {
+      const rawDays =
+        newBearerKey.expiryPreset === 'custom'
+          ? newBearerKey.customExpiryDays
+          : newBearerKey.expiryPreset;
+      const parsedDays = validateExpiresInDaysInput(rawDays);
+      if (parsedDays === null || Number.isNaN(parsedDays)) {
+        showToast(
+          t('settings.bearerKeyInvalidExpiresInDays') ||
+            'Expiration must be a whole number of days between 1 and 3650.',
+          'error',
+        );
+        return;
+      }
+      expiresInDays = parsedDays;
+    }
+
     const created = await createBearerKey({
       name: newBearerKey.name.trim(),
       enabled: newBearerKey.enabled,
@@ -677,7 +879,8 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
         newBearerKey.accessType === 'exclude' && newSelectedExcludedServers.length > 0
           ? newSelectedExcludedServers
           : undefined,
-    } as Partial<BearerKey> & Pick<BearerKey, 'name'>);
+      ...(expiresInDays !== undefined ? { expiresInDays } : {}),
+    } as BearerKeyWritePayload & Pick<BearerKey, 'name'>);
 
     if (!created) return;
     setCreatedBearerToken(created.token);
@@ -688,6 +891,8 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
       kind: 'system',
       owner: '',
       accessType: 'all',
+      expiryPreset: 'none',
+      customExpiryDays: '30',
     });
     setNewSelectedGroups([]);
     setNewSelectedServers([]);
@@ -707,6 +912,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
       allowedServers: string;
       excludedGroups: string;
       excludedServers: string;
+      expiresInDays?: number | null;
     },
   ) => {
     await updateBearerKey(id, {
@@ -717,6 +923,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
       allowedServers: parseCommaSeparated(payload.allowedServers),
       excludedGroups: parseCommaSeparated(payload.excludedGroups),
       excludedServers: parseCommaSeparated(payload.excludedServers),
+      ...(payload.expiresInDays !== undefined ? { expiresInDays: payload.expiresInDays } : {}),
     });
     await refreshBearerKeys();
   };
@@ -876,6 +1083,15 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
           )}
         </div>
 
+        {expiringOrExpiredCount > 0 && (
+          <SettingsAlert variant="warning">
+            <span className="text-xs font-medium">
+              {t('settings.bearerKeyExpiringWarning', { count: expiringOrExpiredCount }) ||
+                `${expiringOrExpiredCount} bearer key(s) expire within 7 days or have already expired.`}
+            </span>
+          </SettingsAlert>
+        )}
+
         {bearerKeys.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--hub-line)] p-6 text-center text-xs text-[var(--hub-ink-3)]">
             {t('settings.noBearerKeys') || 'No bearer keys configured yet.'}
@@ -899,9 +1115,59 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   </th>
                   <th
                     scope="col"
+                    aria-sort={
+                      sortBy === 'status'
+                        ? sortDirection === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
                     className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-[var(--hub-ink-3)]"
                   >
-                    {t('settings.bearerKeyEnabled') || 'Status'}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort('status')}
+                      className="inline-flex items-center gap-1 whitespace-nowrap uppercase tracking-wider hover:text-[var(--hub-ink)]"
+                    >
+                      {t('settings.bearerKeyStatus') || 'Status'}
+                      {sortBy === 'status' ? (
+                        sortDirection === 'asc' ? (
+                          <ArrowUp size={12} aria-hidden="true" />
+                        ) : (
+                          <ArrowDown size={12} aria-hidden="true" />
+                        )
+                      ) : (
+                        <ArrowUpDown size={12} aria-hidden="true" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={
+                      sortBy === 'lastUsed'
+                        ? sortDirection === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                    className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-[var(--hub-ink-3)]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort('lastUsed')}
+                      className="inline-flex items-center gap-1 whitespace-nowrap uppercase tracking-wider hover:text-[var(--hub-ink)]"
+                    >
+                      {t('settings.bearerKeyLastUsed') || 'Last used'}
+                      {sortBy === 'lastUsed' ? (
+                        sortDirection === 'asc' ? (
+                          <ArrowUp size={12} aria-hidden="true" />
+                        ) : (
+                          <ArrowDown size={12} aria-hidden="true" />
+                        )
+                      ) : (
+                        <ArrowUpDown size={12} aria-hidden="true" />
+                      )}
+                    </button>
                   </th>
                   <th
                     scope="col"
@@ -922,6 +1188,7 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   <BearerKeyRow
                     key={key.id}
                     keyData={key}
+                    now={now}
                     busy={keysBusy}
                     availableServers={availableServers}
                     availableGroups={
@@ -1041,6 +1308,70 @@ export const BearerKeysSection: React.FC<BearerKeysSectionProps> = ({
                   />
                 </div>
               </div>
+
+              <div className="w-44">
+                <label
+                  htmlFor="new-bearer-key-expiration"
+                  className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]"
+                >
+                  {t('settings.bearerKeyExpiration') || 'Expiration'}
+                </label>
+                <select
+                  id="new-bearer-key-expiration"
+                  className={settingsSelectClass}
+                  value={newBearerKey.expiryPreset}
+                  onChange={(e) =>
+                    setNewBearerKey((prev) => ({
+                      ...prev,
+                      expiryPreset: e.target.value as CreateExpiryPreset,
+                    }))
+                  }
+                  disabled={keysBusy}
+                >
+                  <option value="none">
+                    {t('settings.bearerKeyExpirationNever') || 'Never expires'}
+                  </option>
+                  <option value="7">
+                    {t('settings.bearerKeyExpirationDaysPreset', { count: 7 }) || '7 days'}
+                  </option>
+                  <option value="30">
+                    {t('settings.bearerKeyExpirationDaysPreset', { count: 30 }) || '30 days'}
+                  </option>
+                  <option value="90">
+                    {t('settings.bearerKeyExpirationDaysPreset', { count: 90 }) || '90 days'}
+                  </option>
+                  <option value="365">
+                    {t('settings.bearerKeyExpirationDaysPreset', { count: 365 }) || '365 days'}
+                  </option>
+                  <option value="custom">
+                    {t('settings.bearerKeyExpirationCustom') || 'Custom (days)'}
+                  </option>
+                </select>
+              </div>
+
+              {newBearerKey.expiryPreset === 'custom' && (
+                <div className="w-32">
+                  <label
+                    htmlFor="new-bearer-key-expiration-days"
+                    className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]"
+                  >
+                    {t('settings.bearerKeyExpirationDaysLabel') || 'Days (1-3650)'}
+                  </label>
+                  <input
+                    id="new-bearer-key-expiration-days"
+                    type="number"
+                    min={BEARER_KEY_MIN_EXPIRES_IN_DAYS}
+                    max={BEARER_KEY_MAX_EXPIRES_IN_DAYS}
+                    step={1}
+                    className={settingsInputClass}
+                    value={newBearerKey.customExpiryDays}
+                    onChange={(e) =>
+                      setNewBearerKey((prev) => ({ ...prev, customExpiryDays: e.target.value }))
+                    }
+                    disabled={keysBusy}
+                  />
+                </div>
+              )}
 
               <div className="w-52">
                 <label className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]">

@@ -52,6 +52,9 @@ export class BearerKey {
   @Column({ type: 'simple-json', nullable: true })
   excludedServers?: string[];
 
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+  expiresAt?: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 

@@ -576,6 +576,12 @@ export interface BearerKey {
   allowedServers?: string[];
   excludedGroups?: string[];
   excludedServers?: string[];
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+}
+
+export interface BearerKeyWritePayload extends Partial<Omit<BearerKey, 'id' | 'token' | 'lastUsedAt'>> {
+  expiresInDays?: number | null;
 }
 
 // Auth types
