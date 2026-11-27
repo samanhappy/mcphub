@@ -128,10 +128,12 @@ export const createPromptHandlers = (dependencies: PromptRoutingDependencies) =>
       if (builtinPrompt && builtinPrompt.enabled !== false) {
         // Perform {{param}} template substitution
         let content = builtinPrompt.template;
-        if (promptArgs) {
-          for (const [key, value] of Object.entries(promptArgs)) {
-            content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
-          }
+        if (promptArgs && typeof promptArgs === 'object' && !Array.isArray(promptArgs)) {
+          content = content.replace(/\{\{([^{}]+)\}\}/g, (match, key: string) =>
+            Object.prototype.hasOwnProperty.call(promptArgs, key)
+              ? String((promptArgs as Record<string, unknown>)[key])
+              : match,
+          );
         }
         return {
           messages: [
