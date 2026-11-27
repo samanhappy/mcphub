@@ -383,4 +383,177 @@ describe('EmbeddingSyncScheduler', () => {
       ),
     ).toBe(true);
   });
+
+  it('executes index clears exclusively inside the scheduler so concurrent syncs cannot interleave', async () => {
+    const mocks = createMockExecutor();
+    const scheduler = new EmbeddingSyncScheduler(mocks.executor);
+
+    const events: string[] = [];
+    const clearGate = createDeferred();
+
+    const preClearBlocker = createDeferred();
+    mocks.saveServerTools.mockImplementationOnce(async () => {
+      events.push('blocker:start');
+      await preClearBlocker.promise;
+      events.push('blocker:end');
+    });
+    mocks.saveServerTools.mockImplementation(async (serverName) => {
+      events.push(`sync:${serverName}:start`);
+      events.push(`sync:${serverName}:end`);
+    });
+
+    const pBlocker = scheduler.enqueueServerSync('blocker', [makeTool('x')]);
+    await flushMicrotasks();
+
+    // Queued before clear -> superseded by clearAll
+    const pStale = scheduler.enqueueServerSync('stale', [makeTool('s')]);
+
+    const pClear = scheduler.enqueueIndexClear('manual-reindex', async () => {
+      events.push('clear:start');
+      await clearGate.promise;
+      events.push('clear:end');
+    });
+
+    preClearBlocker.resolve();
+    await flushMicrotasks();
+
+    // Enqueue a sync WHILE the clear is actively running — it must wait until clear finishes.
+    expect(events).toEqual(['blocker:start', 'blocker:end', 'clear:start']);
+    const pDuringClear = scheduler.enqueueServerSync('fresh', [makeTool('f')]);
+    await flushMicrotasks();
+    expect(events).toEqual(['blocker:start', 'blocker:end', 'clear:start']);
+
+    clearGate.resolve();
+    await Promise.all([pBlocker, pStale, pClear, pDuringClear]);
+    await scheduler.waitForIdle();
+
+    expect(events).toEqual([
+      'blocker:start',
+      'blocker:end',
+      'clear:start',
+      'clear:end',
+      'sync:fresh:start',
+      'sync:fresh:end',
+    ]);
+  });
+
+  it('preserves queued tool removals and personal-credential partial syncs across generation bumps', async () => {
+    const mocks = createMockExecutor();
+    const scheduler = new EmbeddingSyncScheduler(mocks.executor);
+
+    const blocker = createDeferred();
+    mocks.saveServerTools.mockImplementationOnce(async () => {
+      await blocker.promise;
+    });
+
+    const pBlock = scheduler.enqueueServerSync('blocker', [makeTool('x')]);
+    await flushMicrotasks();
+
+    const pGlobalStale = scheduler.enqueueServerSync('global-srv', [makeTool('g')]);
+    const pToolRemoval = scheduler.enqueueToolRemoval('personal-srv', ['personal-srv:disabled']);
+    const pPersonalPartial = scheduler.enqueueServerSync(
+      'personal-srv',
+      [makeTool('personal-srv:enabled')],
+      { partial: true },
+    );
+
+    const pResync = scheduler.requestFullResync('dimension-reset', { bumpGeneration: true });
+
+    blocker.resolve();
+    await Promise.all([pBlock, pGlobalStale, pToolRemoval, pPersonalPartial, pResync]);
+    await scheduler.waitForIdle();
+
+    // Global stale sync was dropped, but disabled tool removal and personal partial sync ran
+    expect(mocks.removeToolEmbeddings).toHaveBeenCalledWith('personal-srv', [
+      'personal-srv:disabled',
+    ]);
+    expect(mocks.saveServerTools.mock.calls.map((c) => c[0])).toEqual(['blocker', 'personal-srv']);
+    expect(mocks.saveServerTools.mock.calls[1][1]).toEqual([makeTool('personal-srv:enabled')]);
+    expect(mocks.saveServerTools.mock.calls[1][2]).toEqual({ partial: true });
+    expect(mocks.syncAllServerTools).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves latest snapshot order for single -> partial -> single and partial -> single -> partial sequences', async () => {
+    const mocks = createMockExecutor();
+    const scheduler = new EmbeddingSyncScheduler(mocks.executor);
+
+    const blocker = createDeferred();
+    mocks.saveServerTools.mockImplementationOnce(async () => {
+      await blocker.promise;
+    });
+
+    const pBlock = scheduler.enqueueServerSync('blocker', [makeTool('x')]);
+    await flushMicrotasks();
+
+    // Sequence 1: single(v1) -> partial(v2) -> single(v3) on server 's1'
+    const s1a = scheduler.enqueueSingleToolSync('s1', makeTool('t', 'v1'));
+    const s1b = scheduler.enqueueServerSync('s1', [makeTool('t', 'v2')], { partial: true });
+    const s1c = scheduler.enqueueSingleToolSync('s1', makeTool('t', 'v3'));
+
+    // Sequence 2: partial(v1) -> single(v2) -> partial(v3) on server 's2'
+    const s2a = scheduler.enqueueServerSync('s2', [makeTool('t', 'v1')], { partial: true });
+    const s2b = scheduler.enqueueSingleToolSync('s2', makeTool('t', 'v2'));
+    const s2c = scheduler.enqueueServerSync('s2', [makeTool('t', 'v3')], { partial: true });
+
+    blocker.resolve();
+    await Promise.all([pBlock, s1a, s1b, s1c, s2a, s2b, s2c]);
+    await scheduler.waitForIdle();
+
+    expect(mocks.saveServerTools).toHaveBeenCalledTimes(3);
+    expect(mocks.saveServerTools).toHaveBeenNthCalledWith(2, 's1', [makeTool('t', 'v3')], {
+      partial: true,
+    });
+    expect(mocks.saveServerTools).toHaveBeenNthCalledWith(3, 's2', [makeTool('t', 'v3')], {
+      partial: true,
+    });
+  });
+
+  it('retains a pending full resync across generation bumps so both callers await the same execution and share failures', async () => {
+    const mocks = createMockExecutor();
+    const scheduler = new EmbeddingSyncScheduler(mocks.executor);
+
+    const blocker = createDeferred();
+    mocks.saveServerTools.mockImplementationOnce(async () => {
+      await blocker.promise;
+    });
+
+    let resyncStarted = false;
+    mocks.syncAllServerTools.mockImplementationOnce(async () => {
+      resyncStarted = true;
+      throw new Error('resync provider failure');
+    });
+
+    const pBlock = scheduler.enqueueServerSync('blocker', [makeTool('x')]);
+    await flushMicrotasks();
+
+    let firstSettled = false;
+    const r1 = scheduler.requestFullResync('config-change-1', { bumpGeneration: true });
+    const r1Outcome = r1
+      .then(() => {
+        firstSettled = true;
+        return 'resolved';
+      })
+      .catch((err: Error) => {
+        firstSettled = true;
+        return `rejected:${err.message}`;
+      });
+
+    const r2 = scheduler.requestFullResync('config-change-2', { bumpGeneration: true });
+    const r2Outcome = r2
+      .then(() => 'resolved')
+      .catch((err: Error) => `rejected:${err.message}`);
+
+    await flushMicrotasks();
+    // Neither caller may resolve before the coalesced resync actually executes
+    expect(resyncStarted).toBe(false);
+    expect(firstSettled).toBe(false);
+
+    blocker.resolve();
+    await pBlock;
+
+    expect(await r1Outcome).toBe('rejected:resync provider failure');
+    expect(await r2Outcome).toBe('rejected:resync provider failure');
+    expect(mocks.syncAllServerTools).toHaveBeenCalledTimes(1);
+    await scheduler.waitForIdle();
+  });
 });

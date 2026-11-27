@@ -6,6 +6,21 @@ import * as vectorSearchService from './vectorSearchService.js';
 export interface ServerSyncOptions {
   reportProgress?: boolean;
   partial?: boolean;
+  /**
+   * Keep this sync queued across routine generation bumps (e.g., personal-
+   * credential partial syncs that a global full resync cannot rediscover).
+   * Defaults to `true` when `partial` is `true`.
+   */
+  preserveAcrossGeneration?: boolean;
+}
+
+export interface BumpGenerationOptions {
+  /**
+   * Drop all queued syncs/removals/resyncs (used by a full index clear where
+   * the caller rebuilds every server — including personal-credential servers —
+   * from scratch).
+   */
+  clearAll?: boolean;
 }
 
 export type PrepareToolsFn = (serverName: string, tools: Tool[]) => Promise<Tool[]>;
@@ -35,7 +50,8 @@ export type SchedulerJobType =
   | 'single-tool-sync'
   | 'tool-removal'
   | 'server-cleanup'
-  | 'full-resync';
+  | 'full-resync'
+  | 'index-clear';
 
 interface JobWaiter {
   resolve: () => void;
@@ -54,6 +70,7 @@ interface ServerSyncJob extends BaseJob {
   serverName: string;
   tools: Tool[];
   options: ServerSyncOptions;
+  preserveAcrossGeneration: boolean;
   prepareTools?: PrepareToolsFn;
 }
 
@@ -80,12 +97,19 @@ interface FullResyncJob extends BaseJob {
   reason: string;
 }
 
+interface IndexClearJob extends BaseJob {
+  type: 'index-clear';
+  reason: string;
+  clearFn: () => Promise<void>;
+}
+
 type SchedulerJob =
   | ServerSyncJob
   | SingleToolSyncJob
   | ToolRemovalJob
   | ServerCleanupJob
-  | FullResyncJob;
+  | FullResyncJob
+  | IndexClearJob;
 
 export interface EmbeddingSyncSchedulerState {
   activeJob: {
@@ -197,18 +221,39 @@ export class EmbeddingSyncScheduler {
 
   /**
    * Increment the generation counter and drop stale queued sync jobs that were
-   * scheduled under an older embedding configuration/dimension. Cleanup jobs
-   * are preserved so deleted/disabled servers never retain stale vectors.
+   * scheduled under an older embedding configuration/dimension.
+   *
+   * Unless `clearAll` is set (for a full index wipe + rebuild), preserves:
+   * - `server-cleanup` and `tool-removal` jobs (disabled/deleted servers/tools
+   *   must still be cleaned up; global full resync skips disconnected servers)
+   * - `server-sync` jobs marked `preserveAcrossGeneration` (personal-credential
+   *   partial snapshots that global full resync cannot rediscover)
+   * - pending `full-resync` jobs (so callers awaiting an already-queued resync
+   *   share the coalesced execution at the new generation instead of resolving
+   *   early)
    */
-  bumpGeneration(reason: string): number {
+  bumpGeneration(reason: string, options?: BumpGenerationOptions): number {
+    const clearAll = options?.clearAll === true;
     this.generation += 1;
     const currentGeneration = this.generation;
     const retained: SchedulerJob[] = [];
 
     for (const job of this.queue) {
-      if (job.type === 'server-cleanup') {
+      if (job.type === 'server-cleanup' || job.type === 'index-clear') {
         retained.push(job);
         continue;
+      }
+
+      if (!clearAll) {
+        if (
+          job.type === 'tool-removal' ||
+          job.type === 'full-resync' ||
+          (job.type === 'server-sync' && job.preserveAcrossGeneration)
+        ) {
+          job.generation = currentGeneration;
+          retained.push(job);
+          continue;
+        }
       }
 
       if (job.generation < currentGeneration) {
@@ -240,15 +285,28 @@ export class EmbeddingSyncScheduler {
   ): Promise<void> {
     const { promise, waiter } = createDeferred();
     const isPartial = options?.partial === true;
-    const normalizedOptions: ServerSyncOptions = options ? { ...options } : {};
+    const preserveAcrossGeneration = options?.preserveAcrossGeneration ?? isPartial;
+    const saveOptions: ServerSyncOptions = {};
+    if (options?.reportProgress !== undefined) {
+      saveOptions.reportProgress = options.reportProgress;
+    }
+    if (options?.partial !== undefined) {
+      saveOptions.partial = options.partial;
+    }
 
     // Scan backwards from the tail for this server, stopping at any barrier
-    // (server-cleanup, tool-removal, or full-resync) so causal ordering holds.
+    // (server-cleanup, tool-removal, full-resync, or index-clear) so causal
+    // ordering holds.
     for (let i = this.queue.length - 1; i >= 0; i--) {
       const candidate = this.queue[i];
-      if (candidate.type === 'full-resync') break;
+      if (candidate.type === 'full-resync' || candidate.type === 'index-clear') break;
       if (!('serverName' in candidate) || candidate.serverName !== serverName) continue;
       if (candidate.type === 'server-cleanup' || candidate.type === 'tool-removal') break;
+
+      // For a partial sync, stop before any single-tool sync so we never merge
+      // a newer partial snapshot behind a pending single-tool update; the
+      // absorption pass below merges those single-tool updates in order.
+      if (isPartial && candidate.type === 'single-tool-sync') break;
 
       if (candidate.type === 'server-sync') {
         if (!isPartial && candidate.options.partial !== true) {
@@ -256,11 +314,13 @@ export class EmbeddingSyncScheduler {
           candidate.tools = [...tools];
           candidate.options = {
             ...candidate.options,
-            ...normalizedOptions,
-            ...(candidate.options.reportProgress || normalizedOptions.reportProgress
+            ...saveOptions,
+            ...(candidate.options.reportProgress || saveOptions.reportProgress
               ? { reportProgress: true }
               : {}),
           };
+          candidate.preserveAcrossGeneration =
+            candidate.preserveAcrossGeneration || preserveAcrossGeneration;
           candidate.prepareTools = prepareTools ?? candidate.prepareTools;
           candidate.generation = this.generation;
           candidate.waiters.push(waiter);
@@ -280,9 +340,11 @@ export class EmbeddingSyncScheduler {
         if (isPartial && candidate.options.partial !== true) {
           // A full server sync is already pending; coalesce this partial update into it.
           candidate.tools = mergeToolByName(candidate.tools, tools);
-          if (normalizedOptions.reportProgress) {
+          if (saveOptions.reportProgress) {
             candidate.options.reportProgress = true;
           }
+          candidate.preserveAcrossGeneration =
+            candidate.preserveAcrossGeneration || preserveAcrossGeneration;
           candidate.waiters.push(waiter);
           logger.log('[EmbeddingScheduler] merge', {
             event: 'merge',
@@ -300,9 +362,11 @@ export class EmbeddingSyncScheduler {
         if (isPartial && candidate.options.partial === true) {
           // Coalesce back-to-back partial syncs for the same server.
           candidate.tools = mergeToolByName(candidate.tools, tools);
-          if (normalizedOptions.reportProgress) {
+          if (saveOptions.reportProgress) {
             candidate.options.reportProgress = true;
           }
+          candidate.preserveAcrossGeneration =
+            candidate.preserveAcrossGeneration || preserveAcrossGeneration;
           candidate.prepareTools = prepareTools ?? candidate.prepareTools;
           candidate.generation = this.generation;
           candidate.waiters.push(waiter);
@@ -321,24 +385,28 @@ export class EmbeddingSyncScheduler {
       }
     }
 
-    // If this is a full server sync, supersede any pending single-tool or
-    // partial server syncs for the same server queued after the latest barrier.
-    const inheritedWaiters: JobWaiter[] = [waiter];
-    if (!isPartial) {
-      let barrierIndex = -1;
-      for (let i = this.queue.length - 1; i >= 0; i--) {
-        const candidate = this.queue[i];
-        if (
-          candidate.type === 'full-resync' ||
-          (('serverName' in candidate) &&
-            candidate.serverName === serverName &&
-            (candidate.type === 'server-cleanup' || candidate.type === 'tool-removal'))
-        ) {
-          barrierIndex = i;
-          break;
-        }
+    // Find the latest causal barrier for this server.
+    let barrierIndex = -1;
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      const candidate = this.queue[i];
+      if (
+        candidate.type === 'full-resync' ||
+        candidate.type === 'index-clear' ||
+        ('serverName' in candidate &&
+          candidate.serverName === serverName &&
+          (candidate.type === 'server-cleanup' || candidate.type === 'tool-removal'))
+      ) {
+        barrierIndex = i;
+        break;
       }
+    }
 
+    const inheritedWaiters: JobWaiter[] = [];
+    let mergedTools: Tool[] = [...tools];
+
+    if (!isPartial) {
+      // A full server sync supersedes any pending single-tool or partial server
+      // syncs for the same server queued after the latest barrier.
       const nextQueue: SchedulerJob[] = [];
       for (let i = 0; i < this.queue.length; i++) {
         const candidate = this.queue[i];
@@ -363,14 +431,62 @@ export class EmbeddingSyncScheduler {
         nextQueue.push(candidate);
       }
       this.queue = nextQueue;
+    } else {
+      // Absorb pending single-tool syncs (and any earlier partial syncs) for
+      // this server after the latest barrier into this partial sync in causal
+      // order so newer snapshots always overwrite older ones.
+      const priorTools: Tool[] = [];
+      let inheritedReportProgress = saveOptions.reportProgress === true;
+      const nextQueue: SchedulerJob[] = [];
+      for (let i = 0; i < this.queue.length; i++) {
+        const candidate = this.queue[i];
+        if (
+          i > barrierIndex &&
+          'serverName' in candidate &&
+          candidate.serverName === serverName &&
+          (candidate.type === 'single-tool-sync' ||
+            (candidate.type === 'server-sync' && candidate.options.partial === true))
+        ) {
+          if (candidate.type === 'single-tool-sync') {
+            priorTools.push(candidate.tool);
+          } else {
+            priorTools.push(...candidate.tools);
+            if (candidate.options.reportProgress) {
+              inheritedReportProgress = true;
+            }
+          }
+          logger.log('[EmbeddingScheduler] merge', {
+            event: 'merge',
+            jobId: candidate.id,
+            type: candidate.type,
+            incomingType: 'server-sync-partial',
+            serverName,
+            partial: true,
+            generation: this.generation,
+          });
+          inheritedWaiters.push(...candidate.waiters);
+          continue;
+        }
+        nextQueue.push(candidate);
+      }
+      this.queue = nextQueue;
+      if (priorTools.length > 0) {
+        mergedTools = mergeToolByName(priorTools, tools);
+      }
+      if (inheritedReportProgress) {
+        saveOptions.reportProgress = true;
+      }
     }
+
+    inheritedWaiters.push(waiter);
 
     const job: ServerSyncJob = {
       id: this.nextJobId++,
       type: 'server-sync',
       serverName,
-      tools: [...tools],
-      options: normalizedOptions,
+      tools: mergedTools,
+      options: saveOptions,
+      preserveAcrossGeneration,
       prepareTools,
       generation: this.generation,
       waiters: inheritedWaiters,
@@ -381,7 +497,7 @@ export class EmbeddingSyncScheduler {
       jobId: job.id,
       type: job.type,
       serverName,
-      toolCount: tools.length,
+      toolCount: mergedTools.length,
       partial: isPartial,
       generation: job.generation,
       queueLength: this.queue.length,
@@ -397,17 +513,18 @@ export class EmbeddingSyncScheduler {
   ): Promise<void> {
     const { promise, waiter } = createDeferred();
 
-    // Coalesce into a pending full server sync or deduplicate against an
-    // existing pending single-tool sync for the same (serverName, tool.name)
-    // after the latest barrier.
+    // Coalesce into a pending server sync (full OR partial) or deduplicate
+    // against an existing pending single-tool sync for the same
+    // (serverName, tool.name) after the latest barrier.
     for (let i = this.queue.length - 1; i >= 0; i--) {
       const candidate = this.queue[i];
-      if (candidate.type === 'full-resync') break;
+      if (candidate.type === 'full-resync' || candidate.type === 'index-clear') break;
       if (!('serverName' in candidate) || candidate.serverName !== serverName) continue;
       if (candidate.type === 'server-cleanup' || candidate.type === 'tool-removal') break;
 
-      if (candidate.type === 'server-sync' && candidate.options.partial !== true) {
+      if (candidate.type === 'server-sync') {
         candidate.tools = mergeToolByName(candidate.tools, [tool]);
+        candidate.generation = this.generation;
         candidate.waiters.push(waiter);
         logger.log('[EmbeddingScheduler] merge', {
           event: 'merge',
@@ -416,6 +533,7 @@ export class EmbeddingSyncScheduler {
           incomingType: 'single-tool-sync',
           serverName,
           toolName: tool.name,
+          partial: candidate.options.partial === true,
           generation: this.generation,
         });
         this.scheduleDrain();
@@ -641,6 +759,34 @@ export class EmbeddingSyncScheduler {
     return promise;
   }
 
+  enqueueIndexClear(reason: string, clearFn: () => Promise<void>): Promise<void> {
+    const { promise, waiter } = createDeferred();
+
+    // Supersede all pre-clear queued syncs/removals/resyncs before scheduling
+    // the exclusive clear mutation.
+    this.bumpGeneration(reason, { clearAll: true });
+
+    const job: IndexClearJob = {
+      id: this.nextJobId++,
+      type: 'index-clear',
+      reason,
+      clearFn,
+      generation: this.generation,
+      waiters: [waiter],
+    };
+    this.queue.push(job);
+    logger.log('[EmbeddingScheduler] enqueue', {
+      event: 'enqueue',
+      jobId: job.id,
+      type: job.type,
+      reason,
+      generation: job.generation,
+      queueLength: this.queue.length,
+    });
+    this.scheduleDrain();
+    return promise;
+  }
+
   waitForIdle(): Promise<void> {
     if (this.activeJob === null && this.queue.length === 0 && !this.draining) {
       return Promise.resolve();
@@ -664,7 +810,12 @@ export class EmbeddingSyncScheduler {
         const job = this.queue.shift()!;
 
         // Skip stale non-cleanup jobs whose generation was superseded while waiting.
-        if (job.type !== 'server-cleanup' && job.generation < this.generation) {
+        if (
+          job.type !== 'server-cleanup' &&
+          job.type !== 'tool-removal' &&
+          job.type !== 'index-clear' &&
+          job.generation < this.generation
+        ) {
           logger.log('[EmbeddingScheduler] superseded', {
             event: 'superseded',
             jobId: job.id,
@@ -772,6 +923,11 @@ export class EmbeddingSyncScheduler {
         await this.executor.syncAllServerTools();
         return;
       }
+
+      case 'index-clear': {
+        await job.clearFn();
+        return;
+      }
     }
   }
 }
@@ -802,8 +958,15 @@ export const requestFullResync = (
   options?: RequestFullResyncOptions,
 ): Promise<void> => embeddingSyncScheduler.requestFullResync(reason, options);
 
-export const bumpEmbeddingGeneration = (reason: string): number =>
-  embeddingSyncScheduler.bumpGeneration(reason);
+export const bumpEmbeddingGeneration = (
+  reason: string,
+  options?: BumpGenerationOptions,
+): number => embeddingSyncScheduler.bumpGeneration(reason, options);
+
+export const enqueueIndexClear = (
+  reason: string,
+  clearFn: () => Promise<void>,
+): Promise<void> => embeddingSyncScheduler.enqueueIndexClear(reason, clearFn);
 
 export const waitForIdle = (): Promise<void> => embeddingSyncScheduler.waitForIdle();
 
