@@ -1536,7 +1536,7 @@
       "failedToProcessMcpbFile": "Échec du traitement du fichier MCPB",
       "passkey_unavailable": "Les clés d'accès ne peuvent être gérées que depuis un compte local connecté",
       "passkey_password_invalid": "Le mot de passe actuel est incorrect",
-      "passkey_origin_invalid": "Impossible de déterminer l'adresse du site pour les clés d'accès",
+      "passkey_origin_invalid": "Les clés d'accès exigent d'ouvrir le tableau de bord par son nom de domaine en HTTPS (ou sur localhost), et non par une adresse IP",
       "passkey_limit_reached": "Vous avez atteint le nombre maximal de clés d'accès",
       "passkey_invalid_request": "Requête de clé d'accès invalide",
       "passkey_challenge_invalid": "La demande de clé d'accès a expiré. Veuillez réessayer",

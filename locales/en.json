@@ -1538,7 +1538,7 @@
       "failedToProcessMcpbFile": "Failed to process MCPB file",
       "passkey_unavailable": "Passkeys can only be managed from a signed-in local account",
       "passkey_password_invalid": "Current password is incorrect",
-      "passkey_origin_invalid": "Could not determine the site address for passkeys",
+      "passkey_origin_invalid": "Passkeys need the dashboard to be opened by its domain name over HTTPS (or on localhost), not by an IP address",
       "passkey_limit_reached": "You have reached the maximum number of passkeys",
       "passkey_invalid_request": "Invalid passkey request",
       "passkey_challenge_invalid": "The passkey request has expired. Please try again",

@@ -8,6 +8,9 @@ import {
 import type { AuthResponse, Passkey } from '../types';
 import { apiDelete, apiGet, apiPost, type ApiResponse } from '../utils/fetchInterceptor';
 import { setToken } from '../utils/interceptors';
+import { classifyPasskeyAvailability, type PasskeyAvailability } from '../utils/passkeyAvailability';
+
+export type { PasskeyAvailability };
 
 /** Why a browser passkey ceremony did not complete. */
 export type PasskeyCeremonyError = 'cancelled' | 'alreadyRegistered' | 'insecureContext' | 'failed';
@@ -19,7 +22,14 @@ interface CeremonyStart<T> {
   message?: string;
 }
 
-export const passkeysSupported = (): boolean => browserSupportsWebAuthn();
+export const getPasskeyAvailability = (): PasskeyAvailability =>
+  classifyPasskeyAvailability({
+    isSecureContext: window.isSecureContext,
+    hostname: window.location.hostname,
+    webAuthnSupported: browserSupportsWebAuthn(),
+  });
+
+export const passkeysSupported = (): boolean => getPasskeyAvailability() === 'available';
 
 const classifyCeremonyError = (error: unknown): PasskeyCeremonyError => {
   const { name, code } = (error ?? {}) as { name?: string; code?: string };

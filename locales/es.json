@@ -1538,7 +1538,7 @@
       "failedToProcessMcpbFile": "Error al procesar el archivo MCPB",
       "passkey_unavailable": "Las llaves de acceso solo se pueden gestionar desde una cuenta local con sesión iniciada",
       "passkey_password_invalid": "La contraseña actual es incorrecta",
-      "passkey_origin_invalid": "No se pudo determinar la dirección del sitio para las llaves de acceso",
+      "passkey_origin_invalid": "Las llaves de acceso requieren abrir el panel por su nombre de dominio mediante HTTPS (o en localhost), no por una dirección IP",
       "passkey_limit_reached": "Has alcanzado el número máximo de llaves de acceso",
       "passkey_invalid_request": "Solicitud de llave de acceso no válida",
       "passkey_challenge_invalid": "La solicitud de llave de acceso ha caducado. Inténtalo de nuevo",

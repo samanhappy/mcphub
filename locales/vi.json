@@ -1538,7 +1538,7 @@
       "failedToProcessMcpbFile": "Xử lý file MCPB thất bại",
       "passkey_unavailable": "Chỉ có thể quản lý passkey từ tài khoản cục bộ đã đăng nhập",
       "passkey_password_invalid": "Mật khẩu hiện tại không đúng",
-      "passkey_origin_invalid": "Không xác định được địa chỉ trang cho passkey",
+      "passkey_origin_invalid": "Passkey yêu cầu mở dashboard bằng tên miền qua HTTPS (hoặc trên localhost), không dùng địa chỉ IP",
       "passkey_limit_reached": "Bạn đã đạt số lượng passkey tối đa",
       "passkey_invalid_request": "Yêu cầu passkey không hợp lệ",
       "passkey_challenge_invalid": "Yêu cầu passkey đã hết hạn. Vui lòng thử lại",

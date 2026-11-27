@@ -1535,7 +1535,7 @@
       "failedToProcessMcpbFile": "MCPB dosyası işlenemedi",
       "passkey_unavailable": "Geçiş anahtarları yalnızca oturum açmış bir yerel hesaptan yönetilebilir",
       "passkey_password_invalid": "Mevcut parola yanlış",
-      "passkey_origin_invalid": "Geçiş anahtarları için site adresi belirlenemedi",
+      "passkey_origin_invalid": "Geçiş anahtarları, panelin IP adresiyle değil, alan adıyla HTTPS üzerinden (veya localhost’ta) açılmasını gerektirir",
       "passkey_limit_reached": "En fazla geçiş anahtarı sayısına ulaştınız",
       "passkey_invalid_request": "Geçersiz geçiş anahtarı isteği",
       "passkey_challenge_invalid": "Geçiş anahtarı isteğinin süresi doldu. Lütfen tekrar deneyin",
