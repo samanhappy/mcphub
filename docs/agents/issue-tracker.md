@@ -34,15 +34,21 @@ Use [github-coordinator](../../.agents/skills/github-coordinator/SKILL.md) for g
 - There is no active overlapping implementation or PR.
 - The work can be verified with tests or a documented validation method.
 
-### Bounded standing approval (`standing_approval:low_risk_fix`)
+### Bounded standing approval (`standing_approval:bounded_pr`)
 
-The coordinator may dispatch a worker directly into `implementation` (to open a PR for `owner:review` — never to merge, release, or push to `main`) under `authorization_ref: "standing_approval:low_risk_fix"` **only** when **all** of the following hold:
+The coordinator may dispatch a worker directly into `implementation` to work on an isolated branch and open a reviewable PR straight to `owner:review` — combining pre-implementation and PR review into a single review (never to merge, release, or push to `main`) — under `authorization_ref: "standing_approval:bounded_pr"` (superseding the legacy `standing_approval:low_risk_fix` alias) **only** when **all** of the following hold:
 
-- Root cause is verified and the fix path is unambiguous (no product, architecture, or compatibility trade-offs).
-- Scope is small and localized: documentation/typo fixes, targeted test additions, isolated single-module bug fixes, or minor UI defects.
-- **Hard exclusions (must escalate to `owner:decision`):** database schema or migration changes, breaking compatibility changes, authentication/authorization/security model changes, new public APIs/settings/config contracts, broad refactors, or issues already claimed by an external contributor.
+- **Clear priority and converged design:** priority is established (`priority:p0`, `priority:p1`, `priority:p2`, or a confirmed bug) and investigation converged on a single clear design with no mutually-exclusive product or architecture fork.
+- **Backward-compatible, additive, and reversible:** existing default behavior is preserved (new behavior is opt-in or strictly additive). This explicitly allows isolated bug fixes, docs/tests, internal refactors, additive backward-compatible DB columns/tables, and additive/opt-in APIs or dashboard UI (with full tests and English UI screenshots).
+- **Hard exclusions (must still stop for `owner:decision`):**
+  1. **Security, authentication, or authorization boundary changes** (e.g., relaxing access control, changing session/token trust models, or changing release CI privileges/attestation permissions).
+  2. **Breaking or irreversible compatibility or data changes.**
+  3. **Genuine mutually-exclusive product or architecture forks** where guessing risks wasted implementation.
+  4. **External or maintainer boundaries** (issues claimed by an external contributor, cross-repo changes, external IdP/access requirements, releases, or closing/rejecting external requests).
 
-If a worker dispatched under `standing_approval:low_risk_fix` discovers during investigation that any exclusion or ambiguity applies, it must stop before editing product code and hand off for `owner:decision`.
+**`owner:review` WIP cap:** to protect maintainer review bandwidth, the coordinator pauses new `standing_approval:bounded_pr` implementation dispatches whenever **3** open agent-authored PRs are already waiting in `owner:review` (explicit owner-approved tasks and follow-ups on existing PRs are unaffected).
+
+If a worker dispatched under `standing_approval:bounded_pr` discovers during investigation that any exclusion or ambiguity applies, it must stop before editing product code and hand off for `owner:decision`.
 
 Without sufficient approval, investigate and propose the next step; escalate only when a concrete decision blocks progress. Do not treat a detailed proposal, old queue label or priority as approval. The maintainer may approve multiple bounded tasks at once. The coordinator can prioritize independently, but cannot grant implementation approval beyond owner authorization and the standing boundary above.
 
