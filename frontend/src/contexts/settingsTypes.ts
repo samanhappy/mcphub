@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
+import type { ApiResponse, BearerKey, BearerKeyWritePayload, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 
@@ -305,11 +305,11 @@ export interface SettingsActionsContextValue {
   ) => Promise<ApiResponse<ExportedMcpSettingsData> | undefined>;
   refreshBearerKeys: () => Promise<void>;
   createBearerKey: (
-    payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+    payload: Pick<BearerKey, 'name'> & BearerKeyWritePayload,
   ) => Promise<BearerKey | null>;
   updateBearerKey: (
     id: string,
-    updates: Partial<Omit<BearerKey, 'id'>>,
+    updates: BearerKeyWritePayload,
   ) => Promise<BearerKey | null>;
   deleteBearerKey: (id: string) => Promise<boolean>;
 }

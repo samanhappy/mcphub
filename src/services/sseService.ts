@@ -28,6 +28,8 @@ import { RequestContextService } from './requestContextService.js';
 import { IUser, IGroup, BearerKey, BearerKeyKind } from '../types/index.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
+import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
+import { recordBearerKeyUsage } from '../utils/bearerKeyUsage.js';
 import {
   getBearerAuthHeaderValue,
   getBearerTokenFromHeaders,
@@ -483,7 +485,7 @@ export const validateBearerAuth = async (
   const enableBearerAuth = systemConfig?.routing?.enableBearerAuth ?? true;
 
   const bearerKeyDao = getBearerKeyDao();
-  const enabledKeys = await bearerKeyDao.findEnabled();
+  const enabledKeys = (await bearerKeyDao.findEnabled()).filter((key) => !isBearerKeyExpired(key));
 
   const authHeader = getBearerAuthHeaderValue(req.headers, systemConfig);
   const hasBearerHeader = parseBearerAuthorization(authHeader) !== null;
@@ -566,6 +568,7 @@ export const validateBearerAuth = async (
       }
       const allowed = await isBearerKeyAllowedForRequest(req, matchingKey, resolvedGroup);
       if (allowed) {
+        await recordBearerKeyUsage(matchingKey.id);
         logger.log(
           `Bearer key recognized (auth disabled): id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
         );
@@ -625,6 +628,7 @@ export const validateBearerAuth = async (
       return { valid: false, reason: 'invalid' };
     }
 
+    await recordBearerKeyUsage(matchingKey.id);
     logger.log(
       `Bearer key authenticated: id=${matchingKey.id}, name=${matchingKey.name}, accessType=${matchingKey.accessType}`,
     );

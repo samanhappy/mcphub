@@ -4,6 +4,7 @@ import { ApiResponse, BearerKey, BearerKeyAccessType, BearerKeyKind } from '../t
 import { getBearerKeyDao, getGroupDao, getUserDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
 import { maskBearerKey, toStoredToken } from '../utils/bearerKeyToken.js';
+import { parseBearerKeyExpiryInput } from '../utils/bearerKeyExpiry.js';
 
 const VALID_ACCESS_TYPES: BearerKeyAccessType[] = [
   'all',
@@ -194,6 +195,12 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    const expiryResult = parseBearerKeyExpiryInput(req.body as Record<string, unknown>);
+    if (!expiryResult.ok) {
+      res.status(400).json({ success: false, message: expiryResult.message });
+      return;
+    }
+
     const key = await getBearerKeyDao().create({
       name: name.trim(),
       token: `mcphub_${randomBytes(32).toString('hex')}`,
@@ -205,6 +212,9 @@ export const createBearerKey = async (req: Request, res: Response): Promise<void
       allowedServers: kind === 'system' && Array.isArray(allowedServers) ? allowedServers : [],
       excludedGroups: resolvedExcludedGroups,
       excludedServers: resolvedExcludedServers,
+      ...(expiryResult.specified && expiryResult.expiresAt
+        ? { expiresAt: expiryResult.expiresAt }
+        : {}),
       ...personalScope,
     });
 
@@ -243,9 +253,18 @@ export const updateBearerKey = async (req: Request, res: Response): Promise<void
 
     const { name, enabled, accessType, allowedGroups, allowedServers, excludedGroups, excludedServers } =
       req.body as Partial<BearerKey>;
+    const expiryResult = parseBearerKeyExpiryInput(req.body as Record<string, unknown>);
+    if (!expiryResult.ok) {
+      res.status(400).json({ success: false, message: expiryResult.message });
+      return;
+    }
+
     const updates: Partial<BearerKey> = {};
     if (name !== undefined) updates.name = name;
     if (enabled !== undefined) updates.enabled = enabled;
+    if (expiryResult.specified) {
+      updates.expiresAt = expiryResult.expiresAt;
+    }
 
     if (existing.kind === 'user' && (accessType !== undefined || allowedGroups !== undefined)) {
       const scope = await resolvePersonalScope(
@@ -324,8 +343,17 @@ export const resetBearerKey = async (req: Request, res: Response): Promise<void>
       res.status(403).json({ success: false, message: 'Forbidden' });
       return;
     }
+    const expiryResult = parseBearerKeyExpiryInput(req.body as Record<string, unknown> | undefined);
+    if (!expiryResult.ok) {
+      res.status(400).json({ success: false, message: expiryResult.message });
+      return;
+    }
     const token = `mcphub_${randomBytes(32).toString('hex')}`;
-    const updated = await dao.update(id, { ...toStoredToken(token), token: undefined });
+    const updated = await dao.update(id, {
+      ...toStoredToken(token),
+      token: undefined,
+      ...(expiryResult.specified ? { expiresAt: expiryResult.expiresAt } : {}),
+    });
     if (!updated) {
       res.status(404).json({ success: false, message: 'Bearer key not found' });
       return;
