@@ -1,0 +1,16 @@
+src/services/mcpPrompts.ts
+  h_18676a549cd52a 129,131-136
+tests/services/mcpService-prompts.test.ts
+  h_18676a549cd52a 45,79,199-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7efa2ea8d815b5bda449d0f3146d8a7fce220f32",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
