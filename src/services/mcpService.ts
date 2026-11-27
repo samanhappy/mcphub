@@ -2985,7 +2985,14 @@ export const reconcileReplicaServers = async (
   }
   const comparable = (config: ServerConfig | undefined) => {
     if (!config) return config;
-    const { tags: _tags, ...rest } = config;
+    // Tags and the metadata links are read-time metadata, not connection
+    // settings: a replica must adopt their new values without reconnecting.
+    const {
+      tags: _tags,
+      repositoryUrl: _repositoryUrl,
+      documentationUrl: _documentationUrl,
+      ...rest
+    } = config;
     return stripNullishDeep(rest);
   };
   const changed = serverInfos.filter(

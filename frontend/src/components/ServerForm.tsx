@@ -33,6 +33,7 @@ import {
   shouldAutoAnalyzeOpenApiSource,
 } from '../utils/openApiSourceAnalysis';
 import { isValidServerName } from '../utils/serverName';
+import { getInitialMetadataLinks } from '../utils/serverMetadataLinks';
 import {
   getAvailableServerFormTabs,
   getServerFormConfiguredTabs,
@@ -159,6 +160,9 @@ const ServerForm = ({
     tags: normalizeTags(initialData?.config?.tags),
     url: (initialData && initialData.config && initialData.config.url) || '',
     command: (initialData && initialData.config && initialData.config.command) || '',
+    // The edit form submits the whole config, so a field that is not seeded
+    // here is cleared on an unrelated save (#1495 review).
+    ...getInitialMetadataLinks(initialData),
     arguments: '',
     args: (initialData && initialData.config && initialData.config.args) || [],
     type: getInitialServerType(),

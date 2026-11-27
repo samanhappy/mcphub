@@ -277,6 +277,45 @@ describe('mcpService initializeClientsFromSettings OAuth authorization reuse', (
     expect(getServerByName('test-server')?.config?.tags).toEqual(['db', 'prod']);
   });
 
+  it('applies metadata link changes from another replica without reconnecting (#1495)', async () => {
+    const base = { name: 'test-server', enabled: true, command: 'node', args: ['server.js'] };
+    setServerInfosForTest([
+      {
+        name: 'test-server',
+        enabled: true,
+        status: 'connected',
+        error: null,
+        tools: [],
+        prompts: [],
+        resources: [],
+        createTime: 1,
+        config: {
+          ...base,
+          repositoryUrl: 'https://github.com/owner/repo',
+          documentationUrl: 'https://docs.example.com',
+          owner: undefined,
+          visibility: undefined,
+          sharedWithUsers: undefined,
+          sharedWithUserGroups: undefined,
+        },
+      } as any,
+    ]);
+
+    await reconcileReplicaServers([
+      {
+        ...base,
+        repositoryUrl: 'https://github.com/owner/other',
+        documentationUrl: 'https://docs.example.com',
+      },
+    ]);
+
+    expect(mockClientConnect).not.toHaveBeenCalled();
+    expect(getServerByName('test-server')?.status).toBe('connected');
+    expect(getServerByName('test-server')?.config?.repositoryUrl).toBe(
+      'https://github.com/owner/other',
+    );
+  });
+
   it('drops a runtime whose server another replica deleted, even with tags (#1506)', async () => {
     setServerInfosForTest([
       {
