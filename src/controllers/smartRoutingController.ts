@@ -12,6 +12,10 @@ import {
   isDatabaseConnected,
 } from '../db/connection.js';
 import {
+  bumpEmbeddingGeneration,
+  waitForIdle,
+} from '../services/embeddingSyncScheduler.js';
+import {
   getServerToolsForPrincipal,
   getServersInfo,
   syncCredentialServerToolEmbeddings,
@@ -362,7 +366,12 @@ export const reindexSmartRouting = async (
       await initializeDatabase();
     }
 
-    // 1. Clear the existing index so every tool is regenerated from scratch.
+    // 1. Invalidate any stale queued background syncs and wait for any active
+    //    job to settle before clearing the index so no stale write can land
+    //    after the DELETE.
+    bumpEmbeddingGeneration('Manual smart routing reindex');
+    await waitForIdle();
+
     logger.log('Reindex: clearing all vector embeddings');
     await getAppDataSource().query('DELETE FROM vector_embeddings');
 

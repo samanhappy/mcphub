@@ -164,10 +164,11 @@ import { getGroup } from './sseService.js';
 import { mcpEventBus } from './mcpEventBus.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
 import {
-  removeServerToolEmbeddings,
-  removeToolEmbeddings,
-  saveToolsAsVectorEmbeddings,
-} from './vectorSearchService.js';
+  enqueueServerCleanup,
+  enqueueServerSync,
+  enqueueSingleToolSync,
+  enqueueToolRemoval,
+} from './embeddingSyncScheduler.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
@@ -776,8 +777,8 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
   if (isAppOnlyTool(tool)) {
     return;
   }
-  // Save tool as vector embedding for search
-  syncToolsAsVectorEmbeddings(serverName, [tool], { partial: true }).catch((error) => {
+  // Save tool as vector embedding for search via centralized scheduler
+  enqueueSingleToolSync(serverName, tool, prepareToolsForEmbedding).catch((error) => {
     logger.warn(
       `[EMBED_SYNC_ERROR] Failed to sync embedding for tool "${toolName}" on server "${serverName}"`,
     );
@@ -866,40 +867,16 @@ const applyDescriptionOverridesForEmbedding = async (
   });
 };
 
-// Tail of the embedding tasks queued per server. A per-user connect and a
-// reindex, or two users connecting at once, often race on the same tool set;
-// queued behind the first run, the second one hits the skip check in
-// saveToolsAsVectorEmbeddings instead of embedding every tool a second time.
-const embeddingSyncTails = new Map<string, Promise<void>>();
-
-// Run `task` after every embedding task already queued for the server. A task
-// must not wait for another queued task of the same server, or both stall.
-const enqueueEmbeddingTask = (serverName: string, task: () => Promise<void>): Promise<void> => {
-  const run = (embeddingSyncTails.get(serverName) ?? Promise.resolve()).then(task);
-  const tail = run.catch(() => undefined);
-  embeddingSyncTails.set(serverName, tail);
-  void tail.then(() => {
-    if (embeddingSyncTails.get(serverName) === tail) embeddingSyncTails.delete(serverName);
-  });
-  return run;
+const prepareToolsForEmbedding = async (serverName: string, tools: Tool[]): Promise<Tool[]> => {
+  const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
+  return filterModelVisibleTools(toolsWithOverrides);
 };
 
 export const syncToolsAsVectorEmbeddings = (
   serverName: string,
   tools: Tool[],
   options?: { reportProgress?: boolean; partial?: boolean },
-): Promise<void> =>
-  enqueueEmbeddingTask(serverName, async () => {
-    const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
-    const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
-    if (modelVisibleTools.length === 0) {
-      if (options?.partial) return;
-      await removeServerToolEmbeddings(serverName);
-      return;
-    }
-
-    await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
-  });
+): Promise<void> => enqueueServerSync(serverName, tools, options, prepareToolsForEmbedding);
 
 /**
  * Embed the tools of a credential server, which never connects globally.
@@ -931,9 +908,7 @@ export const syncCredentialServerToolEmbeddings = async (
       .map((tool) => tool.name)
       .filter((toolName) => !enabledNames.has(toolName));
     if (disabledNames.length > 0) {
-      void enqueueEmbeddingTask(serverName, () =>
-        removeToolEmbeddings(serverName, disabledNames),
-      ).catch(() => undefined);
+      void enqueueToolRemoval(serverName, disabledNames).catch(() => undefined);
     }
   }
   await syncToolsAsVectorEmbeddings(serverName, enabledTools, options);
@@ -3438,7 +3413,7 @@ export const removeServer = async (
   await deleteCredentialBindings({ serverName: name });
 
   try {
-    await removeServerToolEmbeddings(name);
+    await enqueueServerCleanup(name);
   } catch (error) {
     logger.warn('Failed to remove embeddings for server', { serverName: name, error });
   }
@@ -3640,7 +3615,7 @@ export const toggleServerStatus = async (
 
         // Remove tool embeddings when server is disabled (for smart routing consistency)
         try {
-          await removeServerToolEmbeddings(name);
+          await enqueueServerCleanup(name);
           logger.log(`Removed tool embeddings for disabled server: ${name}`);
         } catch (embeddingError) {
           logger.warn('Failed to remove embeddings for server', {

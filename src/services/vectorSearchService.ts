@@ -244,13 +244,13 @@ let configuredBasePacingDelayMs = SAFE_BASE_PACING_DELAY_MS;
 // Used to calculate cooldown before allowing delay to decrease.
 let lastPacingIncreaseAt = 0;
 
-// Flag indicating a full embeddings resync has been scheduled.
-// Prevents multiple redundant resync operations.
-let fullResyncScheduled = false;
+// Callback registered by embeddingSyncScheduler to handle full resync requests
+// without introducing a circular static import.
+let fullResyncRequester: ((reason: string) => void) | null = null;
 
-// Flag indicating a full embeddings resync is currently in progress.
-// Prevents concurrent resync operations.
-let fullResyncInProgress = false;
+export const registerFullResyncRequester = (requester: (reason: string) => void): void => {
+  fullResyncRequester = requester;
+};
 
 // Timestamp (ms) of the last embedding API call.
 // Used to calculate required wait time before next call in the queue.
@@ -479,34 +479,24 @@ const withEmbeddingQueue = <T>(operation: () => Promise<T>): Promise<T> => {
   return result;
 };
 
-const scheduleFullEmbeddingResync = (reason: string): void => {
-  if (fullResyncScheduled || fullResyncInProgress) {
-    logger.log(
-      `[Embedding] Full embeddings resync already in progress/scheduled. reason=${reason}`,
-    );
+const triggerFullEmbeddingResync = (reason: string): void => {
+  if (fullResyncRequester) {
+    fullResyncRequester(reason);
     return;
   }
 
-  fullResyncScheduled = true;
-  logger.warn(`[Embedding] Scheduling full embeddings resync. reason=${reason}`);
-
-  setTimeout(async () => {
-    if (fullResyncInProgress) {
-      fullResyncScheduled = false;
-      return;
-    }
-
-    fullResyncScheduled = false;
-    fullResyncInProgress = true;
-
-    try {
-      await syncAllServerToolsEmbeddings();
-    } catch (error) {
-      logger.error('[EMBED_SYNC_ERROR] Full embeddings resync failed', { reason, error });
-    } finally {
-      fullResyncInProgress = false;
-    }
-  }, 5000);
+  void import('./embeddingSyncScheduler.js')
+    .then(({ requestFullResync }) =>
+      requestFullResync(reason, { bumpGeneration: true }).catch((error) => {
+        logger.error('[EMBED_SYNC_ERROR] Full embeddings resync failed', { reason, error });
+      }),
+    )
+    .catch((error) => {
+      logger.error('[EMBED_SYNC_ERROR] Failed to schedule full embeddings resync', {
+        reason,
+        error,
+      });
+    });
 };
 
 // pgvector index limits (as of pgvector 0.7.0+)
@@ -1243,7 +1233,7 @@ const withEmbeddingMutation = <T>(operation: () => Promise<T>): Promise<T> => {
 type EmbeddingBatch = { invalidated: boolean };
 const activeEmbeddingBatches = new Map<string, Set<EmbeddingBatch>>();
 
-const invalidateEmbeddingBatches = (serverName: string): void => {
+export const invalidateEmbeddingBatches = (serverName: string): void => {
   for (const batch of activeEmbeddingBatches.get(serverName) ?? []) {
     batch.invalidated = true;
   }
@@ -1597,7 +1587,7 @@ export const saveToolsAsVectorEmbeddings = async (
     emitProgress(toolEmbeddings.length, 'completed');
 
     if (vectorDimensionsReset) {
-      scheduleFullEmbeddingResync(`Vector dimensions changed while syncing server "${serverName}"`);
+      triggerFullEmbeddingResync(`Vector dimensions changed while syncing server "${serverName}"`);
     }
 
     logger.log('Saved tool embeddings', safeStringify({ serverName, toolCount: tools.length }));
