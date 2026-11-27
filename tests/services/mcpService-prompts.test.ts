@@ -42,6 +42,7 @@ jest.mock('../../src/services/services.js', () => ({
 
 const mockGetBuiltinPromptDao = {
   findEnabled: jest.fn(),
+  findByName: jest.fn(),
 };
 
 const mockGetBuiltinResourceDao = {
@@ -75,6 +76,7 @@ import {
   filterPromptsByGroup,
   filterResourceTemplatesByGroup,
   filterResourcesByGroup,
+  handleGetPromptRequest,
   handleListPromptsRequest,
   handleListResourcesRequest,
 } from '../../src/services/mcpService.js';
@@ -192,5 +194,113 @@ describe('mcpService handleListPromptsRequest', () => {
     ] as any);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('mcpService handleGetPromptRequest built-in template substitution', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetServerDao.findById.mockResolvedValue(null);
+  });
+
+  it('substitutes repeated placeholders and preserves unmatched placeholders', async () => {
+    mockGetBuiltinPromptDao.findByName.mockResolvedValue({
+      id: 'p1',
+      name: 'greeting',
+      template: 'Hello {{name}}, welcome to {{place}}. Regards, {{name}} ({{missing}}).',
+      enabled: true,
+    });
+
+    const result = await handleGetPromptRequest(
+      {
+        params: {
+          name: 'greeting',
+          arguments: { name: 'Alice', place: 'MCPHub' },
+        },
+      },
+      { sessionId: 's1' },
+    );
+
+    expect(result).toEqual({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: 'Hello Alice, welcome to MCPHub. Regards, Alice ({{missing}}).',
+          },
+        },
+      ],
+    });
+  });
+
+  it('handles pattern-like argument names in linear time', async () => {
+    const longTemplate = `${'A'.repeat(300)} {{topic}}`;
+    mockGetBuiltinPromptDao.findByName.mockResolvedValue({
+      id: 'p-pattern',
+      name: 'pattern-key-prompt',
+      template: longTemplate,
+      enabled: true,
+    });
+
+    const startedAt = Date.now();
+    const result = await handleGetPromptRequest(
+      {
+        params: {
+          name: 'pattern-key-prompt',
+          arguments: { '(.+)+$': 'x', topic: 'notes' },
+        },
+      },
+      { sessionId: 's1' },
+    );
+    const elapsedMs = Date.now() - startedAt;
+
+    expect(elapsedMs).toBeLessThan(100);
+    expect(result.messages[0].content.text).toBe(`${'A'.repeat(300)} notes`);
+  });
+
+  it('does not throw SyntaxError on regex metacharacter argument names', async () => {
+    mockGetBuiltinPromptDao.findByName.mockResolvedValue({
+      id: 'p-meta',
+      name: 'meta-prompt',
+      template: 'Value: {{[}} and {{(}} and {{ok}}',
+      enabled: true,
+    });
+
+    const result = await handleGetPromptRequest(
+      {
+        params: {
+          name: 'meta-prompt',
+          arguments: { '[': 'bracket', '(': 'paren', ok: 'done' },
+        },
+      },
+      { sessionId: 's1' },
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.messages[0].content.text).toBe('Value: bracket and paren and done');
+  });
+
+  it('substitutes replacement pattern characters literally without second-order expansion or prototype lookup', async () => {
+    mockGetBuiltinPromptDao.findByName.mockResolvedValue({
+      id: 'p-safe',
+      name: 'safe-prompt',
+      template: 'val={{a}} next={{b}} proto={{toString}} ctor={{constructor}}',
+      enabled: true,
+    });
+
+    const result = await handleGetPromptRequest(
+      {
+        params: {
+          name: 'safe-prompt',
+          arguments: { a: '$& $$ $1 {{b}}', b: 'secret' },
+        },
+      },
+      { sessionId: 's1' },
+    );
+
+    expect(result.messages[0].content.text).toBe(
+      'val=$& $$ $1 {{b}} next=secret proto={{toString}} ctor={{constructor}}',
+    );
   });
 });
