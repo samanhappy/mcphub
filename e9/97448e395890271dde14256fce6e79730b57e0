@@ -1,0 +1,52 @@
+docs/features/authentication.mdx
+  h_9c4304dcbb6d2a 26-28,46-50
+frontend/src/components/ui/UserProfileMenu.tsx
+  h_9c4304dcbb6d2a 147-148
+frontend/src/contexts/AuthContext.tsx
+  h_9c4304dcbb6d2a 24,30,37,58-68,82,134,161-162,167
+frontend/src/pages/LoginPage.tsx
+  h_9c4304dcbb6d2a 83,87
+frontend/src/services/authService.ts
+  h_9c4304dcbb6d2a 10,15,18,38-42,44,106-110,113
+frontend/src/services/logService.ts
+  h_9c4304dcbb6d2a 73-74
+frontend/src/services/passkeyService.ts
+  h_9c4304dcbb6d2a 10-14,66-74
+frontend/src/services/toolService.ts
+  h_9c4304dcbb6d2a 2,34
+frontend/src/utils/interceptors.ts
+  h_9c4304dcbb6d2a 3,28
+frontend/viteProxy.ts
+  h_9c4304dcbb6d2a 19
+src/controllers/authController.ts
+  h_9c4304dcbb6d2a 1,91,170
+src/controllers/oauthServerController.ts
+  h_9c4304dcbb6d2a 1-6,100,788-791,926-927
+src/controllers/passkeyController.ts
+  h_9c4304dcbb6d2a 1,249
+src/middlewares/auth.test.ts
+  h_9c4304dcbb6d2a 1-6,94-95,110-195
+src/middlewares/auth.ts
+  h_9c4304dcbb6d2a 1-5,171-180,195-196
+src/middlewares/dashboardSession.ts
+  h_9c4304dcbb6d2a 1-89
+src/middlewares/index.ts
+  h_9c4304dcbb6d2a 1,32
+src/middlewares/userContext.ts
+  h_9c4304dcbb6d2a 1,50
+src/routes/index.ts
+  h_9c4304dcbb6d2a 1,596,607,613-619
+src/services/betterAuthConfig.ts
+  h_9c4304dcbb6d2a 287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e997448e395890271dde14256fce6e79730b57e0",
+  "prompts": {},
+  "humans": {
+    "h_9c4304dcbb6d2a": {
+      "author": "sunmeng <sunmeng@meibaokeji.com>"
+    }
+  }
+}

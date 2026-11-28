@@ -1,0 +1,26 @@
+frontend/src/pages/LoginPage.tsx
+  h_9c4304dcbb6d2a 25,81-82
+src/controllers/authController.ts
+  h_9c4304dcbb6d2a 86-96,134-138,162-170
+src/controllers/oauthServerController.ts
+  h_9c4304dcbb6d2a 4,101-102,928
+src/controllers/passkeyController.ts
+  h_9c4304dcbb6d2a 249
+src/middlewares/auth.test.ts
+  h_9c4304dcbb6d2a 124-131,133,146,181-190
+src/middlewares/auth.ts
+  h_9c4304dcbb6d2a 175
+src/middlewares/dashboardSession.ts
+  h_9c4304dcbb6d2a 1-2,15-18,38-52,97-101,103-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a7c7b3a8fab718b34690e64e86c0f28efba8403",
+  "prompts": {},
+  "humans": {
+    "h_9c4304dcbb6d2a": {
+      "author": "sunmeng <sunmeng@meibaokeji.com>"
+    }
+  }
+}
