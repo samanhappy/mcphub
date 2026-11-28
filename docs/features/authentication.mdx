@@ -297,3 +297,16 @@ Local user passwords are validated by `src/utils/passwordValidation.ts` (length 
 - [Users API](/api-reference/users) — local user CRUD.
 - [OAuth API](/api-reference/auth) — OAuth client management endpoints.
 - [MCP Settings](/configuration/mcp-settings) — where `routing`, `oauth`, and `auth.betterAuth` configuration lives.
+
+### Suspend and reactivate users
+
+Administrators can suspend or reactivate accounts from the Users page or through
+`PUT /api/users/:username` with `{"disabled": true}` or `{"disabled": false}`.
+Attempts to suspend the current account or the last enabled administrator return
+HTTP 409.
+
+Suspended users cannot sign in or use existing dashboard sessions, personal bearer
+keys, or hub OAuth grants. Reactivation restores access through personal keys and
+still-valid OAuth grants. Dashboard sessions require a fresh sign-in, and pending
+OAuth authorization codes are discarded. Owned servers and groups remain available
+to other users according to their existing permissions.

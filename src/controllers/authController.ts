@@ -49,7 +49,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Find user by username
     const user = await findUserByUsername(username);
 
-    if (!user) {
+    if (!user || user.disabled) {
       res.status(401).json({
         success: false,
         message: t('api.errors.invalid_credentials'),
@@ -73,6 +73,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       user: {
         username: user.username,
         sessionVersion: getUserSessionVersion(user),
+        suspendedAt: user.suspendedAt,
         isAdmin: user.isAdmin || false,
       },
     };

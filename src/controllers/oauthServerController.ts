@@ -45,6 +45,7 @@ type AuthenticatedUser = {
   username: string;
   isAdmin?: boolean;
   sessionVersion?: string;
+  suspendedAt?: string;
   credentialEligible?: boolean;
 };
 
@@ -72,6 +73,7 @@ async function resolveBetterAuthUserForAuthorize(req: Request): Promise<Authenti
         username: user.username,
         isAdmin: !!user.isAdmin,
         sessionVersion: getUserSessionVersion(user),
+        suspendedAt: user.suspendedAt,
       };
       (req as any).user = authenticatedUser;
       return authenticatedUser;
@@ -104,6 +106,7 @@ async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser |
         username: user.username,
         isAdmin: !!user.isAdmin,
         sessionVersion: getUserSessionVersion(user),
+        suspendedAt: user.suspendedAt,
       }
     : null;
 }
@@ -456,7 +459,7 @@ async function validateClientRequestForContinuation(
   }
 
   const currentUser = await resolveUserSession(user);
-  if (!currentUser || !user.sessionVersion) {
+  if (!currentUser || !user.sessionVersion || currentUser.suspendedAt !== user.suspendedAt) {
     return { valid: false, error: 'invalid_grant', errorDescription: 'User no longer exists' };
   }
   const sessionVersion = user.sessionVersion;
@@ -565,6 +568,7 @@ export async function issueAuthorizationCodeForContinuation(
       username: user.username,
       isAdmin: user.isAdmin,
       sessionVersion: continuation.sessionVersion,
+      suspendedAt: continuation.suspendedAt,
       ...(continuation.approvalId ? { approvalId: continuation.approvalId } : {}),
       ...(continuation.approvalContext ? { approvalContext: continuation.approvalContext } : {}),
     },
@@ -630,6 +634,7 @@ async function authorizeAndRedirect(
           : {}),
         username: user.username,
         sessionVersion: validation.sessionVersion,
+        suspendedAt: user.suspendedAt,
         ...(user.approvalId ? { approvalId: user.approvalId } : {}),
         ...(user.approvalContext ? { approvalContext: user.approvalContext } : {}),
         browserNonceHash: hash,

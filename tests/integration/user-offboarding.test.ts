@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import {
   IUser,
+  BearerKey,
   IOAuthToken,
   IGroup,
   ServerConfig,
@@ -13,6 +14,8 @@ import {
 } from '../../src/types/index.js';
 
 let users: IUser[];
+let systemKeys: BearerKey[];
+let skipAuth: boolean;
 let approvals: OAuthClientApproval[];
 let passkeys: UserPasskey[];
 let tokens: IOAuthToken[];
@@ -31,9 +34,14 @@ const revokeUserTokensMock = jest.fn(async (username: string) => {
 jest.mock('../../src/dao/index.js', () => ({
   getOAuthApprovalDao: () => ({
     findById: async (id: string) => approvals.find((row) => row.id === id),
-    findByUsername: async (username: string) => approvals.filter((row) => row.username === username),
-    save: async (row: OAuthClientApproval) => { approvals.push(row); },
-    deleteByUsername: async (username: string) => { approvals = approvals.filter((row) => row.username !== username); },
+    findByUsername: async (username: string) =>
+      approvals.filter((row) => row.username === username),
+    save: async (row: OAuthClientApproval) => {
+      approvals.push(row);
+    },
+    deleteByUsername: async (username: string) => {
+      approvals = approvals.filter((row) => row.username !== username);
+    },
   }),
   getPasskeyDao: () => ({
     deleteByUsername: async (username: string) => {
@@ -43,6 +51,10 @@ jest.mock('../../src/dao/index.js', () => ({
   getUserDao: () => ({
     findAll: async () => users,
     findByUsername: async (username: string) => users.find((user) => user.username === username),
+    update: async (username: string, data: Partial<IUser>) => {
+      const user = users.find((entry) => entry.username === username);
+      return user ? Object.assign(user, data) : null;
+    },
     delete: async (username: string) => {
       users = users.filter((user) => user.username !== username);
       return true;
@@ -53,7 +65,7 @@ jest.mock('../../src/dao/index.js', () => ({
       return user;
     },
   }),
-  getBearerKeyDao: () => ({ findEnabled: async () => [], deleteByOwner: async () => 0 }),
+  getBearerKeyDao: () => ({ findEnabled: async () => systemKeys, deleteByOwner: async () => 0 }),
   getOAuthClientDao: () => ({ findByClientId: async () => client }),
   getOAuthTokenDao: () => ({
     findByAccessToken: async (value: string) => tokens.find((token) => token.accessToken === value),
@@ -81,7 +93,9 @@ jest.mock('../../src/dao/index.js', () => ({
     update: async (name: string, data: Partial<ServerConfig>) =>
       Object.assign(servers.find((s) => s.name === name)!, data),
   }),
-  getSystemConfigDao: () => ({ get: async () => ({ oauthServer: { enabled: true } }) }),
+  getSystemConfigDao: () => ({
+    get: async () => ({ oauthServer: { enabled: true }, routing: { skipAuth } }),
+  }),
 }));
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: () => ({ get: async () => ({ oauthServer: { enabled: true } }) }),
@@ -106,7 +120,7 @@ jest.mock('../../src/services/credentialBindingService.js', () => ({
 import { JWT_SECRET } from '../../src/config/jwt.js';
 import { auth } from '../../src/middlewares/auth.js';
 import { login, register } from '../../src/controllers/authController.js';
-import { deleteExistingUser } from '../../src/controllers/userController.js';
+import { deleteExistingUser, updateExistingUser } from '../../src/controllers/userController.js';
 import { postAuthorize, postToken } from '../../src/controllers/oauthServerController.js';
 import {
   initOAuthServer,
@@ -141,6 +155,8 @@ describe('local user offboarding', () => {
       { username: 'admin', password: await bcrypt.hash('admin-password', 4), isAdmin: true },
       { username: 'victim', password: await bcrypt.hash('victim-password', 4), isAdmin: false },
     ];
+    systemKeys = [];
+    skipAuth = false;
     tokens = [];
     approvals = [];
     passkeys = [
@@ -184,6 +200,7 @@ describe('local user offboarding', () => {
     app.post('/oauth/authorize', postAuthorize);
     app.post('/oauth/token', postToken);
     app.post('/api/auth/register', register);
+    app.put('/api/users/:username', auth, updateExistingUser);
     app.delete('/api/users/:username', auth, deleteExistingUser);
     app.get('/api/protected', auth, (req, res) =>
       res.json((req as express.Request & { user: unknown }).user),
@@ -234,6 +251,66 @@ describe('local user offboarding', () => {
     expect(response.status).toBe(200);
     return response.body;
   };
+
+  it.each(['system key', 'skipAuth'])('allows %s to manage users', async (mode) => {
+    skipAuth = mode === 'skipAuth';
+    const headers: Record<string, string> = skipAuth ? {} : { Authorization: 'Bearer system-key' };
+    if (!skipAuth) {
+      systemKeys.push({
+        id: 'system-key',
+        name: 'System key',
+        enabled: true,
+        kind: 'system',
+        accessType: 'all',
+        token: 'system-key',
+        owner: 'legacy-owner',
+      });
+    }
+
+    await request(app).put('/api/users/victim').set(headers).send({ disabled: true }).expect(200);
+    expect(users.find(({ username }) => username === 'victim')?.disabled).toBe(true);
+    await request(app).delete('/api/users/victim').set(headers).expect(200);
+    await request(app).put('/api/users/admin').set(headers).send({ disabled: true }).expect(409);
+  });
+
+  it('keeps an enabled admin across concurrent requests to suspend two admins', async () => {
+    users[1].isAdmin = true;
+    victimJwt = userToken(users[1]);
+    const responses = await Promise.all([
+      request(app).put('/api/users/victim').set('x-auth-token', adminJwt).send({ disabled: true }),
+      request(app).put('/api/users/admin').set('x-auth-token', victimJwt).send({ disabled: true }),
+    ]);
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
+    expect(users.filter((user) => user.isAdmin && !user.disabled)).toHaveLength(1);
+  });
+
+  it('suspends access, preserves existing grants, and requires a fresh dashboard session', async () => {
+    const pair = await issue();
+    const pending = await authorize();
+    const code = new URL(pending.headers.location).searchParams.get('code')!;
+    const setDisabled = (username: string, disabled: boolean) =>
+      request(app).put(`/api/users/${username}`).set('x-auth-token', adminJwt).send({ disabled });
+
+    expect((await setDisabled('admin', true)).status).toBe(409);
+    expect((await setDisabled('victim', true)).status).toBe(200);
+    const dashboard = () => request(app).get('/api/protected').set('x-auth-token', victimJwt);
+    const mcp = () =>
+      request(app).post('/mcp/g1').set('Authorization', `Bearer ${pair.access_token}`);
+    expect((await dashboard()).status).toBe(401);
+    expect((await mcp()).status).toBe(401);
+    const loginVictim = () =>
+      request(app).post('/api/auth/login').send({
+        username: 'victim',
+        password: 'victim-password',
+      });
+    expect((await loginVictim()).status).toBe(401);
+
+    expect((await setDisabled('victim', false)).status).toBe(200);
+    expect((await dashboard()).status).toBe(401);
+    expect((await loginVictim()).status).toBe(200);
+    expect((await mcp()).status).toBe(200);
+    expect((await exchange(code)).status).toBe(400);
+  });
 
   it('rejects access, refresh, JWT and pending codes after deletion and removes sharing', async () => {
     const pair = await issue();

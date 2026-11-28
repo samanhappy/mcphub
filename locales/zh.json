@@ -1478,6 +1478,12 @@
     "partialSuccess": "成功导入 {{count}} / {{total}} 个分组。部分分组失败："
   },
   "users": {
+    "status": "状态",
+    "active": "正常",
+    "suspended": "已停用",
+    "suspend": "停用",
+    "reactivate": "恢复",
+    "statusError": "无法更新账户状态",
     "userGroups": "用户组",
     "userGroupsHint": "用英文逗号分隔组名。组名区分大小写，相同组名表示同一用户组。清空可移除所有成员关系。",
     "shareUserGroupsHint": "所选用户组的成员可以使用此资源。在用户编辑页面管理成员关系。",

@@ -326,7 +326,8 @@ export const finishPasskeyAuthentication = async (
   const userHandle = response.response?.userHandle;
   if (userHandle && userHandle !== passkey.userHandle) return null;
   const user = await findUserByUsername(passkey.username);
-  if (!user || isForwardAuthUser(user) || !isPasskeyCurrent(passkey, user)) return null;
+  if (!user || user.disabled || isForwardAuthUser(user) || !isPasskeyCurrent(passkey, user))
+    return null;
 
   let verification;
   try {

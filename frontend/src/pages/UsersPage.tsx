@@ -29,9 +29,11 @@ const UsersPage: React.FC = () => {
     error: userError,
     setError: setUserError,
     deleteUser,
+    updateUser,
     triggerRefresh,
   } = useUserData();
 
+  const [statusChangePending, setStatusChangePending] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
@@ -122,11 +124,12 @@ const UsersPage: React.FC = () => {
         <div className="hub-card overflow-hidden">
           <div
             className="hub-row head hub-mono"
-            style={{ gridTemplateColumns: '1.6fr 1.2fr 100px 100px' }}
+            style={{ gridTemplateColumns: '1.6fr 1.2fr 80px 100px 180px' }}
           >
             <div>{t('users.username')}</div>
             <div>{t('users.email')}</div>
             <div>{t('users.role')}</div>
+            <div>{t('users.status')}</div>
             <div className="text-right">{t('users.actions')}</div>
           </div>
           {users.map((user) => {
@@ -135,7 +138,7 @@ const UsersPage: React.FC = () => {
               <div
                 key={user.username}
                 className="hub-row hover"
-                style={{ gridTemplateColumns: '1.6fr 1.2fr 100px 100px' }}
+                style={{ gridTemplateColumns: '1.6fr 1.2fr 80px 100px 180px' }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -182,7 +185,32 @@ const UsersPage: React.FC = () => {
                     label={user.isAdmin ? t('users.admin') : t('users.user')}
                   />
                 </div>
+                <StatusDot
+                  kind={user.disabled ? 'muted' : 'ok'}
+                  label={t(user.disabled ? 'users.suspended' : 'users.active')}
+                />
                 <div className="flex justify-end gap-1">
+                  {!isCurrentUser && (
+                    <button
+                      className="hub-btn sm"
+                      disabled={statusChangePending}
+                      onClick={async () => {
+                        setStatusChangePending(true);
+                        setUserError(null);
+                        try {
+                          const result = await updateUser(user.username, {
+                            disabled: !user.disabled,
+                          });
+                          if (!result?.success)
+                            setUserError(result?.message || t('users.statusError'));
+                        } finally {
+                          setStatusChangePending(false);
+                        }
+                      }}
+                    >
+                      {t(user.disabled ? 'users.reactivate' : 'users.suspend')}
+                    </button>
+                  )}
                   <Link
                     to={`/credentials?user=${encodeURIComponent(user.username)}`}
                     className="hub-icon-btn sm"

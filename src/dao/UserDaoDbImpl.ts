@@ -21,6 +21,8 @@ export class UserDaoDbImpl implements UserDao {
       userGroups: u.userGroups ?? undefined,
       password: u.password,
       isAdmin: u.isAdmin,
+      disabled: u.disabled,
+      suspendedAt: u.suspendedAt ?? undefined,
       email: u.email ?? undefined,
       ssoUserId: u.ssoUserId ?? undefined,
     };
@@ -59,6 +61,8 @@ export class UserDaoDbImpl implements UserDao {
       userGroups: entity.userGroups,
       password: entity.password,
       isAdmin: entity.isAdmin || false,
+      disabled: entity.disabled ?? false,
+      suspendedAt: entity.suspendedAt,
       email: entity.email ?? null,
       ssoUserId: entity.ssoUserId ?? null,
     });
@@ -77,7 +81,9 @@ export class UserDaoDbImpl implements UserDao {
   }
 
   async update(username: string, entity: Partial<IUser>): Promise<IUser | null> {
-    const updateData: any = {};
+    const updateData: Partial<User> = {};
+    if (entity.disabled !== undefined) updateData.disabled = entity.disabled;
+    if (entity.suspendedAt !== undefined) updateData.suspendedAt = entity.suspendedAt;
     if (entity.userGroups !== undefined) updateData.userGroups = entity.userGroups;
     if (entity.password !== undefined) updateData.password = entity.password;
     if (entity.isAdmin !== undefined) updateData.isAdmin = entity.isAdmin;
@@ -103,7 +109,7 @@ export class UserDaoDbImpl implements UserDao {
 
   async validateCredentials(username: string, password: string): Promise<boolean> {
     const user = await this.findByUsername(username);
-    if (!user) {
+    if (!user || user.disabled) {
       return false;
     }
     return await bcrypt.compare(password, user.password);

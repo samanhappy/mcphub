@@ -75,12 +75,8 @@ export class UserRepository {
    */
   async update(username: string, userData: Partial<User>): Promise<User | null> {
     return this.withRetry(async () => {
-      const user = await this.repository.findOne({ where: { username } });
-      if (!user) {
-        return null;
-      }
-      const updated = this.repository.merge(user, userData);
-      return await this.repository.save(updated);
+      const result = await this.repository.update({ username }, userData);
+      return result.affected ? this.repository.findOne({ where: { username } }) : null;
     }, 'update');
   }
 

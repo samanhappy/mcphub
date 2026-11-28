@@ -148,6 +148,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
         username,
         password: hashedPassword,
         isAdmin,
+        disabled: false,
         email,
         ssoUserId,
       };
@@ -211,7 +212,7 @@ export class UserDaoImpl extends JsonFileBaseDao implements UserDao {
 
   async validateCredentials(username: string, password: string): Promise<boolean> {
     const user = await this.findByUsername(username);
-    if (!user) {
+    if (!user || user.disabled) {
       return false;
     }
 

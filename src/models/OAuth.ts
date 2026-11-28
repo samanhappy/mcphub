@@ -287,12 +287,17 @@ export const revokeToken = async (token: string): Promise<void> => {
   await getOAuthTokenDao().revokeToken(token);
 };
 
-/** Revoke the user's persisted tokens and pending in-process authorization codes. */
-export const revokeUserTokens = async (username: string): Promise<void> => {
-  if (isReplicaMode()) await stateRepository().delete({ username });
+export const revokeUserAuthorizationCodes = async (username: string): Promise<void> => {
+  if (isReplicaMode()) await stateRepository().delete({ username, kind: 'authorization_code' });
   for (const [code, authorization] of authorizationCodes) {
     if (authorization.username === username) authorizationCodes.delete(code);
   }
+};
+
+/** Revoke the user's persisted tokens and pending authorization state. */
+export const revokeUserTokens = async (username: string): Promise<void> => {
+  if (isReplicaMode()) await stateRepository().delete({ username });
+  await revokeUserAuthorizationCodes(username);
   await getOAuthTokenDao().revokeUserTokens(username);
 };
 

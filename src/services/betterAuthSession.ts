@@ -49,6 +49,10 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
     return null;
   }
 
+  const sessionCreatedAt = new Date(session.session?.createdAt).getTime();
+  const isAvailable = (user: IUser) =>
+    !user.disabled && (!user.suspendedAt || sessionCreatedAt > Date.parse(user.suspendedAt));
+
   // Better Auth user.id is stable — linked to OIDC sub via account.accountId.
   // Require a non-empty ssoUserId; never fall back to email or username adoption.
   const ssoUserId = typeof session.user?.id === 'string' ? session.user.id : '';
@@ -66,6 +70,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
     return null;
   }
   if (ssoMatch) {
+    if (!isAvailable(ssoMatch)) return null;
     // Backfill email if missing
     if (email && !ssoMatch.email) {
       try {
@@ -136,5 +141,5 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   // Handle race condition: another concurrent request for the same SSO identity
   // may have created the user between our check and createUser.
   const refreshedUser = rejectForwardAuthUser(await findUserBySsoUserId(ssoUserId));
-  return refreshedUser || null;
+  return refreshedUser && isAvailable(refreshedUser) ? refreshedUser : null;
 };
