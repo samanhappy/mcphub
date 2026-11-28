@@ -24,7 +24,7 @@ import { UserContextService } from '../../src/services/userContextService.js';
 const app = express();
 let server: ReturnType<typeof app.listen>;
 app.use(express.json());
-app.post('/mcp/:group?', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
+app.post('/mcp/:group(.*)?', mcpConnectionRateLimiter, sseUserContextMiddleware, handleMcpPostRequest);
 app.use('/api', authenticatedRouteRateLimiter, (req, _res, next) => {
   const user = { username: 'admin', isAdmin: req.get('X-Test-Admin') === 'yes' };
   Object.assign(req, { user });
@@ -234,6 +234,12 @@ it('serves skills via MCP tools on tools/both groups, pages multibyte text & bin
   ]);
   await publishSkill(mainSkill.id, [nativeGroupId, toolsGroupId, bothGroupId], true);
   await publishSkill(secretSkill.id, [nativeGroupId], true);
+
+  const smart = await legacySession('/mcp/$smart/tools-group');
+  const smartTools = await smart.call('tools/list');
+  expect(smartTools.result.tools.map((tool: { name: string }) => tool.name)).toEqual(
+    expect.arrayContaining(['mcphub_list_skills', 'mcphub_get_skill', 'mcphub_get_skill_file']),
+  );
 
   // 1. Native group: 2025-11-25 client sees NO skill tools and NO skill instruction line
   const nativeLegacy = await legacySession('/mcp/native-group');
