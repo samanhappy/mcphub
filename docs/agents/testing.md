@@ -40,7 +40,7 @@ node scripts/verify-staging-ssh-boundary.mjs
 
 ## Disposable PostgreSQL integration tests
 
-`personal-oauth-db.test.ts` and `tool-policy-db.test.ts` require a disposable local PostgreSQL database. They modify and clear their tables; never point them at retained data. Without `MCPHUB_TEST_PG_PORT`, these suites are skipped.
+`personal-oauth-db.test.ts`, `personal-oauth-request-transaction-db.test.ts` and `tool-policy-db.test.ts` require a disposable local PostgreSQL database. They modify and clear their tables; never point them at retained data. Without `MCPHUB_TEST_PG_PORT`, these suites are skipped.
 
 ```sh
 docker run --detach --rm --name mcphub-test-pg \
@@ -50,6 +50,17 @@ docker run --detach --rm --name mcphub-test-pg \
 docker port mcphub-test-pg 5432
 docker exec mcphub-test-pg pg_isready -U mcphub_test
 # Once ready, use the printed host port:
-MCPHUB_TEST_PG_PORT=<port> pnpm exec jest tests/integration/personal-oauth-db.test.ts tests/integration/tool-policy-db.test.ts --runInBand
+MCPHUB_TEST_PG_PORT=<port> pnpm exec jest tests/integration/personal-oauth-db.test.ts tests/integration/personal-oauth-request-transaction-db.test.ts tests/integration/tool-policy-db.test.ts --runInBand
 docker stop mcphub-test-pg
+```
+
+Replica-mode locking must also work through a transaction pooler: no PostgreSQL session state may outlive a transaction. To check it, run the same suites through PgBouncer in transaction mode, in front of the disposable database (on a shared Docker network, with `--network mcphub-test` on the PostgreSQL container and md5 authentication: `--env POSTGRES_INITDB_ARGS=--auth=md5` and the `-c password_encryption=md5` server argument):
+
+```sh
+docker run --detach --rm --name mcphub-test-bouncer --network mcphub-test \
+  --publish 127.0.0.1::5432 --env POOL_MODE=transaction --env AUTH_TYPE=md5 \
+  --env DATABASE_URL=postgres://mcphub_test:mcphub_test@mcphub-test-pg:5432/mcphub_test \
+  edoburu/pgbouncer:latest
+docker port mcphub-test-bouncer 5432
+MCPHUB_TEST_PG_PORT=<bouncer port> pnpm exec jest tests/integration/personal-oauth-request-transaction-db.test.ts --runInBand
 ```

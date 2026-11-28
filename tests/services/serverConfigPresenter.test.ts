@@ -121,6 +121,20 @@ describe('serverConfigPresenter (#1036 Phase 1)', () => {
       expect((presented.data as Record<string, unknown>).tags).toEqual(['search', 'prod']);
     });
 
+    it('keeps repository and documentation links in the shared-user view (#1495)', () => {
+      const raw = {
+        ...buildRawServerConfig(),
+        repositoryUrl: 'https://github.com/owner/repo',
+        documentationUrl: 'https://docs.example.com',
+      };
+
+      const presented = presentServerForPrincipal(raw, alice);
+
+      const data = presented.data as Record<string, unknown>;
+      expect(data.repositoryUrl).toBe('https://github.com/owner/repo');
+      expect(data.documentationUrl).toBe('https://docs.example.com');
+    });
+
     it('withholds url, command and every other raw config field from shared users', () => {
       const body = JSON.stringify(presentServerForPrincipal(buildRawServerConfig(), alice));
       for (const withheld of [

@@ -55,7 +55,9 @@ MCPHub uses several configuration files:
       "env": {
         "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
         "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
-      }
+      },
+      "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+      "documentationUrl": "https://github.com/modelcontextprotocol/servers-archived/blob/main/src/slack/README.md"
     }
   }
 }
@@ -77,6 +79,8 @@ A server entry has the shape `"<server-name>": ServerConfig`. The relevant field
 | `sharedWithUserGroups` | string[] | no | Case-sensitive user-group names whose members can use this server when `visibility` is `group`. Administrators set `userGroups` on users through the user edit form or `PUT /api/users/:username`. Existing user-key and OAuth requests read current memberships. |
 | `description` | string | no | Free-form description displayed in the dashboard. |
 | `tags` | string[] | no | Labels for organizing the dashboard server list. Values are trimmed, compared case-insensitively, de-duplicated, and limited to 64 characters each. Tags are metadata only: they do not affect connections, MCP endpoints, or Groups. With database schema synchronization disabled, apply `docs/migrations/0009-server-tags.sql` before upgrading. |
+| `repositoryUrl` | string | no | Absolute `http(s)` URL of the server's source repository, shown as a link on the server card ([#1495](https://github.com/samanhappy/mcphub/issues/1495)). Metadata only: it does not affect connections, MCP endpoints, or Groups. With database schema synchronization disabled, apply `docs/migrations/0011-server-metadata-links.sql` before upgrading. |
+| `documentationUrl` | string | no | Absolute `http(s)` URL of the server's documentation, shown next to `repositoryUrl`. Same validation and limits as `repositoryUrl`. |
 | `options` | object | no | Per-server runtime options (see `src/types/index.ts`). |
 | `proxy` | object | no | Optional HTTP proxy settings (`url`, `noProxy`, etc.). |
 | `oauth` | object | no | Upstream OAuth client settings (used when the upstream server requires OAuth). |
@@ -969,7 +973,7 @@ For stdio servers, `startOnDemand: true` keeps the child process asleep until it
 
 File mode stores snapshots beside the settings file as `<settings-path>.capabilities.json`; mount that directory on persistent storage to retain snapshots across container replacement. Database mode stores them in the `capability_snapshots` table. Snapshots stay outside settings exports and contain no launch configuration or credentials. Tool definitions themselves may contain private upstream metadata, so protect snapshot storage like other runtime data.
 
-The server-list and server-detail APIs expose `capabilityCache.state` (`fresh`, `stale`, or `missing`) and `capabilityCache.capturedAt` when available. Here `fresh` means configuration-matching last-known discovery, not guaranteed current upstream state. Launch configuration, effective child environment, and personal credential binding changes invalidate a snapshot. Server/group tool overrides and permissions are reapplied when listing; they are never frozen into the snapshot. Personal snapshots are isolated by authenticated user, and listing still requires a valid binding and current server access.
+The server-list and server-detail APIs expose `capabilityCache.state` (`fresh`, `stale`, or `missing`) and `capabilityCache.capturedAt` when available. Here `fresh` means configuration-matching last-known discovery, not guaranteed current upstream state. Launch configuration, effective child environment, and personal credential binding changes invalidate a snapshot. The inherited `HOSTNAME`, which container runtimes change on every recreate, is ignored unless the server sets `env.HOSTNAME` or references `${HOSTNAME}` / `$HOSTNAME` in its launch configuration. Server/group tool overrides and permissions are reapplied when listing; they are never frozen into the snapshot. Personal snapshots are isolated by authenticated user, and listing still requires a valid binding and current server access.
 
 Missing or incompatible snapshots retain live discovery (startup priming for shared stdio servers, first authenticated use for personal servers). No fleet-wide background refresh is scheduled. Unchanged configuration cannot detect an upstream package update or external permission change until the next live connection. Prompts and resources are not persisted in this phase; personal prompt/resource requests still connect live.
 

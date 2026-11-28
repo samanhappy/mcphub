@@ -148,6 +148,34 @@ function parseBasePacingDelayForUpdate(
 const isSimilarityThreshold = (value: number) => value >= 0 && value <= 1;
 const isFullSchemaTopN = (value: number) => Number.isInteger(value) && value >= 0;
 
+const CODE_MODE_DEFAULTS = {
+  enabled: false,
+  readOnlyVariantEnabled: true,
+  timeoutMs: 30000,
+  cpuTimeoutMs: 5000,
+  memoryLimitMb: 32,
+  maxToolCalls: 20,
+  maxSourceBytes: 32768,
+  maxLogBytes: 16384,
+  maxToolResultBytes: 524288,
+  maxOutputBytes: 65536,
+  maxConcurrentRuns: 4,
+};
+
+const CODE_MODE_LIMIT_RANGES = {
+  timeoutMs: { min: 500, max: 120000 },
+  cpuTimeoutMs: { min: 100, max: 30000 },
+  memoryLimitMb: { min: 4, max: 256 },
+  maxToolCalls: { min: 1, max: 100 },
+  maxSourceBytes: { min: 256, max: 262144 },
+  maxLogBytes: { min: 256, max: 131072 },
+  maxToolResultBytes: { min: 4096, max: 4194304 },
+  maxOutputBytes: { min: 1024, max: 1048576 },
+  maxConcurrentRuns: { min: 1, max: 32 },
+} as const;
+
+type CodeModeLimitField = keyof typeof CODE_MODE_LIMIT_RANGES;
+
 const TOOL_DEFINITION_FIELDS = [
   'title',
   'annotations',
@@ -178,6 +206,15 @@ type SmartRoutingFormValues = {
   embeddingDocumentPrefix: string;
   similarityThreshold: string;
   fullSchemaTopN: string;
+  codeModeTimeoutMs: string;
+  codeModeCpuTimeoutMs: string;
+  codeModeMemoryLimitMb: string;
+  codeModeMaxToolCalls: string;
+  codeModeMaxSourceBytes: string;
+  codeModeMaxLogBytes: string;
+  codeModeMaxToolResultBytes: string;
+  codeModeMaxOutputBytes: string;
+  codeModeMaxConcurrentRuns: string;
 };
 
 interface SmartRoutingSectionProps {
@@ -239,6 +276,33 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
           : '',
       fullSchemaTopN:
         smartRoutingConfig.fullSchemaTopN != null ? String(smartRoutingConfig.fullSchemaTopN) : '',
+      codeModeTimeoutMs: String(
+        smartRoutingConfig.codeMode?.timeoutMs ?? CODE_MODE_DEFAULTS.timeoutMs,
+      ),
+      codeModeCpuTimeoutMs: String(
+        smartRoutingConfig.codeMode?.cpuTimeoutMs ?? CODE_MODE_DEFAULTS.cpuTimeoutMs,
+      ),
+      codeModeMemoryLimitMb: String(
+        smartRoutingConfig.codeMode?.memoryLimitMb ?? CODE_MODE_DEFAULTS.memoryLimitMb,
+      ),
+      codeModeMaxToolCalls: String(
+        smartRoutingConfig.codeMode?.maxToolCalls ?? CODE_MODE_DEFAULTS.maxToolCalls,
+      ),
+      codeModeMaxSourceBytes: String(
+        smartRoutingConfig.codeMode?.maxSourceBytes ?? CODE_MODE_DEFAULTS.maxSourceBytes,
+      ),
+      codeModeMaxLogBytes: String(
+        smartRoutingConfig.codeMode?.maxLogBytes ?? CODE_MODE_DEFAULTS.maxLogBytes,
+      ),
+      codeModeMaxToolResultBytes: String(
+        smartRoutingConfig.codeMode?.maxToolResultBytes ?? CODE_MODE_DEFAULTS.maxToolResultBytes,
+      ),
+      codeModeMaxOutputBytes: String(
+        smartRoutingConfig.codeMode?.maxOutputBytes ?? CODE_MODE_DEFAULTS.maxOutputBytes,
+      ),
+      codeModeMaxConcurrentRuns: String(
+        smartRoutingConfig.codeMode?.maxConcurrentRuns ?? CODE_MODE_DEFAULTS.maxConcurrentRuns,
+      ),
     }),
     [smartRoutingConfig],
   );
@@ -314,6 +378,28 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
       const label = t('settings.fullSchemaTopN');
       invalidLabels.push(label);
       errors.fullSchemaTopN = t('settings.invalidNumberInput');
+    }
+
+    const codeModeChecks: Array<[keyof SmartRoutingFormValues, CodeModeLimitField, string]> = [
+      ['codeModeTimeoutMs', 'timeoutMs', t('settings.codeModeTimeoutMs')],
+      ['codeModeCpuTimeoutMs', 'cpuTimeoutMs', t('settings.codeModeCpuTimeoutMs')],
+      ['codeModeMemoryLimitMb', 'memoryLimitMb', t('settings.codeModeMemoryLimitMb')],
+      ['codeModeMaxToolCalls', 'maxToolCalls', t('settings.codeModeMaxToolCalls')],
+      ['codeModeMaxSourceBytes', 'maxSourceBytes', t('settings.codeModeMaxSourceBytes')],
+      ['codeModeMaxLogBytes', 'maxLogBytes', t('settings.codeModeMaxLogBytes')],
+      ['codeModeMaxToolResultBytes', 'maxToolResultBytes', t('settings.codeModeMaxToolResultBytes')],
+      ['codeModeMaxOutputBytes', 'maxOutputBytes', t('settings.codeModeMaxOutputBytes')],
+      ['codeModeMaxConcurrentRuns', 'maxConcurrentRuns', t('settings.codeModeMaxConcurrentRuns')],
+    ];
+
+    for (const [formKey, field, label] of codeModeChecks) {
+      const raw = String(draft.values[formKey]).trim();
+      const parsed = Number(raw);
+      const { min, max } = CODE_MODE_LIMIT_RANGES[field];
+      if (!raw || !Number.isInteger(parsed) || parsed < min || parsed > max) {
+        invalidLabels.push(label);
+        errors[formKey] = t('settings.validationRange', { field: label, min, max });
+      }
     }
 
     if (invalidLabels.length > 0) {
@@ -397,6 +483,29 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
       isFullSchemaTopN,
     );
     if (parsedTopN !== undefined) updates.fullSchemaTopN = parsedTopN;
+
+    const currentCodeMode = smartRoutingConfig.codeMode ?? CODE_MODE_DEFAULTS;
+    const codeModeDiff: Record<string, number> = {};
+    const codeModeMap: Array<[keyof SmartRoutingFormValues, CodeModeLimitField]> = [
+      ['codeModeTimeoutMs', 'timeoutMs'],
+      ['codeModeCpuTimeoutMs', 'cpuTimeoutMs'],
+      ['codeModeMemoryLimitMb', 'memoryLimitMb'],
+      ['codeModeMaxToolCalls', 'maxToolCalls'],
+      ['codeModeMaxSourceBytes', 'maxSourceBytes'],
+      ['codeModeMaxLogBytes', 'maxLogBytes'],
+      ['codeModeMaxToolResultBytes', 'maxToolResultBytes'],
+      ['codeModeMaxOutputBytes', 'maxOutputBytes'],
+      ['codeModeMaxConcurrentRuns', 'maxConcurrentRuns'],
+    ];
+    for (const [formKey, field] of codeModeMap) {
+      const parsed = Number(String(v[formKey]).trim());
+      if (Number.isInteger(parsed) && parsed !== currentCodeMode[field]) {
+        codeModeDiff[field] = parsed;
+      }
+    }
+    if (Object.keys(codeModeDiff).length > 0) {
+      updates.codeMode = { ...currentCodeMode, ...codeModeDiff };
+    }
 
     return updates;
   };
@@ -1098,6 +1207,118 @@ export const SmartRoutingSection: React.FC<SmartRoutingSectionProps> = ({
               void updateSmartRoutingConfig('progressiveDisclosure', checked)
             }
           />
+
+          <SettingsRow
+            label={t('settings.codeModeTitle')}
+            description={t('settings.codeModeDescription')}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-[var(--hub-ink)]">
+                    {t('settings.codeModeEnable')}
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--hub-ink-3)]">
+                    {t('settings.codeModeEnableDescription')}
+                  </p>
+                  {renderEnvOverrideWarning('codeMode.enabled')}
+                </div>
+                <Switch
+                  id="sr-code-mode-enabled"
+                  disabled={busy || !smartRoutingConfig.enabled}
+                  checked={smartRoutingConfig.codeMode?.enabled ?? false}
+                  onCheckedChange={(checked) =>
+                    void updateSmartRoutingConfig('codeMode', {
+                      ...(smartRoutingConfig.codeMode ?? CODE_MODE_DEFAULTS),
+                      enabled: checked,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--hub-line-2)] pt-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-[var(--hub-ink)]">
+                    {t('settings.codeModeReadOnlyEnable')}
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--hub-ink-3)]">
+                    {t('settings.codeModeReadOnlyDescription')}
+                  </p>
+                  {renderEnvOverrideWarning('codeMode.readOnlyVariantEnabled')}
+                </div>
+                <Switch
+                  id="sr-code-mode-readonly"
+                  disabled={
+                    busy || !smartRoutingConfig.enabled || !(smartRoutingConfig.codeMode?.enabled ?? false)
+                  }
+                  checked={smartRoutingConfig.codeMode?.readOnlyVariantEnabled ?? true}
+                  onCheckedChange={(checked) =>
+                    void updateSmartRoutingConfig('codeMode', {
+                      ...(smartRoutingConfig.codeMode ?? CODE_MODE_DEFAULTS),
+                      readOnlyVariantEnabled: checked,
+                    })
+                  }
+                />
+              </div>
+
+              <SettingsAlert variant="warning">
+                {t('settings.codeModeReadOnlyAdvisoryWarning')}
+              </SettingsAlert>
+
+              <div className="grid gap-3 border-t border-[var(--hub-line-2)] pt-3 md:grid-cols-3">
+                {(
+                  [
+                    ['codeModeTimeoutMs', 'timeoutMs', 'settings.codeModeTimeoutMs'],
+                    ['codeModeCpuTimeoutMs', 'cpuTimeoutMs', 'settings.codeModeCpuTimeoutMs'],
+                    ['codeModeMemoryLimitMb', 'memoryLimitMb', 'settings.codeModeMemoryLimitMb'],
+                    ['codeModeMaxToolCalls', 'maxToolCalls', 'settings.codeModeMaxToolCalls'],
+                    ['codeModeMaxSourceBytes', 'maxSourceBytes', 'settings.codeModeMaxSourceBytes'],
+                    ['codeModeMaxLogBytes', 'maxLogBytes', 'settings.codeModeMaxLogBytes'],
+                    [
+                      'codeModeMaxToolResultBytes',
+                      'maxToolResultBytes',
+                      'settings.codeModeMaxToolResultBytes',
+                    ],
+                    ['codeModeMaxOutputBytes', 'maxOutputBytes', 'settings.codeModeMaxOutputBytes'],
+                    [
+                      'codeModeMaxConcurrentRuns',
+                      'maxConcurrentRuns',
+                      'settings.codeModeMaxConcurrentRuns',
+                    ],
+                  ] as const
+                ).map(([formKey, limitField, labelKey]) => {
+                  const range = CODE_MODE_LIMIT_RANGES[limitField];
+                  return (
+                    <div key={formKey}>
+                      <label
+                        htmlFor={`sr-${formKey}`}
+                        className="mb-1 block text-xs font-medium text-[var(--hub-ink-2)]"
+                      >
+                        {t(labelKey)}
+                      </label>
+                      <input
+                        id={`sr-${formKey}`}
+                        type="number"
+                        min={range.min}
+                        max={range.max}
+                        step="1"
+                        value={draft.values[formKey]}
+                        onChange={(e) => setField(formKey, e.target.value)}
+                        className={settingsInputClass}
+                        disabled={busy}
+                      />
+                      {fieldErrors[formKey] && (
+                        <p role="alert" className="mt-1 text-xs text-[var(--hub-err)]">
+                          {fieldErrors[formKey]}
+                        </p>
+                      )}
+                      {renderEnvOverrideWarning(`codeMode.${limitField}`)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </SettingsRow>
         </div>
 
         <SettingsSaveBar

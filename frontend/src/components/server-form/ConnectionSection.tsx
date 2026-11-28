@@ -120,6 +120,40 @@ export const ConnectionSection: React.FC<ConnectionSectionProps> = ({
               placeholder={t('server.tagsPlaceholder')}
             />
           </div>
+
+          <div className="md:col-span-1">
+            <FieldLabel htmlFor="server-repository-url">{t('server.repositoryUrl')}</FieldLabel>
+            <input
+              type="url"
+              name="repositoryUrl"
+              id="server-repository-url"
+              value={formData.repositoryUrl || ''}
+              onChange={(e) => {
+                onFieldMutated();
+                setFormData((prev) => ({ ...prev, repositoryUrl: e.target.value }));
+              }}
+              className={FORM_CONTROL_CLASS}
+              placeholder={t('server.repositoryUrlPlaceholder')}
+            />
+          </div>
+
+          <div className="md:col-span-1">
+            <FieldLabel htmlFor="server-documentation-url">
+              {t('server.documentationUrl')}
+            </FieldLabel>
+            <input
+              type="url"
+              name="documentationUrl"
+              id="server-documentation-url"
+              value={formData.documentationUrl || ''}
+              onChange={(e) => {
+                onFieldMutated();
+                setFormData((prev) => ({ ...prev, documentationUrl: e.target.value }));
+              }}
+              className={FORM_CONTROL_CLASS}
+              placeholder={t('server.documentationUrlPlaceholder')}
+            />
+          </div>
         </div>
       </SectionCard>
 

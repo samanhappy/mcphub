@@ -3,6 +3,7 @@ import { ServerDao, ServerConfigWithName, PaginatedResult } from './index.js';
 import { ServerRepository } from '../db/repositories/ServerRepository.js';
 import { ServerConfig } from '../types/index.js';
 import {
+  readStoredMetadataUrl,
   readStoredServerTags,
   unpackStartOnDemandOptions,
   mirrorStartOnDemandIntoOptions,
@@ -96,6 +97,8 @@ export class ServerDaoDbImpl implements ServerDao {
       type: entity.type,
       description: entity.description,
       tags: entity.tags,
+      repositoryUrl: entity.repositoryUrl,
+      documentationUrl: entity.documentationUrl,
       url: entity.url,
       command: entity.command,
       args: entity.args,
@@ -152,6 +155,8 @@ export class ServerDaoDbImpl implements ServerDao {
     assignNullable('type');
     assignNullable('description');
     assignNullable('tags');
+    assignNullable('repositoryUrl');
+    assignNullable('documentationUrl');
     assignNullable('url');
     assignNullable('command');
     assignNullable('args');
@@ -297,6 +302,8 @@ export class ServerDaoDbImpl implements ServerDao {
     type?: string;
     description?: string;
     tags?: string[];
+    repositoryUrl?: string;
+    documentationUrl?: string;
     url?: string;
     command?: string;
     args?: string[];
@@ -338,6 +345,12 @@ export class ServerDaoDbImpl implements ServerDao {
       type: server.type as 'stdio' | 'sse' | 'streamable-http' | 'openapi' | undefined,
       description: server.description,
       tags: readStoredServerTags(server.name, server.tags),
+      repositoryUrl: readStoredMetadataUrl(server.name, 'repositoryUrl', server.repositoryUrl),
+      documentationUrl: readStoredMetadataUrl(
+        server.name,
+        'documentationUrl',
+        server.documentationUrl,
+      ),
       url: server.url,
       command: server.command,
       args: server.args,

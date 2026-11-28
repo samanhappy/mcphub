@@ -7,6 +7,12 @@ import {
   TOOL_DEFINITION_FIELDS,
   type ToolDefinitionField,
 } from '../constants/smartRoutingDefaults.js';
+import {
+  DEFAULT_CODE_MODE_CONFIG,
+  parseCodeModeInteger,
+  type ResolvedCodeModeConfig,
+  type SmartRoutingCodeModeConfig,
+} from '../services/codeMode/types.js';
 
 /**
  * Smart routing configuration interface
@@ -107,6 +113,11 @@ export interface SmartRoutingConfig {
    * those. Default: DEFAULT_TOOL_DEFINITION_FIELDS (title, annotations).
    */
   toolDefinitionFields?: readonly ToolDefinitionField[];
+  /**
+   * Opt-in Code Mode configuration for $smart / $smart/<group> routes.
+   * Disabled by default.
+   */
+  codeMode?: ResolvedCodeModeConfig;
   /**
    * Fields whose effective value currently comes from an environment variable
    * instead of the persisted (dashboard) setting.
@@ -435,6 +446,73 @@ export async function getSmartRoutingConfig(): Promise<SmartRoutingConfig> {
         return fields;
       },
     ),
+
+    codeMode: (() => {
+      const cm: SmartRoutingCodeModeConfig = smartRoutingSettings.codeMode || {};
+      const intField = (
+        field: keyof typeof DEFAULT_CODE_MODE_CONFIG &
+          (
+            | 'timeoutMs'
+            | 'cpuTimeoutMs'
+            | 'memoryLimitMb'
+            | 'maxToolCalls'
+            | 'maxSourceBytes'
+            | 'maxLogBytes'
+            | 'maxToolResultBytes'
+            | 'maxOutputBytes'
+            | 'maxConcurrentRuns'
+          ),
+        envVarName: string,
+      ) =>
+        cfg<number>(
+          `codeMode.${field}`,
+          { [envVarName]: process.env[envVarName] },
+          cm[field],
+          DEFAULT_CODE_MODE_CONFIG[field],
+          (value: unknown) => {
+            const parsed = parseCodeModeInteger(value, field);
+            if (parsed === undefined) {
+              throw new Error(`Invalid value for codeMode.${field}`);
+            }
+            return parsed;
+          },
+        );
+
+      return {
+        enabled: cfg(
+          'codeMode.enabled',
+          { SMART_ROUTING_CODE_MODE_ENABLED: process.env.SMART_ROUTING_CODE_MODE_ENABLED },
+          cm.enabled,
+          DEFAULT_CODE_MODE_CONFIG.enabled,
+          parseBooleanEnvVar,
+        ),
+        readOnlyVariantEnabled: cfg(
+          'codeMode.readOnlyVariantEnabled',
+          {
+            SMART_ROUTING_CODE_MODE_READ_ONLY_ENABLED:
+              process.env.SMART_ROUTING_CODE_MODE_READ_ONLY_ENABLED,
+          },
+          cm.readOnlyVariantEnabled,
+          DEFAULT_CODE_MODE_CONFIG.readOnlyVariantEnabled,
+          parseBooleanEnvVar,
+        ),
+        timeoutMs: intField('timeoutMs', 'SMART_ROUTING_CODE_MODE_TIMEOUT_MS'),
+        cpuTimeoutMs: intField('cpuTimeoutMs', 'SMART_ROUTING_CODE_MODE_CPU_TIMEOUT_MS'),
+        memoryLimitMb: intField('memoryLimitMb', 'SMART_ROUTING_CODE_MODE_MEMORY_LIMIT_MB'),
+        maxToolCalls: intField('maxToolCalls', 'SMART_ROUTING_CODE_MODE_MAX_TOOL_CALLS'),
+        maxSourceBytes: intField('maxSourceBytes', 'SMART_ROUTING_CODE_MODE_MAX_SOURCE_BYTES'),
+        maxLogBytes: intField('maxLogBytes', 'SMART_ROUTING_CODE_MODE_MAX_LOG_BYTES'),
+        maxToolResultBytes: intField(
+          'maxToolResultBytes',
+          'SMART_ROUTING_CODE_MODE_MAX_TOOL_RESULT_BYTES',
+        ),
+        maxOutputBytes: intField('maxOutputBytes', 'SMART_ROUTING_CODE_MODE_MAX_OUTPUT_BYTES'),
+        maxConcurrentRuns: intField(
+          'maxConcurrentRuns',
+          'SMART_ROUTING_CODE_MODE_MAX_CONCURRENT_RUNS',
+        ),
+      };
+    })(),
 
     envOverriddenFields,
   };

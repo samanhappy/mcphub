@@ -505,6 +505,8 @@ export interface BearerKey {
   allowedServers?: string[]; // Allowed server names when accessType === 'servers' or 'custom'
   excludedGroups?: string[]; // Excluded group names when accessType === 'exclude' (system keys only)
   excludedServers?: string[]; // Excluded server names when accessType === 'exclude' (system keys only)
+  expiresAt?: string | null; // Optional UTC ISO-8601 expiry timestamp (null/undefined means no expiry)
+  lastUsedAt?: string | null; // Optional UTC ISO-8601 timestamp of most recent authorized use
 }
 
 // Represents the settings for MCP servers
@@ -609,6 +611,8 @@ export interface ServerConfig {
   type?: 'stdio' | 'sse' | 'streamable-http' | 'openapi'; // Type of server
   description?: string; // Optional server note/description for management UI
   tags?: string[];
+  repositoryUrl?: string; // Optional link to the server's source repository (#1495)
+  documentationUrl?: string; // Optional link to the server's documentation (#1495)
   url?: string; // URL for SSE or streamable HTTP servers
   command?: string; // Command to execute for stdio-based servers
   args?: string[]; // Arguments for the command

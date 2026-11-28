@@ -49,9 +49,9 @@ import {
 } from '../services/mcpService.js';
 import { clearAllCaches } from '../utils/cacheUtils.js';
 import {
-  removeServerToolEmbeddings,
-  syncAllServerToolsEmbeddings,
-} from '../services/vectorSearchService.js';
+  enqueueServerCleanup,
+  requestFullResync,
+} from '../services/embeddingSyncScheduler.js';
 import { createSafeJSON } from '../utils/serialization.js';
 import appConfig, { getNameSeparator } from '../config/index.js';
 import { cloneDefaultOAuthServerConfig } from '../constants/oauthServerDefaults.js';
@@ -95,6 +95,12 @@ import {
   parseToolDefinitionFields,
 } from '../utils/smartRouting.js';
 import { TOOL_DEFINITION_FIELDS } from '../constants/smartRoutingDefaults.js';
+import {
+  CODE_MODE_LIMIT_BOUNDS,
+  normalizeCodeModeConfig,
+  parseCodeModeInteger,
+  type CodeModeNumericField,
+} from '../services/codeMode/types.js';
 import { previewOpenApiToolStats } from '../services/openApiToolStatsService.js';
 import { logger } from '../utils/logger.js';
 import { maskBearerKey } from '../utils/bearerKeyToken.js';
@@ -428,8 +434,8 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
     // field→env-var mapping lives in exactly one place instead of being repeated
     // here; this endpoint is admin-only and low-traffic, so the extra DAO read is
     // not worth optimising away.
-    const smartRoutingEnvOverriddenFields =
-      (await getSmartRoutingConfig()).envOverriddenFields ?? [];
+    const effectiveSmartRoutingConfig = await getSmartRoutingConfig();
+    const smartRoutingEnvOverriddenFields = effectiveSmartRoutingConfig.envOverriddenFields ?? [];
 
     if (!systemConfig.toolResultCompression) {
       systemConfig.toolResultCompression = {
@@ -451,6 +457,9 @@ export const getAllSettings = async (req: Request, res: Response): Promise<void>
           ? {
               smartRouting: {
                 ...systemConfig.smartRouting,
+                codeMode: normalizeCodeModeConfig(
+                  systemConfig.smartRouting.codeMode ?? effectiveSmartRoutingConfig.codeMode,
+                ),
                 envOverriddenFields: smartRoutingEnvOverriddenFields,
               },
             }
@@ -1257,7 +1266,7 @@ export const updateServer = async (req: Request, res: Response): Promise<void> =
       // (with a moved binding, or after a user binds again), or on a reindex.
       // A failure here must not abort the rename.
       try {
-        await removeServerToolEmbeddings(name);
+        await enqueueServerCleanup(name);
       } catch (error) {
         logger.warn('Failed to remove embeddings for renamed server', {
           serverName: name,
@@ -1836,13 +1845,13 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
       res.status(400).json({ success: false, message: 'Enabled status must be a boolean' });
       return;
     }
-    if (inputParams !== undefined && !Array.isArray(inputParams)) {
+    if (inputParams !== undefined && inputParams !== null && !Array.isArray(inputParams)) {
       res
         .status(400)
         .json({ success: false, message: 'inputParams must be an array of parameter names' });
       return;
     }
-    if (outputParams !== undefined && !Array.isArray(outputParams)) {
+    if (outputParams !== undefined && outputParams !== null && !Array.isArray(outputParams)) {
       res
         .status(400)
         .json({ success: false, message: 'outputParams must be an array of parameter names' });
@@ -1857,12 +1866,23 @@ export const updateToolFileStaging = async (req: Request, res: Response): Promis
     const existing = tools[configKey];
     const existingFileStaging = existing?.fileStaging;
     // Only the supplied lists change; a bare enable/disable keeps the stored
-    // declaration (R33: disabling must not drop params).
+    // declaration (R33: disabling must not drop params). Passing null clears
+    // that direction explicitly, while [] remains a 400 validation error.
     const fileStaging = normalizeToolFileStaging(
       {
         enabled,
-        inputParams: inputParams !== undefined ? inputParams : existingFileStaging?.inputParams,
-        outputParams: outputParams !== undefined ? outputParams : existingFileStaging?.outputParams,
+        inputParams:
+          inputParams === undefined
+            ? existingFileStaging?.inputParams
+            : inputParams === null
+              ? undefined
+              : inputParams,
+        outputParams:
+          outputParams === undefined
+            ? existingFileStaging?.outputParams
+            : outputParams === null
+              ? undefined
+              : outputParams,
       },
       configKey,
     );
@@ -1962,7 +1982,8 @@ export const updateServerStaging = async (req: Request, res: Response): Promise<
     const existing = server.staging ?? {};
     const staging = normalizeServerStaging({
       shared: shared !== undefined ? shared : existing.shared,
-      adapter: adapter !== undefined ? adapter : existing.adapter,
+      adapter:
+        adapter === undefined ? existing.adapter : adapter === null ? undefined : adapter,
     });
     assertStagingConfigConsistent({ ...server, staging });
 
@@ -2147,9 +2168,12 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
     const tools: DescribableConfig = { ...(server.tools || {}) };
     const configKey = findToolConfigKey(tools, serverName, toolName, liveToolNames(serverName));
     const { hiddenParams: _previous, ...toolConfig } = tools[configKey] ?? { enabled: true };
-    const nextConfig = hiddenParams.length
-      ? { ...toolConfig, hiddenParams: [...new Set<string>(hiddenParams)] }
-      : toolConfig;
+    const nextConfig = normalizeToolConfig(
+      configKey,
+      hiddenParams.length
+        ? { ...toolConfig, hiddenParams: [...new Set<string>(hiddenParams)] }
+        : toolConfig,
+    );
     if (nextConfig.enabled !== false && Object.keys(nextConfig).every((key) => key === 'enabled')) {
       delete tools[configKey];
     } else {
@@ -2179,6 +2203,13 @@ export const updateToolHiddenParams = async (req: Request, res: Response): Promi
       message: `Tool ${toolName} hidden parameters updated successfully`,
     });
   } catch (error) {
+    if (error instanceof ServerConfigValidationError) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -2391,7 +2422,8 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         smartRouting.embeddingMaxTokens === null ||
         smartRouting.similarityThreshold !== undefined ||
         smartRouting.fullSchemaTopN !== undefined ||
-        smartRouting.toolDefinitionFields !== undefined);
+        smartRouting.toolDefinitionFields !== undefined ||
+        (smartRouting.codeMode !== undefined && typeof smartRouting.codeMode === 'object'));
 
     const hasToolResultCompressionUpdate =
       toolResultCompression &&
@@ -2881,6 +2913,54 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
         systemConfig.smartRouting.toolDefinitionFields = fields;
       }
 
+      if (smartRouting.codeMode && typeof smartRouting.codeMode === 'object') {
+        const incoming = smartRouting.codeMode as Record<string, unknown>;
+        const nextCodeMode = {
+          ...(systemConfig.smartRouting.codeMode ?? {}),
+        } as Record<string, unknown>;
+
+        if (incoming.enabled !== undefined) {
+          if (typeof incoming.enabled !== 'boolean') {
+            res.status(400).json({
+              success: false,
+              message: 'smartRouting.codeMode.enabled must be a boolean',
+            });
+            return;
+          }
+          nextCodeMode.enabled = incoming.enabled;
+        }
+
+        if (incoming.readOnlyVariantEnabled !== undefined) {
+          if (typeof incoming.readOnlyVariantEnabled !== 'boolean') {
+            res.status(400).json({
+              success: false,
+              message: 'smartRouting.codeMode.readOnlyVariantEnabled must be a boolean',
+            });
+            return;
+          }
+          nextCodeMode.readOnlyVariantEnabled = incoming.readOnlyVariantEnabled;
+        }
+
+        for (const field of Object.keys(CODE_MODE_LIMIT_BOUNDS) as CodeModeNumericField[]) {
+          if (incoming[field] === null) {
+            delete nextCodeMode[field];
+          } else if (incoming[field] !== undefined) {
+            const parsed = parseCodeModeInteger(incoming[field], field);
+            if (parsed === undefined) {
+              const { min, max } = CODE_MODE_LIMIT_BOUNDS[field];
+              res.status(400).json({
+                success: false,
+                message: `smartRouting.codeMode.${field} must be an integer between ${min} and ${max}`,
+              });
+              return;
+            }
+            nextCodeMode[field] = parsed;
+          }
+        }
+
+        systemConfig.smartRouting.codeMode = normalizeCodeModeConfig(nextCodeMode);
+      }
+
       // Check if we need to sync embeddings
       const isNowEnabled = systemConfig.smartRouting.enabled || false;
       const hasConfigChanged =
@@ -3172,10 +3252,12 @@ export const updateSystemConfig = async (req: Request, res: Response): Promise<v
       // If smart routing configuration changed, sync all existing server tools
       if (needsSync) {
         logger.log('SmartRouting configuration changed - syncing all existing server tools...');
-        // Run sync asynchronously to avoid blocking the response
-        syncAllServerToolsEmbeddings().catch((error) => {
-          logger.error('Failed to sync server tools embeddings:', error);
-        });
+        // Run sync asynchronously via the centralized scheduler to avoid blocking the response
+        requestFullResync('SmartRouting configuration changed', { bumpGeneration: true }).catch(
+          (error) => {
+            logger.error('Failed to sync server tools embeddings:', error);
+          },
+        );
       }
     } catch (saveError) {
       logger.error('Failed to save system configuration:', saveError);

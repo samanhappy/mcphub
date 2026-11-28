@@ -443,4 +443,48 @@ describe('updateToolHiddenParams', () => {
       arguments: { url: 'u', alexandria: {} },
     });
   });
+
+  it('rejects hiding a parameter that is actively declared for file staging', async () => {
+    toolsStore.firecrawl = {
+      scrape: {
+        enabled: true,
+        fileStaging: { enabled: true, inputParams: ['profile'] },
+      },
+    };
+    const res = mockRes();
+
+    await updateToolHiddenParams(
+      request('firecrawl-scrape', { hiddenParams: ['profile'] }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: expect.stringContaining('cannot also be hidden'),
+      }),
+    );
+    expect(controllerServerDao.updateTools).not.toHaveBeenCalled();
+  });
+
+  it('allows hiding a parameter when file staging is disabled on the tool', async () => {
+    toolsStore.firecrawl = {
+      scrape: {
+        enabled: true,
+        fileStaging: { enabled: false, inputParams: ['profile'] },
+      },
+    };
+    const res = mockRes();
+
+    await updateToolHiddenParams(
+      request('firecrawl-scrape', { hiddenParams: ['profile'] }),
+      res,
+    );
+
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, data: { hiddenParams: ['profile'] } }),
+    );
+    expect(controllerServerDao.updateTools).toHaveBeenCalledTimes(1);
+  });
 });

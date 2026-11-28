@@ -207,7 +207,7 @@ export const getMcpSettingsJson = async (req: Request, res: Response): Promise<v
         userConfigs,
         oauthClients: omitSensitiveFields(oauthClients, ['clientSecret']),
         oauthTokens: omitSensitiveFields(oauthTokens, ['accessToken', 'refreshToken']),
-        bearerKeys: omitSensitiveFields(bearerKeys, ['token', 'tokenHash']),
+        bearerKeys: omitSensitiveFields(bearerKeys, ['token', 'tokenHash', 'lastUsedAt']),
       };
 
       res.json({

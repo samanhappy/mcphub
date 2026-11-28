@@ -1,6 +1,6 @@
 FROM node:22-slim
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 COPY package.json pnpm-lock.yaml .pnpmfile.cjs ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile --ignore-scripts

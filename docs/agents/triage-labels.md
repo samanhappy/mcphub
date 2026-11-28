@@ -1,15 +1,90 @@
-# Triage Labels
+# Triage labels
 
-The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
+Use four independent dimensions for open issues and PRs: **Type, Area, Priority, Next action**. Labels are a shared queue for maintainers, contributors and agents, not a promise to ship a feature.
 
-| Label in mattpocock/skills | Label in our tracker | Meaning                                  |
-| -------------------------- | -------------------- | ---------------------------------------- |
-| `needs-triage`             | `needs-triage`       | Maintainer needs to evaluate this issue  |
-| `needs-info`               | `needs-info`         | Waiting on reporter for more information |
-| `ready-for-agent`          | `ready-for-agent`    | Fully specified, ready for an AFK agent  |
-| `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
-| `wontfix`                  | `wontfix`            | Will not be actioned                     |
+## Type (one primary label)
 
-When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
+| Label | Meaning |
+| --- | --- |
+| `bug` | Incorrect behavior or regression |
+| `enhancement` | New capability or improvement |
+| `documentation` | Documentation work |
+| `question` | Usage or support question |
+| `refactor` | Technical debt or internal changes |
+| `exploration` | Research or feasibility study |
 
-Edit the right-hand column to match whatever vocabulary you actually use.
+## Area (one primary, optional secondary)
+
+| Label | Scope |
+| --- | --- |
+| `area:skills` | Skills, built-in prompts/resources, MCP Apps |
+| `area:auth` | Identity, OAuth, SSO, permissions, credentials |
+| `area:core` | MCP protocol, connections, sessions, server lifecycle |
+| `area:governance` | Audit, activity, governance |
+| `area:registry` | Catalog, discovery, server metadata |
+| `area:search` | Embedding, vector search |
+| `area:deployment` | Deployment, Docker, build, supply chain |
+
+## Priority (zero or one; coordinator manages)
+
+| Label | Meaning |
+| --- | --- |
+| `priority:p0` | Critical security/availability issue; immediate attention |
+| `priority:p1` | Important defect or confirmed high-value work |
+| `priority:p2` | Normal improvement |
+| `priority:p3` | Low priority or long-term work |
+
+Unlabeled priority means undecided, not P2. The coordinator may set and revise ordinary priorities based on evidence and owner direction; workers recommend changes to the coordinator. Respect explicit owner priority decisions. Priority is not implementation authorization. Use the private advisory process for sensitive vulnerabilities.
+
+## Next action (exactly one after triage)
+
+The workflow label answers **who is responsible for the next action, and what is its progress?** It is not the entire task lifecycle. Use a single label from this table on a triaged open issue or PR; replace it when responsibility changes.
+
+| Label | Next action | Color family |
+| --- | --- | --- |
+| `owner:decision` | Maintainer decision, approval, access or closure needed | Purple |
+| `owner:review` | Maintainer review or acceptance of a reviewable deliverable | Purple |
+| `agent:pending` | Available for the agent to pick up and investigate, design or implement within authorization | Blue |
+| `agent:in-progress` | Agent has claimed the task and is actively working | Blue |
+| `user:feedback` | External reporter or contributor must provide information, respond or revise a contribution | Yellow |
+| `user:verification` | External user must validate a delivered fix or behavior | Yellow |
+| `deferred` | Explicitly postponed; no party needs to act now | Gray |
+
+An open issue or PR without a workflow label is untriaged. Closed/merged artifacts use GitHub's native state. Labels describe the current responsibility, not the author, assignee, or origin of the issue. A linked PR does not automatically imply owner review: a draft under active agent work stays in progress; if changes are requested from an external contributor, use user feedback; when a deliverable is ready for maintainer review, use owner review. A review-ready external PR not yet reviewed by a worker belongs in `agent:pending`. After changes are requested, use `user:feedback`; on a new head, return to the same worker for re-review. A related issue and PR may have different next actions but share a single claim; labels never authorize duplicate dispatch.
+
+Investigation, design and implementation are internal agent stages, not separate queue labels. Neither `agent:pending` nor `agent:in-progress` grants implementation authorization. Record the maintainer's explicit task or bounded standing approval in the issue, a linked comment or the authoritative task instructions. Without such approval, agents may investigate and propose but must not implement. See [issue tracker](issue-tracker.md) for the implementation gate and [GitHub coordination](github-coordination.md) for local task tracking and dispatch. Only the coordinator changes workflow labels; workers report proposed handoffs. A waiting label preserves the task's local binding without consuming active run concurrency.
+
+## Maintainer decision gate
+
+Do not use `owner:decision` as a backlog or a generic request to approve an uninvestigated proposal. Default triaged, actionable work to `agent:pending`. Keep `owner:decision` focused on high-leverage, irreversible, or blocking decisions (target ≤ 3 active items):
+
+1. **P0 / security / stability risks:** critical vulnerabilities, data corruption, or severe regressions.
+2. **Irreversible or boundary-crossing forks on active priority work:** breaking changes, security/auth/permission-boundary changes, or genuinely mutually-exclusive product/architecture forks where guessing risks wasted implementation.
+3. **Maintainer-only external actions:** releases, closing/rejecting external requests, CI/repo credentials or privileges, or cross-repo ownership.
+
+Unprioritized or non-current-milestone proposals must not accumulate in `owner:decision`; move or keep them as `deferred` (with maintainer confirmation when deferring) rather than using `owner:decision` as a backlog.
+
+Before applying `owner:decision`, verify all of these hold:
+
+- Necessary investigation is complete enough, including current behavior and related work, with evidence and remaining uncertainty.
+- A concrete maintainer-only decision or action from the categories above blocks further useful work.
+- Viable options, trade-offs and a recommendation are documented when relevant.
+- The issue body or a status comment records the exact requested decision or action.
+
+If any condition is missing, keep the issue in the agent queue unless another party is actually blocking progress. Related issues can share one decision record. Once a decision is made, record it and transfer the issue to the party responsible for the next action.
+
+## Skill compatibility
+
+| Skill role | MCPHub label / action |
+| --- | --- |
+| `needs-triage` | Leave untriaged or use `agent:pending` |
+| `needs-info` | `user:feedback` if an external user must respond; otherwise continue agent work |
+| `ready-for-agent` | `agent:pending`; implementation still requires recorded maintainer authorization |
+| `ready-for-human` | Retain as a human-only exclusion; use the appropriate owner workflow label for the next action |
+| `wontfix` | Retain for rejected work; close only with maintainer authorization |
+
+Preserve unrelated labels (e.g. `help wanted`, `good first issue`, `ready-for-human`). Do not create a second workflow label. Deprecated labels `agent:investigate`, `agent:ready`, `agent:needs-owner`, `agent:waiting-feedback`, and `agent:deferred` must not be applied to new work. When migrating legacy ready issues, first preserve the original explicit implementation approval in a durable issue record; the new pending label alone is not authorization.
+
+## Label maintenance
+
+Run `bash scripts/sync-issue-labels.sh` with an authenticated maintainer `gh` CLI to provision labels and synchronize their colors and descriptions. The script does not edit individual issues or delete old labels; retain old repository labels for historical issues unless the maintainer explicitly chooses to remove them.

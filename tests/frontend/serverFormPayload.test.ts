@@ -630,6 +630,46 @@ test('round-trips stored tools and staging so an edit cannot silently drop them 
   expect(payload.config.staging).toEqual(staging);
 });
 
+describe('buildServerPayload metadata links (#1495)', () => {
+  const formData = {
+    name: 'mongo',
+    url: '',
+    command: 'npx',
+    arguments: '',
+    args: ['-y', 'mongo-mcp'],
+    env: [],
+    headers: [],
+  } as ServerFormData;
+
+  it('sends trimmed repository and documentation links', () => {
+    const payload = buildServerPayload({
+      formData: {
+        ...formData,
+        repositoryUrl: '  https://github.com/owner/repo  ',
+        documentationUrl: 'https://docs.example.com',
+      },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(payload.config.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(payload.config.documentationUrl).toBe('https://docs.example.com');
+  });
+
+  it('clears links that were removed in the form', () => {
+    const payload = buildServerPayload({
+      formData: { ...formData, repositoryUrl: '', documentationUrl: '   ' },
+      serverType: 'stdio',
+      envVars: [],
+      headerVars: [],
+    });
+
+    expect(payload.config.repositoryUrl).toBeUndefined();
+    expect(payload.config.documentationUrl).toBeUndefined();
+  });
+});
+
 describe('buildServerPayload tags (#1506)', () => {
   it('sends normalized tags and an empty list when tags were cleared', () => {
     const formData = {

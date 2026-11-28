@@ -54,6 +54,7 @@
     "@apidevtools/swagger-parser": "^12.1.0",
     "@google/genai": "^1.44.0",
     "@huggingface/tokenizers": "^0.2.0",
+    "@jitl/quickjs-ng-wasmfile-release-sync": "^0.32.0",
     "@modelcontextprotocol/client": "2.1.0",
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.1.0",
@@ -96,13 +97,15 @@
     "pgvector": "^0.3.0",
     "postgres": "^3.4.7",
     "prom-client": "^15.1.3",
+    "quickjs-emscripten": "^0.32.0",
     "redis": "^5.12.1",
     "reflect-metadata": "^0.2.2",
     "tough-cookie": "^6.0.2",
     "tree-kill": "^1.2.2",
     "typeorm": "^1.1.0",
     "undici": "^7.28.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
@@ -160,13 +163,12 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vite": "^6.3.5",
-    "zod": "^4.4.3"
+    "vite": "^6.3.5"
   },
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@10.12.4+sha256.cadfd9e6c9fcc2cb76fe7c0779a5250b632898aea5f53d833a73690c77a778d9",
+  "packageManager": "pnpm@10.34.9+sha256.7e8a946108e7baab119e51d27c24d6178b46545422643dbc91e34e2f1ee32e0f",
   "pnpm": {
     "overrides": {
       "@hono/node-server": "^1.19.17",
@@ -189,7 +191,7 @@
       "express-rate-limit": "8.3.0",
       "flatted@3.3.3": "3.4.2",
       "glob@10.4.5": "10.5.0",
-      "handlebars@4.7.8": "4.7.9",
+      "handlebars": ">=4.7.10",
       "hono": "4.13.16",
       "ajv@6.12.6": "6.14.0",
       "ajv@8.17.1": "8.18.0",
@@ -205,9 +207,9 @@
       "picomatch@2.3.1": "2.3.2",
       "picomatch@4.0.3": "4.0.4",
       "postcss": "8.5.23",
+      "proxy-addr": ">=2.0.8",
       "qs": "6.16.0",
       "rollup": "4.59.0",
-      "tar@7.5.10": "7.5.13",
       "uuid": "14.0.3"
     },
     "ignoredBuiltDependencies": [

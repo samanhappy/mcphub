@@ -1,7 +1,10 @@
-import { replaceEnvVars } from '../config/index.js';
+import { expandEnvVars, replaceEnvVars } from '../config/index.js';
 import { getUserDao } from '../dao/index.js';
 import { hasCredentialTemplate } from '../utils/credentialTemplate.js';
 import type { ServerConfig } from '../types/index.js';
+
+/** PATH given to stdio children: the inherited PATH with its references expanded. */
+export const resolveStdioPath = (): string => expandEnvVars(process.env.PATH as string) || '';
 
 /** Ownerless operator configuration is trusted; missing owners fail closed. */
 export const getServerEnvironment = async (

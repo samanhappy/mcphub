@@ -323,6 +323,19 @@ describe('smartRouting config resolution', () => {
         similarityThreshold: undefined,
         fullSchemaTopN: undefined,
         toolDefinitionFields: ['title', 'annotations'],
+        codeMode: {
+          enabled: false,
+          readOnlyVariantEnabled: true,
+          timeoutMs: 30000,
+          cpuTimeoutMs: 5000,
+          memoryLimitMb: 32,
+          maxToolCalls: 20,
+          maxSourceBytes: 32768,
+          maxLogBytes: 16384,
+          maxToolResultBytes: 524288,
+          maxOutputBytes: 65536,
+          maxConcurrentRuns: 4,
+        },
         envOverriddenFields: [],
       });
     });

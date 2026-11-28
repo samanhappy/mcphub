@@ -42,7 +42,7 @@ import {
 } from './fileStaging/tools.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isReplicaMode } from '../utils/replicaMode.js';
-import { withKeyedLock, withReplicaLock } from './replicaLock.js';
+import { withKeyedLock, withLockConnection, withReplicaLock } from './replicaLock.js';
 import type { ToolPolicyAudit } from '../types/index.js';
 import { isSafePassthroughHeader } from '../utils/passthroughHeaders.js';
 import { observeToolCall } from './metricsService.js';
@@ -54,7 +54,11 @@ import {
   PersonalAuthorizationRequiredError,
 } from './personalOAuthService.js';
 import { preserveListFreshness, remainingListTtl } from '../utils/listFreshness.js';
-import { expandServerConfig, getServerEnvironment } from './serverConfigEnvironment.js';
+import {
+  expandServerConfig,
+  getServerEnvironment,
+  resolveStdioPath,
+} from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isHostedSkillUri, skillsAvailable } from './hostedSkillCatalog.js';
 import { readHostedSkillResource, registerSkillHandlers } from './mcpSkills.js';
@@ -152,7 +156,7 @@ import {
   UpstreamResourceTemplate,
   ToolFileStagingConfig,
 } from '../types/index.js';
-import { expandEnvVars, replaceEnvVars, getNameSeparator } from '../config/index.js';
+import { replaceEnvVars, getNameSeparator } from '../config/index.js';
 import config from '../config/index.js';
 import { validateMaxBufferSize } from '../utils/stdioOptions.js';
 import { validateServerName } from '../utils/serverNameValidation.js';
@@ -160,10 +164,11 @@ import { getGroup } from './sseService.js';
 import { mcpEventBus } from './mcpEventBus.js';
 import { getServerConfigInGroup, normalizeGroupServers } from './groupService.js';
 import {
-  removeServerToolEmbeddings,
-  removeToolEmbeddings,
-  saveToolsAsVectorEmbeddings,
-} from './vectorSearchService.js';
+  enqueueServerCleanup,
+  enqueueServerSync,
+  enqueueSingleToolSync,
+  enqueueToolRemoval,
+} from './embeddingSyncScheduler.js';
 import { OpenAPIClient } from '../clients/openapi.js';
 import { RequestContextService } from './requestContextService.js';
 import { getDataService } from './services.js';
@@ -179,6 +184,7 @@ import {
 } from '../dao/index.js';
 import { initializeAllOAuthClients } from './oauthService.js';
 import { createOAuthProvider, MCPHubOAuthProvider } from './mcpOAuthProvider.js';
+import { isBearerKeyExpired } from '../utils/bearerKeyExpiry.js';
 import { initSmartRoutingService, isSmartRoutingGroup } from './smartRoutingService.js';
 import { getActivityLoggingService } from './activityLoggingService.js';
 import { filterHostedTools } from './hostedAuthService.js';
@@ -253,11 +259,117 @@ const findProxychains4 = (): string | null => {
   return null;
 };
 
+let proxychainsTempDir: string | null = null;
+const trackedProxychainsConfigs = new Set<string>();
+const transportProxychainsConfigs = new WeakMap<object, string>();
+
+const ensureProxychainsTempDir = (): string => {
+  if (proxychainsTempDir && fs.existsSync(proxychainsTempDir)) {
+    fs.chmodSync(proxychainsTempDir, 0o700);
+    return proxychainsTempDir;
+  }
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcphub-proxychains-'));
+  fs.chmodSync(dir, 0o700);
+  proxychainsTempDir = dir;
+  return dir;
+};
+
+/**
+ * Remove a specific tracked proxychains4 temporary config file.
+ * Idempotent; retains the path for retry if unlinking fails with an error other than ENOENT.
+ */
+export const cleanupProxychainsConfigPath = (configPath: string): boolean => {
+  if (!trackedProxychainsConfigs.has(configPath)) {
+    return true;
+  }
+
+  try {
+    fs.unlinkSync(configPath);
+    trackedProxychainsConfigs.delete(configPath);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code === 'ENOENT') {
+      trackedProxychainsConfigs.delete(configPath);
+      return true;
+    }
+    logger.warn(`Failed to remove proxychains4 config: ${configPath}`, error);
+    return false;
+  }
+};
+
+/**
+ * Remove all tracked proxychains4 temporary config files and, once empty, their private directory.
+ */
+export const cleanupAllProxychainsConfigs = (): void => {
+  for (const configPath of [...trackedProxychainsConfigs]) {
+    cleanupProxychainsConfigPath(configPath);
+  }
+
+  if (proxychainsTempDir && trackedProxychainsConfigs.size === 0) {
+    const dirToRemove = proxychainsTempDir;
+    try {
+      fs.rmSync(dirToRemove, { recursive: true, force: true });
+      proxychainsTempDir = null;
+    } catch (error) {
+      logger.warn(`Failed to remove proxychains4 temp directory: ${dirToRemove}`, error);
+    }
+  }
+};
+
+const cleanupTransportProxychainsConfig = (transport: unknown): void => {
+  if (!transport || typeof transport !== 'object') {
+    return;
+  }
+  const configPath = transportProxychainsConfigs.get(transport);
+  if (configPath) {
+    cleanupProxychainsConfigPath(configPath);
+  }
+};
+
+const attachProxychainsConfigCleanup = (
+  transport: { close: () => Promise<void>; start?: () => Promise<void> },
+  configPath: string,
+): void => {
+  transportProxychainsConfigs.set(transport, configPath);
+
+  const originalClose = transport.close.bind(transport);
+  transport.close = () => {
+    let closePromise: Promise<void>;
+    try {
+      closePromise = Promise.resolve(originalClose());
+    } catch (error) {
+      cleanupProxychainsConfigPath(configPath);
+      throw error;
+    }
+    cleanupProxychainsConfigPath(configPath);
+    return closePromise.finally(() => {
+      cleanupProxychainsConfigPath(configPath);
+    });
+  };
+
+  if (typeof transport.start === 'function') {
+    const originalStart = transport.start.bind(transport);
+    transport.start = () => {
+      try {
+        return Promise.resolve(originalStart()).catch((error) => {
+          cleanupProxychainsConfigPath(configPath);
+          throw error;
+        });
+      } catch (error) {
+        cleanupProxychainsConfigPath(configPath);
+        throw error;
+      }
+    };
+  }
+};
+
 /**
  * Generate a temporary proxychains4 configuration file.
  * Returns the path to the generated config file.
  */
-const generateProxychainsConfig = (
+export const generateProxychainsConfig = (
   serverName: string,
   proxyConfig: ProxychainsConfig,
 ): string | null => {
@@ -300,15 +412,14 @@ tcp_connect_time_out 8000
 ${proxyLine}
 `;
 
-  // Create temp directory if needed
-  const tempDir = path.join(os.tmpdir(), 'mcphub-proxychains');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
+  // Create a per-process 0o700 temp directory and write an exclusive 0o600 config file
+  const tempDir = ensureProxychainsTempDir();
+  const safeName = serverName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const configPath = path.join(tempDir, `${safeName}-${randomUUID()}.conf`);
+  fs.writeFileSync(configPath, configContent, { encoding: 'utf-8', mode: 0o600, flag: 'wx' });
 
-  // Write config file
-  const configPath = path.join(tempDir, `${serverName.replace(/[^a-zA-Z0-9-_]/g, '_')}.conf`);
-  fs.writeFileSync(configPath, configContent, 'utf-8');
+  trackedProxychainsConfigs.add(configPath);
+
   logger.log(`[${serverName}] Generated proxychains4 config: ${configPath}`);
 
   return configPath;
@@ -381,7 +492,7 @@ const wrapWithProxychains = (
   command: string,
   args: string[],
   proxyConfig?: ProxychainsConfig,
-): { command: string; args: string[] } => {
+): { command: string; args: string[]; generatedConfigPath?: string } => {
   // Skip if proxy is not enabled or not configured
   if (!proxyConfig?.enabled) {
     return { command, args };
@@ -427,9 +538,11 @@ const wrapWithProxychains = (
     `[${serverName}] Using proxychains4 proxy: ${proxyConfig.type || 'socks5'}://${proxyConfig.host}:${proxyConfig.port}`,
   );
 
+  const generatedConfigPath = proxyConfig.configPath ? undefined : configPath;
   return {
     command: proxychains4Path,
     args: ['-f', configPath, command, ...sanitizedArgs],
+    ...(generatedConfigPath ? { generatedConfigPath } : {}),
   };
 };
 
@@ -772,8 +885,8 @@ export const syncToolEmbedding = async (serverName: string, toolName: string) =>
   if (isAppOnlyTool(tool)) {
     return;
   }
-  // Save tool as vector embedding for search
-  syncToolsAsVectorEmbeddings(serverName, [tool], { partial: true }).catch((error) => {
+  // Save tool as vector embedding for search via centralized scheduler
+  enqueueSingleToolSync(serverName, tool, prepareToolsForEmbedding).catch((error) => {
     logger.warn(
       `[EMBED_SYNC_ERROR] Failed to sync embedding for tool "${toolName}" on server "${serverName}"`,
     );
@@ -862,40 +975,16 @@ const applyDescriptionOverridesForEmbedding = async (
   });
 };
 
-// Tail of the embedding tasks queued per server. A per-user connect and a
-// reindex, or two users connecting at once, often race on the same tool set;
-// queued behind the first run, the second one hits the skip check in
-// saveToolsAsVectorEmbeddings instead of embedding every tool a second time.
-const embeddingSyncTails = new Map<string, Promise<void>>();
-
-// Run `task` after every embedding task already queued for the server. A task
-// must not wait for another queued task of the same server, or both stall.
-const enqueueEmbeddingTask = (serverName: string, task: () => Promise<void>): Promise<void> => {
-  const run = (embeddingSyncTails.get(serverName) ?? Promise.resolve()).then(task);
-  const tail = run.catch(() => undefined);
-  embeddingSyncTails.set(serverName, tail);
-  void tail.then(() => {
-    if (embeddingSyncTails.get(serverName) === tail) embeddingSyncTails.delete(serverName);
-  });
-  return run;
+const prepareToolsForEmbedding = async (serverName: string, tools: Tool[]): Promise<Tool[]> => {
+  const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
+  return filterModelVisibleTools(toolsWithOverrides);
 };
 
 export const syncToolsAsVectorEmbeddings = (
   serverName: string,
   tools: Tool[],
   options?: { reportProgress?: boolean; partial?: boolean },
-): Promise<void> =>
-  enqueueEmbeddingTask(serverName, async () => {
-    const toolsWithOverrides = await applyDescriptionOverridesForEmbedding(serverName, tools);
-    const modelVisibleTools = filterModelVisibleTools(toolsWithOverrides);
-    if (modelVisibleTools.length === 0) {
-      if (options?.partial) return;
-      await removeServerToolEmbeddings(serverName);
-      return;
-    }
-
-    await saveToolsAsVectorEmbeddings(serverName, modelVisibleTools, options);
-  });
+): Promise<void> => enqueueServerSync(serverName, tools, options, prepareToolsForEmbedding);
 
 /**
  * Embed the tools of a credential server, which never connects globally.
@@ -927,9 +1016,7 @@ export const syncCredentialServerToolEmbeddings = async (
       .map((tool) => tool.name)
       .filter((toolName) => !enabledNames.has(toolName));
     if (disabledNames.length > 0) {
-      void enqueueEmbeddingTask(serverName, () =>
-        removeToolEmbeddings(serverName, disabledNames),
-      ).catch(() => undefined);
+      void enqueueToolRemoval(serverName, disabledNames).catch(() => undefined);
     }
   }
   await syncToolsAsVectorEmbeddings(serverName, enabledTools, options);
@@ -1182,6 +1269,7 @@ export const connectClientWithDiagnostics = async (
   try {
     await client.connect(transport, options);
   } catch (error) {
+    cleanupTransportProxychainsConfig(transport);
     throw addStdioErrorContext(error, transport);
   }
 };
@@ -1598,6 +1686,8 @@ export const cleanupAllServers = (): void => {
   Object.keys(servers).forEach((sessionId) => {
     delete servers[sessionId];
   });
+
+  cleanupAllProxychainsConfigs();
 };
 
 const headerValueToString = (value: string | string[] | undefined): string | undefined => {
@@ -1869,7 +1959,7 @@ export const createTransportFromConfig = async (
     transport = new SSEClientTransport(new URL(conf.url), options);
   } else if (conf.command) {
     // Stdio transport
-    env['PATH'] = expandEnvVars(process.env.PATH as string) || '';
+    env['PATH'] = resolveStdioPath();
 
     const systemConfigDao = getSystemConfigDao();
     const systemConfig = await systemConfigDao.get();
@@ -1903,34 +1993,44 @@ export const createTransportFromConfig = async (
       logger.log(`[${name}] Injected cache refresh flags for reinstall`);
     }
 
-    const { command: finalCommand, args: finalArgs } = wrapWithProxychains(
+    const { command: finalCommand, args: finalArgs, generatedConfigPath } = wrapWithProxychains(
       name,
       conf.command,
       resolvedArgs,
       conf.proxy,
     );
 
-    // Substitute after expansion and proxy argument cleaning so secrets stay literal.
-    const resolvedStagingArgs = resolveCredentialArguments(conf, finalArgs);
-    if (hasStagedTools(conf)) {
-      // A credential-template args slot must not be able to inject an ssh CLI
-      // option (e.g. --allowed-local-paths=/); validate the argv the child will
-      // actually receive, not just the template.
-      const argsValidation = validateResolvedSshArgs(resolvedStagingArgs);
-      if (!argsValidation.ok) {
-        throw new Error(`File staging argument rejected: ${argsValidation.reason}`);
+    try {
+      // Substitute after expansion and proxy argument cleaning so secrets stay literal.
+      const resolvedStagingArgs = resolveCredentialArguments(conf, finalArgs);
+      if (hasStagedTools(conf)) {
+        // A credential-template args slot must not be able to inject an ssh CLI
+        // option (e.g. --allowed-local-paths=/); validate the argv the child will
+        // actually receive, not just the template.
+        const argsValidation = validateResolvedSshArgs(resolvedStagingArgs);
+        if (!argsValidation.ok) {
+          throw new Error(`File staging argument rejected: ${argsValidation.reason}`);
+        }
       }
-    }
 
-    // Create STDIO transport with potentially wrapped command
-    transport = new StdioClientTransport({
-      cwd: stagingCwd ?? process.cwd(),
-      command: finalCommand,
-      args: resolvedStagingArgs,
-      env: env,
-      stderr: 'pipe',
-      maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
-    });
+      // Create STDIO transport with potentially wrapped command
+      transport = new StdioClientTransport({
+        cwd: stagingCwd ?? process.cwd(),
+        command: finalCommand,
+        args: resolvedStagingArgs,
+        env: env,
+        stderr: 'pipe',
+        maxBufferSize: validateMaxBufferSize(conf.options?.maxBufferSize),
+      });
+      if (generatedConfigPath) {
+        attachProxychainsConfigCleanup(transport, generatedConfigPath);
+      }
+    } catch (error) {
+      if (generatedConfigPath) {
+        cleanupProxychainsConfigPath(generatedConfigPath);
+      }
+      throw error;
+    }
     if (transport.stderr && hasPersonalAuthentication(conf)) {
       transport.stderr.on('data', () => undefined); // Personal upstream diagnostics can contain raw credentials.
     } else if (transport.stderr) {
@@ -2885,7 +2985,14 @@ export const reconcileReplicaServers = async (
   }
   const comparable = (config: ServerConfig | undefined) => {
     if (!config) return config;
-    const { tags: _tags, ...rest } = config;
+    // Tags and the metadata links are read-time metadata, not connection
+    // settings: a replica must adopt their new values without reconnecting.
+    const {
+      tags: _tags,
+      repositoryUrl: _repositoryUrl,
+      documentationUrl: _documentationUrl,
+      ...rest
+    } = config;
     return stripNullishDeep(rest);
   };
   const changed = serverInfos.filter(
@@ -3135,7 +3242,10 @@ export const getServersInfo = async (
             resolvedType ||
             serverConfig?.description ||
             serverConfig?.tags?.length ||
-            serverConfig?.command
+            serverConfig?.repositoryUrl ||
+            serverConfig?.documentationUrl ||
+            serverConfig?.command ||
+            serverConfig?.staging
               ? {
                   ...(serverConfig?.id ? { id: serverConfig.id } : {}),
                   ...(resolvedType ? { type: resolvedType } : {}),
@@ -3147,10 +3257,17 @@ export const getServersInfo = async (
                     : {}),
                   ...(serverConfig?.description ? { description: serverConfig.description } : {}),
                   ...(serverConfig?.tags?.length ? { tags: [...serverConfig.tags] } : {}),
+                  ...(serverConfig?.repositoryUrl
+                    ? { repositoryUrl: serverConfig.repositoryUrl }
+                    : {}),
+                  ...(serverConfig?.documentationUrl
+                    ? { documentationUrl: serverConfig.documentationUrl }
+                    : {}),
                   // Expose command so the frontend can determine if reinstall is
                   // supported (npx/uvx only). This is not a secret — it's the
                   // runner binary name (e.g. "npx", "uvx").
                   ...(serverConfig?.command ? { command: serverConfig.command } : {}),
+                  ...(serverConfig?.staging ? { staging: { ...serverConfig.staging } } : {}),
                 }
               : undefined,
         };
@@ -3432,7 +3549,7 @@ export const removeServer = async (
   await deleteCredentialBindings({ serverName: name });
 
   try {
-    await removeServerToolEmbeddings(name);
+    await enqueueServerCleanup(name);
   } catch (error) {
     logger.warn('Failed to remove embeddings for server', { serverName: name, error });
   }
@@ -3634,7 +3751,7 @@ export const toggleServerStatus = async (
 
         // Remove tool embeddings when server is disabled (for smart routing consistency)
         try {
-          await removeServerToolEmbeddings(name);
+          await enqueueServerCleanup(name);
           logger.log(`Removed tool embeddings for disabled server: ${name}`);
         } catch (embeddingError) {
           logger.warn('Failed to remove embeddings for server', {
@@ -4027,6 +4144,8 @@ const { handleListToolsRequestImpl, handleCallToolRequestImpl, resolvePinnedSmar
     callToolWithReconnect,
     withoutHiddenArguments,
     withStagingTools,
+    dispatchCodeModeToolCall: (request, extra) =>
+      handleOriginalToolCallRequest(request, extra, extra?.policyGroupId),
   });
 
 const { handleGetPromptRequestImpl, handleListPromptsRequestImpl } = createPromptHandlers({
@@ -4084,7 +4203,9 @@ const protectReplicaOAuthClient = <T extends object>(
         return withReplicaLock(scope, async () => {
           if (personal) {
             await personal.assertCurrent();
-            const binding = await getCredentialBindingDao().get(name, personal.username);
+            const binding = await withLockConnection(scope, () =>
+              getCredentialBindingDao().get(name, personal.username),
+            );
             if (binding?.encryptedValues !== personal.version)
               throw new Error('Personal authorization changed; retry with current credentials');
           }
@@ -4560,7 +4681,7 @@ const listProjectionInputs = async (group: string | undefined, field: ListField)
   const key = keyId ? await getBearerKeyDao().findById(keyId) : undefined;
   if (
     (user?.username && (!liveUser || Boolean(user.isAdmin) !== Boolean(liveUser.isAdmin))) ||
-    (keyId && !key?.enabled)
+    (keyId && (!key?.enabled || isBearerKeyExpired(key)))
   )
     return undefined;
   const lookupGroup = getGroupLookupName(group);
@@ -4701,7 +4822,10 @@ const withToolPolicy = async (
   const wrapper =
     !upstreamOwnsName && ['call_tool', 'describe_tool'].includes(request.params?.name);
   const requested = wrapper ? request.params.arguments?.toolName : request.params?.name;
-  const targetCall = invocation && (upstreamOwnsName || request.params?.name !== 'search_tools');
+  const nonTargetMetaTool = ['search_tools', 'execute_code', 'execute_code_read'].includes(
+    request.params?.name,
+  );
+  const targetCall = invocation && (upstreamOwnsName || !nonTargetMetaTool);
   let denied: { server: ServerInfo; tool: string; decision: ToolPolicyAudit } | undefined;
   const eligible = candidates.filter((info) => {
     if (extra?.server && info.name !== extra.server) return false;

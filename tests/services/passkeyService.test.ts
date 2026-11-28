@@ -169,6 +169,21 @@ describe('resolveRelyingParty', () => {
     expect(resolveRelyingParty(requestWith({ origin: 'not a url' }))).toBeNull();
     expect(resolveRelyingParty(requestWith({}))).toBeNull();
   });
+
+  it('rejects IP address origins, which WebAuthn does not accept as an RP ID', () => {
+    expect(resolveRelyingParty(requestWith({ origin: 'http://100.102.254.35:8834' }))).toBeNull();
+    expect(resolveRelyingParty(requestWith({ origin: 'https://192.168.1.10' }))).toBeNull();
+    expect(resolveRelyingParty(requestWith({ origin: 'http://127.0.0.1:3000' }))).toBeNull();
+    expect(resolveRelyingParty(requestWith({ origin: 'https://[::1]:3000' }))).toBeNull();
+    expect(resolveRelyingParty(requestWith({ host: '10.0.0.5:3000' }, 'https'))).toBeNull();
+  });
+
+  it('accepts host names that merely look numeric', () => {
+    expect(resolveRelyingParty(requestWith({ origin: 'https://1.2.3.4.nip.io' }))).toEqual({
+      rpId: '1.2.3.4.nip.io',
+      origin: 'https://1.2.3.4.nip.io',
+    });
+  });
 });
 
 describe('normalizePasskeyName', () => {

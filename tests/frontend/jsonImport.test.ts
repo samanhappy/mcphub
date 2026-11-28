@@ -64,6 +64,43 @@ describe('protocol negotiation JSON import', () => {
   });
 });
 
+describe('normalizeImportedServers metadata links (#1495)', () => {
+  it('imports trimmed repository and documentation links', () => {
+    const { servers, issues } = normalizeImportedServers({
+      mcpServers: {
+        mongo: {
+          command: 'npx',
+          repositoryUrl: '  https://github.com/owner/repo ',
+          documentationUrl: 'https://docs.example.com',
+        },
+      },
+    });
+
+    expect(issues).toEqual([]);
+    expect(servers[0].config.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(servers[0].config.documentationUrl).toBe('https://docs.example.com');
+  });
+
+  it('reports non-string links and drops them from the import', () => {
+    const { servers, issues } = normalizeImportedServers({
+      mcpServers: { mongo: { command: 'npx', repositoryUrl: 42 as unknown as string } },
+    });
+
+    expect(issues).toEqual([
+      { name: 'mongo', message: '"repositoryUrl" must be a string URL.' },
+    ]);
+    expect(servers[0].config.repositoryUrl).toBeUndefined();
+  });
+
+  it('omits blank links instead of storing empty strings', () => {
+    const { servers } = normalizeImportedServers({
+      mcpServers: { mongo: { command: 'npx', documentationUrl: '   ' } },
+    });
+
+    expect(servers[0].config).not.toHaveProperty('documentationUrl');
+  });
+});
+
 describe('normalizeImportedServers tags (#1506)', () => {
   it('imports and normalizes server tags', () => {
     const { servers, issues } = normalizeImportedServers({

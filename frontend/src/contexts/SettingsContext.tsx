@@ -8,28 +8,29 @@ import React, {
   ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiResponse, BearerKey, FileStagingConfig } from '@/types';
+import { ApiResponse, BearerKey, BearerKeyWritePayload, FileStagingConfig } from '@/types';
 import type { FakeIpException } from '../../../src/types/network.js';
 import type { ToolPolicyRule } from '../../../src/types/toolPolicy.js';
 import { validateToolPolicies } from '../../../src/utils/toolPolicy.js';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, apiDelete } from '@/utils/fetchInterceptor';
-import type {
-  BetterAuthConfig,
-  ExportedMcpSettingsData,
-  InstallConfig,
-  MCPRouterConfig,
-  OAuthServerConfig,
-  RoutingConfig,
-  RuntimeSettingsContextValue,
-  SettingsActionsContextValue,
-  SettingsContextValue,
-  SettingsSectionKey,
-  SmartRoutingConfig,
-  SystemSettings,
-  TempRoutingConfig,
-  ToolResultCompressionConfig,
+import {
+  mergeSmartRoutingConfigUpdate,
+  type BetterAuthConfig,
+  type ExportedMcpSettingsData,
+  type InstallConfig,
+  type MCPRouterConfig,
+  type OAuthServerConfig,
+  type RoutingConfig,
+  type RuntimeSettingsContextValue,
+  type SettingsActionsContextValue,
+  type SettingsContextValue,
+  type SettingsSectionKey,
+  type SmartRoutingConfig,
+  type SystemSettings,
+  type TempRoutingConfig,
+  type ToolResultCompressionConfig,
 } from './settingsTypes';
 
 export type {
@@ -252,6 +253,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     embeddingDocumentPrefix: '',
     similarityThreshold: undefined,
     fullSchemaTopN: undefined,
+    codeMode: {
+      enabled: false,
+      readOnlyVariantEnabled: true,
+      timeoutMs: 30000,
+      cpuTimeoutMs: 5000,
+      memoryLimitMb: 32,
+      maxToolCalls: 20,
+      maxSourceBytes: 32768,
+      maxLogBytes: 16384,
+      maxToolResultBytes: 524288,
+      maxOutputBytes: 65536,
+      maxConcurrentRuns: 4,
+    },
   });
 
   const [toolResultCompressionConfig, setToolResultCompressionConfig] =
@@ -396,6 +410,19 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
           similarityThreshold: sr.similarityThreshold,
           fullSchemaTopN: sr.fullSchemaTopN,
           toolDefinitionFields: sr.toolDefinitionFields,
+          codeMode: {
+            enabled: sr.codeMode?.enabled ?? false,
+            readOnlyVariantEnabled: sr.codeMode?.readOnlyVariantEnabled ?? true,
+            timeoutMs: sr.codeMode?.timeoutMs ?? 30000,
+            cpuTimeoutMs: sr.codeMode?.cpuTimeoutMs ?? 5000,
+            memoryLimitMb: sr.codeMode?.memoryLimitMb ?? 32,
+            maxToolCalls: sr.codeMode?.maxToolCalls ?? 20,
+            maxSourceBytes: sr.codeMode?.maxSourceBytes ?? 32768,
+            maxLogBytes: sr.codeMode?.maxLogBytes ?? 16384,
+            maxToolResultBytes: sr.codeMode?.maxToolResultBytes ?? 524288,
+            maxOutputBytes: sr.codeMode?.maxOutputBytes ?? 65536,
+            maxConcurrentRuns: sr.codeMode?.maxConcurrentRuns ?? 4,
+          },
           envOverriddenFields: sr.envOverriddenFields ?? [],
         });
       }
@@ -612,7 +639,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       runSystemConfigUpdate(
         'smartRouting',
         { smartRouting: { [key]: value } },
-        () => setSmartRoutingConfig((prev) => ({ ...prev, [key]: value })),
+        () =>
+          setSmartRoutingConfig((prev) =>
+            mergeSmartRoutingConfigUpdate(prev, { [key]: value } as Partial<SmartRoutingConfig>),
+          ),
         'errors.failedToUpdateSmartRoutingConfig',
         'Failed to update smart routing config',
       ),
@@ -624,7 +654,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       runSystemConfigUpdate(
         'smartRouting',
         { smartRouting: updates },
-        () => setSmartRoutingConfig((prev) => ({ ...prev, ...updates })),
+        () => setSmartRoutingConfig((prev) => mergeSmartRoutingConfigUpdate(prev, updates)),
         'errors.failedToUpdateSmartRoutingConfig',
         'Failed to update smart routing config',
       ),
@@ -866,7 +896,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const createBearerKey = useCallback(
     async (
-      payload: Pick<BearerKey, 'name'> & Partial<Omit<BearerKey, 'id' | 'name' | 'token'>>,
+      payload: Pick<BearerKey, 'name'> & BearerKeyWritePayload,
     ): Promise<BearerKey | null> => {
       setSectionSaving('bearerKeys', true);
       try {
@@ -892,7 +922,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const updateBearerKey = useCallback(
     async (
       id: string,
-      updates: Partial<Omit<BearerKey, 'id'>>,
+      updates: BearerKeyWritePayload,
     ): Promise<BearerKey | null> => {
       setSectionSaving('bearerKeys', true);
       try {

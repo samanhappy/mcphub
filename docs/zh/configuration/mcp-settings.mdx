@@ -59,7 +59,9 @@ MCPHub 使用几个配置文件：
       "env": {
         "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
         "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
-      }
+      },
+      "repositoryUrl": "https://github.com/modelcontextprotocol/servers",
+      "documentationUrl": "https://github.com/modelcontextprotocol/servers-archived/blob/main/src/slack/README.md"
     }
   }
 }
@@ -86,6 +88,17 @@ MCPHub 使用几个配置文件：
 | `restartDelay` | number  | `5000`          | 重启间延迟（毫秒） |
 | `stdio`        | string  | `pipe`          | stdio 配置         |
 | `perSessionClient` | boolean | `false`     | 为每个下游 MCP 会话创建独立的上游客户端，而不是在所有会话间共享同一个连接。适用于 Playwright 等有状态服务器。参见[会话级客户端隔离](#会话级客户端隔离有状态服务器)。 |
+
+### 服务元数据链接
+
+仪表盘服务器卡片可以显示该服务器的源码仓库和文档入口（[#1495](https://github.com/samanhappy/mcphub/issues/1495)），方便在服务器变多后回查用途与更新日志。两个字段都只用于导航，不参与连接、MCP 端点或分组：
+
+| 字段 | 类型 | 默认值 | 描述 |
+| ---- | ---- | ------ | ---- |
+| `repositoryUrl` | string | 无 | 源码仓库的绝对 `http(s)` URL。 |
+| `documentationUrl` | string | 无 | 文档站点的绝对 `http(s)` URL。 |
+
+非 `http(s)`、无法解析或超过 2048 字符的链接会在保存/导入时被拒绝；未配置时不渲染任何元素，服务器卡片高度不变。若使用 `DB_SYNCHRONIZE=false`，升级前请先执行 `docs/migrations/0011-server-metadata-links.sql`。
 
 ### `type: "openapi"`
 
@@ -870,7 +883,7 @@ ls -la /path/to/server
 
 文件模式将快照保存在设置文件旁的 `<settings-path>.capabilities.json`，容器替换后仍要保留快照时，请将该目录挂载到持久化存储。数据库模式使用 `capability_snapshots`表。快照不进入设置导出，也不包含启动配置或凭据；但工具定义可能包含上游私有元数据，请按运行时数据的要求保护其存储。
 
-服务器列表和详情 API 提供 `capabilityCache.state`（`fresh`、`stale`、`missing`）及可用时的 `capabilityCache.capturedAt`。`fresh` 表示配置匹配的历史发现结果，不保证上游此刻未发生变化。启动配置、子进程实际环境或个人凭据绑定变更会让快照失效。每次列举工具仍重新应用当前权限及服务器、分组的工具配置。个人快照按认证用户隔离，读取时仍要求有效的凭据绑定和当前服务器访问权限。
+服务器列表和详情 API 提供 `capabilityCache.state`（`fresh`、`stale`、`missing`）及可用时的 `capabilityCache.capturedAt`。`fresh` 表示配置匹配的历史发现结果，不保证上游此刻未发生变化。启动配置、子进程实际环境或个人凭据绑定变更会让快照失效。容器每次重建都会改变继承的 `HOSTNAME`，因此它不参与比对；除非服务器在 `env.HOSTNAME` 中显式设置，或在启动配置中引用 `${HOSTNAME}` / `$HOSTNAME`。每次列举工具仍重新应用当前权限及服务器、分组的工具配置。个人快照按认证用户隔离，读取时仍要求有效的凭据绑定和当前服务器访问权限。
 
 快照缺失或不兼容时沿用实时发现流程：共享 stdio 服务器在启动时预发现，个人服务器在首次认证使用时发现。不增加全量后台刷新。配置不变时，上游包更新或外部权限变化需要等下次真实连接才能被发现。本阶段不持久化提示词和资源；个人服务器的提示词、资源请求仍连接真实上游。
 

@@ -4,6 +4,7 @@ import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import Content from '@/components/layout/Content';
 import { EmbeddingSyncProvider } from '@/contexts/EmbeddingSyncContext';
+import AppLoading from '@/components/ui/AppLoading';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'mcphub_sidebar_collapsed';
 const DESKTOP_BREAKPOINT_PX = 768;
@@ -17,14 +18,7 @@ const readInitialCollapsed = (): boolean => {
   }
 };
 
-const PageFallback: React.FC = () => (
-  <div
-    className="flex h-full min-h-[240px] items-center justify-center text-sm"
-    style={{ color: 'var(--hub-ink-3)' }}
-  >
-    Loading...
-  </div>
-);
+const PageFallback: React.FC = () => <AppLoading />;
 
 const MainLayout: React.FC = () => {
   const location = useLocation();

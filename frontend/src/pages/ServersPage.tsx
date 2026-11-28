@@ -10,6 +10,9 @@ import McpbUploadForm from '@/components/McpbUploadForm';
 import JSONImportForm from '@/components/JSONImportForm';
 import Pagination from '@/components/ui/Pagination';
 import { useServerData } from '@/hooks/useServerData';
+import { useRuntimeSettings } from '@/hooks/useSettingsData';
+import { useToolBaselines } from '@/hooks/useNewTools';
+import { useAuth } from '@/contexts/AuthContext';
 import { serverCostRevision } from '@/utils/costRevision';
 import { useCostData } from '@/hooks/useCostData';
 import {
@@ -53,6 +56,14 @@ const ServersPage: React.FC = () => {
   } = useServerData({ refreshOnMount: true });
 
   const { serverCosts } = useCostData(serverCostRevision(allServers));
+  const { nameSeparator, initialLoading } = useRuntimeSettings();
+  const { auth } = useAuth();
+  useToolBaselines(
+    allServers,
+    nameSeparator,
+    auth.user?.username,
+    hasLoadedServers && !initialLoading && !auth.loading,
+  );
 
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [duplicateServer, setDuplicateServer] = useState<Server | null>(null);

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { isIP } from 'node:net';
 import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
 import { LessThanOrEqual } from 'typeorm';
@@ -51,7 +52,9 @@ interface ChallengeClaims extends PasskeyRelyingParty {
  *
  * The browser only lets a page use credentials scoped to its own host, and every
  * stored passkey records the RP ID it was registered under, so a credential can
- * never be asserted for a different host than the one that created it.
+ * never be asserted for a different host than the one that created it. An IP
+ * address is refused: WebAuthn requires the RP ID to be a domain name, so a
+ * ceremony started for an IP address would always fail in the browser.
  */
 export const resolveRelyingParty = (req: Request): PasskeyRelyingParty | null => {
   const originHeader = req.get('origin');
@@ -65,6 +68,7 @@ export const resolveRelyingParty = (req: Request): PasskeyRelyingParty | null =>
   try {
     const url = new URL(candidate);
     if ((url.protocol !== 'https:' && url.protocol !== 'http:') || !url.hostname) return null;
+    if (isIP(url.hostname.replace(/^\[(.*)\]$/, '$1'))) return null;
     return { rpId: url.hostname, origin: url.origin };
   } catch {
     return null;

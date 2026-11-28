@@ -410,6 +410,81 @@ describe('protocolNegotiation database persistence', () => {
   });
 });
 
+describe('server metadata links database persistence (#1495)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('persists links on create and maps them back', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.create.mockResolvedValue({
+      name: 'mongo',
+      type: 'stdio',
+      command: 'npx',
+      enabled: true,
+      repositoryUrl: 'https://github.com/owner/repo',
+      documentationUrl: 'https://docs.example.com',
+    });
+
+    const result = await dao.create({
+      name: 'mongo',
+      type: 'stdio',
+      command: 'npx',
+      repositoryUrl: 'https://github.com/owner/repo',
+      documentationUrl: 'https://docs.example.com',
+    });
+
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'mongo',
+        repositoryUrl: 'https://github.com/owner/repo',
+        documentationUrl: 'https://docs.example.com',
+      }),
+    );
+    expect(result.repositoryUrl).toBe('https://github.com/owner/repo');
+    expect(result.documentationUrl).toBe('https://docs.example.com');
+  });
+
+  it('writes null when a link is cleared and maps a null column to undefined', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.update.mockResolvedValue({
+      name: 'mongo',
+      enabled: true,
+      repositoryUrl: null,
+      documentationUrl: null,
+    });
+
+    const result = await dao.update('mongo', {
+      repositoryUrl: undefined,
+      documentationUrl: undefined,
+    });
+
+    expect(mockRepository.update).toHaveBeenCalledWith('mongo', {
+      repositoryUrl: null,
+      documentationUrl: null,
+    });
+    expect(result?.repositoryUrl).toBeUndefined();
+    expect(result?.documentationUrl).toBeUndefined();
+  });
+
+  it('drops malformed stored links when reading a row', async () => {
+    const dao = new ServerDaoDbImpl();
+    mockRepository.findByName.mockResolvedValue({
+      name: 'mongo',
+      type: 'stdio',
+      command: 'npx',
+      enabled: true,
+      repositoryUrl: 'file:///etc/passwd',
+      documentationUrl: '  https://docs.example.com  ',
+    });
+
+    const result = await dao.findById('mongo');
+
+    expect(result?.repositoryUrl).toBeUndefined();
+    expect(result?.documentationUrl).toBe('https://docs.example.com');
+  });
+});
+
 describe('server tags database persistence (#1506)', () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -4,8 +4,8 @@ import { KeyRound } from 'lucide-react';
 import type { Passkey } from '../types';
 import {
   deletePasskey,
+  getPasskeyAvailability,
   listPasskeys,
-  passkeysSupported,
   registerPasskey,
   type PasskeyCeremonyError,
 } from '../services/passkeyService';
@@ -19,7 +19,8 @@ const ceremonyMessageKey: Record<PasskeyCeremonyError, string> = {
 
 export default function PasskeysPage() {
   const { t, i18n } = useTranslation();
-  const [supported] = useState(passkeysSupported);
+  const [availability] = useState(getPasskeyAvailability);
+  const supported = availability === 'available';
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [registrationAvailable, setRegistrationAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -132,7 +133,13 @@ export default function PasskeysPage() {
         )}
       </div>
 
-      {!supported && <div className="hub-card p-4 text-sm">{t('passkeys.unsupported')}</div>}
+      {!supported && (
+        <div className="hub-card p-4 text-sm">
+          {t(
+            availability === 'insecureContext' ? 'passkeys.insecureContext' : 'passkeys.unsupported',
+          )}
+        </div>
+      )}
       {supported && !loading && !registrationAvailable && (
         <div className="hub-card p-4 text-sm">{t('passkeys.unavailable')}</div>
       )}

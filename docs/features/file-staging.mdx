@@ -16,11 +16,11 @@ The hub never reaches back into the client's filesystem: it works with uploaded 
 
 ## Enabling file staging
 
-File staging is off by default and has no dashboard UI in this phase. Three things must line up: the global master switch, the server's `staging` declaration, and the per-tool opt-in.
+File staging is off by default. An administrator enables it and edits the global limits under **Settings → File Staging**. Three things must line up: the global master switch, the server's `staging` declaration, and the per-tool opt-in.
 
 ### 1. Global master switch
 
-An administrator enables staging through the system-config API. The request merges the supplied keys over the stored settings; other settings are unchanged.
+An administrator enables staging under **Settings → File Staging**, or through the system-config API. The API request merges the supplied keys over the stored settings; other settings are unchanged.
 
 ```bash
 curl -X PUT http://localhost:3000/api/system-config \
@@ -33,7 +33,7 @@ curl -X PUT http://localhost:3000/api/system-config \
 
 ### 2. Server staging declaration
 
-Declare the adapter on the server. An owner can set the adapter on their own private server; adding or removing `shared` trust is admin-only:
+Expand the stdio server card on the **Servers** page to choose the trusted adapter (`ssh`) and, for administrators, toggle shared trust. You can also configure it through `PATCH /api/servers/:name/staging`. An owner can set or clear (`{"adapter":null}`) the adapter on their own private server; adding or removing `shared` trust is admin-only:
 
 ```bash
 curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
@@ -45,6 +45,8 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/staging \
 A shared, group or public server additionally needs `{"shared":true}` in the same request (admin only) and a `credentialTemplate` with per-user slots.
 
 ### 3. Per-tool opt-in
+
+Open the **Tools** tab on the expanded stdio server card and expand a tool to enable file staging and mark each string parameter as `None`, `Input`, or `Output`. The editor saves through `PATCH /api/servers/:name/file-staging`:
 
 ```bash
 curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
@@ -58,9 +60,9 @@ curl -X PATCH http://localhost:3000/api/servers/ssh/file-staging \
   -d '{"tool":"download","enabled":true,"outputParams":["localPath"]}'
 ```
 
-The `file-staging` route is owner-or-admin. `tool` is the bare tool name, and omitted `inputParams`/`outputParams` keep their stored values, so disabling a tool does not lose its declaration. Both PATCH routes validate the result as a whole: an enabled tool still requires `staging.adapter` and a stdio server.
+The `file-staging` route is owner-or-admin. `tool` is the bare tool name, omitted `inputParams`/`outputParams` keep their stored values so disabling a tool does not lose its declaration, and passing `null` explicitly clears that direction. Both PATCH routes validate the result as a whole: an enabled tool still requires `staging.adapter` and a stdio server.
 
-There is no dashboard UI for staging in this phase. A whole-server `PUT /api/servers/:name` (`{"config": ...}`) is still available for bulk edits, but it replaces the entire `tools` object when one is supplied, so prefer the PATCH routes for staging changes.
+A whole-server `PUT /api/servers/:name` (`{"config": ...}`) is still available for bulk edits, but it replaces the entire `tools` object when one is supplied, so prefer the dashboard editors or the PATCH routes for staging changes.
 
 <Warning>
 **Enabling a staged tool changes the working directory of every tool on that server.** Once any tool on a server has `fileStaging.enabled`, the hub starts every stdio child for that server in the calling principal's staging root instead of the hub working directory. Tools that resolve relative paths or read files next to the hub (including `mcp_settings.json`) then see a different directory, even when the specific tool being called is not staged. The global master switch alone does not change the cwd; the per-tool opt-in does. A running child keeps its old cwd until it is rebuilt. The two staging PATCH routes and a whole-server save all reconnect the server, so enabling the first staged tool takes effect immediately: the route waits (bounded) for the child to connect and answers 500 if this restart failed. An on-demand server is the exception — it spawns on the next tool call, so the route can only confirm the configuration was saved; only an edit made directly in the database or the settings file needs a manual reload (`POST /api/servers/:name/reload`).
@@ -276,4 +278,4 @@ Staging makes the hub copy a file; it does not grant the client filesystem acces
 
 ## Not included
 
-Staging does not yet provide S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee. The dashboard edits the global settings under **Settings → File Staging**; per-server staging and per-tool opt-in still go through the PATCH routes described above.
+Staging does not yet provide S3/MinIO or multi-node storage, response-path detection or automatic `downloadUrl` injection, an MCP Apps file API, a revoke path for issued references, non-SSH adapters, or OS-level isolation. A ref is kept out of activity records on the direct and nested call paths, including error entries; a payload that reaches an upstream tool through a channel the hub does not inspect (for example a resource read) is outside that guarantee.

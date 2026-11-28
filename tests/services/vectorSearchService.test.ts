@@ -1250,6 +1250,105 @@ describe('vectorSearchService', () => {
       expect(withoutOverride).not.toBe(withOverride);
     });
   });
+  describe('scheduler and provider queue integration', () => {
+    it('prevents stale post-delete writes when cleanup runs during paused embedding generation', async () => {
+      const { enqueueServerCleanup, enqueueServerSync, waitForIdle } = await import(
+        '../../src/services/embeddingSyncScheduler.js'
+      );
+      const tool = {
+        name: 'redis-get',
+        description: 'Read a key',
+        inputSchema: { type: 'object', properties: {} },
+      };
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        enabled: true,
+        dbUrl: 'postgres://localhost/test',
+        embeddingProvider: 'openai',
+        embeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: 'https://scheduler-cleanup.example.com/v1',
+        llmProviderApiKey: 'sk-test',
+        basePacingDelayMs: 0,
+      });
+      mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
+
+      let signalStarted!: () => void;
+      let resumeGeneration!: () => void;
+      const started = new Promise<void>((resolve) => {
+        signalStarted = resolve;
+      });
+      const paused = new Promise<void>((resolve) => {
+        resumeGeneration = resolve;
+      });
+      const response = { data: [{ embedding: new Array(100).fill(0.1) }] };
+      mockEmbeddingCreate
+        .mockImplementationOnce(async () => {
+          signalStarted();
+          await paused;
+          return response;
+        })
+        .mockResolvedValue(response);
+
+      const syncPromise = enqueueServerSync('redis', [tool]);
+      await started;
+
+      // Server is deleted while generation is in flight.
+      const cleanupPromise = enqueueServerCleanup('redis');
+      resumeGeneration();
+
+      await Promise.all([syncPromise, cleanupPromise]);
+      await waitForIdle();
+
+      expect(mockVectorRepository.saveEmbedding).not.toHaveBeenCalled();
+      expect(mockVectorRepository.deleteByServerName).toHaveBeenCalledWith('redis');
+    });
+
+    it('keeps real provider calls serialized through the provider queue barrier', async () => {
+      const { enqueueServerSync, waitForIdle } = await import(
+        '../../src/services/embeddingSyncScheduler.js'
+      );
+      mockGetSmartRoutingConfig.mockResolvedValue({
+        enabled: true,
+        dbUrl: 'postgres://localhost/test',
+        embeddingProvider: 'openai',
+        embeddingModel: 'text-embedding-3-small',
+        llmProviderBaseUrl: 'https://scheduler-provider-queue.example.com/v1',
+        llmProviderApiKey: 'sk-test',
+        basePacingDelayMs: 0,
+      });
+      mockVectorRepository.countByServerNameAndModel.mockResolvedValue(0);
+      mockVectorRepository.searchSimilar.mockResolvedValue([]);
+
+      let concurrentProviderCalls = 0;
+      let maxConcurrentProviderCalls = 0;
+      const response = { data: [{ embedding: new Array(100).fill(0.1) }] };
+
+      mockEmbeddingCreate.mockImplementation(async () => {
+        concurrentProviderCalls += 1;
+        maxConcurrentProviderCalls = Math.max(maxConcurrentProviderCalls, concurrentProviderCalls);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        concurrentProviderCalls -= 1;
+        return response;
+      });
+
+      const tool = {
+        name: 'redis-get',
+        description: 'Read a key',
+        inputSchema: { type: 'object', properties: {} },
+      };
+
+      // Run a scheduled sync concurrently with a direct vector search query:
+      // both must pass through withEmbeddingQueue so provider calls never overlap.
+      await Promise.all([
+        enqueueServerSync('redis', [tool]),
+        searchToolsByVector('find redis tool', 5, 0.3),
+      ]);
+      await waitForIdle();
+
+      expect(mockEmbeddingCreate).toHaveBeenCalled();
+      expect(maxConcurrentProviderCalls).toBe(1);
+    });
+  });
+
   it.each([false, true])(
     'paces serialized encoding attempts (transient failure: %s)',
     async (retryFirst) => {

@@ -27,8 +27,7 @@
   --hub-ok: oklch(0.66 0.15 145);
   --hub-warn: oklch(0.78 0.13 80);
   --hub-err: oklch(0.62 0.18 25);
-  --hub-mono:
-    'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --hub-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .dark {
@@ -52,19 +51,68 @@
   border: 1px solid var(--hub-line);
   border-radius: 10px;
 }
-.hub-card-pad { padding: 16px; }
-.hub-surface { background: var(--hub-surface); }
-.hub-bg-2 { background: var(--hub-bg-2); }
-.hub-border { border: 1px solid var(--hub-line); }
-.hub-border-b { border-bottom: 1px solid var(--hub-line-2); }
-.hub-border-t { border-top: 1px solid var(--hub-line-2); }
-.hub-divider > * + * { border-top: 1px solid var(--hub-line-2); }
+.hub-skeleton {
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--hub-bg-2) 20%, var(--hub-line) 45%, var(--hub-bg-2) 70%);
+  background-size: 220% 100%;
+  animation: hub-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes hub-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-skeleton {
+    animation: none;
+  }
+}
+.hub-card-pad {
+  padding: 16px;
+}
+.hub-surface {
+  background: var(--hub-surface);
+}
+.hub-bg-2 {
+  background: var(--hub-bg-2);
+}
+.hub-border {
+  border: 1px solid var(--hub-line);
+}
+.hub-border-b {
+  border-bottom: 1px solid var(--hub-line-2);
+}
+.hub-border-t {
+  border-top: 1px solid var(--hub-line-2);
+}
+.hub-divider > * + * {
+  border-top: 1px solid var(--hub-line-2);
+}
 
 /* Typography */
-.hub-mono { font-family: var(--hub-mono); font-feature-settings: 'ss01'; letter-spacing: -0.01em; }
-.hub-num { font-variant-numeric: tabular-nums; }
-.hub-h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.018em; margin: 0; color: var(--hub-ink); }
-.hub-sub { color: var(--hub-ink-3); margin: 4px 0 0; font-size: 13px; }
+.hub-mono {
+  font-family: var(--hub-mono);
+  font-feature-settings: 'ss01';
+  letter-spacing: -0.01em;
+}
+.hub-num {
+  font-variant-numeric: tabular-nums;
+}
+.hub-h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  margin: 0;
+  color: var(--hub-ink);
+}
+.hub-sub {
+  color: var(--hub-ink-3);
+  margin: 4px 0 0;
+  font-size: 13px;
+}
 .hub-sect {
   font-size: 11px;
   font-weight: 500;
@@ -72,29 +120,73 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.hub-card-title { font-size: 13px; font-weight: 500; margin: 0; color: var(--hub-ink); }
+.hub-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--hub-ink);
+}
 
 /* Status dot + text (replaces pills) */
-.hub-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--hub-ink-2); }
-.hub-status { white-space: nowrap; }
+.hub-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--hub-ink-2);
+}
+.hub-status {
+  white-space: nowrap;
+}
 .hub-status-label {
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hub-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hub-ink-3); flex-shrink: 0; }
-.hub-status.ok    { color: oklch(0.4 0.13 145); }
-.hub-status.ok    .hub-dot { background: var(--hub-ok); box-shadow: 0 0 0 3px oklch(0.66 0.15 145 / 0.15); }
-.hub-status.warn  { color: oklch(0.45 0.13 80); }
-.hub-status.warn  .hub-dot { background: var(--hub-warn); box-shadow: 0 0 0 3px oklch(0.78 0.13 80 / 0.18); }
-.hub-status.err   { color: oklch(0.45 0.18 25); }
-.hub-status.err   .hub-dot { background: var(--hub-err); box-shadow: 0 0 0 3px oklch(0.62 0.18 25 / 0.15); }
-.hub-status.muted { color: var(--hub-ink-3); }
-.hub-status.muted .hub-dot { background: var(--hub-ink-3); }
-.dark .hub-status.ok   { color: oklch(0.78 0.13 145); }
-.dark .hub-status.warn { color: oklch(0.82 0.12 80); }
-.dark .hub-status.err  { color: oklch(0.78 0.15 25); }
+.hub-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hub-ink-3);
+  flex-shrink: 0;
+}
+.hub-status.ok {
+  color: oklch(0.4 0.13 145);
+}
+.hub-status.ok .hub-dot {
+  background: var(--hub-ok);
+  box-shadow: 0 0 0 3px oklch(0.66 0.15 145 / 0.15);
+}
+.hub-status.warn {
+  color: oklch(0.45 0.13 80);
+}
+.hub-status.warn .hub-dot {
+  background: var(--hub-warn);
+  box-shadow: 0 0 0 3px oklch(0.78 0.13 80 / 0.18);
+}
+.hub-status.err {
+  color: oklch(0.45 0.18 25);
+}
+.hub-status.err .hub-dot {
+  background: var(--hub-err);
+  box-shadow: 0 0 0 3px oklch(0.62 0.18 25 / 0.15);
+}
+.hub-status.muted {
+  color: var(--hub-ink-3);
+}
+.hub-status.muted .hub-dot {
+  background: var(--hub-ink-3);
+}
+.dark .hub-status.ok {
+  color: oklch(0.78 0.13 145);
+}
+.dark .hub-status.warn {
+  color: oklch(0.82 0.12 80);
+}
+.dark .hub-status.err {
+  color: oklch(0.78 0.15 25);
+}
 
 /* Tag — for transport / category */
 .hub-tag {
@@ -112,8 +204,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hub-tag.accent { color: var(--hub-accent); background: var(--hub-accent-soft); border-color: transparent; }
-.hub-tag.muted { color: var(--hub-ink-3); }
+.hub-tag.accent {
+  color: var(--hub-accent);
+  background: var(--hub-accent-soft);
+  border-color: transparent;
+}
+.hub-tag.muted {
+  color: var(--hub-ink-3);
+}
 
 /* Market cards */
 .hub-market-avatar {
@@ -166,7 +264,9 @@
   padding: 11px 14px;
   border-top: 1px solid var(--hub-line-2);
 }
-.hub-row:first-child { border-top: 0; }
+.hub-row:first-child {
+  border-top: 0;
+}
 .hub-row.head {
   color: var(--hub-ink-3);
   font-size: 11px;
@@ -175,7 +275,9 @@
   padding: 9px 14px;
   background: var(--hub-bg-2);
 }
-.hub-row.hover:hover { background: var(--hub-surface-hover); }
+.hub-row.hover:hover {
+  background: var(--hub-surface-hover);
+}
 
 /* Buttons (only used in redesigned screens) */
 .hub-btn {
@@ -190,20 +292,53 @@
   color: var(--hub-ink);
   font-size: 13px;
   font-weight: 500;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
-.hub-btn:hover { background: var(--hub-surface-hover); }
-.hub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.hub-btn.primary { background: var(--hub-ink); color: var(--hub-bg); border-color: var(--hub-ink); }
-.hub-btn.primary:hover { background: oklch(0.28 0.01 250); }
-.dark .hub-btn.primary { color: oklch(0.18 0.005 250); }
-.dark .hub-btn.primary:hover { background: oklch(0.92 0.005 250); }
-.hub-btn.ghost { border-color: transparent; }
-.hub-btn.ghost:hover { background: var(--hub-surface-hover); border-color: var(--hub-line); }
-.hub-btn.danger { color: var(--hub-err); }
-.hub-btn.danger:hover { background: oklch(0.96 0.04 25); border-color: oklch(0.85 0.1 25); }
-.dark .hub-btn.danger:hover { background: oklch(0.3 0.08 25); }
-.hub-btn.sm { height: 26px; padding: 0 9px; font-size: 12px; }
+.hub-btn:hover {
+  background: var(--hub-surface-hover);
+}
+.hub-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.hub-btn.primary {
+  background: var(--hub-ink);
+  color: var(--hub-bg);
+  border-color: var(--hub-ink);
+}
+.hub-btn.primary:hover {
+  background: oklch(0.28 0.01 250);
+}
+.dark .hub-btn.primary {
+  color: oklch(0.18 0.005 250);
+}
+.dark .hub-btn.primary:hover {
+  background: oklch(0.92 0.005 250);
+}
+.hub-btn.ghost {
+  border-color: transparent;
+}
+.hub-btn.ghost:hover {
+  background: var(--hub-surface-hover);
+  border-color: var(--hub-line);
+}
+.hub-btn.danger {
+  color: var(--hub-err);
+}
+.hub-btn.danger:hover {
+  background: oklch(0.96 0.04 25);
+  border-color: oklch(0.85 0.1 25);
+}
+.dark .hub-btn.danger:hover {
+  background: oklch(0.3 0.08 25);
+}
+.hub-btn.sm {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 12px;
+}
 
 /* Icon button */
 .hub-icon-btn {
@@ -216,10 +351,19 @@
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
-.hub-icon-btn:hover { background: var(--hub-surface-hover); border-color: var(--hub-line); }
-.hub-icon-btn.sm { width: 26px; height: 26px; border-radius: 6px; }
+.hub-icon-btn:hover {
+  background: var(--hub-surface-hover);
+  border-color: var(--hub-line);
+}
+.hub-icon-btn.sm {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
 
 /* Inputs */
 .hub-input {
@@ -233,9 +377,16 @@
   outline: 0;
   width: 100%;
 }
-.hub-input:focus { border-color: var(--hub-ink-2); }
-.hub-input::placeholder { color: var(--hub-ink-3); }
-.hub-input.mono { font-family: var(--hub-mono); font-size: 12.5px; }
+.hub-input:focus {
+  border-color: var(--hub-ink-2);
+}
+.hub-input::placeholder {
+  color: var(--hub-ink-3);
+}
+.hub-input.mono {
+  font-family: var(--hub-mono);
+  font-size: 12.5px;
+}
 
 /* Switch */
 .hub-switch {
@@ -250,7 +401,9 @@
   border-radius: 999px;
   background: var(--hub-surface);
   box-shadow: inset 0 0 0 1px var(--hub-line);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
   flex: 0 0 var(--hub-switch-width);
   cursor: pointer;
   border: 0;
@@ -283,7 +436,10 @@
   border-radius: 50%;
   background: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .hub-switch.on,
 input[role='switch']:checked + .hub-switch {
@@ -300,7 +456,10 @@ input[role='switch']:focus-visible + .hub-switch {
   outline-offset: 2px;
 }
 .hub-switch:disabled,
-input[role='switch']:disabled + .hub-switch { opacity: 0.5; cursor: not-allowed; }
+input[role='switch']:disabled + .hub-switch {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .dark .hub-switch::after {
   background: oklch(0.97 0.005 250);
@@ -370,7 +529,10 @@ input[role='switch']:disabled + .hub-switch { opacity: 0.5; cursor: not-allowed;
   border: none;
   background: transparent;
   text-decoration: none;
-  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    opacity 120ms ease;
 }
 
 .hub-personal-oauth-trigger:not(:disabled):hover {
@@ -478,6 +640,14 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   opacity: 0.6;
 }
 
+/* Tools that the user has not acknowledged yet (#1496) */
+.hub-server-capability-stat.has-new {
+  border-color: var(--hub-accent);
+}
+.hub-server-capability-stat.has-new .hub-server-capability-icon {
+  color: var(--hub-accent);
+}
+
 .hub-server-capability-icon {
   display: inline-flex;
   width: 14px;
@@ -571,8 +741,12 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   cursor: pointer;
   transition: background 0.15s;
 }
-.hub-endpoint .hub-endpoint-copy:hover { background: var(--hub-surface-hover); }
-.hub-endpoint .hub-endpoint-copy.copied { color: var(--hub-ok); }
+.hub-endpoint .hub-endpoint-copy:hover {
+  background: var(--hub-surface-hover);
+}
+.hub-endpoint .hub-endpoint-copy.copied {
+  color: var(--hub-ok);
+}
 
 /* ----- Retrofit legacy utility classes to the hub design language ---- */
 
@@ -583,7 +757,9 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   border: 1px solid var(--hub-line) !important;
   border-radius: 10px !important;
   box-shadow: none !important;
-  transition: background 0.15s ease, border-color 0.15s ease !important;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease !important;
 }
 .page-card:hover,
 .dashboard-card:hover {
@@ -633,7 +809,9 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   border-color: oklch(0.45 0.15 25) !important;
   color: oklch(0.88 0.1 25) !important;
 }
-.error-box h3 { color: oklch(0.4 0.18 25) !important; }
+.error-box h3 {
+  color: oklch(0.4 0.18 25) !important;
+}
 
 /* Buttons */
 .btn-primary {
@@ -684,7 +862,9 @@ summary.hub-personal-oauth-trigger::-webkit-details-marker {
   color: var(--hub-ink) !important;
   border-color: var(--hub-line) !important;
 }
-.dark .btn-secondary:hover { background: var(--hub-surface-hover) !important; }
+.dark .btn-secondary:hover {
+  background: var(--hub-surface-hover) !important;
+}
 
 .btn-warning {
   background: oklch(0.96 0.06 80) !important;
@@ -753,7 +933,9 @@ textarea.form-input:focus {
   border-color: var(--hub-line) !important;
   color: var(--hub-ink) !important;
 }
-.dark .form-input::placeholder { color: var(--hub-ink-3) !important; }
+.dark .form-input::placeholder {
+  color: var(--hub-ink-3) !important;
+}
 
 /* Status badges → dot + text style */
 .status-badge-online,
@@ -775,7 +957,7 @@ textarea.form-input:focus {
 .status-badge-offline::before,
 .status-badge-connecting::before,
 .status-badge-oauth-required::before {
-  content: "";
+  content: '';
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -816,9 +998,15 @@ textarea.form-input:focus {
   background: transparent !important;
   border: 0 !important;
 }
-.dark .status-badge-online { color: oklch(0.78 0.13 145) !important; }
-.dark .status-badge-offline { color: oklch(0.78 0.15 25) !important; }
-.dark .status-badge-connecting { color: oklch(0.82 0.12 80) !important; }
+.dark .status-badge-online {
+  color: oklch(0.78 0.13 145) !important;
+}
+.dark .status-badge-offline {
+  color: oklch(0.78 0.15 25) !important;
+}
+.dark .status-badge-connecting {
+  color: oklch(0.82 0.12 80) !important;
+}
 
 /* Status icon backgrounds → use hub tone */
 .status-icon-blue {
@@ -885,9 +1073,19 @@ textarea.form-input:focus {
   gap: 14px;
   background: var(--hub-bg);
 }
-.hub-crumb { color: var(--hub-ink-3); font-size: 13px; }
-.hub-crumb b { color: var(--hub-ink); font-weight: 500; }
-.hub-crumb .sep { margin: 0 6px; color: var(--hub-ink-3); opacity: 0.5; }
+.hub-crumb {
+  color: var(--hub-ink-3);
+  font-size: 13px;
+}
+.hub-crumb b {
+  color: var(--hub-ink);
+  font-weight: 500;
+}
+.hub-crumb .sep {
+  margin: 0 6px;
+  color: var(--hub-ink-3);
+  opacity: 0.5;
+}
 
 /* Application defaults follow the active theme. */
 body {
@@ -974,7 +1172,17 @@ body {
 }
 
 /* Native fields without form-input still need an explicit dark surface. */
-.dark :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='color']) {
+.dark
+  :is(input, select, textarea):not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='file'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='color']
+  ) {
   background: var(--hub-surface) !important;
   border-color: var(--hub-line) !important;
   color: var(--hub-ink) !important;
@@ -1033,7 +1241,6 @@ tbody tr:hover {
   transition: background-color 0.2s ease;
 }
 
-
 .dark .error-box h3 {
   color: rgba(239, 154, 154, 0.9) !important;
 }
@@ -1067,7 +1274,6 @@ tbody tr:hover {
   color: rgba(250, 204, 21, 1) !important;
   transform: translateY(-1px);
 }
-
 
 /* Custom text color to match status-icon-red */
 .text-status-red {
@@ -1130,7 +1336,9 @@ tbody tr:hover {
 
 /* --- Unified Button Click & Loading Feedback --- */
 button {
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 button:not(:disabled):active {
@@ -1151,7 +1359,7 @@ button.is-loading > * {
 }
 
 button.is-loading::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1182,7 +1390,9 @@ button.hub-btn.primary.is-loading::after {
 }
 
 @keyframes button-spinner {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1200px) {
@@ -1227,23 +1437,52 @@ button.hub-btn.primary.is-loading::after {
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.skill-markdown > * + * { margin-top: 1em; }
-.skill-markdown :is(h1, h2, h3, h4, h5, h6) { font-weight: 600; line-height: 1.35; }
-.skill-markdown h1 { font-size: 1.5em; }
-.skill-markdown h2 { font-size: 1.25em; }
-.skill-markdown h3 { font-size: 1.125em; }
-.skill-markdown :is(ul, ol) { padding-inline-start: 1.5em; }
-.skill-markdown ul { list-style: disc; }
-.skill-markdown ol { list-style: decimal; }
-.skill-markdown li + li { margin-top: 0.25em; }
-.skill-markdown a { color: var(--hub-accent); text-decoration: underline; }
+.skill-markdown > * + * {
+  margin-top: 1em;
+}
+.skill-markdown :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+  line-height: 1.35;
+}
+.skill-markdown h1 {
+  font-size: 1.5em;
+}
+.skill-markdown h2 {
+  font-size: 1.25em;
+}
+.skill-markdown h3 {
+  font-size: 1.125em;
+}
+.skill-markdown :is(ul, ol) {
+  padding-inline-start: 1.5em;
+}
+.skill-markdown ul {
+  list-style: disc;
+}
+.skill-markdown ol {
+  list-style: decimal;
+}
+.skill-markdown li + li {
+  margin-top: 0.25em;
+}
+.skill-markdown a {
+  color: var(--hub-accent);
+  text-decoration: underline;
+}
 .skill-markdown blockquote {
   border-inline-start: 2px solid var(--hub-line);
   color: var(--hub-ink-2);
   padding-inline-start: 1em;
 }
-.skill-markdown code { font-family: var(--hub-mono); font-size: 0.9em; }
-.skill-markdown :not(pre) > code { background: var(--hub-bg-2); border-radius: 4px; padding: 0.1em 0.3em; }
+.skill-markdown code {
+  font-family: var(--hub-mono);
+  font-size: 0.9em;
+}
+.skill-markdown :not(pre) > code {
+  background: var(--hub-bg-2);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
 .skill-markdown pre {
   overflow-x: auto;
   background: var(--hub-bg-2);
@@ -1454,7 +1693,10 @@ button.hub-btn.primary.is-loading::after {
   text-align: left;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 @media (min-width: 768px) {
@@ -1495,7 +1737,10 @@ button.hub-btn.primary.is-loading::after {
   color: var(--hub-ink-2);
   cursor: pointer;
   min-width: 0;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .hub-server-type-option:hover:not(.is-disabled) {

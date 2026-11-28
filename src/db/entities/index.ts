@@ -13,6 +13,7 @@ import UserConfig from './UserConfig.js';
 import OAuthClient from './OAuthClient.js';
 import OAuthToken from './OAuthToken.js';
 import BearerKey from './BearerKey.js';
+import BearerKeyUsage from './BearerKeyUsage.js';
 import Activity from './Activity.js';
 import BuiltinPrompt from './BuiltinPrompt.js';
 import BuiltinResource from './BuiltinResource.js';
@@ -36,6 +37,7 @@ export default [
   OAuthClient,
   OAuthToken,
   BearerKey,
+  BearerKeyUsage,
   Activity,
   BuiltinPrompt,
   BuiltinResource,
@@ -60,6 +62,7 @@ export {
   OAuthClient,
   OAuthToken,
   BearerKey,
+  BearerKeyUsage,
   Activity,
   BuiltinPrompt,
   BuiltinResource,

@@ -1,9 +1,12 @@
 import PersonalOAuthControls from './PersonalOAuthControls';
+import ServerStagingEditor from './ServerStagingEditor';
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronRight,
+  Code2,
+  BookOpen,
   AlertCircle,
   Copy,
   CopyPlus,
@@ -34,6 +37,8 @@ import { copyText } from '@/utils/clipboard';
 import { Switch } from '@/components/ui/ToggleGroup';
 import { useToast } from '@/contexts/ToastContext';
 import { useRuntimeSettings, useSettingsActions } from '@/hooks/useSettingsData';
+import { useNewTools } from '@/hooks/useNewTools';
+import { upstreamToolName } from '@/utils/toolChanges';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageServer } from '@/utils/serverPermissions';
 import { getServerTagList } from '@/utils/serverTags';
@@ -159,9 +164,17 @@ const ServerCard = ({
 }: ServerCardProps) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { installConfig } = useRuntimeSettings();
+  const { installConfig, nameSeparator, initialLoading } = useRuntimeSettings();
   const { exportMCPSettings } = useSettingsActions();
   const { auth } = useAuth();
+  // Wait for the real name separator and user, or the baseline can store wrong names.
+  const { newTools, acknowledge: acknowledgeNewTools } = useNewTools(
+    server,
+    nameSeparator,
+    auth.user?.username,
+    !initialLoading && !auth.loading,
+  );
+  const newToolSet = new Set(newTools);
   const baseUrl = installConfig?.baseUrl?.replace(/\/+$/, '') || '';
 
   const [expanded, setExpanded] = useState(false);
@@ -202,6 +215,10 @@ const ServerCard = ({
   const isMcpApp = serverExposesMcpApp(server);
   const enabled = server.enabled !== false;
   const canManage = canManageServer(server, auth.user);
+  const isStdioServer =
+    server.config?.type === 'stdio' ||
+    (!server.config?.type && Boolean(server.config?.command));
+  const serverHasStagingAdapter = Boolean(server.config?.staging?.adapter);
   // Reinstall is only available for stdio servers using npx or uvx
   const supportsReinstall =
     server.config?.command === 'npx' || server.config?.command === 'uvx';
@@ -472,6 +489,31 @@ const ServerCard = ({
     server.visibility ?? server.config?.visibility,
   );
   const visibilityOptions = getServerVisibilityOptions(translateVisibility, visibility.value);
+  // Optional repository/documentation links (#1495). Missing links render
+  // nothing at all, so a server without metadata keeps the compact row height.
+  const serverLinks: Array<{
+    key: string;
+    href: string;
+    label: string;
+    Icon: LucideIcon;
+  }> = [];
+  if (server.config?.repositoryUrl) {
+    serverLinks.push({
+      key: 'repository',
+      href: server.config.repositoryUrl,
+      label: t('server.repositoryLink'),
+      Icon: Code2,
+    });
+  }
+  if (server.config?.documentationUrl) {
+    serverLinks.push({
+      key: 'documentation',
+      href: server.config.documentationUrl,
+      label: t('server.documentationLink'),
+      Icon: BookOpen,
+    });
+  }
+
   const capabilitySummaries: CapabilitySummary[] = [
     {
       key: 'tools',
@@ -643,6 +685,25 @@ const ServerCard = ({
                   ))}
                 </div>
               )}
+              {serverLinks.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2" style={{ marginTop: 3 }}>
+                  {serverLinks.map(({ key, href, label, Icon }) => (
+                    <a
+                      key={key}
+                      className="inline-flex items-center gap-1 text-[11.5px] hover:underline"
+                      style={{ color: 'var(--hub-ink-2)' }}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={href}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Icon size={11} aria-hidden="true" />
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -740,11 +801,16 @@ const ServerCard = ({
           {/* Tools / Prompts / Resources counts */}
           {capabilitySummaries.map(({ key, icon: Icon, total, enabled: enabledCount, label }) => {
             const isEmpty = total === 0;
+            const hasNew = key === 'tools' && newTools.length > 0;
             return (
               <span
                 key={key}
-                className={`hub-server-capability-stat hub-mono hub-num ${isEmpty ? 'is-empty' : ''}`}
-                title={`${label}: ${enabledCount}/${total}`}
+                className={`hub-server-capability-stat hub-mono hub-num ${isEmpty ? 'is-empty' : ''} ${hasNew ? 'has-new' : ''}`}
+                title={
+                  hasNew
+                    ? `${label}: ${enabledCount}/${total} · ${t('server.newToolsCount', { count: newTools.length })}`
+                    : `${label}: ${enabledCount}/${total}`
+                }
               >
                 <span className="text-[var(--hub-ink-3)]">
                   <CapabilityIcon icon={Icon} />
@@ -944,6 +1010,9 @@ const ServerCard = ({
                 </p>
               </section>
             )}
+            {isStdioServer && canManage && (
+              <ServerStagingEditor server={server} onSaved={onRefresh} />
+            )}
             {/* Capability tabs + endpoint on same row */}
             <div className="flex items-center gap-1 mb-2 flex-wrap">
               {capabilitySummaries.map((tab) => {
@@ -965,6 +1034,11 @@ const ServerCard = ({
                     <span className="hub-mono hub-num" style={{ color: 'var(--hub-ink-3)', fontSize: 11 }}>
                       {tab.total === 0 ? '0' : `${tab.enabled}/${tab.total}`}
                     </span>
+                    {tab.key === 'tools' && newTools.length > 0 && (
+                      <span className="hub-tag accent" title={t('server.newToolsCount', { count: newTools.length })}>
+                        +{newTools.length}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1053,14 +1127,36 @@ const ServerCard = ({
 
             {expandedTab === 'tools' && server.tools && (
               <div className="space-y-3 mt-2">
+                {newTools.length > 0 && (
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-md"
+                    style={{ background: 'var(--hub-accent-soft)', color: 'var(--hub-accent)', fontSize: 12 }}
+                  >
+                    <span>{t('server.newToolsSinceLastReview', { count: newTools.length })}</span>
+                    <button
+                      type="button"
+                      className="hub-btn sm shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        acknowledgeNewTools();
+                      }}
+                    >
+                      {t('server.markToolsSeen')}
+                    </button>
+                  </div>
+                )}
                 {server.tools.map((tool, index) => (
                   <ToolCard
                     key={index}
                     server={server.name}
                     tool={tool}
+                    isNew={newToolSet.has(upstreamToolName(server.name, tool.name, nameSeparator))}
                     readOnly={!canManage}
+                    isStdioServer={isStdioServer}
+                    serverHasStagingAdapter={serverHasStagingAdapter}
                     onToggle={handleToolToggle}
                     onDescriptionUpdate={handleToolDescriptionUpdate}
+                    onFileStagingUpdate={onRefresh}
                     cost={cost?.items.find((i) => i.kind === 'tool' && i.name === tool.name)?.cost}
                   />
                 ))}

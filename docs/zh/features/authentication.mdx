@@ -31,7 +31,7 @@ Dashboard JWT、[通行密钥](#通行密钥passkey) 和 MCPHub 内置 OAuth 授
 
 添加方法：打开用户菜单 → **通行密钥** → **添加通行密钥**，填写可选名称和当前密码，然后按照浏览器提示操作。添加长期凭据前会用密码再次确认会话所有者。页面列出每个通行密钥的添加时间、上次使用时间以及是否已同步，并可在确认后移除。每个账户最多可保存 20 个通行密钥。
 
-- **安全上下文：** 浏览器只在 HTTPS 页面或 `localhost` 上提供通行密钥，并且只支持域名，不支持 IP 地址。
+- **安全上下文：** 浏览器只在 HTTPS 页面或 `localhost` 上提供通行密钥，并且只支持域名，不支持 IP 地址。通过普通 HTTP 或 IP 地址（例如 `http://192.168.1.10:3000` 或 Tailscale 的 `100.x.y.z` 地址）打开控制台时，通行密钥页面会给出相应提示，登录页会隐藏通行密钥按钮；服务器也会拒绝为 IP 地址发起通行密钥流程。请改为通过带 TLS 证书的域名访问控制台，例如使用反向代理（Caddy、Nginx、Traefik），或使用 `tailscale serve` 提供的 `*.ts.net` 域名。
 - **绑定主机名：** 通行密钥属于创建时打开控制台所用的主机名（WebAuthn 依赖方 ID）。MCPHub 从浏览器的 `Origin` 获取该值并随通行密钥保存，之后只在同一主机名下接受该通行密钥。通过其他主机名打开控制台时，需要在那里另外添加通行密钥。使用反向代理时，请把原始 `Origin`（或 `Host` 与协议）传给 MCPHub。
 - **会话：** 通行密钥登录签发与密码登录相同的 24 小时 JWT，并要求认证器完成用户验证。每个挑战五分钟后过期，且只被接受一次；在 [副本模式](/zh/configuration/replicas) 下，已使用的挑战记录在共享的 `oauth_state` 表中，因此跨副本同样只接受一次。签名计数器会拒绝上报计数器的克隆认证器：已保存的计数器只会前进，并发登录时也是如此；始终上报 0 的认证器（多数同步通行密钥）不受影响。挑战使用 `JWT_SECRET` 签名，因此一次登录的两个请求可以到达不同副本。
 - **策略：** 通行密钥属于本地账户凭据，因此 [仅允许 SSO 登录](#仅允许-sso-登录) 生效时同样拒绝通行密钥登录和注册；重新启用密码登录后，已保存的通行密钥恢复可用。Bearer 密钥、转发认证身份和跳过认证模式不能注册通行密钥；由 SSO 创建的用户没有已知的本地密码，继续通过身份提供商登录。
@@ -78,6 +78,7 @@ Better Auth 的非敏感配置现在既可以来自环境变量，也可以来�
 - `BETTER_AUTH_OIDC_SCOPES`
 - `BETTER_AUTH_OIDC_PKCE`
 - `BETTER_AUTH_OIDC_PROMPT`
+- `BETTER_AUTH_OIDC_TRUST_EMAIL`（可选，默认 `false`；仅控制 Better Auth 内部的提供商账户关联，不会将 Better Auth 会话关联到已有的 MCPHub 本地账户）
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`
 
 本地 OIDC 登录也可以继续在 `systemConfig.auth.betterAuth.providers.oidc` 中配置：
@@ -97,15 +98,17 @@ Better Auth 的非敏感配置现在既可以来自环境变量，也可以来�
 
 ### 本地用户映射规则
 
-Better Auth 登录成功后，MCPHub 会把会话映射回本地用户：
+MCPHub 严格仅按会话的 `ssoUserId`（Better Auth `user.id`）将 Better Auth 会话绑定到本地用户。**不会**通过邮箱或用户名匹配来接管或关联已有账户，因此 SSO 身份无法接管本地 `admin`、普通本地账户、转发认证账户或其他 SSO 账户。
+
+当允许自动创建用户（默认开启）且该 `ssoUserId` 尚未绑定时，MCPHub 会按以下顺序确定新用户的 `username`，并创建一个**非管理员**本地用户：
 
 - 优先使用 `email`
 - 其次使用 `name`
-- 最后回退到 provider 返回的 `id`
+- 最后回退到 Better Auth 会话的 `id`
 
-如果本地不存在对应 `username`，MCPHub 会自动创建一个**非管理员**用户。
+如果计算出的 `username` 或 `email` 已被其他账户占用，登录会以失败关闭（fail-closed）方式被拒绝，不会修改或返回已有账户。当 `BETTER_AUTH_DISABLE_AUTO_CREATE`（`systemConfig.auth.betterAuth.disableAutoCreate`）为 `true` 时，所有未绑定的 SSO 身份都会被拒绝，即使其邮箱或名称与已有本地用户一致。
 
-> OIDC / GitHub / Google 登录都不会自动授予管理员权限。只有本地已存在同名且 `isAdmin=true` 的用户，映射后才会拥有管理员权限。
+> OIDC / GitHub / Google 登录都不会自动授予管理员权限；管理员权限仅来自已绑定本地用户记录本身（例如由管理员在控制台中提升该自动创建的 SSO 用户）。`BETTER_AUTH_OIDC_TRUST_EMAIL` 仅控制 Better Auth 内部的提供商账户关联，不会绕过 MCPHub 严格的 `ssoUserId` 绑定规则。
 
 ### 仅允许 SSO 登录
 
