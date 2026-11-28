@@ -625,12 +625,6 @@
       "title": "Yerleşik Kaynaklar"
     },
     "users": {
-    "status": "Durum",
-    "active": "Etkin",
-    "suspended": "Askıya alındı",
-    "suspend": "Askıya al",
-    "reactivate": "Yeniden etkinleştir",
-    "statusError": "Hesap durumu güncellenemedi",
       "title": "Kullanıcı Yönetimi"
     },
     "settings": {
@@ -1479,6 +1473,12 @@
     "partialSuccess": "{{total}} gruptan {{count}} tanesi başarıyla içe aktarıldı. Bazı gruplar başarısız oldu:"
   },
   "users": {
+    "status": "Durum",
+    "active": "Etkin",
+    "suspended": "Askıya alındı",
+    "suspend": "Askıya al",
+    "reactivate": "Yeniden etkinleştir",
+    "statusError": "Hesap durumu güncellenemedi",
     "userGroups": "Kullanıcı grupları",
     "userGroupsHint": "Grup adlarını virgülle ayırın. Adlar büyük/küçük harfe duyarlıdır; kullanıcıları gruplamak için aynı adı kullanın. Üyelikleri kaldırmak için alanı temizleyin.",
     "shareUserGroupsHint": "Seçilen grupların üyeleri bu kaynağı kullanabilir. Üyelikleri kullanıcı düzenleme sayfasında yönetin.",

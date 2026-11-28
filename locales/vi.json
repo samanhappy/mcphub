@@ -626,12 +626,6 @@
       "title": "Tài nguyên tích hợp (Built-in)"
     },
     "users": {
-    "status": "Trạng thái",
-    "active": "Hoạt động",
-    "suspended": "Đã tạm ngưng",
-    "suspend": "Tạm ngưng",
-    "reactivate": "Kích hoạt lại",
-    "statusError": "Không thể cập nhật trạng thái tài khoản",
       "title": "Quản lý Người dùng"
     },
     "settings": {
@@ -1481,6 +1475,12 @@
     "partialSuccess": "Nhập thành công {{count}} trong tổng số {{total}} nhóm. Một vài nhóm bị lỗi:"
   },
   "users": {
+    "status": "Trạng thái",
+    "active": "Hoạt động",
+    "suspended": "Đã tạm ngưng",
+    "suspend": "Tạm ngưng",
+    "reactivate": "Kích hoạt lại",
+    "statusError": "Không thể cập nhật trạng thái tài khoản",
     "userGroups": "Nhóm người dùng",
     "userGroupsHint": "Phân cách tên nhóm bằng dấu phẩy. Tên phân biệt chữ hoa và chữ thường; dùng cùng tên để nhóm người dùng. Xóa nội dung để bỏ mọi tư cách thành viên.",
     "shareUserGroupsHint": "Thành viên các nhóm đã chọn có thể dùng tài nguyên này. Quản lý thành viên khi chỉnh sửa người dùng.",

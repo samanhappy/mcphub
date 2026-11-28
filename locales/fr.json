@@ -625,12 +625,6 @@
       "title": "Ressources intégrées"
     },
     "users": {
-    "status": "Statut",
-    "active": "Actif",
-    "suspended": "Suspendu",
-    "suspend": "Suspendre",
-    "reactivate": "Réactiver",
-    "statusError": "Impossible de modifier le statut du compte",
       "title": "Gestion des utilisateurs"
     },
     "settings": {
@@ -1480,6 +1474,12 @@
     "partialSuccess": "{{count}} groupe(s) sur {{total}} importé(s) avec succès. Certains groupes ont échoué :"
   },
   "users": {
+    "status": "Statut",
+    "active": "Actif",
+    "suspended": "Suspendu",
+    "suspend": "Suspendre",
+    "reactivate": "Réactiver",
+    "statusError": "Impossible de modifier le statut du compte",
     "userGroups": "Groupes d’utilisateurs",
     "userGroupsHint": "Noms séparés par des virgules, sensibles à la casse. Utilisez le même nom pour regrouper des utilisateurs. Videz le champ pour retirer les appartenances.",
     "shareUserGroupsHint": "Les membres des groupes sélectionnés peuvent utiliser cette ressource. Gérez les appartenances en modifiant les utilisateurs.",

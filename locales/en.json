@@ -626,12 +626,6 @@
       "title": "Built-in Resources"
     },
     "users": {
-    "status": "Status",
-    "active": "Active",
-    "suspended": "Suspended",
-    "suspend": "Suspend",
-    "reactivate": "Reactivate",
-    "statusError": "Could not update account status",
       "title": "User Management"
     },
     "settings": {
@@ -1481,6 +1475,12 @@
     "partialSuccess": "Imported {{count}} of {{total}} groups successfully. Some groups failed:"
   },
   "users": {
+    "status": "Status",
+    "active": "Active",
+    "suspended": "Suspended",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "statusError": "Could not update account status",
     "userGroups": "User groups",
     "userGroupsHint": "Comma-separated group names. Names are case-sensitive; use the same name to group users. Clear this field to remove all memberships.",
     "shareUserGroupsHint": "Members of selected user groups can use this resource. Manage membership by editing users.",

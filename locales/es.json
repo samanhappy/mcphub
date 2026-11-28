@@ -626,12 +626,6 @@
       "title": "Recursos integrados"
     },
     "users": {
-    "status": "Estado",
-    "active": "Activa",
-    "suspended": "Suspendida",
-    "suspend": "Suspender",
-    "reactivate": "Reactivar",
-    "statusError": "No se pudo actualizar el estado de la cuenta",
       "title": "Gestión de usuarios"
     },
     "settings": {
@@ -1481,6 +1475,12 @@
     "partialSuccess": "Se han importado {{count}} de {{total}} grupos correctamente. Algunos grupos han fallado:"
   },
   "users": {
+    "status": "Estado",
+    "active": "Activa",
+    "suspended": "Suspendida",
+    "suspend": "Suspender",
+    "reactivate": "Reactivar",
+    "statusError": "No se pudo actualizar el estado de la cuenta",
     "userGroups": "Grupos de usuarios",
     "userGroupsHint": "Nombres separados por comas y sensibles a mayúsculas. Usa el mismo nombre para agrupar usuarios. Vacía el campo para quitar las membresías.",
     "shareUserGroupsHint": "Los miembros de los grupos seleccionados pueden usar este recurso. Gestiona las membresías al editar usuarios.",
