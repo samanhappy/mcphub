@@ -4075,7 +4075,7 @@ const withStagingTools = async (
   tools: Tool[],
   extra: any,
 ): Promise<Tool[]> => {
-  let result = await withSkillTools(group, tools, extra);
+  const result = await withSkillTools(group, tools, extra);
   // A route with no resolvable principal (system key, anonymous, hosted
   // identity the hub cannot map) must not advertise tools it would refuse.
   if (!stagingAskUsername(extra)) return result;
