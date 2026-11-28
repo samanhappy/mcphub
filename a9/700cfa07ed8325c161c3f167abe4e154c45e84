@@ -1,0 +1,22 @@
+src/services/mcpTools.ts
+  h_9c4304dcbb6d2a 562,569,571-573
+src/utils/migration.ts
+  h_9c4304dcbb6d2a 228
+src/utils/settingsSync.ts
+  h_9c4304dcbb6d2a 113,309
+tests/integration/hosted-skills-delivery.test.ts
+  h_9c4304dcbb6d2a 27,238-243
+tests/integration/settings-sync.test.ts
+  h_9c4304dcbb6d2a 525,528,532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9700cfa07ed8325c161c3f167abe4e154c45e84",
+  "prompts": {},
+  "humans": {
+    "h_9c4304dcbb6d2a": {
+      "author": "sunmeng <sunmeng@meibaokeji.com>"
+    }
+  }
+}
