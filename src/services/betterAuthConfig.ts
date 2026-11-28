@@ -284,6 +284,7 @@ export const isApiAuthExemptPath = (
     : null;
   return (
     reqPath === '/auth/login' ||
+    reqPath === '/auth/logout' ||
     reqPath === '/auth/register' ||
     reqPath === '/auth/passkey/options' ||
     reqPath === '/auth/passkey/login' ||

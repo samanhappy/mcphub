@@ -16,7 +16,7 @@ export const createDevProxyConfig = (
       joinBasePath(basePath, route),
       {
         target,
-        changeOrigin: true,
+        changeOrigin: false,
       },
     ]),
   );

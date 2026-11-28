@@ -1,3 +1,4 @@
+import { dashboardSignInToken } from '../middlewares/dashboardSession.js';
 import { DASHBOARD_TOKEN_EXPIRY, getUserSessionVersion } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -82,19 +83,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const isUsingDefaultPassword =
       user.username === 'admin' && user.isAdmin && isDefaultPassword(password) && version !== 'dev';
 
-    jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY }, (err, token) => {
-      if (err) throw err;
-      res.json({
-        success: true,
-        message: t('api.success.login_successful'),
-        token,
-        user: {
-          username: user.username,
-          isAdmin: user.isAdmin,
-          permissions: dataService.getPermissions(user),
-        },
-        isUsingDefaultPassword,
-      });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+    res.json({
+      success: true,
+      message: t('api.success.login_successful'),
+      ...(await dashboardSignInToken(req, res, token)),
+      user: {
+        username: user.username,
+        isAdmin: user.isAdmin,
+        permissions: dataService.getPermissions(user),
+      },
+      isUsingDefaultPassword,
     });
   } catch (error) {
     logger.error('Login error:', error);
@@ -132,13 +131,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
     const strength = validatePasswordStrength(password);
     if (!strength.isValid) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          message: t('auth.passwordStrengthError'),
-          errors: strength.errors,
-        });
+      res.status(400).json({
+        success: false,
+        message: t('auth.passwordStrengthError'),
+        errors: strength.errors,
+      });
       return;
     }
     if (await isRegistrationUsernameReserved(username)) {
@@ -162,17 +159,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       },
     };
 
-    jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY }, (err, token) => {
-      if (err) throw err;
-      res.json({
-        success: true,
-        token,
-        user: {
-          username: newUser.username,
-          isAdmin: newUser.isAdmin,
-          permissions: dataService.getPermissions(newUser),
-        },
-      });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+    res.json({
+      success: true,
+      ...(await dashboardSignInToken(req, res, token)),
+      user: {
+        username: newUser.username,
+        isAdmin: newUser.isAdmin,
+        permissions: dataService.getPermissions(newUser),
+      },
     });
   } catch (error) {
     logger.error('Registration error:', error);

@@ -7,8 +7,11 @@ import {
 } from '@simplewebauthn/browser';
 import type { AuthResponse, Passkey } from '../types';
 import { apiDelete, apiGet, apiPost, type ApiResponse } from '../utils/fetchInterceptor';
-import { setToken } from '../utils/interceptors';
-import { classifyPasskeyAvailability, type PasskeyAvailability } from '../utils/passkeyAvailability';
+import { browserSessionRequest } from './authService';
+import {
+  classifyPasskeyAvailability,
+  type PasskeyAvailability,
+} from '../utils/passkeyAvailability';
 
 export type { PasskeyAvailability };
 
@@ -60,12 +63,15 @@ export const signInWithPasskey = async (): Promise<PasskeySignInResult> => {
     return { success: false, error: classifyCeremonyError(error) };
   }
 
-  const result = await apiPost<AuthResponse & { code?: string }>('/auth/passkey/login', {
-    challengeToken: start.challengeToken,
-    response,
-  });
-  if (result.success && result.token) {
-    setToken(result.token);
+  const result = await apiPost<AuthResponse & { code?: string }>(
+    '/auth/passkey/login',
+    {
+      challengeToken: start.challengeToken,
+      response,
+    },
+    browserSessionRequest,
+  );
+  if (result.success && result.user) {
     return { ...result, success: true };
   }
   return { success: false, code: result.code, message: result.message };

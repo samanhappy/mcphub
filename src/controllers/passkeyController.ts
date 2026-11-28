@@ -1,3 +1,4 @@
+import { dashboardSignInToken } from '../middlewares/dashboardSession.js';
 import type { Request, Response } from 'express';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { getPasskeyDao } from '../dao/index.js';
@@ -245,7 +246,7 @@ export const loginWithPasskey = async (req: Request, res: Response): Promise<voi
     }
     res.json({
       success: true,
-      token: signDashboardToken(user),
+      ...(await dashboardSignInToken(req, res, signDashboardToken(user))),
       user: {
         username: user.username,
         isAdmin: user.isAdmin,

@@ -1,8 +1,5 @@
 import { apiDelete, apiPatch, apiPost, apiPut } from '../utils/fetchInterceptor';
-import type {
-  ServerStagingPatchPayload,
-  ToolFileStagingPatchPayload,
-} from '../utils/fileStaging';
+import type { ServerStagingPatchPayload, ToolFileStagingPatchPayload } from '../utils/fileStaging';
 
 export interface ToolCallRequest {
   toolName: string;
@@ -34,11 +31,7 @@ export const callTool = async (
       ? `/tools/${encodeURIComponent(server)}/${encodeURIComponent(request.toolName)}`
       : '/tools/call';
 
-    const response = await apiPost<any>(url, request.arguments, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`, // Add bearer auth for MCP routing
-      },
-    });
+    const response = await apiPost<any>(url, request.arguments);
 
     if (response.success === false) {
       return {
@@ -73,11 +66,6 @@ export const toggleTool = async (
     const response = await apiPost<any>(
       `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/toggle`,
       { enabled },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -106,11 +94,6 @@ export const updateToolDescription = async (
     const response = await apiPut<any>(
       `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/description`,
       { description },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -138,11 +121,6 @@ export const updateToolHiddenParams = async (
     const response = await apiPut<any>(
       `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/hidden-params`,
       { hiddenParams },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -169,11 +147,6 @@ export const resetToolDescription = async (
   try {
     const response = await apiDelete<any>(
       `/servers/${encodeURIComponent(serverName)}/tools/${encodeURIComponent(toolName)}/description`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -205,11 +178,6 @@ export const updateServerStaging = async (
     const response = await apiPatch<any>(
       `/servers/${encodeURIComponent(serverName)}/staging`,
       payload,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -244,11 +212,6 @@ export const updateToolFileStaging = async (
     const response = await apiPatch<any>(
       `/servers/${encodeURIComponent(serverName)}/file-staging`,
       payload,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {

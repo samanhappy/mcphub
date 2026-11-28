@@ -129,11 +129,6 @@ export const updatePromptDescription = async (
     const response = await apiPut<any>(
       `/servers/${encodeURIComponent(serverName)}/prompts/${encodeURIComponent(promptName)}/description`,
       { description },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -156,11 +151,6 @@ export const resetPromptDescription = async (
   try {
     const response = await apiDelete<any>(
       `/servers/${encodeURIComponent(serverName)}/prompts/${encodeURIComponent(promptName)}/description`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
