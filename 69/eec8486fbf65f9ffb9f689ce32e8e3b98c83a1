@@ -1,0 +1,14 @@
+src/services/mcpService.ts
+  h_9c4304dcbb6d2a 4078
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69eec8486fbf65f9ffb9f689ce32e8e3b98c83a1",
+  "prompts": {},
+  "humans": {
+    "h_9c4304dcbb6d2a": {
+      "author": "sunmeng <sunmeng@meibaokeji.com>"
+    }
+  }
+}

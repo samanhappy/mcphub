@@ -1,0 +1,18 @@
+src/controllers/smartRoutingController.ts
+  h_18676a549cd52a 14,366-371
+src/services/embeddingSyncScheduler.ts
+  h_18676a549cd52a 9-23,53-54,73,100-105,111-112,224-233,235-236,242,247-258,288-295,298-299,302,306-310,317-318,322-323,343,346-347,365,368-369,388-406,408-411,414-418,420-429,431,433-439,450-459,462,464,473-478,481-482,487-489,500,516-518,521,525,527,536,762-789,813-818,926-930,961-969
+tests/services/embeddingSyncScheduler.test.ts
+  h_18676a549cd52a 386-558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6888f213de014dc1e6466cde45899a51b6535d3b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

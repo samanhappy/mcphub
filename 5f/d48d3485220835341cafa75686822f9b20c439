@@ -1,0 +1,25 @@
+frontend/src/pages/Dashboard.tsx
+  s_4c5e5c3aebae12::t_588c03b8b44d1b 78-88,119
+  s_4c5e5c3aebae12::t_b7301be3b4cf1e 120,137,140,201-204,207,212,217,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fd48d3485220835341cafa75686822f9b20c439",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4c5e5c3aebae12": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "991bad9b-1fef-47a4-980e-20ccb516e2cc",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

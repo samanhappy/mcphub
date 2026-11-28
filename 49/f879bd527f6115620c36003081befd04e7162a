@@ -1,0 +1,50 @@
+frontend/src/components/AddGroupForm.tsx
+  h_9c4304dcbb6d2a 31,40-42,67,133-155
+frontend/src/components/EditGroupForm.tsx
+  h_9c4304dcbb6d2a 32,41-43,70,138-160
+frontend/src/contexts/GroupContext.tsx
+  h_9c4304dcbb6d2a 32,43
+frontend/src/types/index.ts
+  h_9c4304dcbb6d2a 426,557
+locales/en.json
+  h_9c4304dcbb6d2a 677-681
+locales/es.json
+  h_9c4304dcbb6d2a 677-681
+locales/fr.json
+  h_9c4304dcbb6d2a 676-680
+locales/tr.json
+  h_9c4304dcbb6d2a 676-680
+locales/vi.json
+  h_9c4304dcbb6d2a 677-681
+locales/zh.json
+  h_9c4304dcbb6d2a 679-683
+src/controllers/groupController.ts
+  h_9c4304dcbb6d2a 107-113,171,180-181,213,274-278,344,374,430,439-440,467,484
+src/dao/GroupDaoDbImpl.ts
+  h_9c4304dcbb6d2a 22,39,53,65,79,92,106,119,147,167,218
+src/db/entities/Group.ts
+  h_9c4304dcbb6d2a 26-28
+src/services/groupService.ts
+  h_9c4304dcbb6d2a 163,187
+src/services/mcpService.ts
+  h_9c4304dcbb6d2a 64-76,578,593-599,603-607,614,626,636,4021-4072,4078,4081,4083-4084,4103,5057-5058,5069-5085,5090-5092,5136,5180-5184
+src/services/mcpSkillTools.ts
+  h_9c4304dcbb6d2a 1-337
+src/services/mcpSkills.ts
+  h_9c4304dcbb6d2a 3,21-29,40-66,73,92
+src/types/index.ts
+  h_9c4304dcbb6d2a 40-41,51,959
+tests/integration/hosted-skills-delivery.test.ts
+  h_9c4304dcbb6d2a 1-384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49f879bd527f6115620c36003081befd04e7162a",
+  "prompts": {},
+  "humans": {
+    "h_9c4304dcbb6d2a": {
+      "author": "sunmeng <sunmeng@meibaokeji.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+docs/migrations/0010-bearer-key-expiry.sql
+  s_5a7fd95fcd2959::t_1d6db2fe30a7d2 1-13
+src/db/entities/BearerKeyUsage.ts
+  s_5a7fd95fcd2959::t_db785e45596728 1-17
+src/db/entities/BearerKey.ts
+  s_5a7fd95fcd2959::t_57c02b1661fadd 55-57
+src/db/entities/index.ts
+  s_5a7fd95fcd2959::t_02264d1ab05de8 16,40,65
+src/types/index.ts
+  s_5a7fd95fcd2959::t_ec9e4d1e0d1d69 504-505
+src/utils/bearerKeyExpiry.ts
+  s_5a7fd95fcd2959::t_146417f5f33011 1-118
+src/utils/bearerKeyUsage.ts
+  s_5a7fd95fcd2959::t_cef3a864aaafe2 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13ae803439e63daa99349532037e7322093f0ed3",
+  "prompts": {},
+  "sessions": {
+    "s_5a7fd95fcd2959": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21a8b-d382-75b1-b60d-e90363b8ac34",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

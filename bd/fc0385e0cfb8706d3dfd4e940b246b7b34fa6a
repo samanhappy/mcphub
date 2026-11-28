@@ -1,0 +1,28 @@
+src/controllers/serverController.ts
+  h_18676a549cd52a 52-54,1269,3255-3260
+src/controllers/smartRoutingController.ts
+  h_18676a549cd52a 14-17,369-374
+src/services/embeddingSyncScheduler.ts
+  h_18676a549cd52a 1-818
+src/services/mcpService.ts
+  h_18676a549cd52a 167-171,780-781,870-872,879,911,3416,3618
+src/services/vectorSearchService.ts
+  h_18676a549cd52a 247-249,251-253,482-484,488-499,1236,1590
+tests/services/embeddingSyncScheduler.test.ts
+  h_18676a549cd52a 1-386
+tests/services/mcpService-description-override-embedding.test.ts
+  h_18676a549cd52a 276,287-292,294,298-299
+tests/services/vectorSearchService.test.ts
+  h_18676a549cd52a 1253-1351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdfc0385e0cfb8706d3dfd4e940b246b7b34fa6a",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

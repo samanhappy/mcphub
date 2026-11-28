@@ -1,0 +1,16 @@
+src/services/betterAuthSession.ts
+  h_18676a549cd52a 95-96,98-104,111-117
+tests/services/betterAuthSession.test.ts
+  h_18676a549cd52a 518-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7b4ebface1acf03927de531ee3e5a35b69c2b26",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
