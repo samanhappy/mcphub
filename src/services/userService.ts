@@ -1,5 +1,8 @@
 import { getOAuthApprovalDao, getPasskeyDao } from '../dao/index.js';
-import { revokeUserTokens } from '../models/OAuth.js';
+import { getAppDataSource } from '../db/connection.js';
+import { databaseTransaction } from '../db/transactionContext.js';
+import { UserDaoDbImpl } from '../dao/UserDaoDbImpl.js';
+import { revokeUserAuthorizationCodes, revokeUserTokens } from '../models/OAuth.js';
 import { IUser } from '../types/index.js';
 import { getBearerKeyDao, getUserDao, getGroupDao, getServerDao } from '../dao/index.js';
 import { logger } from '../utils/logger.js';
@@ -59,18 +62,77 @@ export const createNewUser = async (
   }
 };
 
+export class UserAdminConflict extends Error {}
+
+let pendingFileMutation: Promise<unknown> = Promise.resolve();
+
+const withUserAdminLock = async <T>(run: () => Promise<T>): Promise<T> => {
+  if (!(getUserDao() instanceof UserDaoDbImpl)) {
+    const mutation = pendingFileMutation.then(run);
+    pendingFileMutation = mutation.catch(() => undefined);
+    return mutation;
+  }
+
+  const existing = databaseTransaction.getStore();
+  if (existing?.isTransactionActive) {
+    await existing.query('SELECT pg_advisory_xact_lock(1527, 0)');
+    return run();
+  }
+
+  const runner = getAppDataSource().createQueryRunner();
+  try {
+    await runner.startTransaction();
+    await runner.query('SELECT pg_advisory_xact_lock(1527, 0)');
+    const result = await databaseTransaction.run(runner, run);
+    await runner.commitTransaction();
+    return result;
+  } catch (error) {
+    if (runner.isTransactionActive) await runner.rollbackTransaction();
+    throw error;
+  } finally {
+    await runner.release();
+  }
+};
+
+const requireOtherEnabledAdmin = async (user: IUser): Promise<void> => {
+  if (
+    user.isAdmin &&
+    !user.disabled &&
+    !(await getUserDao().findAll()).some(
+      (other) => other.username !== user.username && other.isAdmin && !other.disabled,
+    )
+  ) {
+    throw new UserAdminConflict('Cannot remove the last enabled administrator');
+  }
+};
+
 // Update user information
 export const updateUser = async (
   username: string,
-  data: { isAdmin?: boolean; newPassword?: string; email?: string; userGroups?: string[] },
+  data: {
+    isAdmin?: boolean;
+    newPassword?: string;
+    email?: string;
+    userGroups?: string[];
+    disabled?: boolean;
+  },
+  actor?: string,
 ): Promise<IUser | null> => {
-  try {
+  return withUserAdminLock(async () => {
     const userDao = getUserDao();
     const user = await userDao.findByUsername(username);
+    if (!user) return null;
 
-    if (!user) {
-      return null;
+    if (actor) {
+      const currentActor = await userDao.findByUsername(actor);
+      if (!currentActor?.isAdmin || currentActor.disabled) {
+        throw new UserAdminConflict('Administrator access changed');
+      }
     }
+    if (data.disabled && actor === username) {
+      throw new UserAdminConflict('Cannot suspend your own account');
+    }
+    if (data.disabled || data.isAdmin === false) await requireOtherEnabledAdmin(user);
 
     if (data.userGroups !== undefined) {
       if (!(await userDao.update(username, { userGroups: data.userGroups }))) return null;
@@ -100,27 +162,41 @@ export const updateUser = async (
       }
     }
 
-    // Return updated user
-    return await userDao.findByUsername(username);
-  } catch (error) {
-    logger.error('Failed to update user:', error);
-    return null;
-  }
+    if (data.disabled !== undefined && data.disabled !== Boolean(user.disabled)) {
+      if (data.disabled) await revokeUserAuthorizationCodes(username);
+      const updated = await userDao.update(username, {
+        disabled: data.disabled,
+        ...(data.disabled
+          ? {
+              suspendedAt: new Date(
+                Math.max(Date.now(), (Date.parse(user.suspendedAt ?? '') || 0) + 1),
+              ).toISOString(),
+            }
+          : {}),
+      });
+      if (!updated) return null;
+      logger.log('User account status changed', {
+        actor,
+        target: username,
+        disabled: data.disabled,
+      });
+      return updated;
+    }
+
+    return userDao.findByUsername(username);
+  });
 };
 
 // Delete a user
-export const deleteUser = async (username: string): Promise<boolean> => {
-  try {
+export const deleteUser = async (username: string, actor?: string): Promise<boolean> => {
+  return withUserAdminLock(async () => {
     const userDao = getUserDao();
-
-    // Cannot delete the last admin user
-    const users = await userDao.findAll();
-    const adminUsers = users.filter((user) => user.isAdmin);
-    const userToDelete = users.find((user) => user.username === username);
-
-    if (userToDelete?.isAdmin && adminUsers.length === 1) {
-      return false; // Cannot delete the last admin
+    if (actor) {
+      const currentActor = await userDao.findByUsername(actor);
+      if (!currentActor?.isAdmin || currentActor.disabled) return false;
     }
+    const userToDelete = (await userDao.findAll()).find((user) => user.username === username);
+    if (userToDelete) await requireOtherEnabledAdmin(userToDelete);
 
     if (userToDelete) {
       await getBearerKeyDao().deleteByOwner(username);
@@ -141,15 +217,20 @@ export const deleteUser = async (username: string): Promise<boolean> => {
           const sharedWithUsers = server.sharedWithUsers.filter((name) => name !== username);
           await serverDao.update(server.name, { sharedWithUsers });
           const { updateServerInfoVisibility } = await import('./mcpService.js');
-          updateServerInfoVisibility(server.name, server.visibility, sharedWithUsers, server.sharedWithUserGroups);
+          updateServerInfoVisibility(
+            server.name,
+            server.visibility,
+            sharedWithUsers,
+            server.sharedWithUserGroups,
+          );
         }
       }
     }
     return userToDelete ? await userDao.delete(username) : false;
-  } catch (error) {
+  }).catch((error) => {
     logger.error('Failed to delete user:', error);
     return false;
-  }
+  });
 };
 
 // Check if user has admin permissions

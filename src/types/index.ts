@@ -25,6 +25,9 @@ export interface CapabilityCacheStatus {
 
 // User interface
 export interface IUser {
+  disabled?: boolean;
+  /** Last suspension time and dashboard session generation. */
+  suspendedAt?: string;
   userGroups?: string[];
   username: string;
   password: string;
@@ -432,6 +435,7 @@ export interface UserPasskey {
 
 // OAuth Authorization Code (for MCPHub's authorization server)
 export interface IOAuthAuthorizationCode {
+  suspendedAt?: string;
   code: string; // Authorization code
   expiresAt: Date; // Expiration time
   redirectUri: string; // Redirect URI used in the authorization request
@@ -588,6 +592,7 @@ export interface PendingPersonalOAuthContinuation {
   codeChallengeMethod?: string;
   username: string;
   sessionVersion: string;
+  suspendedAt?: string;
   approvalId?: string;
   approvalContext?: {
     redirectUri: string;

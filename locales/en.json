@@ -602,6 +602,12 @@
       "title": "Built-in Resources"
     },
     "users": {
+    "status": "Status",
+    "active": "Active",
+    "suspended": "Suspended",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "statusError": "Could not update account status",
       "title": "User Management"
     },
     "settings": {

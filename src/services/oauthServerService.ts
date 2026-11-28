@@ -101,7 +101,9 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
     const scopeString = Array.isArray(code.scope) ? code.scope.join(' ') : code.scope;
 
     const currentUser = await resolveUserSession(user);
-    if (!currentUser) throw new OAuth2Server.InvalidGrantError('User no longer exists');
+    if (!currentUser || currentUser.suspendedAt !== user.suspendedAt) {
+      throw new OAuth2Server.InvalidGrantError('User session is no longer valid');
+    }
     const sessionVersion = getUserSessionVersion(currentUser);
 
     let approvalId = user.approvalId as string | undefined;
@@ -129,6 +131,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
         clientId: client.id,
         username: user.username,
         sessionVersion,
+        suspendedAt: currentUser.suspendedAt,
         approvalId,
         codeChallenge: code.codeChallenge,
         codeChallengeMethod: code.codeChallengeMethod,
@@ -155,9 +158,11 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
    */
   getAuthorizationCode: async (authorizationCode: string) => {
     const code = await getAuthorizationCode(authorizationCode);
+    const account = code && (await resolveUserSession(code));
     if (
       !code ||
-      !(await resolveUserSession(code)) ||
+      !account ||
+      account.suspendedAt !== code.suspendedAt ||
       !(await isApprovalGrantValid(code, code.clientId))
     ) {
       return false;
@@ -185,6 +190,7 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
       user: {
         username: code.username,
         sessionVersion: code.sessionVersion,
+        authorizationSuspension: code.suspendedAt ?? null,
         approvalId: code.approvalId,
       },
       codeChallenge: code.codeChallenge,
@@ -215,8 +221,11 @@ const oauthModel: OAuth2Server.AuthorizationCodeModel & OAuth2Server.RefreshToke
 
     const scopeString = Array.isArray(token.scope) ? token.scope.join(' ') : token.scope;
 
+    const account = await resolveUserSession(user);
     if (
-      !(await resolveUserSession(user)) ||
+      !account ||
+      (user.authorizationSuspension !== undefined &&
+        user.authorizationSuspension !== (account.suspendedAt ?? null)) ||
       !(await isApprovalGrantValid({ ...user, username: user.username }, client.id))
     ) {
       throw new OAuth2Server.InvalidGrantError('User session is no longer valid');
@@ -426,7 +435,7 @@ export const authenticateUser = async (
   password: string,
 ): Promise<OAuth2Server.User | null> => {
   const user = await findUserByUsername(username);
-  if (!user) {
+  if (!user || user.disabled) {
     return null;
   }
 
@@ -439,6 +448,7 @@ export const authenticateUser = async (
     username: user.username,
     isAdmin: user.isAdmin,
     sessionVersion: getUserSessionVersion(user),
+    suspendedAt: user.suspendedAt,
   };
 };
 

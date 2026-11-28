@@ -122,6 +122,8 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             isAdmin: user.isAdmin || false,
             email: user.email ?? null,
             ssoUserId: (user as any).ssoUserId ?? null,
+            disabled: user.disabled ?? false,
+            suspendedAt: user.suspendedAt,
             userGroups: user.userGroups,
           });
           createdUsernames.add(user.username);

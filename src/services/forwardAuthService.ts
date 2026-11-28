@@ -243,11 +243,19 @@ const resolveForwardAuthUser = async (
     return { status: 'rejected', reason: 'token has no usable sub claim' };
   }
 
+  const authenticateBoundUser = (user: IUser): ForwardAuthResult => {
+    if (
+      user.disabled ||
+      (user.suspendedAt &&
+        !(typeof payload.iat === 'number' && payload.iat * 1000 > Date.parse(user.suspendedAt)))
+    ) {
+      return { status: 'rejected', reason: 'user session is no longer valid' };
+    }
+    return { status: 'authenticated', user };
+  };
   const ssoUserId = buildForwardAuthSsoUserId(config.issuer, subject);
   const boundUser = await findUserBySsoUserId(ssoUserId);
-  if (boundUser) {
-    return { status: 'authenticated', user: boundUser };
-  }
+  if (boundUser) return authenticateBoundUser(boundUser);
 
   if (!config.autoCreate) {
     return {
@@ -293,9 +301,7 @@ const resolveForwardAuthUser = async (
 
   // A concurrent request for the same identity may have created the user first.
   const racedUser = await findUserBySsoUserId(ssoUserId);
-  if (racedUser) {
-    return { status: 'authenticated', user: racedUser };
-  }
+  if (racedUser) return authenticateBoundUser(racedUser);
   return { status: 'rejected', reason: `could not create local user "${username}"` };
 };
 

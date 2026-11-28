@@ -602,6 +602,12 @@
       "title": "Recursos integrados"
     },
     "users": {
+    "status": "Estado",
+    "active": "Activa",
+    "suspended": "Suspendida",
+    "suspend": "Suspender",
+    "reactivate": "Reactivar",
+    "statusError": "No se pudo actualizar el estado de la cuenta",
       "title": "Gestión de usuarios"
     },
     "settings": {

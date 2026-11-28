@@ -587,6 +587,7 @@ export interface IUser {
 
 // User management types
 export interface User {
+  disabled?: boolean;
   userGroups?: string[];
   username: string;
   isAdmin: boolean;
@@ -601,6 +602,7 @@ export interface UserFormData {
 }
 
 export interface UserUpdateData {
+  disabled?: boolean;
   userGroups?: string[];
   isAdmin?: boolean;
   newPassword?: string;

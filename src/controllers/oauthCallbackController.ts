@@ -458,7 +458,7 @@ const handlePersonalOAuthCallback = async (
       username: continuation.username,
       sessionVersion: continuation.sessionVersion,
     });
-    if (!preExchangeUser) {
+    if (!preExchangeUser || preExchangeUser.suspendedAt !== continuation.suspendedAt) {
       return failValidatedContinuation('access_denied');
     }
 
@@ -562,6 +562,7 @@ const handlePersonalOAuthCallback = async (
     if (
       !postExchangeValid ||
       !finalUser ||
+      finalUser.suspendedAt !== continuation.suspendedAt ||
       !finalClient ||
       (Array.isArray(finalClient.grants) && !finalClient.grants.includes('authorization_code')) ||
       !approvalStillValid

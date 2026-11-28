@@ -615,6 +615,12 @@
       "title": "内置资源"
     },
     "users": {
+    "status": "状态",
+    "active": "正常",
+    "suspended": "已停用",
+    "suspend": "停用",
+    "reactivate": "恢复",
+    "statusError": "无法更新账户状态",
       "title": "用户管理"
     },
     "market": {

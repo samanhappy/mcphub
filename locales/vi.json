@@ -602,6 +602,12 @@
       "title": "Tài nguyên tích hợp (Built-in)"
     },
     "users": {
+    "status": "Trạng thái",
+    "active": "Hoạt động",
+    "suspended": "Đã tạm ngưng",
+    "suspend": "Tạm ngưng",
+    "reactivate": "Kích hoạt lại",
+    "statusError": "Không thể cập nhật trạng thái tài khoản",
       "title": "Quản lý Người dùng"
     },
     "settings": {

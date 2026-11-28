@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { jest } from '@jest/globals';
 import {
   handleSseConnection,
+  validateBearerAuth,
   handleSseMessage,
   handleMcpPostRequest,
   handleMcpOtherRequest,
@@ -490,6 +491,31 @@ describe('sseService', () => {
         expect.objectContaining({ username: 'alice', isAdmin: false }),
       );
       expect(SSEServerTransport).toHaveBeenCalled();
+    });
+
+    it('blocks a suspended key owner and accepts the same key after reactivation', async () => {
+      const key = {
+        id: 'alice-key-id',
+        name: 'alice-key',
+        token: 'alice-token',
+        enabled: true,
+        kind: 'user',
+        owner: 'alice',
+        accessType: 'all',
+      };
+      const owner = { username: 'alice', password: '', isAdmin: false, disabled: true };
+      const keyDao = jest.fn().mockResolvedValue([key]);
+      const findByUsername = jest.fn().mockResolvedValue(owner);
+      const req = createMockRequest({ headers: { authorization: 'Bearer alice-token' } });
+      const authenticate = () => {
+        (getBearerKeyDao as jest.MockedFunction<any>).mockReturnValueOnce({ findEnabled: keyDao });
+        (getUserDao as jest.MockedFunction<any>).mockReturnValueOnce({ findByUsername });
+        return validateBearerAuth(req);
+      };
+
+      expect(await authenticate()).toMatchObject({ valid: false, reason: 'invalid' });
+      owner.disabled = false;
+      expect(await authenticate()).toMatchObject({ valid: true, user: { username: 'alice' } });
     });
 
     it('rejects a user-level key when the username path does not match its owner', async () => {

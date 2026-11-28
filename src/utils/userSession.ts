@@ -18,6 +18,7 @@ export const signDashboardToken = (user: IUser): string =>
       user: {
         username: user.username,
         sessionVersion: getUserSessionVersion(user),
+        suspendedAt: user.suspendedAt,
         isAdmin: user.isAdmin || false,
       },
     },
@@ -30,7 +31,10 @@ export const resolveUserSession = async (session: unknown): Promise<IUser | null
   const { username, sessionVersion } = session as Record<string, unknown>;
   if (typeof username !== 'string' || typeof sessionVersion !== 'string') return null;
   const user = await getUserDao().findByUsername(username);
-  return user && user.password && safeCompare(getUserSessionVersion(user), sessionVersion)
+  return user &&
+    !user.disabled &&
+    user.password &&
+    safeCompare(getUserSessionVersion(user), sessionVersion)
     ? user
     : null;
 };
@@ -42,5 +46,7 @@ export const resolveJwtUser = async (token: string): Promise<IUser | null> => {
   } catch {
     return null;
   }
-  return typeof payload === 'object' ? resolveUserSession(payload.user) : null;
+  if (typeof payload !== 'object') return null;
+  const user = await resolveUserSession(payload.user);
+  return user && user.suspendedAt === payload.user.suspendedAt ? user : null;
 };

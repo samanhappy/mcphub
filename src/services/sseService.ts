@@ -19,6 +19,7 @@ import config from '../config/index.js';
 import {
   getBearerKeyDao,
   getGroupDao,
+  getOAuthTokenDao,
   getServerDao,
   getSystemConfigDao,
   getUserDao,
@@ -26,6 +27,7 @@ import {
 import { UserContextService } from './userContextService.js';
 import { RequestContextService } from './requestContextService.js';
 import { IUser, IGroup, BearerKey, BearerKeyKind } from '../types/index.js';
+import { isOAuthServerEnabled } from './oauthServerService.js';
 import { resolveOAuthUserFromToken } from '../utils/oauthBearer.js';
 import { bearerKeyMatches } from '../utils/bearerKeyToken.js';
 import {
@@ -451,7 +453,7 @@ const resolveUserLevelKeyUser = async (req: Request, key: BearerKey): Promise<Be
   }
 
   const user = await getUserDao().findByUsername(key.owner);
-  if (!user) {
+  if (!user || user.disabled) {
     return { valid: false, reason: 'invalid' };
   }
 
@@ -586,6 +588,12 @@ export const validateBearerAuth = async (
       return oauthUserResult(req, oauthUser);
     }
 
+    if (isOAuthServerEnabled()) {
+      const grant = await getOAuthTokenDao().findByAccessToken(token);
+      if (grant && (await getUserDao().findByUsername(grant.username))?.disabled) {
+        return { valid: false, reason: 'invalid' };
+      }
+    }
     return { valid: true };
   }
 

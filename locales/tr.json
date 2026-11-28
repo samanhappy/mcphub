@@ -601,6 +601,12 @@
       "title": "Yerleşik Kaynaklar"
     },
     "users": {
+    "status": "Durum",
+    "active": "Etkin",
+    "suspended": "Askıya alındı",
+    "suspend": "Askıya al",
+    "reactivate": "Yeniden etkinleştir",
+    "statusError": "Hesap durumu güncellenemedi",
       "title": "Kullanıcı Yönetimi"
     },
     "settings": {

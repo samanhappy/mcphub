@@ -601,6 +601,12 @@
       "title": "Ressources intégrées"
     },
     "users": {
+    "status": "Statut",
+    "active": "Actif",
+    "suspended": "Suspendu",
+    "suspend": "Suspendre",
+    "reactivate": "Réactiver",
+    "statusError": "Impossible de modifier le statut du compte",
       "title": "Gestion des utilisateurs"
     },
     "settings": {

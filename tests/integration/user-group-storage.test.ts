@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { DataSource } from 'typeorm';
+import { scopedDataSource } from '../../src/db/transactionContext.js';
+import { updateUser } from '../../src/services/userService.js';
 import { UserDaoImpl } from '../../src/dao/UserDao.js';
 import { ServerDaoImpl } from '../../src/dao/ServerDao.js';
 import { UserDaoDbImpl } from '../../src/dao/UserDaoDbImpl.js';
@@ -13,8 +15,10 @@ import { GroupDaoDbImpl } from '../../src/dao/GroupDaoDbImpl.js';
 
 let mockSource: DataSource;
 let mockSettingsPath: string;
-let mockUserDao: UserDaoImpl;
-jest.mock('../../src/db/connection.js', () => ({ getAppDataSource: () => mockSource }));
+let mockUserDao: UserDaoImpl | UserDaoDbImpl;
+jest.mock('../../src/db/connection.js', () => ({
+  getAppDataSource: () => scopedDataSource(mockSource),
+}));
 jest.mock('../../src/dao/index.js', () => ({ getUserDao: () => mockUserDao }));
 jest.mock('../../src/config/index.js', () => ({
   getSettingsPath: () => mockSettingsPath,
@@ -34,6 +38,17 @@ it('persists JSON memberships and shares, and paginates using current membership
       }),
     );
     mockUserDao = new UserDaoImpl();
+    const suspendedAt = new Date().toISOString();
+    await mockUserDao.update('alice', { disabled: true, suspendedAt });
+    expect(await new UserDaoImpl().findByUsername('alice')).toMatchObject({
+      disabled: true,
+      suspendedAt,
+    });
+    await mockUserDao.update('alice', { disabled: false });
+    expect(await new UserDaoImpl().findByUsername('alice')).toMatchObject({
+      disabled: false,
+      suspendedAt,
+    });
     const servers = new ServerDaoImpl();
     await servers.create({
       name: 'shared',
@@ -75,6 +90,39 @@ dbSuite('user-group PostgreSQL storage', () => {
     await mockSource.getRepository(Group).clear();
     await mockSource.getRepository(User).clear();
     await mockSource.destroy();
+  });
+  it('persists suspension and retains the dashboard generation on reactivation', async () => {
+    const users = new UserDaoDbImpl();
+    const username = 'suspension-test-user';
+    const suspendedAt = new Date().toISOString();
+    expect((await users.create({ username, password: 'hash' })).disabled).toBe(false);
+    await users.update(username, { disabled: true, suspendedAt });
+    expect(await new UserDaoDbImpl().findByUsername(username)).toMatchObject({
+      disabled: true,
+      suspendedAt,
+    });
+    await users.update(username, { disabled: false });
+    expect(await new UserDaoDbImpl().findByUsername(username)).toMatchObject({
+      disabled: false,
+      suspendedAt,
+    });
+  });
+  it('serializes competing account suspension and demotion in PostgreSQL', async () => {
+    const users = new UserDaoDbImpl();
+    mockUserDao = users;
+    const adminA = 'suspension-admin-a';
+    const adminB = 'suspension-admin-b';
+    await users.create({ username: adminA, password: 'hash', isAdmin: true });
+    await users.create({ username: adminB, password: 'hash', isAdmin: true });
+    const results = await Promise.allSettled([
+      updateUser(adminB, { disabled: true }, adminA),
+      updateUser(adminA, { isAdmin: false }, adminB),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const enabledAdmins = (await users.findAdmins()).filter((user) => !user.disabled);
+    expect(enabledAdmins.map((user) => user.username)).toEqual([
+      expect.stringMatching(/^suspension-admin-[ab]$/),
+    ]);
   });
   it('round-trips membership and shares and revokes paginated access on removal', async () => {
     const users = new UserDaoDbImpl();

@@ -33,7 +33,7 @@ export const getBetterAuthSession = async (req: Request): Promise<any | null> =>
 
 // Forward-auth users belong to the upstream gateway's identity provider and are
 // never adopted by a Better Auth login, even when the email or username matches.
-const rejectForwardAuthUser = (user: IUser | undefined): IUser | null | undefined => {
+const rejectForwardAuthUser = (user: IUser | null | undefined): IUser | null | undefined => {
   if (user && isForwardAuthUser(user)) {
     logger.warn(
       `Better Auth login refused: user "${user.username}" is bound to a forward-auth identity`,
@@ -53,10 +53,21 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   const ssoUserId = session.user?.id;
   const email = session.user?.email;
 
+  const rejectUnavailableUser = (user: IUser | undefined): IUser | null | undefined => {
+    if (
+      user?.disabled ||
+      (user?.suspendedAt &&
+        !(new Date(session.session?.createdAt).getTime() > Date.parse(user.suspendedAt)))
+    )
+      return null;
+    return user;
+  };
+
   // Priority 1: ssoUserId match (stable, survives email changes)
   if (ssoUserId) {
     const ssoMatch = await findUserBySsoUserId(ssoUserId);
     if (ssoMatch) {
+      if (!rejectUnavailableUser(ssoMatch)) return null;
       // Backfill email if missing
       if (email && !ssoMatch.email) {
         try {
@@ -72,7 +83,7 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
 
   // Priority 2: Email match (fallback for users created before ssoUserId support)
   if (email) {
-    const emailMatch = rejectForwardAuthUser(await findUserByEmail(email));
+    const emailMatch = rejectForwardAuthUser(rejectUnavailableUser(await findUserByEmail(email)));
     if (emailMatch === null) {
       return null;
     }
@@ -93,7 +104,9 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   // Priority 3: Username match (backward compatibility)
   const username = email || session.user?.name || session.user?.id;
   if (username) {
-    const usernameMatch = rejectForwardAuthUser(await findUserByUsername(username));
+    const usernameMatch = rejectForwardAuthUser(
+      rejectUnavailableUser(await findUserByUsername(username)),
+    );
     if (usernameMatch === null) {
       return null;
     }
@@ -142,6 +155,8 @@ export const resolveBetterAuthUser = async (req: Request): Promise<IUser | null>
   }
 
   // Handle race condition: another request created the user between our check and create
-  const refreshedUser = rejectForwardAuthUser(await findUserByUsername(username));
+  const refreshedUser = rejectForwardAuthUser(
+    rejectUnavailableUser(await findUserByUsername(username)),
+  );
   return refreshedUser || null;
 };

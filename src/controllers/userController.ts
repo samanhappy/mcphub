@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { ApiResponse } from '../types/index.js';
 import {
   getAllUsers,
+  UserAdminConflict,
   getUserByUsername,
   createNewUser,
   updateUser,
@@ -31,7 +32,9 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
   if (!(await requireAdmin(req, res))) return;
 
   try {
-    const users = (await getAllUsers()).map(({ password: _, ...user }) => user); // Remove password from response
+    const users = (await getAllUsers()).map(
+      ({ password: _, suspendedAt: _suspendedAt, ...user }) => user,
+    ); // Remove password from response
     const response: ApiResponse = {
       success: true,
       data: users,
@@ -68,7 +71,7 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { password: _, ...userData } = user; // Remove password from response
+    const { password: _, suspendedAt: _suspendedAt, ...userData } = user; // Remove password from response
     const response: ApiResponse = {
       success: true,
       data: userData,
@@ -127,7 +130,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { password: _, ...userData } = newUser; // Remove password from response
+    const { password: _, suspendedAt: _suspendedAt, ...userData } = newUser; // Remove password from response
     const response: ApiResponse = {
       success: true,
       data: userData,
@@ -148,7 +151,14 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
 
   try {
     const { username } = req.params;
-    const { isAdmin, newPassword, email, userGroups } = req.body;
+    const { isAdmin, newPassword, email, userGroups, disabled } = req.body;
+    if (
+      (disabled !== undefined && typeof disabled !== 'boolean') ||
+      (isAdmin !== undefined && typeof isAdmin !== 'boolean')
+    ) {
+      res.status(400).json({ success: false, message: 'disabled and isAdmin must be boolean' });
+      return;
+    }
     if (
       userGroups !== undefined &&
       (!Array.isArray(userGroups) ||
@@ -168,28 +178,8 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Check if trying to change admin status
-    if (isAdmin !== undefined) {
-      const currentUser = await getUserByUsername(username);
-      if (!currentUser) {
-        res.status(404).json({
-          success: false,
-          message: 'User not found',
-        });
-        return;
-      }
-
-      // Prevent removing admin status from the last admin
-      if (currentUser.isAdmin && !isAdmin && (await getAdminCount()) === 1) {
-        res.status(400).json({
-          success: false,
-          message: 'Cannot remove admin status from the last admin user',
-        });
-        return;
-      }
-    }
-
-    const updateData: any = {};
+    const updateData: Parameters<typeof updateUser>[1] = {};
+    if (disabled !== undefined) updateData.disabled = disabled;
     if (userGroups !== undefined)
       updateData.userGroups = [...new Set<string>(userGroups.map((name: string) => name.trim()))];
     if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
@@ -211,12 +201,16 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({
         success: false,
-        message: 'At least one field (isAdmin, email, or newPassword) is required to update',
+        message: 'At least one update field is required',
       });
       return;
     }
 
-    const updatedUser = await updateUser(username, updateData);
+    const updatedUser = await updateUser(
+      username,
+      updateData,
+      (req as Request & { user?: { username: string } }).user?.username,
+    );
     if (!updatedUser) {
       res.status(404).json({
         success: false,
@@ -225,7 +219,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const { password: _, ...userData } = updatedUser; // Remove password from response
+    const { password: _, suspendedAt: _suspendedAt, ...userData } = updatedUser; // Remove password from response
     const response: ApiResponse = {
       success: true,
       data: userData,
@@ -233,6 +227,10 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
     };
     res.json(response);
   } catch (error) {
+    if (error instanceof UserAdminConflict) {
+      res.status(409).json({ success: false, message: error.message });
+      return;
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -264,7 +262,7 @@ export const deleteExistingUser = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const success = await deleteUser(username);
+    const success = await deleteUser(username, currentUser.username);
     if (success) await deleteCredentialBindings({ username });
     if (!success) {
       res.status(400).json({

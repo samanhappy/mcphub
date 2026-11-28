@@ -21,6 +21,12 @@ export class User {
   password: string;
 
   @Column({ type: 'boolean', default: false })
+  disabled: boolean;
+
+  @Column({ type: 'text', nullable: true, name: 'suspended_at' })
+  suspendedAt?: string;
+
+  @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
 
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
