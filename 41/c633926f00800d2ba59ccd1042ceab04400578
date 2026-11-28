@@ -1,0 +1,304 @@
+.agents/skills/github-coordinator/SKILL.md
+  h_18676a549cd52a 1-33
+.agents/skills/github-worker/SKILL.md
+  h_18676a549cd52a 1-43
+.gitignore
+  h_18676a549cd52a 59-61
+AGENTS.md
+  h_18676a549cd52a 7,33,35
+Dockerfile
+  h_18676a549cd52a 12-14,17,49,56-65
+docs/agents/README.md
+  h_18676a549cd52a 17,19,38
+docs/agents/git-and-contribution.md
+  h_18676a549cd52a 29,31,35-36
+docs/agents/github-coordination.md
+  h_18676a549cd52a 1-121
+docs/agents/issue-tracker.md
+  h_18676a549cd52a 1,3,8-15,17,19,21,23-26,28-68
+docs/agents/testing.md
+  h_18676a549cd52a 43,53,56-66
+docs/agents/triage-labels.md
+  h_18676a549cd52a 1,3,5,7-14,16-90
+docs/api-reference/servers.mdx
+  h_18676a549cd52a 104-105
+docs/configuration/mcp-settings.mdx
+  h_18676a549cd52a 58-60,82-83,976
+docs/docs.json
+  h_18676a549cd52a 32,84
+docs/features/authentication.mdx
+  h_18676a549cd52a 78,175,193,195
+docs/features/code-mode.mdx
+  h_18676a549cd52a 1-102
+docs/features/file-staging.mdx
+  h_18676a549cd52a 19,23,36,49-50,63,65,281
+docs/migrations/0010-bearer-key-expiry.sql
+  h_18676a549cd52a 1-13
+docs/migrations/0011-server-metadata-links.sql
+  h_18676a549cd52a 1-12
+docs/zh/api-reference/servers.mdx
+  h_18676a549cd52a 139-140
+docs/zh/configuration/mcp-settings.mdx
+  h_18676a549cd52a 62-64,92-102,886
+docs/zh/features/authentication.mdx
+  h_18676a549cd52a 34,81,101-103,107,109,111
+docs/zh/features/code-mode.mdx
+  h_18676a549cd52a 1-102
+docs/zh/features/file-staging.mdx
+  h_18676a549cd52a 19,23,36,49-50,63,65,281
+frontend/src/App.tsx
+  h_18676a549cd52a 11,44
+frontend/src/components/ProtectedRoute.tsx
+  h_18676a549cd52a 5,21
+frontend/src/components/ResetBearerKeyDialog.tsx
+  h_18676a549cd52a 6-12,27-28,32-44,51,82-132
+frontend/src/components/ServerCard.tsx
+  h_18676a549cd52a 2,8-9,40-41,167,170-177,218-221,492-516,688-706,804,808-813,1013-1015,1037-1041,1130-1147,1153,1155-1156,1159
+frontend/src/components/ServerForm.tsx
+  h_18676a549cd52a 36,163-165
+frontend/src/components/ServerStagingEditor.tsx
+  h_18676a549cd52a 1-232
+frontend/src/components/server-form/ConnectionSection.tsx
+  h_18676a549cd52a 123-156
+frontend/src/components/settings/BearerKeysSection.tsx
+  h_18676a549cd52a 3-16,31-41,61-63,66,81,91,101,113-114,117-122,137-138,182-197,208,262-282,292-319,363,406-447,636-645,653-654,661-662,692,712-719,722-739,840-857,882-883,894-895,915,926,1086-1094,1118-1124,1127-1170,1191,1312-1375
+frontend/src/components/settings/SmartRoutingSection.tsx
+  h_18676a549cd52a 151-178,209-217,279-305,383-404,487-509,1210-1321
+frontend/src/components/ui/AppLoading.tsx
+  h_18676a549cd52a 1-29
+frontend/src/components/ui/ToolCard.tsx
+  h_18676a549cd52a 26,30,35-36,38-39,46,59-70,310-313,480-492
+frontend/src/components/ui/ToolFileStagingEditor.tsx
+  h_18676a549cd52a 1-280
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 11,18-33,256-268,413-425,642-645,657,899,925
+frontend/src/contexts/settingsTypes.ts
+  h_18676a549cd52a 2,44-87,112,308,312
+frontend/src/hooks/useNewTools.ts
+  h_18676a549cd52a 1-94
+frontend/src/index.css
+  h_18676a549cd52a 30,54-93,96-115,123-128,131-140,147-189,207-214,267-269,278-280,295-341,354-365,380-389,404-406,439-442,459-462,532-535,643-650,744-749,760-762,812-814,865-867,936-938,960,1001-1009,1076-1088,1175-1185,1339-1341,1362,1393-1395,1440-1471,1477-1485,1696-1699,1740-1743
+frontend/src/layouts/MainLayout.tsx
+  h_18676a549cd52a 7,21
+frontend/src/pages/Dashboard.tsx
+  h_18676a549cd52a 15-24,57-65,78-86,89-91,98-99,119-122,130-142,145-152,154-158,190-194,196,201-228,271-274,278-280,297-300,303-306,309-312,320,340-365
+frontend/src/pages/PasskeysPage.tsx
+  h_18676a549cd52a 7,22-23,136-142
+frontend/src/pages/ServersPage.tsx
+  h_18676a549cd52a 13-15,59-66
+frontend/src/services/passkeyService.ts
+  h_18676a549cd52a 11-13,25-32
+frontend/src/services/toolService.ts
+  h_18676a549cd52a 1-5,192-266
+frontend/src/types/index.ts
+  h_18676a549cd52a 240-241,442-443,583-588
+frontend/src/utils/bearerKeyExpiry.ts
+  h_18676a549cd52a 1-180
+frontend/src/utils/fileStaging.ts
+  h_18676a549cd52a 1-278
+frontend/src/utils/jsonImport.ts
+  h_18676a549cd52a 51-52,170-185
+frontend/src/utils/passkeyAvailability.ts
+  h_18676a549cd52a 1-30
+frontend/src/utils/serverFormPayload.ts
+  h_18676a549cd52a 265-268
+frontend/src/utils/serverMetadataLinks.ts
+  h_18676a549cd52a 1-19
+frontend/src/utils/toolChanges.ts
+  h_18676a549cd52a 1-104
+locales/en.json
+  h_18676a549cd52a 406-429,506-507,952-970,1067-1087,1191-1206,1574
+locales/es.json
+  h_18676a549cd52a 406-429,506-507,952-970,1067-1087,1191-1206,1574
+locales/fr.json
+  h_18676a549cd52a 406-429,507-508,951-969,1066-1086,1191-1206,1572
+locales/tr.json
+  h_18676a549cd52a 406-429,507-508,951-969,1065-1085,1190-1205,1571
+locales/vi.json
+  h_18676a549cd52a 406-429,506-507,952-970,1067-1087,1191-1206,1574
+locales/zh.json
+  h_18676a549cd52a 406-429,508-509,954-972,1069-1089,1194-1209,1576
+package.json
+  h_18676a549cd52a 57,100,107-108,166,171,194,210
+pnpm-lock.yaml
+  h_18676a549cd52a 28,44,69-71,198-200,222-224,1211-1228,1662,1668,1674,1680,1686,1692,1698,1704,1710,1716,1722,1728,1734,1818,1825,1832,1839,1846,1853,1970,1977,1984,1991,1998,2005,2012,2019,2395,2401,2407,2413,2419,2425,2431,2437,3546-3547,4084,4091,4098,4105,4112,4119,4126,4133,4808-4809,4837-4843,6542-6563,8664,8699,8942,10504,10531-10542,11146
+scripts/inspect-github-queue.js
+  h_18676a549cd52a 1-225
+scripts/sync-issue-labels.sh
+  h_18676a549cd52a 1-47
+src/controllers/bearerKeyController.ts
+  h_18676a549cd52a 7,198-203,215-217,256-261,265-267,346-350,352-356
+src/controllers/configController.ts
+  h_18676a549cd52a 210
+src/controllers/serverController.ts
+  h_18676a549cd52a 52-54,98-103,437-438,460-462,1269,1848,1854,1869-1870,1874-1885,1985-1986,2171-2176,2206-2212,2425-2426,2916-2963,3255-3260
+src/controllers/smartRoutingController.ts
+  h_18676a549cd52a 14,366-371
+src/dao/BearerKeyDao.ts
+  h_18676a549cd52a 1-2,4,8-35,50-54,70-71,74-128,132-170,173,180-181,219,224,227,229,234,239,244,250-251,255,293,296,299-308,311,315-324,328-346,348-364
+src/dao/BearerKeyDaoDbImpl.ts
+  h_18676a549cd52a 5-6,18-35,50-51,57-58,61-62,64-65,80-81,85,99,120-125,139,141-143,154-157
+src/dao/ServerDao.ts
+  h_18676a549cd52a 7,142-153
+src/dao/ServerDaoDbImpl.ts
+  h_18676a549cd52a 6,100-101,158-159,305-306,348-353
+src/db/entities/BearerKey.ts
+  h_18676a549cd52a 55-57
+src/db/entities/BearerKeyUsage.ts
+  h_18676a549cd52a 1-22
+src/db/entities/Server.ts
+  h_18676a549cd52a 2,28,31-36,43,46,49,81,84,87,90,93,96,99,102,105,111
+src/db/entities/index.ts
+  h_18676a549cd52a 16,40,65
+src/db/repositories/BearerKeyRepository.ts
+  h_18676a549cd52a 1,3,24-26,135,150-189
+src/db/transformers/__tests__/emptySafeJson.test.ts
+  h_18676a549cd52a 1-34
+src/db/transformers/emptySafeJson.ts
+  h_18676a549cd52a 1-29
+src/middlewares/auth.ts
+  h_18676a549cd52a 9-10,38,40,68-69
+src/services/betterAuthSession.ts
+  h_18676a549cd52a 35-36,52-54,56-61,64-65,67-80,83,86-87,98-128,134-135,141-144
+src/services/capabilitySnapshotService.ts
+  h_18676a549cd52a 6,41-63,109-118
+src/services/codeMode/codeModeService.ts
+  h_18676a549cd52a 1-380
+src/services/codeMode/quickjsWorkerRunner.ts
+  h_18676a549cd52a 1-581
+src/services/codeMode/tsSignature.ts
+  h_18676a549cd52a 1-136
+src/services/codeMode/types.ts
+  h_18676a549cd52a 1-180
+src/services/embeddingSyncScheduler.ts
+  h_18676a549cd52a 1-981
+src/services/mcpPrompts.ts
+  h_18676a549cd52a 131-136
+src/services/mcpService.ts
+  h_18676a549cd52a 45,57-61,159,167-171,187,262-367,372,415-421,495,541,545,888-889,978-980,987,1019,1272,1689-1690,1962,1996,2003-2013,2016-2033,2988-2995,3245-3248,3260-3265,3270,3552,3754,4147-4148,4206-4208,4684,4825-4828
+src/services/mcpTools.ts
+  h_18676a549cd52a 19,62-68,111,146-155,226,243-312,479-485,647-653,658-662,709,796-884,896-926,931,937-965,968,979,1003-1008,1102-1117,1205-1207,1220-1254,1267
+src/services/passkeyService.ts
+  h_18676a549cd52a 2,55-57,71
+src/services/personalOAuthService.ts
+  h_18676a549cd52a 2,33-38,43-66,169-172,254-255,327,337,402-403,495,502-503
+src/services/replicaLock.ts
+  h_18676a549cd52a 2,4,7-27,29-40,42-43,45-48,53-187,195-208,217-237,239-240,242,244
+src/services/serverConfigEnvironment.ts
+  h_18676a549cd52a 1,6-8
+src/services/serverConfigPresenter.ts
+  h_18676a549cd52a 24-25
+src/services/smartRoutingService.ts
+  h_18676a549cd52a 30-32,228,381-384,467,492,823-832,834-843
+src/services/sseService.ts
+  h_18676a549cd52a 33-34,490,573,639
+src/services/templateService.ts
+  h_18676a549cd52a 364-365
+src/services/vectorSearchService.ts
+  h_18676a549cd52a 247-249,251-253,482-484,488-499,1236,1590
+src/types/index.ts
+  h_18676a549cd52a 508-509,614-615
+src/utils/bearerKeyExpiry.ts
+  h_18676a549cd52a 1-118
+src/utils/bearerKeyUsage.ts
+  h_18676a549cd52a 1-103
+src/utils/migration.ts
+  h_18676a549cd52a 3,160-163,167-178,187-188,290
+src/utils/serverConfigPersistence.ts
+  h_18676a549cd52a 48-118,521-522,593-594
+src/utils/settingsSync.ts
+  h_18676a549cd52a 52-53
+src/utils/smartRouting.ts
+  h_18676a549cd52a 10-15,116-120,450-516
+tests/controllers/passkeyController.test.ts
+  h_18676a549cd52a 478-486
+tests/controllers/serverController-fileStaging.test.ts
+  h_18676a549cd52a 355-409,501-561
+tests/controllers/serverController-hiddenParams.test.ts
+  h_18676a549cd52a 446-489
+tests/dao/bearerKeyExpiryDb.test.ts
+  h_18676a549cd52a 1-296
+tests/dao/serverDao.test.ts
+  h_18676a549cd52a 47-70
+tests/dao/serverDaoDbImpl.test.ts
+  h_18676a549cd52a 413-487
+tests/docker/replicas/Dockerfile
+  h_18676a549cd52a 3
+tests/frontend/bearerKeyExpiry.test.ts
+  h_18676a549cd52a 1-128
+tests/frontend/codeModeSettingsMerge.test.ts
+  h_18676a549cd52a 1-61
+tests/frontend/fileStaging.test.ts
+  h_18676a549cd52a 1-162
+tests/frontend/jsonImport.test.ts
+  h_18676a549cd52a 67-103
+tests/frontend/passkeyAvailability.test.ts
+  h_18676a549cd52a 1-66
+tests/frontend/serverFormPayload.test.ts
+  h_18676a549cd52a 633-672
+tests/frontend/serverMetadataLinks.test.ts
+  h_18676a549cd52a 1-85
+tests/frontend/toolChanges.test.ts
+  h_18676a549cd52a 1-126
+tests/frontend/useNewTools.test.ts
+  h_18676a549cd52a 1-186
+tests/integration/bearer-key-expiry.test.ts
+  h_18676a549cd52a 1-471
+tests/integration/personal-oauth-request-transaction-db.test.ts
+  h_18676a549cd52a 1-695
+tests/scripts/inspect-github-queue.test.ts
+  h_18676a549cd52a 1-138
+tests/services/betterAuthSession.test.ts
+  h_18676a549cd52a 21,23,42-45,48,50,69,106-140,143,145-146,148-179,182,184-185,187,192-194,197,199,202,204-205,210,212-214,217,219,222,224-226,230,232,234,237-250,252-257,259,263,266-285,291-293,296,298,302-304,308-330,332-335,338-342,344,347-351,353-376,380,382-383,387,389-390,396,407-409,412,419,421,424-429,433-442,445,447,451-455,459-467,471,473-487,491-494,497,499,501-506,508,512-516,519-532,534-541,543,545,547-555,559-562,564,567,569,571-578,584-597
+tests/services/capabilitySnapshotService.test.ts
+  h_18676a549cd52a 3-4,15-16,40-44,113-180
+tests/services/codeModeIntegration.test.ts
+  h_18676a549cd52a 1-430
+tests/services/codeModeSandbox.test.ts
+  h_18676a549cd52a 1-336
+tests/services/embeddingSyncScheduler.test.ts
+  h_18676a549cd52a 1-559
+tests/services/mcpService-description-override-embedding.test.ts
+  h_18676a549cd52a 276,287-292,294,298-299
+tests/services/mcpService-onDemand.test.ts
+  h_18676a549cd52a 4,115-137,167,799-839,878-1128
+tests/services/mcpService-prompts.test.ts
+  h_18676a549cd52a 45,79,199-303
+tests/services/mcpService-proxychains.test.ts
+  h_18676a549cd52a 1-372
+tests/services/mcpService-server-metadata.test.ts
+  h_18676a549cd52a 198-217
+tests/services/mcpService-toggle.test.ts
+  h_18676a549cd52a 280-318
+tests/services/passkeyService.test.ts
+  h_18676a549cd52a 172-186
+tests/services/replicaLock.test.ts
+  h_18676a549cd52a 3,56-94
+tests/services/serverConfigPresenter.test.ts
+  h_18676a549cd52a 124-137
+tests/services/serverStagingProjection.test.ts
+  h_18676a549cd52a 1-39
+tests/services/templateService.test.ts
+  h_18676a549cd52a 172-191
+tests/services/vectorSearchService.test.ts
+  h_18676a549cd52a 1253-1351
+tests/utils/bearerKeyExpiry.test.ts
+  h_18676a549cd52a 1-203
+tests/utils/migration-metadata-links.test.ts
+  h_18676a549cd52a 1-105
+tests/utils/serverConfigPersistence.test.ts
+  h_18676a549cd52a 4-7,611-714
+tests/utils/smartRouting.test.ts
+  h_18676a549cd52a 326-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41c633926f00800d2ba59ccd1042ceab04400578",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

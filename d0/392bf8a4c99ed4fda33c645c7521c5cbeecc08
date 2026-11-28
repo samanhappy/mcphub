@@ -1,0 +1,74 @@
+docs/features/authentication.mdx
+  h_18676a549cd52a 299-311
+docs/migrations/0010-user-suspension.sql
+  h_18676a549cd52a 1-3
+frontend/src/pages/UsersPage.tsx
+  h_18676a549cd52a 32,36,127,132,141,188-191,193-213
+frontend/src/types/index.ts
+  h_18676a549cd52a 590,605
+locales/en.json
+  h_18676a549cd52a 605-610
+locales/es.json
+  h_18676a549cd52a 605-610
+locales/fr.json
+  h_18676a549cd52a 604-609
+locales/tr.json
+  h_18676a549cd52a 604-609
+locales/vi.json
+  h_18676a549cd52a 605-610
+locales/zh.json
+  h_18676a549cd52a 618-623
+src/controllers/authController.ts
+  h_18676a549cd52a 52,76
+src/controllers/oauthCallbackController.ts
+  h_18676a549cd52a 461,565
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 48,76,109,462,571,637
+src/controllers/userController.ts
+  h_18676a549cd52a 6,35-37,74,133,154-161,181-182,204,209-213,222,230-233,265
+src/dao/UserDao.ts
+  h_18676a549cd52a 151,215
+src/dao/UserDaoDbImpl.ts
+  h_18676a549cd52a 24-25,64-65,84-86,112
+src/db/entities/User.ts
+  h_18676a549cd52a 23-28
+src/db/repositories/UserRepository.ts
+  h_18676a549cd52a 78-79
+src/models/OAuth.ts
+  h_18676a549cd52a 290-291,295-300
+src/services/betterAuthSession.ts
+  h_18676a549cd52a 36,56-65,70,86,107-109,158-160
+src/services/forwardAuthService.ts
+  h_18676a549cd52a 246-255,258,304
+src/services/oauthServerService.ts
+  h_18676a549cd52a 104-106,134,161,164-165,193,224,226-228,438,451
+src/services/passkeyService.ts
+  h_18676a549cd52a 325-326
+src/services/sseService.test.ts
+  h_18676a549cd52a 5,496-520
+src/services/sseService.ts
+  h_18676a549cd52a 22,30,456,591-596
+src/services/userService.ts
+  h_18676a549cd52a 2-5,65-108,112-119,121,124,126-133,135,165-187,191-192,194-196,198-199,220-225,230,233
+src/types/index.ts
+  h_18676a549cd52a 28-30,438,595
+src/utils/migration.ts
+  h_18676a549cd52a 125-126
+src/utils/userSession.ts
+  h_18676a549cd52a 21,34-37,49-51
+tests/integration/user-group-storage.test.ts
+  h_18676a549cd52a 5-6,18-21,41-51,94-126
+tests/integration/user-offboarding.test.ts
+  h_18676a549cd52a 34-41,51-54,118,196,248-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0392bf8a4c99ed4fda33c645c7521c5cbeecc08",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

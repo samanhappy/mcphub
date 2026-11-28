@@ -1,0 +1,24 @@
+locales/en.json
+  h_18676a549cd52a 1478-1483
+locales/es.json
+  h_18676a549cd52a 1478-1483
+locales/fr.json
+  h_18676a549cd52a 1477-1482
+locales/tr.json
+  h_18676a549cd52a 1476-1481
+locales/vi.json
+  h_18676a549cd52a 1478-1483
+locales/zh.json
+  h_18676a549cd52a 1481-1486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30899382acf23b79069844fc7616406425416e21",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
