@@ -1,6 +1,7 @@
 import config from '../config/index.js';
 import {
   getDashboardSession,
+  hasDashboardSession,
   getLegacyQueryToken,
   requireDashboardOrigin,
 } from '../middlewares/dashboardSession.js';
@@ -97,7 +98,8 @@ async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser |
     req.body && typeof (req.body as Record<string, unknown>).token === 'string'
       ? ((req.body as Record<string, string>).token as string)
       : undefined;
-  const token = headerToken || getDashboardSession(req) || getLegacyQueryToken(req) || bodyToken;
+  const token =
+    headerToken || (await getDashboardSession(req)) || getLegacyQueryToken(req) || bodyToken;
 
   if (!token) {
     return null;
@@ -923,7 +925,7 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    if (getDashboardSession(req) && !(await requireDashboardOrigin(req, res))) return;
+    if (hasDashboardSession(req) && !(await requireDashboardOrigin(req, res))) return;
 
     // If user denied
     if (allow !== 'true') {

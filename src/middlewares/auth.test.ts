@@ -121,11 +121,16 @@ describe('auth middleware', () => {
       install: { baseUrl: 'https://dashboard.example/hub' },
     });
     const app = createApp();
-    app.post('/hub/api/auth/login', validateBrowserSignIn, (req, res) => {
-      res.json(dashboardSignInToken(req, res, sessionToken()));
-    });
+    app.post(
+      '/hub/api/auth/login',
+      authenticatedRouteRateLimiter,
+      validateBrowserSignIn,
+      async (req, res) => {
+        res.json(await dashboardSignInToken(req, res, sessionToken()));
+      },
+    );
     app.get('/transport', (req, res) => res.json({ cookie: req.headers.cookie }));
-    app.get('/transport-protected', auth);
+    app.get('/transport-protected', authenticatedRouteRateLimiter, auth);
 
     const login = await request(app)
       .post('/hub/api/auth/login')
@@ -138,6 +143,7 @@ describe('auth middleware', () => {
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('Secure');
     expect(cookie).toContain('SameSite=Lax');
+    expect(cookie).not.toContain(sessionToken());
 
     const credential = cookie.split(';', 1)[0];
     const dashboard = await request(app).get('/api/protected').set('Cookie', credential);
@@ -172,9 +178,16 @@ describe('auth middleware', () => {
       ...currentSystemConfig,
       install: { baseUrl: 'https://dashboard.example' },
     });
-    const call = request(createApp())
-      .post('/api/protected')
-      .set('Cookie', `mcphub_session_e3b0c442=${sessionToken()}`);
+    const app = createApp();
+    app.post('/login', authenticatedRouteRateLimiter, validateBrowserSignIn, async (req, res) => {
+      res.json(await dashboardSignInToken(req, res, sessionToken()));
+    });
+    const login = await request(app)
+      .post('/login')
+      .set('X-MCPHub-Session', 'cookie')
+      .set('Origin', 'https://dashboard.example');
+    const cookie = login.headers['set-cookie'][0].split(';', 1)[0];
+    const call = request(app).post('/api/protected').set('Cookie', cookie);
     if (origin) call.set('Origin', origin);
     expect((await call).status).toBe(expected);
   });

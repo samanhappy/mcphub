@@ -1,3 +1,5 @@
+import { CompactEncrypt, compactDecrypt } from 'jose';
+import { JWT_SECRET } from '../config/jwt.js';
 import { createHash } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import type { SystemConfig } from '../types/index.js';
@@ -10,6 +12,10 @@ const cookieName = `mcphub_session_${createHash('sha256')
   .update(config.basePath || '')
   .digest('hex')
   .slice(0, 8)}`;
+const sessionKey = createHash('sha256')
+  .update('mcphub dashboard cookie\0')
+  .update(JWT_SECRET)
+  .digest();
 const sessionTokens = new WeakMap<Request, string>();
 const sessionOrigins = new WeakMap<Request, URL>();
 
@@ -29,7 +35,21 @@ export const extractDashboardSession = (req: Request, _res: Response, next: Next
   next();
 };
 
-export const getDashboardSession = (req: Request) => sessionTokens.get(req);
+export const getDashboardSession = async (req: Request) => {
+  const cookie = sessionTokens.get(req);
+  if (!cookie) return undefined;
+  try {
+    const { plaintext } = await compactDecrypt(cookie, sessionKey, {
+      keyManagementAlgorithms: ['dir'],
+      contentEncryptionAlgorithms: ['A256GCM'],
+    });
+    return Buffer.from(plaintext).toString('utf8');
+  } catch {
+    return undefined;
+  }
+};
+
+export const hasDashboardSession = (req: Request) => sessionTokens.has(req);
 
 export const getLegacyQueryToken = (req: Request) => {
   if (typeof req.query.token !== 'string' || !req.query.token) return undefined;
@@ -74,9 +94,18 @@ const cookieOptions = (req: Request) => ({
   secure: sessionOrigins.get(req)?.protocol === 'https:',
 });
 
-export const dashboardSignInToken = (req: Request, res: Response, token: string | undefined) => {
+export const dashboardSignInToken = async (
+  req: Request,
+  res: Response,
+  token: string | undefined,
+) => {
   if (!sessionOrigins.has(req)) return { token };
-  if (token) res.cookie(cookieName, token, { ...cookieOptions(req), maxAge: 24 * 60 * 60 * 1000 });
+  if (token) {
+    const cookie = await new CompactEncrypt(Buffer.from(token))
+      .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+      .encrypt(sessionKey);
+    res.cookie(cookieName, cookie, { ...cookieOptions(req), maxAge: 24 * 60 * 60 * 1000 });
+  }
   return {};
 };
 

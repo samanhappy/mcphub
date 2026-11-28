@@ -246,7 +246,7 @@ export const loginWithPasskey = async (req: Request, res: Response): Promise<voi
     }
     res.json({
       success: true,
-      ...dashboardSignInToken(req, res, signDashboardToken(user)),
+      ...(await dashboardSignInToken(req, res, signDashboardToken(user))),
       user: {
         username: user.username,
         isAdmin: user.isAdmin,

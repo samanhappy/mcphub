@@ -172,7 +172,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   const bearerToken = getBearerTokenFromHeaders(req.headers, systemConfig);
   const session =
     !headerToken && !bearerToken && isDashboardApiRequest(req)
-      ? getDashboardSession(req)
+      ? await getDashboardSession(req)
       : undefined;
   if (session && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     if (!(await requireDashboardOrigin(req, res, systemConfig ?? null))) return;

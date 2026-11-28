@@ -22,10 +22,8 @@ const sanitizeReturnUrl = (value: string | null): string | null => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     const url = new URL(value, origin);
     if (url.origin !== origin) return null;
-    const relativePath = `${url.pathname}${url.search}${url.hash}`;
-    return relativePath || '/';
+    return url.href;
   } catch {
-    if (value.startsWith('/') && !value.startsWith('//')) return value;
     return null;
   }
 };
@@ -80,7 +78,8 @@ const LoginPage: React.FC = () => {
 
   const redirectAfterLogin = useCallback(() => {
     if (returnUrl) {
-      window.location.assign(returnUrl);
+      const target = new URL(returnUrl);
+      if (target.origin === window.location.origin) window.location.assign(target.href);
     } else {
       navigate('/');
     }
