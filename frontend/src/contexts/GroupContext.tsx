@@ -29,7 +29,7 @@ export interface GroupContextType {
     servers?: string[] | IGroupServerConfig[],
     access?: Pick<
       Group,
-      'visibility' | 'sharedWithUserGroups' | 'sharedWithUsers' | 'instructions'
+      'visibility' | 'sharedWithUserGroups' | 'sharedWithUsers' | 'instructions' | 'skillsDelivery'
     >,
   ) => Promise<ApiResponse<Group> | null>;
   updateGroup: (
@@ -40,6 +40,7 @@ export interface GroupContextType {
         | 'name'
         | 'description'
         | 'instructions'
+        | 'skillsDelivery'
         | 'servers'
         | 'visibility'
         | 'sharedWithUserGroups'

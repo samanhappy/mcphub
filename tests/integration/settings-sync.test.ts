@@ -522,12 +522,14 @@ test('omitted ownership is cleared on adoption; explicitly declared ownership is
 });
 
 test('syncs group instructions and clears them when the key is removed', async () => {
-  write({ mcpServers: { remote }, groups: [{ name: 'team', instructions: 'Use fetch first.' }] });
+  write({ mcpServers: { remote }, groups: [{ name: 'team', instructions: 'Use fetch first.', skillsDelivery: 'both' }] });
   await syncSettingsToDatabase();
   expect(groups.get('team')?.instructions).toBe('Use fetch first.');
+  expect(groups.get('team')?.skillsDelivery).toBe('both');
   write({ mcpServers: { remote }, groups: [{ name: 'team' }] });
   await syncSettingsToDatabase();
   expect(groups.get('team')?.instructions).toBeNull();
+  expect(groups.get('team')?.skillsDelivery).toBeNull();
 });
 
 test('rejects non-string group instructions', async () => {

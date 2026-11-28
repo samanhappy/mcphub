@@ -104,6 +104,13 @@ const getInstructionsError = (instructions: unknown): string | undefined =>
     ? 'Group instructions must be a string'
     : undefined;
 
+const SKILLS_DELIVERY_MODES = new Set(['native', 'tools', 'both']);
+const getSkillsDeliveryError = (skillsDelivery: unknown): string | undefined =>
+  skillsDelivery !== undefined &&
+  (typeof skillsDelivery !== 'string' || !SKILLS_DELIVERY_MODES.has(skillsDelivery))
+    ? 'Group skillsDelivery must be one of "native", "tools", or "both"'
+    : undefined;
+
 export const getGroups = async (_: Request, res: Response): Promise<void> => {
   try {
     const groups = await getAllGroups();
@@ -161,6 +168,7 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
       name,
       description,
       instructions,
+      skillsDelivery,
       servers,
       visibility,
       sharedWithUsers,
@@ -169,7 +177,8 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
     const accessError =
       getSmartRoutingNameError(name) ||
       validateGroupAccess({ visibility, sharedWithUsers, sharedWithUserGroups }) ||
-      getInstructionsError(instructions);
+      getInstructionsError(instructions) ||
+      getSkillsDeliveryError(skillsDelivery);
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;
@@ -201,6 +210,7 @@ export const createNewGroup = async (req: Request, res: Response): Promise<void>
       sharedWithUsers,
       sharedWithUserGroups,
       instructions,
+      skillsDelivery,
     });
     if (!newGroup) {
       res.status(400).json({
@@ -259,6 +269,11 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
       const instructionsError = getInstructionsError(group.instructions);
       if (instructionsError) {
         return { valid: false, message: instructionsError };
+      }
+
+      const skillsDeliveryError = getSkillsDeliveryError(group.skillsDelivery);
+      if (skillsDeliveryError) {
+        return { valid: false, message: skillsDeliveryError };
       }
 
       if (group.servers !== undefined && !Array.isArray(group.servers)) {
@@ -326,6 +341,7 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
         name,
         description,
         instructions,
+        skillsDelivery,
         servers,
         visibility,
         sharedWithUsers,
@@ -355,6 +371,7 @@ export const batchCreateGroups = async (req: Request, res: Response): Promise<vo
           sharedWithUsers,
           sharedWithUserGroups,
           instructions,
+          skillsDelivery,
         });
 
         if (newGroup) {
@@ -410,6 +427,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
       name,
       description,
       instructions,
+      skillsDelivery,
       servers,
       visibility,
       sharedWithUsers,
@@ -418,7 +436,8 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
     const accessError =
       getSmartRoutingNameError(name) ||
       validateGroupAccess({ visibility, sharedWithUsers, sharedWithUserGroups }) ||
-      getInstructionsError(instructions);
+      getInstructionsError(instructions) ||
+      getSkillsDeliveryError(skillsDelivery);
     if (accessError) {
       res.status(400).json({ success: false, message: accessError });
       return;
@@ -445,6 +464,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (instructions !== undefined) updateData.instructions = instructions;
+    if (skillsDelivery !== undefined) updateData.skillsDelivery = skillsDelivery;
     if (servers !== undefined) {
       const validationError = validateGroupServersConfig(servers);
       if (validationError) {
@@ -461,7 +481,7 @@ export const updateExistingGroup = async (req: Request, res: Response): Promise<
       res.status(400).json({
         success: false,
         message:
-          'At least one field (name, description, instructions, servers, visibility, or sharedWithUsers) is required to update',
+          'At least one field (name, description, instructions, skillsDelivery, servers, visibility, or sharedWithUsers) is required to update',
       });
       return;
     }

@@ -225,6 +225,7 @@ export async function migrateToDatabase(seedServersAndGroups = true): Promise<bo
             name: group.name,
             description: group.description,
             instructions: group.instructions,
+            skillsDelivery: group.skillsDelivery,
             servers: Array.isArray(group.servers) ? group.servers : [],
             owner: group.owner,
             visibility: group.visibility,

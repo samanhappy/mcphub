@@ -423,6 +423,7 @@ export interface Group {
   name: string;
   description?: string;
   instructions?: string;
+  skillsDelivery?: 'native' | 'tools' | 'both';
   servers: string[] | IGroupServerConfig[]; // Supports both old and new format
 }
 
@@ -553,6 +554,7 @@ export interface GroupFormData {
   name: string;
   description: string;
   instructions: string;
+  skillsDelivery: 'native' | 'tools' | 'both';
   servers: string[] | IGroupServerConfig[]; // Updated to support new format
 }
 
