@@ -1,3 +1,9 @@
+import {
+  dashboardLogout,
+  dashboardSignInToken,
+  extractDashboardSession,
+  validateBrowserSignIn,
+} from './dashboardSession.js';
 import { getUserSessionVersion } from '../utils/userSession.js';
 import express from 'express';
 import request from 'supertest';
@@ -85,7 +91,8 @@ describe('auth middleware', () => {
 
   const createApp = () => {
     const app = express();
-    app.get(
+    app.use(extractDashboardSession);
+    app.all(
       '/api/protected',
       authenticatedRouteRateLimiter,
       (req, _res, next) => {
@@ -99,6 +106,92 @@ describe('auth middleware', () => {
     );
     return app;
   };
+
+  const sessionToken = () => {
+    const user = { username: 'cookie-user', password: 'hashed' };
+    return jwt.sign(
+      { user: { username: user.username, sessionVersion: getUserSessionVersion(user) } },
+      'test-secret',
+    );
+  };
+
+  it('keeps the browser session out of the response body and forwarded headers', async () => {
+    mockGetSystemConfig.mockResolvedValue({
+      ...currentSystemConfig,
+      install: { baseUrl: 'https://dashboard.example/hub' },
+    });
+    const app = createApp();
+    app.post('/hub/api/auth/login', validateBrowserSignIn, (req, res) => {
+      res.json(dashboardSignInToken(req, res, sessionToken()));
+    });
+    app.get('/transport', (req, res) => res.json({ cookie: req.headers.cookie }));
+    app.get('/transport-protected', auth);
+
+    const login = await request(app)
+      .post('/hub/api/auth/login')
+      .set('X-MCPHub-Session', 'cookie')
+      .set('Origin', 'https://dashboard.example');
+    expect(login.body).toEqual({});
+    const [cookie] = login.headers['set-cookie'] as unknown as string[];
+    expect(cookie).toMatch(/^mcphub_session_[a-f0-9]+=/);
+    expect(cookie).toContain('Path=/');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('SameSite=Lax');
+
+    const credential = cookie.split(';', 1)[0];
+    const dashboard = await request(app).get('/api/protected').set('Cookie', credential);
+    expect(dashboard.status).toBe(200);
+
+    const transport = await request(app)
+      .get('/transport')
+      .set('Cookie', `${credential}; upstream_hint=test`);
+    expect(transport.body).toEqual({ cookie: 'upstream_hint=test' });
+    expect((await request(app).get('/transport-protected').set('Cookie', credential)).status).toBe(
+      401,
+    );
+
+    const cli = await request(app).post('/hub/api/auth/login');
+    expect(typeof cli.body.token).toBe('string');
+    expect(cli.headers['set-cookie']).toBeUndefined();
+
+    const foreignLogin = await request(app)
+      .post('/hub/api/auth/login')
+      .set('X-MCPHub-Session', 'cookie')
+      .set('Origin', 'https://other.example');
+    expect(foreignLogin.status).toBe(403);
+    expect(foreignLogin.headers['set-cookie']).toBeUndefined();
+  });
+
+  it.each([
+    [undefined, 403],
+    ['https://other.example', 403],
+    ['https://dashboard.example', 200],
+  ])('checks Origin for cookie-authenticated writes (%s)', async (origin, expected) => {
+    mockGetSystemConfig.mockResolvedValue({
+      ...currentSystemConfig,
+      install: { baseUrl: 'https://dashboard.example' },
+    });
+    const call = request(createApp())
+      .post('/api/protected')
+      .set('Cookie', `mcphub_session_e3b0c442=${sessionToken()}`);
+    if (origin) call.set('Origin', origin);
+    expect((await call).status).toBe(expected);
+  });
+
+  it('clears the same host-only cookie on logout', async () => {
+    mockGetSystemConfig.mockResolvedValue({
+      ...currentSystemConfig,
+      install: { baseUrl: 'https://dashboard.example' },
+    });
+    const app = createApp();
+    app.post('/api/auth/logout', dashboardLogout);
+    const response = await request(app)
+      .post('/api/auth/logout')
+      .set('Origin', 'https://dashboard.example');
+    expect(response.status).toBe(200);
+    expect(response.headers['set-cookie'][0]).toMatch(/^mcphub_session_e3b0c442=; Path=\//);
+  });
 
   it('does not accept bearer key auth when enableBearerAuth is false', async () => {
     currentSystemConfig.routing.enableBearerAuth = false;

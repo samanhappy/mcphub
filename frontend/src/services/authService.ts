@@ -5,20 +5,17 @@ import {
   ChangePasswordCredentials,
 } from '../types';
 import { apiPost, apiGet } from '../utils/fetchInterceptor';
-import { getToken, setToken, removeToken } from '../utils/interceptors';
 import { authClient } from './betterAuthClient';
 
-// Export token management functions
-export { getToken, setToken, removeToken };
+export const browserSessionRequest = { headers: { 'X-MCPHub-Session': 'cookie' } };
 
 // Login user
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    const response = await apiPost<AuthResponse>('/auth/login', credentials);
+    const response = await apiPost<AuthResponse>('/auth/login', credentials, browserSessionRequest);
 
     // The auth API returns data directly, not wrapped in a data field
-    if (response.success && response.token) {
-      setToken(response.token);
+    if (response.success && response.user) {
       return response;
     }
 
@@ -38,10 +35,13 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
 // Register user
 export const register = async (credentials: RegisterCredentials): Promise<AuthResponse> => {
   try {
-    const response = await apiPost<AuthResponse>('/auth/register', credentials);
+    const response = await apiPost<AuthResponse>(
+      '/auth/register',
+      credentials,
+      browserSessionRequest,
+    );
 
-    if (response.success && response.token) {
-      setToken(response.token);
+    if (response.success && response.user) {
       return response;
     }
 
@@ -60,15 +60,6 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
 
 // Get current user
 export const getCurrentUser = async (): Promise<AuthResponse> => {
-  const token = getToken();
-
-  if (!token) {
-    return {
-      success: false,
-      message: 'No authentication token',
-    };
-  }
-
   try {
     const response = await apiGet<AuthResponse>('/auth/user');
     return response;
@@ -99,15 +90,6 @@ export const getBetterAuthUser = async (): Promise<AuthResponse> => {
 export const changePassword = async (
   credentials: ChangePasswordCredentials,
 ): Promise<AuthResponse> => {
-  const token = getToken();
-
-  if (!token) {
-    return {
-      success: false,
-      message: 'No authentication token',
-    };
-  }
-
   try {
     const response = await apiPost<AuthResponse>('/auth/change-password', credentials);
     return response;
@@ -121,9 +103,12 @@ export const changePassword = async (
 };
 
 // Logout user
-export const logout = (): void => {
-  removeToken();
-  authClient.signOut().catch((error) => {
+export const logout = async (): Promise<boolean> => {
+  const response = await apiPost<AuthResponse>('/auth/logout');
+  if (!response.success) return false;
+
+  await authClient.signOut().catch((error) => {
     console.debug('Better Auth sign out failed', { error });
   });
+  return true;
 };

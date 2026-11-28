@@ -23,8 +23,9 @@ The dashboard API supports the following authentication paths (configured forwar
 
 1. **Bearer key** — a static token created from the dashboard or `/api/auth/keys`.
 2. **Better Auth session cookie** — issued by GitHub / Google login (optional).
-3. **JWT** — issued by `POST /api/auth/login`, sent via the `x-auth-token` header or `?token=` query.
-4. **`skipAuth` guest** — only when `systemConfig.routing.skipAuth` is `true`, the dashboard API treats unauthenticated calls as a synthetic admin `guest` user.
+3. **Local dashboard session** — a host-only, HttpOnly cookie used by browser password and passkey sign-in and self-registration.
+4. **JWT header** — issued by `POST /api/auth/login` for script and CLI clients, sent via `x-auth-token`.
+5. **`skipAuth` guest** — only when `systemConfig.routing.skipAuth` is `true`, the dashboard API treats unauthenticated calls as a synthetic admin `guest` user.
 
 All persistent user records are stored as `{ username, password, isAdmin }`. There are no `manager` or `viewer` roles; permissions are binary (admin or not). Social accounts that log in via Better Auth live in a separate `mcphub_better_auth_*` table but are mapped to the same `username` / `isAdmin` shape at request time.
 
@@ -42,7 +43,11 @@ The visibility is editable per server from the dashboard (Server form → Advanc
 
 ## Login (JWT)
 
-The dashboard and any script that does not present a bearer key uses the JWT flow:
+Upgrading clears the legacy dashboard token from browser storage. Sign in again to start a cookie session. The browser uses that session for the dashboard API, log stream, and OAuth consent. Cookie-authenticated writes require the dashboard's public Origin. Configure `INSTALL_BASE_URL` when the public URL differs from the URL MCPHub can infer behind a proxy. The dashboard session cookie is not accepted as an MCP transport credential.
+
+Legacy `?token=` authentication is deprecated. Migrate scripts to `x-auth-token` or a supported bearer key. Query-token support will remain for one stable release and at least 30 days before removal in a subsequent stable release.
+
+Scripts without a bearer key can request a JWT:
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \

@@ -1,3 +1,4 @@
+import { getLegacyQueryToken } from './dashboardSession.js';
 import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
 import { getSystemConfigDao } from '../dao/index.js';
@@ -46,8 +47,7 @@ const resolveAuthenticatedUserForSse = async (req: Request): Promise<IUser | nul
   }
 
   const headerToken = req.header('x-auth-token');
-  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
-  const token = headerToken || queryToken;
+  const token = headerToken || getLegacyQueryToken(req);
   return token ? resolveJwtUser(token) : null;
 };
 

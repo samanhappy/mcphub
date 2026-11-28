@@ -21,20 +21,20 @@ const AuthContext = createContext<{
   ) => Promise<{ success: boolean; isUsingDefaultPassword?: boolean; message?: string }>;
   loginWithPasskey: () => Promise<PasskeySignInResult>;
   register: (username: string, password: string, isAdmin?: boolean) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<boolean>;
 }>({
   auth: initialState,
   login: async () => ({ success: false }),
   loginWithPasskey: async () => ({ success: false }),
   register: async () => false,
-  logout: () => {},
+  logout: async () => false,
 });
 
 // Auth provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [auth, setAuth] = useState<AuthState>(initialState);
 
-  // Load user if token exists
+  // Restore the browser session on startup.
   useEffect(() => {
     const loadUser = async () => {
       // First check if authentication should be skipped
@@ -55,72 +55,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Normal authentication flow
-      const token = authService.getToken();
-
-      if (!token) {
-        const betterAuthResponse = await authService.getBetterAuthUser();
-        if (betterAuthResponse.success && betterAuthResponse.user) {
-          setAuth({
-            isAuthenticated: true,
-            loading: false,
-            user: betterAuthResponse.user,
-            error: null,
-          });
-          return;
-        }
-
-        setAuth({
-          ...initialState,
-          loading: false,
-        });
-        return;
-      }
-
-      try {
-        const response = await authService.getCurrentUser();
-
-        if (response.success && response.user) {
-          setAuth({
-            isAuthenticated: true,
-            loading: false,
-            user: response.user,
-            error: null,
-          });
-        } else {
-          authService.removeToken();
-          const betterAuthResponse = await authService.getBetterAuthUser();
-          if (betterAuthResponse.success && betterAuthResponse.user) {
-            setAuth({
-              isAuthenticated: true,
-              loading: false,
-              user: betterAuthResponse.user,
-              error: null,
-            });
-          } else {
-            setAuth({
-              ...initialState,
-              loading: false,
-            });
-          }
-        }
-      } catch (error) {
-        authService.removeToken();
-        const betterAuthResponse = await authService.getBetterAuthUser();
-        if (betterAuthResponse.success && betterAuthResponse.user) {
-          setAuth({
-            isAuthenticated: true,
-            loading: false,
-            user: betterAuthResponse.user,
-            error: null,
-          });
-        } else {
-          setAuth({
-            ...initialState,
-            loading: false,
-          });
-        }
-      }
+      const response = await authService.getCurrentUser();
+      const user =
+        response.success && response.user
+          ? response.user
+          : (await authService.getBetterAuthUser()).user;
+      setAuth({
+        ...initialState,
+        isAuthenticated: Boolean(user),
+        loading: false,
+        user: user ?? null,
+      });
     };
 
     loadUser();
@@ -134,7 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authService.login({ username, password });
 
-      if (response.success && response.token && response.user) {
+      if (response.success && response.user) {
         setAuth({
           isAuthenticated: true,
           loading: false,
@@ -186,7 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authService.register({ username, password, isAdmin });
 
-      if (response.success && response.token && response.user) {
+      if (response.success && response.user) {
         setAuth({
           isAuthenticated: true,
           loading: false,
@@ -213,12 +158,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Logout function
-  const logout = (): void => {
-    authService.logout();
+  const logout = async (): Promise<boolean> => {
+    if (!(await authService.logout())) return false;
     setAuth({
       ...initialState,
       loading: false,
     });
+    return true;
   };
 
   return (

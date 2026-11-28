@@ -144,10 +144,10 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ collapsed, version, o
     onNavigate?.();
   };
 
-  const handleLogoutClick = () => {
+  const handleLogoutClick = async () => {
+    if (!(await logout())) return;
     setIsOpen(false);
     onNavigate?.();
-    logout();
     navigate('/login');
   };
 

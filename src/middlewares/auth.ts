@@ -1,3 +1,8 @@
+import {
+  getDashboardSession,
+  getLegacyQueryToken,
+  requireDashboardOrigin,
+} from './dashboardSession.js';
 import { resolveJwtUser } from '../utils/userSession.js';
 import { Request, Response, NextFunction } from 'express';
 import defaultConfig from '../config/index.js';
@@ -163,6 +168,16 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
+  const headerToken = req.header('x-auth-token');
+  const bearerToken = getBearerTokenFromHeaders(req.headers, systemConfig);
+  const session =
+    !headerToken && !bearerToken && isDashboardApiRequest(req)
+      ? getDashboardSession(req)
+      : undefined;
+  if (session && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    if (!(await requireDashboardOrigin(req, res, systemConfig ?? null))) return;
+  }
+
   const betterAuthConfig = await getBetterAuthRuntimeConfig(systemConfig);
   if (betterAuthConfig.enabled) {
     const betterAuthUser = await resolveBetterAuthUserSafe(req);
@@ -177,10 +192,8 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     }
   }
 
-  // Get token from header or query parameter
-  const headerToken = req.header('x-auth-token');
-  const queryToken = req.query.token as string;
-  const token = headerToken || queryToken;
+  // Explicit headers take priority over the dashboard cookie and legacy URL token.
+  const token = headerToken || session || getLegacyQueryToken(req);
 
   if (!token && routingConfig.skipAuth && isDashboardApiRequest(req)) {
     (req as any).user = createSkipAuthUser();

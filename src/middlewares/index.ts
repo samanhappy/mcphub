@@ -1,3 +1,4 @@
+import { extractDashboardSession } from './dashboardSession.js';
 import express, { Request, Response, NextFunction } from 'express';
 import { auth } from './auth.js';
 import { userContextMiddleware } from './userContext.js';
@@ -28,7 +29,7 @@ export const errorHandler = (
 
 export const initMiddlewares = (app: express.Application): void => {
   // Apply i18n middleware first to detect language for all requests
-  app.use(i18nMiddleware);
+  app.use(i18nMiddleware, extractDashboardSession);
 
   // Serve static files from the dynamically determined frontend path
   // Note: Static files will be handled by the server directly, not here

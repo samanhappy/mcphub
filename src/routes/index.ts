@@ -1,3 +1,4 @@
+import { dashboardLogout, validateBrowserSignIn } from '../middlewares/dashboardSession.js';
 import { listMyOAuthApprovals, revokeMyOAuthApproval } from '../controllers/oauthApprovalController.js';
 import {
   createPasskeyLoginOptions,
@@ -592,6 +593,7 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
       check('password', 'Password is required').not().isEmpty(),
     ],
     authAttemptRateLimiter,
+    validateBrowserSignIn,
     login,
   );
 
@@ -602,12 +604,19 @@ export const initRoutes = async (app: express.Application): Promise<void> => {
       check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
     ],
     authRegistrationRateLimiter,
+    validateBrowserSignIn,
     register,
   );
 
   // Public passkey sign-in; exempted from the /api auth gate in isApiAuthExemptPath
   router.post('/auth/passkey/options', passkeyChallengeRateLimiter, createPasskeyLoginOptions);
-  router.post('/auth/passkey/login', authAttemptRateLimiter, loginWithPasskey);
+  router.post(
+    '/auth/passkey/login',
+    authAttemptRateLimiter,
+    validateBrowserSignIn,
+    loginWithPasskey,
+  );
+  router.post('/auth/logout', authAttemptRateLimiter, dashboardLogout);
 
   router.get('/auth/user', authenticatedRouteRateLimiter, auth, getCurrentUser);
 

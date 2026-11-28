@@ -12,11 +12,6 @@ export const toggleResource = async (
     const response = await apiPost<any>(
       `/servers/${encodeURIComponent(serverName)}/resources/${encodeURIComponent(resourceUri)}/toggle`,
       { enabled },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -44,11 +39,6 @@ export const updateResourceDescription = async (
     const response = await apiPut<any>(
       `/servers/${encodeURIComponent(serverName)}/resources/${encodeURIComponent(resourceUri)}/description`,
       { description },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {
@@ -71,11 +61,6 @@ export const resetResourceDescription = async (
   try {
     const response = await apiDelete<any>(
       `/servers/${encodeURIComponent(serverName)}/resources/${encodeURIComponent(resourceUri)}/description`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('mcphub_token')}`,
-        },
-      },
     );
 
     return {

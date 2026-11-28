@@ -1,3 +1,4 @@
+import { dashboardSignInToken } from '../middlewares/dashboardSession.js';
 import { DASHBOARD_TOKEN_EXPIRY, getUserSessionVersion } from '../utils/userSession.js';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -87,7 +88,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.json({
         success: true,
         message: t('api.success.login_successful'),
-        token,
+        ...dashboardSignInToken(req, res, token),
         user: {
           username: user.username,
           isAdmin: user.isAdmin,
@@ -166,7 +167,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       if (err) throw err;
       res.json({
         success: true,
-        token,
+        ...dashboardSignInToken(req, res, token),
         user: {
           username: newUser.username,
           isAdmin: newUser.isAdmin,

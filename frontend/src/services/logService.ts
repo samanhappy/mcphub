@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiDelete } from '../utils/fetchInterceptor';
 import { getApiUrl } from '../utils/runtime';
-import { getToken } from '../utils/interceptors';
 
 export interface LogEntry {
   timestamp: number;
@@ -70,28 +69,9 @@ class LogStreamManager {
 
   private openEventSource() {
     this.closeEventSource();
-    const token = getToken();
-
-    if (!token) {
-      console.warn('[LogStreamManager] No token available, scheduling reconnect...');
-      this.scheduleReconnect();
-      return;
-    }
-
     try {
-      const url = getApiUrl(`/logs/stream?token=${token}`);
-
-      let redactedUrl = url;
-      try {
-        const parsedUrl = new URL(url);
-        parsedUrl.search = '';
-        redactedUrl = parsedUrl.toString();
-      } catch {
-        redactedUrl = url.split('?')[0] || url;
-      }
-
-      console.log('[LogStreamManager] Opening EventSource:', redactedUrl);
-      this.eventSource = new EventSource(url);
+      const url = getApiUrl('/logs/stream');
+      this.eventSource = new EventSource(url, { withCredentials: true });
 
       this.eventSource.onmessage = (event) => {
         this.subscribers.forEach((cb) => cb(event));

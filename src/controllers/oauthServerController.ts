@@ -1,3 +1,9 @@
+import config from '../config/index.js';
+import {
+  getDashboardSession,
+  getLegacyQueryToken,
+  requireDashboardOrigin,
+} from '../middlewares/dashboardSession.js';
 import {
   findReusableApproval,
   isApprovalGrantValid,
@@ -87,12 +93,11 @@ async function resolveBetterAuthUserForAuthorize(req: Request): Promise<Authenti
  */
 async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
   const headerToken = req.header('x-auth-token');
-  const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
   const bodyToken =
     req.body && typeof (req.body as Record<string, unknown>).token === 'string'
       ? ((req.body as Record<string, string>).token as string)
       : undefined;
-  const token = headerToken || queryToken || bodyToken;
+  const token = headerToken || getDashboardSession(req) || getLegacyQueryToken(req) || bodyToken;
 
   if (!token) {
     return null;
@@ -780,8 +785,10 @@ export const getAuthorize = async (req: Request, res: Response): Promise<void> =
 
     if (!user) {
       // Redirect to login page with return URL
-      const returnUrl = encodeURIComponent(req.originalUrl);
-      res.redirect(`/login?returnUrl=${returnUrl}`);
+      const target = new URL(req.originalUrl, 'http://localhost');
+      target.searchParams.delete('token');
+      const returnUrl = encodeURIComponent(target.pathname + target.search);
+      res.redirect(`${config.basePath}/login?returnUrl=${returnUrl}`);
       return;
     }
 
@@ -915,6 +922,8 @@ export const postAuthorize = async (req: Request, res: Response): Promise<void> 
     if (!validatedRedirectUri) {
       return;
     }
+
+    if (getDashboardSession(req) && !(await requireDashboardOrigin(req, res))) return;
 
     // If user denied
     if (allow !== 'true') {
