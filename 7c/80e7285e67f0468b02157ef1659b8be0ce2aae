@@ -1,0 +1,47 @@
+src/clients/__tests__/openapi-spec-auth.test.ts
+  s_ddfe0ac222d71f::t_b046a3fabde586 332
+locales/fr.json
+  s_ddfe0ac222d71f::t_b49a5f9777a771 247-250
+src/clients/__tests__/openapi-oauth2.test.ts
+  s_ddfe0ac222d71f::t_b046a3fabde586 64,111,155,215,248,264,291,341,438
+  s_ddfe0ac222d71f::t_875721bfa63c18 3,6-39
+frontend/src/components/ServerForm.tsx
+  s_ddfe0ac222d71f::t_d080a1387e659b 8,84-85,94,238-240,396,414-417,433-436,459-461,473-475,487-489,501-503,515-517,564-566,574-577,634-636,638-640,667-669,1037-1040,1148-1151,1166-1169,1246-1249,1392-1394,1445-1447,1472-1474,1623-1626,1655-1658,1670-1673,1705,1708
+  s_ddfe0ac222d71f::t_b49a5f9777a771 7,9,232-234,237,325-341,343-365,379-384,1713-1752
+  s_ddfe0ac222d71f::t_dfefeaa372a5ad 342
+  s_ddfe0ac222d71f::t_aa4f51588d4555 385
+tests/frontend/openApiImportConfirmation.test.ts
+  s_ddfe0ac222d71f::t_d080a1387e659b 6-9,20-24
+  s_ddfe0ac222d71f::t_c9472f0cb173c7 1-5,10-19,25-28
+frontend/src/components/ui/ConfirmDialog.tsx
+  s_ddfe0ac222d71f::t_b49a5f9777a771 9,12,24,109,139
+  s_ddfe0ac222d71f::t_dbba9f7b39b0e7 122
+  s_ddfe0ac222d71f::t_d080a1387e659b 25,36-47,55-66,74-85,130,133,137,144,147
+locales/zh.json
+  s_ddfe0ac222d71f::t_b49a5f9777a771 247-250
+locales/en.json
+  s_ddfe0ac222d71f::t_b49a5f9777a771 247-250
+src/clients/openapi.ts
+  s_ddfe0ac222d71f::t_b49a5f9777a771 254-260,356-357
+  s_ddfe0ac222d71f::t_d69d04039973f4 877-878
+locales/tr.json
+  s_ddfe0ac222d71f::t_b49a5f9777a771 247-250
+frontend/src/utils/openApiImportConfirmation.ts
+  s_ddfe0ac222d71f::t_b49a5f9777a771 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7c80e7285e67f0468b02157ef1659b8be0ce2aae",
+  "prompts": {},
+  "sessions": {
+    "s_ddfe0ac222d71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d0c-7477-70e0-972f-5cea99edb512",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

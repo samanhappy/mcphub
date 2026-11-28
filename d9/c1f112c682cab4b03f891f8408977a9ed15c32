@@ -1,0 +1,26 @@
+src/services/activityLoggingService.ts
+  s_29d7282f1637cb::t_d5c2a466bebbc6 11-14,73-75,87-88,119-123,128
+tests/services/activityLoggingService.test.ts
+  s_29d7282f1637cb::t_d5c2a466bebbc6 105,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d9c1f112c682cab4b03f891f8408977a9ed15c32",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_29d7282f1637cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a070d1-21c4-7f83-9701-a94ba6815dc8",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

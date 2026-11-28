@@ -1,0 +1,22 @@
+tests/integration/mcpService-reconnect.test.ts
+  s_2d37ba02332ced::t_814087219830ed 4-8,56,60,64,68,73,77,82,88,96,103,107,113,136,146
+  s_2d37ba02332ced::t_6c0d119e1b7d86 2-3,139,149,215-259
+src/services/mcpService.ts
+  s_2d37ba02332ced::t_a39b7e411d85d4 1642-1643,1647-1648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "856db8a91a0d99a49710edfc94870c9c10fd1531",
+  "prompts": {},
+  "sessions": {
+    "s_2d37ba02332ced": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e816-47b5-7da3-b134-4af9447d8291",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

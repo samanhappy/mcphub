@@ -1,0 +1,36 @@
+src/clients/openapi.ts
+  s_f6ad850d1ee010::t_a006cad34195fb 50-54
+  s_f6ad850d1ee010::t_94bb9340731cd3 396-406
+  s_f6ad850d1ee010::t_e547e66dd1a42d 2
+  s_f6ad850d1ee010::t_8f54a2894bee46 381-384,391-395,414-417
+  s_f6ad850d1ee010::t_2b0b1f6fcbe3e8 349-354
+  s_f6ad850d1ee010::t_e60d563607c243 373-380,385-390,407-413,418-424
+  s_f6ad850d1ee010::t_2622979a54ba04 8
+  s_f6ad850d1ee010::t_a1077c9449bdcc 327,333
+  s_f6ad850d1ee010::t_f64fbd9e110edf 298-301
+  s_f6ad850d1ee010::t_b543e5e8432117 425-426
+src/clients/__tests__/openapi-external-ref.test.ts
+  s_f6ad850d1ee010::t_c0ee1fd430af2c 12-19
+  s_f6ad850d1ee010::t_57fa3d1d455ff1 112-116,120
+  s_f6ad850d1ee010::t_ea446a8bf522e3 69-76,78-86,90,96,101-102,104-108,117-119,121,127,138
+  s_f6ad850d1ee010::t_617f33dd5f6662 1-11,20-44,46-47,49-68,77,87-89,91-95,97-100,103,109-111,122-126,128-137,139-140
+  s_f6ad850d1ee010::t_8948d296456dda 45,48
+src/clients/__tests__/openapi-spec-auth.test.ts
+  s_f6ad850d1ee010::t_be88b79736b8c2 238-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "63fdb2c9e647652ba1e0762be05da9d0fa27e106",
+  "prompts": {},
+  "sessions": {
+    "s_f6ad850d1ee010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd33ad616ffe1S2hjbNZxMUA71",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

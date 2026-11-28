@@ -1,0 +1,29 @@
+docs/features/authentication.mdx
+  s_fb24154541378f::t_15ea57e114a193 128-131
+docs/zh/features/authentication.mdx
+  s_fb24154541378f::t_d1ffbf70e42178 30-33
+frontend/src/services/betterAuthClient.ts
+  s_fb24154541378f::t_e945aaa13c2648 41,48,58
+tests/fixtures/better-auth-oidc.mts
+  s_fb24154541378f::t_96ff0176f4a9d8 1-105
+tests/frontend/betterAuthClient.test.ts
+  s_fb24154541378f::t_8d73b83e09a727 47,55
+tests/integration/better-auth-oidc.test.ts
+  s_fb24154541378f::t_8e04375141f527 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d9cf62752f1fab537ef47c8fe10aff95fcf5d0c",
+  "prompts": {},
+  "sessions": {
+    "s_fb24154541378f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19603-3810-7781-8d03-40466e0a5832",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

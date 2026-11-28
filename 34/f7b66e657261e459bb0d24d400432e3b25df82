@@ -1,0 +1,22 @@
+tests/utils/oauthConsentResource.test.ts
+  s_dae2bd887020e1::t_5c18acc6062f65 61-78
+  s_dae2bd887020e1::t_a3b8ba656100f0 79-85,87-88
+src/utils/oauthConsentResource.ts
+  s_dae2bd887020e1::t_1aebd850a90782 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34f7b66e657261e459bb0d24d400432e3b25df82",
+  "prompts": {},
+  "sessions": {
+    "s_dae2bd887020e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a144fb-373a-7793-a41c-37da615b9c7e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

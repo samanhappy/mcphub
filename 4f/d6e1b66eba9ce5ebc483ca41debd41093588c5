@@ -1,0 +1,40 @@
+src/dao/ServerDaoDbImpl.ts
+  s_eea72b2ee1da40::t_ebc5bf26ee33c3 1,125,200-213
+  s_eea72b2ee1da40::t_53d8b6b2f34668 214-215
+src/utils/settingsSync.ts
+  s_eea72b2ee1da40::t_0db030ea043a91 166-169,209-213,228-232,234-235
+  s_eea72b2ee1da40::t_ebc5bf26ee33c3 170,184-186,214-215,220-227,233,238-240
+  s_eea72b2ee1da40::t_805b6d26eef3d6 187-188,190
+docs/configuration/database-configuration.mdx
+  s_eea72b2ee1da40::t_0db030ea043a91 200
+tests/integration/oauth-registration-persistence.test.ts
+  s_eea72b2ee1da40::t_012d7b55b9ba57 68-72
+docs/zh/configuration/database-configuration.mdx
+  s_eea72b2ee1da40::t_0db030ea043a91 200
+src/services/oauthSettingsStore.ts
+  s_eea72b2ee1da40::t_ebc5bf26ee33c3 55-59
+tests/services/oauthSettingsStore.test.ts
+  s_eea72b2ee1da40::t_ebc5bf26ee33c3 32
+tests/integration/settings-sync.test.ts
+  s_eea72b2ee1da40::t_0db030ea043a91 1-4,6-7,21,41,89-96,269-271,341-432,436,438,440,443-444,448,450,453-454,456-458,461-463
+  s_eea72b2ee1da40::t_6e2d68cd87b9f2 67-70
+  s_eea72b2ee1da40::t_cce234b5c19ff2 5,433-435,437,439,441-442,445-447,449,451-452,455,459-460
+src/dao/ServerDao.ts
+  s_eea72b2ee1da40::t_ebc5bf26ee33c3 21-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4fd6e1b66eba9ce5ebc483ca41debd41093588c5",
+  "prompts": {},
+  "sessions": {
+    "s_eea72b2ee1da40": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1117c-2f23-7e90-a149-b581e1c2343a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

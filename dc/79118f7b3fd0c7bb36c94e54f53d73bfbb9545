@@ -1,0 +1,16 @@
+docs/zh/essentials/reusable-snippets.mdx
+  h_18676a549cd52a 36,39
+docs/zh/features/group-management.mdx
+  h_18676a549cd52a 49,338,387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc79118f7b3fd0c7bb36c94e54f53d73bfbb9545",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

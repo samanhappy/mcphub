@@ -1,0 +1,45 @@
+docs/features/oauth.mdx
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 207-208
+docs/zh/features/oauth.mdx
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 207-208
+frontend/src/utils/serverPermissions.ts
+  s_fb2d1fdf707b50::t_de8497861b15c3 30
+locales/es.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+locales/tr.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+locales/vi.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+tests/frontend/oauthRelayForm.test.ts
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 1-13,15-17,19-21,23-24,26-34,36-37,39-46,48-49,51-52
+  s_fb2d1fdf707b50::t_925b1e4d4fd9f8 14,18,22,25,35,38,47,50
+frontend/src/components/ServerForm.tsx
+  s_fb2d1fdf707b50::t_3d1d885bbd062c 630-632,2237-2242
+  s_fb2d1fdf707b50::t_de8497861b15c3 8,120-122,360,362-363,366-367,593-595,597-598,612-614,616,2147,2151-2154,2183-2196,2198-2199,2201-2206,2208-2221,2223-2236,2243,2245-2254,2256-2257
+  s_fb2d1fdf707b50::t_8c1e38ac8dc562 361,364-365,596,615,2197,2200,2207,2222,2244,2255,2258
+locales/en.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+locales/fr.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+locales/zh.json
+  s_fb2d1fdf707b50::t_b4e9f05b3b9954 308-318
+frontend/src/utils/oauthRelayForm.ts
+  s_fb2d1fdf707b50::t_de8497861b15c3 1-8,11-20,22-41
+  s_fb2d1fdf707b50::t_bfeb96cb7b3f50 9-10,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae03c3ffb3f585cce278fc4d6ed6f0ff05872864",
+  "prompts": {},
+  "sessions": {
+    "s_fb2d1fdf707b50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18bfe-c0fa-7343-ae60-ce5e7c93a4fa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+tests/integration/sdk-v2-compatibility.test.ts
+  s_1aee31ff39208a::t_92b0b4076298e0 154-159
+  s_1aee31ff39208a::t_5cd5eb8d84c4d2 29-30,76,93,132-153,160-196,199-202,214,228,236
+docs/development/architecture.mdx
+  s_1aee31ff39208a::t_92b0b4076298e0 60-61
+src/clients/legacyMcpClient.ts
+  s_1aee31ff39208a::t_82ee70b5fe3ac1 11,29-30,40-57,78-82,93-97,105-112,122-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f57550a50641a8f5705ac6b444a9ec77fb17693f",
+  "prompts": {},
+  "sessions": {
+    "s_1aee31ff39208a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d527-5071-75f1-b1a1-675971510cef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

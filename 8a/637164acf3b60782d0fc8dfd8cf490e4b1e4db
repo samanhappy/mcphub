@@ -1,0 +1,138 @@
+src/services/vectorSearchService.ts
+  s_a33e9af8757d31::t_692de402e4a4cf 1498,1512,1530-1535,1537
+  s_a33e9af8757d31::t_f2d205b10d9554 1536
+src/utils/settingsSync.ts
+  s_a33e9af8757d31::t_ea9902b32144b9 15,42,207
+tests/integration/system-config-authorization.test.ts
+  s_a33e9af8757d31::t_1b4a698a5158a5 122
+src/controllers/serverController.ts
+  s_a33e9af8757d31::t_7995c994f40759 2074,2076-2083,2086-2089,2205-2206,2859
+  s_a33e9af8757d31::t_4266f3c0efd860 1,2860
+tests/integration/personal-oauth-runtime.test.ts
+  s_a33e9af8757d31::t_953544227fc7d1 56-74
+src/utils/serverIdentity.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 1-5,7
+  s_a33e9af8757d31::t_dd127952647a1a 6
+src/dao/ActivityDao.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 38,109
+tests/integration/personal-credentials.test.ts
+  s_a33e9af8757d31::t_16d8be1c02f602 257-261,263,344-351,354,356-359
+  s_a33e9af8757d31::t_f44886cdd723a9 390,410-412,415,431-432,434-437,439-441,443-444,446-447,453-454,456,461
+  s_a33e9af8757d31::t_19fec750e74a83 342-343,360-363,391,462
+  s_a33e9af8757d31::t_1b14c45c34deed 234-249,254,275-298,302-307,309-316,318-322,324-339,392-402,464-469,471-472
+  s_a33e9af8757d31::t_f456ddaeaf5914 417-420,422-423,425-427,429-430,448-450,455
+  s_a33e9af8757d31::t_a1a5f829b3e6c3 250-253,255-256,262,264-274,299-301,308,317,323,340-341,352-353,355,364-389,403-409,413-414,416,421,424,428,433,438,442,445,451-452,457-460,463,470
+src/db/repositories/ServerRepository.ts
+  s_a33e9af8757d31::t_692de402e4a4cf 31,33
+  s_a33e9af8757d31::t_e532d15ca52c86 32
+tests/services/vectorSearchService.test.ts
+  s_a33e9af8757d31::t_7423d589dc601f 258-266,268-273
+  s_a33e9af8757d31::t_456f567fad9077 267
+src/dao/SystemConfigDaoDbImpl.ts
+  s_a33e9af8757d31::t_7995c994f40759 26,44,47,67
+  s_a33e9af8757d31::t_f44886cdd723a9 92
+  s_a33e9af8757d31::t_e0d09c1d81143c 1
+src/dao/ServerDao.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 6-7,133,170,200
+src/db/entities/SystemConfig.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 9-11
+src/dao/ServerDaoDbImpl.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 288,326
+tests/services/toolPolicyService.test.ts
+  s_a33e9af8757d31::t_f44886cdd723a9 1
+  s_a33e9af8757d31::t_d6da45fabcb6e6 2-8,10-13,15-17,19-21,23-25,27-32,34-36,38-39,41-42,44-48,50-53,56-65,68-71
+  s_a33e9af8757d31::t_cf78bdbca3d33a 9,14,18,22,26,33,37,40,43,49,54-55,66-67
+src/dao/SystemConfigDao.ts
+  s_a33e9af8757d31::t_8a915e75c209cc 41,68-69
+  s_a33e9af8757d31::t_e1e139785c9a4b 1,89
+docs/configuration/mcp-settings.mdx
+  s_a33e9af8757d31::t_16d8be1c02f602 933
+  s_a33e9af8757d31::t_ec52de2133d773 932
+  s_a33e9af8757d31::t_7547364fb8e8c3 896-931
+src/services/smartRoutingService.ts
+  s_a33e9af8757d31::t_692de402e4a4cf 1,391-394,546-552,554-556,558-560,562-566
+  s_a33e9af8757d31::t_0f964e574aed6d 553,557
+src/db/repositories/VectorEmbeddingRepository.ts
+  s_a33e9af8757d31::t_692de402e4a4cf 170,172,204-205,207-208,241-242,244
+  s_a33e9af8757d31::t_bc7e46e138815e 206,243,245
+src/types/index.ts
+  s_a33e9af8757d31::t_26a78464c1cffd 269-289,291,832
+  s_a33e9af8757d31::t_76e730f627ba8f 487
+src/utils/migration.ts
+  s_a33e9af8757d31::t_7995c994f40759 1,147,206
+tests/services/mcpService-smart-routing-group.test.ts
+  s_a33e9af8757d31::t_05aaeadd722e4c 37
+mcp_settings.json
+  s_a33e9af8757d31::t_5fcc6d4a096ab6 40
+src/db/entities/Activity.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 16-18
+tests/dao/SystemConfigDao.test.ts
+  s_a33e9af8757d31::t_3521f07fead3aa 41-45,52-55
+  s_a33e9af8757d31::t_ec52de2133d773 46-51
+src/services/activityLoggingService.ts
+  s_a33e9af8757d31::t_76e730f627ba8f 2,46,83
+src/services/toolPolicyService.ts
+  s_a33e9af8757d31::t_ec52de2133d773 18-21,28-29
+  s_a33e9af8757d31::t_26a78464c1cffd 3-9,12-17,23-24,30-31,33-36,38-43,45-46,48-50
+  s_a33e9af8757d31::t_dd127952647a1a 22,25-27,32,37
+  s_a33e9af8757d31::t_692de402e4a4cf 11
+  s_a33e9af8757d31::t_8a915e75c209cc 10
+  s_a33e9af8757d31::t_e3d42a5d51332e 1-2,44,47
+tests/services/activityLoggingService.test.ts
+  s_a33e9af8757d31::t_ea9902b32144b9 20-25,27-37,39-40,42-45
+  s_a33e9af8757d31::t_3ecd754419bf55 26,38,41
+tests/dao/serverDao.test.ts
+  s_a33e9af8757d31::t_ea9902b32144b9 4-18
+src/dao/base/JsonFileBaseDao.ts
+  s_a33e9af8757d31::t_8a915e75c209cc 19,44
+src/services/principalRuntimeService.ts
+  s_a33e9af8757d31::t_953544227fc7d1 29-32,36-38,58-62,116-120
+  s_a33e9af8757d31::t_1945cfe3caf1c5 13,33-35,39
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_a33e9af8757d31::t_3521f07fead3aa 21-30,34
+  s_a33e9af8757d31::t_16d8be1c02f602 31-33
+tests/dao/serverDaoDbImpl.test.ts
+  s_a33e9af8757d31::t_1b4a698a5158a5 31,56
+src/services/mcpService.ts
+  s_a33e9af8757d31::t_0decfc8da50a77 4431,6076,6083-6088,6096
+  s_a33e9af8757d31::t_5fcc6d4a096ab6 4422-4426,4428,6103-6107,6109,6111-6112,6115,6122
+  s_a33e9af8757d31::t_0a13fdba4ccd04 6025,6028-6036,6061
+  s_a33e9af8757d31::t_1945cfe3caf1c5 6027,6037,6043
+  s_a33e9af8757d31::t_ec52de2133d773 4401,4978,6038-6042
+  s_a33e9af8757d31::t_16d8be1c02f602 4994-4995,6077-6082
+  s_a33e9af8757d31::t_63f81c4b2b1a52 1-2,4408,4419-4421,4427,4429-4430,4628,4727,4866,4944,6007,6015-6024,6026,6044-6060,6062-6075,6089-6095,6097-6102,6108,6110,6113-6114,6116-6121,6123-6132,6134,6303-6307
+src/db/repositories/VectorEmbeddingRepository.test.ts
+  s_a33e9af8757d31::t_7423d589dc601f 151-157,159-166,168-171,173-174,176-179,181-184,186-187,189-190
+  s_a33e9af8757d31::t_8a915e75c209cc 158
+  s_a33e9af8757d31::t_f985a06439fed0 167,172,175,180,185,188
+tests/controllers/serverController.test.ts
+  s_a33e9af8757d31::t_1b4a698a5158a5 843-857
+docs/zh/configuration/mcp-settings.mdx
+  s_a33e9af8757d31::t_16d8be1c02f602 836
+  s_a33e9af8757d31::t_ec52de2133d773 835
+  s_a33e9af8757d31::t_09d74d0bd666bf 799-834
+src/utils/toolPolicy.ts
+  s_a33e9af8757d31::t_a73cad91058f28 1-58
+tests/services/smartRoutingService-alias.test.ts
+  s_a33e9af8757d31::t_1fc138dd812cb6 32
+tests/services/smartRoutingService-metatools.test.ts
+  s_a33e9af8757d31::t_f125330c940dab 23
+tests/services/smartRoutingService-search-results.test.ts
+  s_a33e9af8757d31::t_23d20902a55dc4 8,32-33,35,82,109-125,522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a637164acf3b60782d0fc8dfd8cf490e4b1e4db",
+  "prompts": {},
+  "sessions": {
+    "s_a33e9af8757d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180ad-0906-7dd1-9b80-7a711e50258b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

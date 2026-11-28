@@ -1,0 +1,20 @@
+.agents/skills/github-worker/SKILL.md
+  h_18676a549cd52a 12,21
+docs/agents/github-coordination.md
+  h_18676a549cd52a 9,66,83,112
+docs/agents/issue-tracker.md
+  h_18676a549cd52a 37,39,41-47,49-51
+docs/agents/triage-labels.md
+  h_18676a549cd52a 59,61-67,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0edc4ff88487e2d99ff6235c6e0018b7746be1a6",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

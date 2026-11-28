@@ -1,0 +1,24 @@
+src/controllers/oauthCallbackController.ts
+  h_18676a549cd52a 21,139-156,159,161-227,241-242,307-310,313,370-374
+src/services/mcpService.ts
+  h_18676a549cd52a 2495-2503
+src/utils/oauthIssuer.ts
+  h_18676a549cd52a 49-55,67-74
+tests/controllers/oauthCallbackController.test.ts
+  h_18676a549cd52a 10,24-27,30,36,52,102,106,114-117,146-164,194-198,231-235,270-274,287-387
+tests/integration/oauth-callback-reconnect.test.ts
+  h_18676a549cd52a 8,27,69,76-80,90-143
+tests/utils/oauthIssuer.test.ts
+  h_18676a549cd52a 41,45-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "71845e5878d5f65ea473059f9683f4e4b45ae8dc",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

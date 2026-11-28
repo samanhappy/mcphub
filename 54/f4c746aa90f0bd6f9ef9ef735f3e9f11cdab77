@@ -1,0 +1,31 @@
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_f4b4f644fb9fb0::t_b247a7ad704d53 39,50-68
+tests/services/mcpService-apps.test.ts
+  s_f4b4f644fb9fb0::t_6a47703518be90 248-249,298,302-352
+  s_f4b4f644fb9fb0::t_b247a7ad704d53 250-297,396-397
+  s_f4b4f644fb9fb0::t_4969658a0e8e5f 162-164,247,299-301
+src/services/mcpService.ts
+  s_f4b4f644fb9fb0::t_b247a7ad704d53 4807-4809,4829-4831,5131-5132,5141-5144,5152-5155,5158-5161
+  s_f4b4f644fb9fb0::t_d3822be16029e8 4800-4804,5129-5130,5133-5140,5145-5151,5163,5167,5171
+tests/integration/sse-service-real-client.test.ts
+  s_f4b4f644fb9fb0::t_b247a7ad704d53 485-492
+  s_f4b4f644fb9fb0::t_e7d91edd873e23 451
+  s_f4b4f644fb9fb0::t_6a47703518be90 411-429,431-450,452-458
+  s_f4b4f644fb9fb0::t_7521ee320df137 430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "54f4c746aa90f0bd6f9ef9ef735f3e9f11cdab77",
+  "prompts": {},
+  "sessions": {
+    "s_f4b4f644fb9fb0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10017-1e94-7172-9f79-834de0978301",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

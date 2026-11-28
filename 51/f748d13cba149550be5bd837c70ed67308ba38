@@ -1,0 +1,67 @@
+src/services/groupService.ts
+  s_a33e9af8757d31::t_6c982a922854cc 215-220
+src/utils/migration.ts
+  s_a33e9af8757d31::t_6c982a922854cc 32
+frontend/src/components/ui/SponsorDialog.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 33
+frontend/src/components/ui/Badge.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 27
+src/utils/systemConfigCache.ts
+  s_a33e9af8757d31::t_6c982a922854cc 24-26
+tests/db/repositories/groupRepository.keyScopes.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 1-98
+src/dao/GroupDao.ts
+  s_a33e9af8757d31::t_6c982a922854cc 6,46-51,227-255
+  s_a33e9af8757d31::t_7556d8f5426a52 256-257
+src/db/repositories/GroupRepository.ts
+  s_a33e9af8757d31::t_6c982a922854cc 4,6,60-99
+  s_a33e9af8757d31::t_875076a90cae0c 100-101
+frontend/src/components/ui/Pagination.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 28,52,74,90,94,104
+frontend/src/components/ui/UserProfileMenu.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 126
+tests/integration/group-rename-bearer-scope.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 1-233
+src/utils/groupKeyScope.ts
+  s_a33e9af8757d31::t_6c982a922854cc 1-35
+frontend/src/pages/SettingsPage.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 161,288,305,308,329-332,334,336,340,349,357-358
+src/utils/settingsSync.ts
+  s_a33e9af8757d31::t_6c982a922854cc 140
+frontend/src/components/ui/CursorPagination.tsx
+  s_a33e9af8757d31::t_6c982a922854cc 24,42,50
+tests/frontend/sponsorLanguage.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 1-35
+tests/dao/json-settings-bom.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 1-48
+src/dao/GroupDaoDbImpl.ts
+  s_a33e9af8757d31::t_6c982a922854cc 89-97
+  s_a33e9af8757d31::t_a6412d8cd96fc4 75-88
+src/config/index.ts
+  s_a33e9af8757d31::t_6c982a922854cc 91
+tests/services/groupService-authorization.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 9,84-87,152-178
+src/dao/base/JsonFileBaseDao.ts
+  s_a33e9af8757d31::t_6c982a922854cc 21-26,42,74-80
+  s_a33e9af8757d31::t_2e55fb4b66884f 20,27
+frontend/src/i18n.ts
+  s_a33e9af8757d31::t_6c982a922854cc 52
+tests/config/loadOriginalSettings.test.ts
+  s_a33e9af8757d31::t_6c982a922854cc 100-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51f748d13cba149550be5bd837c70ed67308ba38",
+  "prompts": {},
+  "sessions": {
+    "s_a33e9af8757d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180ad-0906-7dd1-9b80-7a711e50258b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+docs/zh/configuration/credential-key-upgrade.mdx
+  s_d6a710dca3505d::t_d3db07f3e16fd2 46-47,49
+  s_d6a710dca3505d::t_534141b88a86c0 48,58,93
+tests/integration/credential-binding-migration.test.ts
+  s_d6a710dca3505d::t_e1aa82771b5676 7-10,30-33,42-45,49-54,66-72,83-85,88-92,97-99,101-104,108-109,121-123,130-131,139-140,148-166,169-175,202-203,206-207
+  s_d6a710dca3505d::t_173cbbf9841e18 247,252
+  s_d6a710dca3505d::t_ceadbbb8261049 1-6,11-29,34-41,46-48,55-65,73-82,86-87,93-96,100,105-107,110-120,124-129,132-138,141-147,167-168,176-201,204-205,208-217
+  s_d6a710dca3505d::t_6a546587c2b538 218-246,248-251,253-258
+  s_d6a710dca3505d::t_534141b88a86c0 259-270
+docs/configuration/database-configuration.mdx
+  s_d6a710dca3505d::t_d3db07f3e16fd2 154-157,159-161
+  s_d6a710dca3505d::t_534141b88a86c0 158
+docs/configuration/credential-key-upgrade.mdx
+  s_d6a710dca3505d::t_534141b88a86c0 48,58,93
+  s_d6a710dca3505d::t_d3db07f3e16fd2 46-47,49
+docs/agents/architecture.md
+  s_d6a710dca3505d::t_d3db07f3e16fd2 29-30
+src/utils/credentialBindingMigration.ts
+  s_d6a710dca3505d::t_e1aa82771b5676 1-55,66-81
+  s_d6a710dca3505d::t_534141b88a86c0 56-65
+docs/zh/configuration/database-configuration.mdx
+  s_d6a710dca3505d::t_d3db07f3e16fd2 154-157,159-161
+  s_d6a710dca3505d::t_534141b88a86c0 158
+tests/integration/personal-oauth-db.test.ts
+  s_d6a710dca3505d::t_173cbbf9841e18 6-12,57,65,76-77,122-152
+src/db/entities/CredentialBindingImport.ts
+  s_d6a710dca3505d::t_e1aa82771b5676 1-11
+src/db/entities/index.ts
+  s_d6a710dca3505d::t_e1aa82771b5676 2,21,40
+src/utils/migration.ts
+  s_d6a710dca3505d::t_e1aa82771b5676 6,83-85,421-422
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83e355d0c9cec4e5382538bba8ddeeac52ae188b",
+  "prompts": {},
+  "sessions": {
+    "s_d6a710dca3505d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17e01-f41d-7e31-b272-5e082c01fd45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

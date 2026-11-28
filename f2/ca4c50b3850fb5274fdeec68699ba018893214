@@ -1,0 +1,36 @@
+locales/en.json
+  s_2e9a7a7ccf9e23::t_1cdccaf9b2fc21 279
+locales/fr.json
+  s_2e9a7a7ccf9e23::t_6b9931ea104337 279
+locales/tr.json
+  s_2e9a7a7ccf9e23::t_01aef6c1eda33c 279
+locales/zh.json
+  s_2e9a7a7ccf9e23::t_6ffd30c42dc8cc 279
+src/services/templateService.ts
+  s_2e9a7a7ccf9e23::t_0d1debc928ce73 15,615,617-623
+src/utils/serverConfigPersistence.ts
+  s_2e9a7a7ccf9e23::t_c72951eaa6c10a 159
+tests/services/templateService-import-privilege.test.ts
+  s_2e9a7a7ccf9e23::t_d00b818b0f835a 175-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2ca4c50b3850fb5274fdeec68699ba018893214",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2e9a7a7ccf9e23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1165b-178a-7572-9a94-d5b275e68658",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

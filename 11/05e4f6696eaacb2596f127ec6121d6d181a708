@@ -1,0 +1,308 @@
+src/clients/__tests__/openapi-cookie.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 317
+src/services/changelogService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 83-85
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 2,55
+src/models/User.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,37,55,68,80,92,114,135,146,152-155
+src/utils/tokenCost.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 33-35,88-90
+src/middlewares/index.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 121
+src/utils/path.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,129-130,143,154,161,193,239,249
+src/config/jwt.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 2,8
+src/controllers/groupController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 2,313
+src/utils/bearerAuth.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 65
+src/utils/oauthRedirectUri.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 84
+src/db/repositories/UserConfigRepository.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 67-70
+src/services/hostedAuthService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 13,306,431
+src/cli/commands/export.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 12-16
+src/services/oauthClientRegistration.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 17,76,97,102,124,131,139,163,183,187,201,207,210,230,285,297,301,338,375,391,410,423,438,450,463,526,549,552,566,593
+src/services/betterAuthSession.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 3-8
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 12,28,53,70,88,95,109
+src/controllers/templateController.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 12-13
+src/middlewares/userContext.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 9,79,123,130,132,139,171
+src/services/hostedRuntimeCatalogNames.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 7
+src/utils/corsOrigin.test.ts
+  s_186177c3ad3cd9::t_ea6817c6205ffd 1-16,20-31
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 17-19
+src/controllers/betterAuthController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,25
+src/controllers/promptController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,41
+src/cli/commands/login.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 33-37,97-101
+src/dao/UserConfigDaoDbImpl.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 18,25,56-59
+src/services/oauthService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 6,32,105-106,108,113,166,181,191,194,235,249,251,255,267,271
+src/clients/__tests__/openapi-spec-auth.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 42,165-167,230-232,258-260,284-286,292-293,359-365
+src/utils/dbRetry.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 1,219
+src/services/keepAliveService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,68,77,110,124,137,150
+src/controllers/oauthDynamicRegistrationController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 12,221,302,486,538
+src/services/oauthServerService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 17,304,322,324
+src/controllers/logController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,12,23,50,53
+src/controllers/authController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 15,90,146,166,221
+src/utils/tokenTruncation.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 1,316,328,343
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 55-59,267
+src/cli/commands/keys.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 20-24
+src/controllers/hostedInternalController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 7,63
+src/controllers/oauthCallbackController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 29,184,205,219,232,243,251,269,278,284,288,326,332,354,363,369,375,380,385,390,395,405,411,416,435,439,474
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 461
+src/controllers/changelogController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,26
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 6,11-13
+src/cli/context.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 3
+src/services/mcpService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 93,147,153,190,244,266,283,292,300,369,388,397,425,510,518,551,554,596,601,609,612,775,788,926,1292,1320,1373,1393,1441,1504,1511,1516,1553,1579,1620,1651,1664,1724,1742,1754,1757,1764,1828,1833,1840,1852,1864,1871,1883,1890,1918,1927,1937,2145,2154,2163,2171,2183,2190,2224,2287,2323,2354,2368,2377,2386,2417,2484,2521,2532,2543,2552,2598,2605,2607,2654,2664,2719,2721,2730,2732,2741,2990,3053,3205,3255,3307,3332,3406,3454,3517,3549,3654,3659,3666,3684,3746,3808,3942
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 202-215,236,274,1247,1265,1461-1471,1479-1488,1638,3007,3380,3384
+src/controllers/contextCostController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,12,23
+src/utils/version.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,18,27
+src/controllers/openApiController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 14,64,84,105,170,210,247
+src/clients/__tests__/openapi-ssrf.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 56,62,68,75
+src/constants/oauthServerDefaults.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 23-27
+src/services/toolResultCompressionService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 11,467
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 7,151-154,194-197,276-278,312,410-414
+src/db/repositories/SystemConfigRepository.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 6,29
+src/services/groupService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 7,125,168,207,224,266,289,359
+src/cli/commands/servers.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 20-24,157-160
+src/services/contextCostService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 8-22,83-87,131
+src/middlewares/index.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 9,17
+src/dao/examples.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 1,27,31,35,39,43,50,67,71,78,87,91,107,111,118,122,129,133,144,152,160,164,180,184,188,192,196,204,206,209,212,215,218,221,223
+src/index.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 7,25,29,45,51,59-60,64,82,88,97,104,141,152,158,174,177,184,192
+src/utils/cacheUtils.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 6,64,66,104,107
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 21-25
+src/cli/commands/config.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 19-23
+src/dao/ServerDao.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 28-32,222-225,236,252-256,268
+src/controllers/healthController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,48
+src/services/marketService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,31
+src/controllers/oauthClientController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 12,46,94,160,234,282,334
+src/cli/commands/tools.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 32-36,169,171
+src/services/cloudService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 11,64,75,108,148,175,201,233,252,271
+src/services/sseService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 29,82,274,279,378,384,392,411,415,429,435,443,447,548,600,608,616,630,633,674,682,690,718,728,733,737,745,754,761,763,773,781,788,795,818,843,852,865,874,879,898,913,923,930,944,961,993,1010,1030,1036,1045,1064
+src/cli/commands/groups.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 18-22
+src/dao/UserDao.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 33-39
+src/config/migrationUtils.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 7,14,34-37,45,47,52,62,65,70,74,79,83,88-89,93,103,111,113,116,119,122,130,133,136,143,146,149,153,155,158,168,171,176,179,184,190,193,195,198,207,234-235,239
+src/controllers/toolController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 6,101
+src/config/DaoConfigService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 2,91,155
+src/server.ts
+  s_186177c3ad3cd9::t_d2cf9efcc8b2c8 62-63,65-75,77
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 119,343-345
+  s_186177c3ad3cd9::t_048c7bc10ae6b7 24
+  s_186177c3ad3cd9::t_1220d0dc3293d8 2
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 30,88,100,108,112,179,187,194,206,224,231,233,235,250,260,262,275,277,281,299-300,307,311,319,329
+  s_186177c3ad3cd9::t_b1050bebf3b10a 76
+src/utils/smartRouting.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,239,250,293
+src/scripts/dao-demo.ts
+  s_186177c3ad3cd9::t_421c111810a3fe 3
+  s_186177c3ad3cd9::t_c3cb82d25ab8d9 260
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 34,42,50,58,66,82,90,103,126-127,131,134,143,148,157,163,176,181,194,199,213,216-217,221,252,254
+  s_186177c3ad3cd9::t_1e6ba8488c756b 4
+src/betterAuth.ts
+  s_186177c3ad3cd9::t_8f6468ae1593be 73-80,92,95
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 11,143,211,223
+src/controllers/builtinResourceController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,19,41,70,94,116,138
+src/utils/corsOrigin.ts
+  s_186177c3ad3cd9::t_fe93154ad7eb2e 1-51
+src/utils/serverShutdown.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,18,36
+src/controllers/builtinPromptController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,18,40,69,93,115
+src/clients/openapi.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 313,469,709,766-768
+src/utils/migration.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 15,22,26,30,46,57,59,67,95,97,104,114,116,123,138,142,157,180,184,187,193,200,206,220,222,229,244,246,253,265,267,274,286,288,293,296,307,311,315,325,331,337,356,360,365,368,377-378,383-384,387
+src/services/openApiGeneratorService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 44
+tests/integration/system-config-authorization.test.ts
+  s_186177c3ad3cd9::t_cd61355097ddf7 64
+  s_186177c3ad3cd9::t_1f3a23ae6da995 83
+src/middlewares/auth.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 76-87,453
+src/services/requestContextService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 84-87
+src/utils/parameterConversion.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 1,88
+src/db/index.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,14
+src/utils/frontendShell.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,101
+src/dao/base/JsonFileBaseDao.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,37,74
+src/config/configManager.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 8,38,41,52,55,116,126,129,134
+src/db/repositories/ServerRepository.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 78-80,92-96,100-102,125
+src/utils/logger.ts
+  s_186177c3ad3cd9::t_878d3156015a5a 1-99,103,105-107,109-114,118-131,136-183,186-202
+  s_186177c3ad3cd9::t_d503cd2875ee54 100-102,104
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 115-117,132-135,184-185
+  s_186177c3ad3cd9::t_f90a7b26d96012 108
+src/services/activityLoggingService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 3
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,86
+src/utils/proxyTrust.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 8
+src/db/connection.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 348-351
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 9,38,40-41,46,48-49,71,84,125,151,160,166,175,185,197,226,261,266,272,279-280,293,295,308,311,316-317,321-322,325,331,343,364,371,376,379,384,388,394,430,437,451,455,462,476,493,500,506,517,520,531,539,545,551,561,567,595
+src/services/mcpOAuthProvider.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 49,151,158,215,238,282,306,315-318,345,370,374,399,404,459,474,524,531,588,595
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 538
+src/services/userService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,43,55,100,125
+src/db/repositories/VectorEmbeddingRepository.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 286-293
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,179,207,234,329,361
+src/cli/commands/cache.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 30-33
+src/controllers/oauthServerController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 15,53,80,278,448,524,568,599,648,681
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 21,41
+src/services/upstreamOAuthDisconnectService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 10,35,101,110,127,169
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 147-151
+src/services/betterAuthConfig.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 137,146,256,272-276,289
+src/utils/i18n.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 63,69
+src/services/oauthSettingsStore.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,38,92,94
+src/services/hostedEventSubscriber.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 6,105,118,132,156,161,170,193,231
+src/controllers/registryController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,50,103,161
+src/utils/serverConfigPersistence.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 12,62,137
+src/controllers/activityController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,98,136,195,236,282
+src/utils/__tests__/ssrf.test.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 48-49,53,57-59,79,132-137,141,146,155,164,185,187,194,209,219,224,239,243
+src/controllers/cloudController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,26,62,72,92,112,140,169,198,228,269
+src/services/templateService.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 26-35,44-47,51-54,78-79,85-86,135-138,384-385,568-573,589-594
+src/cli/http.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 50-52
+src/services/hostedControlPlaneClient.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 98
+src/services/smartRoutingService.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 20,413,432,434,441,590
+src/services/registry.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 15-18
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 3,29
+src/utils/rateLimit.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 8
+src/cli/commands/call.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 24-28,60,62
+src/routes/index.ts
+  s_186177c3ad3cd9::t_160e0362dee37e 237-240
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 30-32,216-227,230-234
+  s_186177c3ad3cd9::t_531c43924d99f3 29
+src/services/vectorSearchService.ts
+  s_186177c3ad3cd9::t_4c3d6f7135ca2b 26-28
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 4-9,107-112,300-302,454-456,598,716-720,724-730,997-999,1005,1053-1056,1309,1521,1612-1615,1741
+  s_186177c3ad3cd9::t_891948b8b47f49 995-996
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 24,341,380,386,392,405,412,418,438,461,475,532,540,548,556,574,588-592,595-597,599-603,606-610,612,624-641,710,740,763,772,795,810,815,836,847,1014,1081,1117,1144,1150,1155,1197,1207,1223,1236,1242,1290,1312,1317,1429,1480,1538,1551,1559,1568,1570,1580,1592,1600,1603,1617,1624,1629,1643,1660,1714,1719,1725,1727,1743,1751,1764,1767,1776,1788,1801,1803
+  s_186177c3ad3cd9::t_95a4e63c3d0c1c 21
+  s_186177c3ad3cd9::t_26f94ae1a19085 25
+src/utils/ssrf.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 78-80,174
+src/middlewares/auth.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 12,54,62,68
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 28-31,50-52
+src/controllers/mcpbController.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 149-152
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 7,93,99,162,187
+src/controllers/serverController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 53,319,346,449,568,784,788,991,1096,1183,1237,1269,1300,2170,2173,2177
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 136,327,424-425,553,710,727-729,774-776,935,1272,1570,1863-1874,1917-1918
+src/cli/commands/install.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 4,41-45,202
+src/controllers/bearerKeyController.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 69-77,84,114-115
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 5,56,124,172,200
+src/config/index.ts
+  s_186177c3ad3cd9::t_d86c77011fcd24 189-214,218,228
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 26,60,77,87,109
+  s_186177c3ad3cd9::t_6b31a0c07d1f67 188
+src/controllers/configController.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 17,53,92,211
+src/dao/DaoFactory.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 12,177,182
+src/models/OAuth.ts
+  s_186177c3ad3cd9::t_ea23e4111bc8fb 4,32,179,247,290
+  s_186177c3ad3cd9::t_6504375f371cbd 37,299
+src/cli/commands/discover.ts
+  s_186177c3ad3cd9::t_55ad9e99be1b1d 30-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1105e4f6696eaacb2596f127ec6121d6d181a708",
+  "prompts": {},
+  "sessions": {
+    "s_186177c3ad3cd9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd63b5866ffevi9nP36N0P1NAb",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

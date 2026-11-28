@@ -1,0 +1,16 @@
+.agents/skills/github-coordinator/SKILL.md
+  h_18676a549cd52a 14,27,42
+docs/agents/github-coordination.md
+  h_18676a549cd52a 8,80,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35829fae9d9c7d7379c04063f763d040f6626d69",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

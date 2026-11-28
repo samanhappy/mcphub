@@ -1,0 +1,28 @@
+src/services/mcpService.ts
+  s_54cd7484761cd1::t_911591ec610ef6 2920
+  s_54cd7484761cd1::t_95f607fb6f6563 2983-2985,2987
+tests/integration/bearer-exclude-scope.test.ts
+  s_54cd7484761cd1::t_2b616be5f66873 23,304,313,315,317,320,353-373
+  s_54cd7484761cd1::t_911591ec610ef6 260-265
+  s_54cd7484761cd1::t_2f50c0c0e9291f 22,297-303,305-312,314,316,318-319,321-322,374-375
+src/controllers/openApiController.ts
+  s_54cd7484761cd1::t_911591ec610ef6 381-383
+src/services/openApiGeneratorService.ts
+  s_54cd7484761cd1::t_911591ec610ef6 6,212-214,287-288,315-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ad0453ca98039f1aa6ebbd891f3ef0c9aa81ab5",
+  "prompts": {},
+  "sessions": {
+    "s_54cd7484761cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f272-a722-7590-a62a-a67746b30910",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+frontend/src/components/ui/Badge.tsx
+  s_a8c0a1ebf6559b::t_2afc99c3f4e3ce 27
+frontend/src/components/ui/CursorPagination.tsx
+  s_a8c0a1ebf6559b::t_2afc99c3f4e3ce 24,42,50
+frontend/src/components/ui/Pagination.tsx
+  s_a8c0a1ebf6559b::t_2afc99c3f4e3ce 28,52,74,94,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c069614a8d9c231f297c51ee05287e5e5e851840",
+  "prompts": {},
+  "sessions": {
+    "s_a8c0a1ebf6559b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18218-0cac-7442-89e1-633a06a0b17e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

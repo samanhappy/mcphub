@@ -1,0 +1,23 @@
+src/services/oauthApprovalService.ts
+  s_c531b7d369418f::t_3ee4f9b0e0ed1a 31
+tests/integration/oauth-consent-memory.test.ts
+  s_c531b7d369418f::t_5cefdfc2ce1d99 1,128
+tests/integration/user-offboarding.test.ts
+  s_c531b7d369418f::t_a0c98d20dc4700 1,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84f6ebfd256970837fd505348e58982f42350be1",
+  "prompts": {},
+  "sessions": {
+    "s_c531b7d369418f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abb5-f94f-7b62-b626-25b8d0a5a199",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+src/clients/openapi.ts
+  s_ada4a3aeb4671f::t_fcc04f77b80901 97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "221d4322de6d6197de6918e297987ee5c4513231",
+  "prompts": {},
+  "sessions": {
+    "s_ada4a3aeb4671f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc35a0bc5ffeUPSkVECYiX8hZZ",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

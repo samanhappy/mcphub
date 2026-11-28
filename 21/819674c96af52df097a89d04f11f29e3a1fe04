@@ -1,0 +1,52 @@
+tests/services/openApiToolStatsService.test.ts
+  s_7b6ac6b0f09b25::t_a1ff9f07821e79 46-49
+  s_7b6ac6b0f09b25::t_4bfcac855e5512 1-45,50-99
+tests/controllers/serverController.previewOpenApiToolStats.test.ts
+  s_7b6ac6b0f09b25::t_cd1eee1c48812d 1-47,52-141
+  s_7b6ac6b0f09b25::t_eed73f877c26b3 48-51
+src/routes/index.ts
+  s_7b6ac6b0f09b25::t_9e995ec607ccb8 254
+  s_7b6ac6b0f09b25::t_2d8a60b35823a6 11
+locales/tr.json
+  s_7b6ac6b0f09b25::t_bae312ac33854d 244-247
+frontend/src/types/index.ts
+  s_7b6ac6b0f09b25::t_2f12c83e83ed69 827-833
+locales/zh.json
+  s_7b6ac6b0f09b25::t_462dc888d31304 244-247
+frontend/src/utils/contextCost.ts
+  s_7b6ac6b0f09b25::t_e21c07d7495ef0 15-29
+tests/routes/index.test.ts
+  s_7b6ac6b0f09b25::t_53e832f92c3dba 15
+locales/fr.json
+  s_7b6ac6b0f09b25::t_5b74435a677067 244-247
+src/controllers/serverController.ts
+  s_7b6ac6b0f09b25::t_2bacdd44f08785 53
+  s_7b6ac6b0f09b25::t_0bd0033382d193 458-503
+src/types/index.ts
+  s_7b6ac6b0f09b25::t_634988487a88bc 814-829
+src/services/openApiToolStatsService.ts
+  s_7b6ac6b0f09b25::t_69c92e2084bdd8 1-41
+locales/en.json
+  s_7b6ac6b0f09b25::t_427b699ebb8f0d 244-247
+frontend/src/components/ServerForm.tsx
+  s_7b6ac6b0f09b25::t_21c949c39213d5 999-1040
+  s_7b6ac6b0f09b25::t_d93d33dfcb9997 247-250,271-272,278-280
+  s_7b6ac6b0f09b25::t_a0de68da460882 239-246,251-270,273-277,281-321
+  s_7b6ac6b0f09b25::t_119b308c1234db 1,4-5,7-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "21819674c96af52df097a89d04f11f29e3a1fe04",
+  "prompts": {},
+  "sessions": {
+    "s_7b6ac6b0f09b25": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc350efa9ffevWUEdBpY3zpLVI",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

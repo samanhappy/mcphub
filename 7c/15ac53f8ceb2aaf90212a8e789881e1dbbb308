@@ -1,0 +1,95 @@
+locales/zh.json
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_7f2d8d056181bd 3,8-15
+locales/fr.json
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_98b078dc67cf45 3,8-15
+frontend/src/contexts/SettingsContext.tsx
+  s_4ef744778b6bbc::t_9fdaa197097b06 175,436,1352
+  s_4ef744778b6bbc::t_b6966f3e547a63 132,596
+src/controllers/hostedSkillController.ts
+  s_4ef744778b6bbc::t_58222e3e461cf6 14-19,43-46,72-73,84-85
+  s_4ef744778b6bbc::t_0af815a2d95db1 82
+  s_4ef744778b6bbc::t_a0f45c15cd170f 74-75
+docs/development/contributing.mdx
+  s_4ef744778b6bbc::t_b770151d263529 449-450
+locales/vi.json
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_2d4c84cb1549fa 3,8-15
+docs/features/skills.mdx
+  s_4ef744778b6bbc::t_774ed74ee38aa6 10-11,16-17
+  s_4ef744778b6bbc::t_61a56234f1a5fa 15,18
+tests/integration/hosted-skills.test.ts
+  s_4ef744778b6bbc::t_b6966f3e547a63 564,570
+  s_4ef744778b6bbc::t_9e49765c13af6a 506-556,560-563,565-569
+  s_4ef744778b6bbc::t_58222e3e461cf6 14,25-27,37,39
+  s_4ef744778b6bbc::t_69027c023b5340 608-636
+  s_4ef744778b6bbc::t_9aefcab8d24699 501,571-582,587-591,594-602,604-605,607
+  s_4ef744778b6bbc::t_9fa105afcf19e0 502,557,583-586,606
+  s_4ef744778b6bbc::t_23e9353ab609b5 9,503-505,558-559,592-593,603
+src/services/proxy.ts
+  s_4ef744778b6bbc::t_9e49765c13af6a 13-17,28
+  s_4ef744778b6bbc::t_0af815a2d95db1 11-12,18-27
+  s_4ef744778b6bbc::t_72d91b67047aaf 193
+locales/es.json
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_8f36211673ba32 3,8-15
+docs/zh/features/skills.mdx
+  s_4ef744778b6bbc::t_774ed74ee38aa6 10-11,16-17
+  s_4ef744778b6bbc::t_f3c4ab01170bda 15,18
+locales/tr.json
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_36561f9f38ae55 3,8-15
+docs/agents/git-and-contribution.md
+  s_4ef744778b6bbc::t_b770151d263529 12,16-22
+  s_4ef744778b6bbc::t_c001d79ec0a0e3 23
+src/types/hostedSkill.ts
+  s_4ef744778b6bbc::t_58222e3e461cf6 9-16
+frontend/src/pages/SkillsPage.tsx
+  s_4ef744778b6bbc::t_bdce3f5f41b815 1,55-65,67-105,107-206,221,235,237,244,255,264,275,277,280-281,283-284,287,294,298,303,339-340,346,370,372-380,382-387,389-390,392,395-397,400-411,413-442,444-449,451-472,474-517,519-528,531-537,540-544,546-586,588-626
+  s_4ef744778b6bbc::t_9fa105afcf19e0 412
+  s_4ef744778b6bbc::t_0af815a2d95db1 106
+  s_4ef744778b6bbc::t_acb2eb364ccc65 529-530,539
+  s_4ef744778b6bbc::t_53a435fc480f7d 12-16,223,232,234,289,299-302,341-345,347-354,388,398
+  s_4ef744778b6bbc::t_e786fe7941aaf7 2,7,9,207-220,222,224-231,233,236,238-243,245-254,256-263,265-274,276,278-279,282,285-286,288,292-293,391,393-394
+src/controllers/serverController.ts
+  s_4ef744778b6bbc::t_0af815a2d95db1 87,2332-2337
+  s_4ef744778b6bbc::t_b6966f3e547a63 2331,2364-2365,2664
+src/types/index.ts
+  s_4ef744778b6bbc::t_b6966f3e547a63 319
+src/routes/index.ts
+  s_4ef744778b6bbc::t_58222e3e461cf6 209,496
+src/services/hostedSkillImport.ts
+  s_4ef744778b6bbc::t_0af815a2d95db1 2-3,12,150,156-159,161
+  s_4ef744778b6bbc::t_bdce3f5f41b815 106-110
+  s_4ef744778b6bbc::t_9fa105afcf19e0 154-155,160,162
+  s_4ef744778b6bbc::t_9e49765c13af6a 151-152
+  s_4ef744778b6bbc::t_58222e3e461cf6 4,16-26,60-64,66,76,88,97,104-105,111-115,117-145,147-148,177,179-182,184-202,204,217,227-234,236-237,239-258,261,283,307,309-312
+  s_4ef744778b6bbc::t_72d91b67047aaf 65,72,116,146,153,163-170,209,287-293
+  s_4ef744778b6bbc::t_482571239a553e 149,238
+locales/en.json
+  s_4ef744778b6bbc::t_774ed74ee38aa6 4-7
+  s_4ef744778b6bbc::t_53a435fc480f7d 16-19
+  s_4ef744778b6bbc::t_4a43fefa127f01 3,8-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c15ac53f8ceb2aaf90212a8e789881e1dbbb308",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

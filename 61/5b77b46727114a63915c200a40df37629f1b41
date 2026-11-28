@@ -1,0 +1,50 @@
+frontend/src/components/MarketServerCard.tsx
+  s_005b580fa65ef1::t_d61e3611d9ed20 8-12,81,129-134,137-139
+  s_005b580fa65ef1::t_232e7ab3187743 3-4,13-15,26,32-34,88,121,124-128,135,142
+frontend/src/pages/HostedMarket.tsx
+  s_005b580fa65ef1::t_718c488114996b 248-250,302-304
+  s_005b580fa65ef1::t_d61e3611d9ed20 4-6,29,321-322,329,340-347,349-365,367-368,370-381,383-415,417-418,448
+  s_005b580fa65ef1::t_919d4b04c5c836 20,243-247,251-286,348,366,382
+  s_005b580fa65ef1::t_8ed50420a1999e 1-3,7-19,21-28,30-101,103-115,117-144,146-172,174-176,178-192,194,196-212,214-227,229-233,235-242,287-298,300-301,305-320,323-328,330-334,336-338,419-438,440,442,444-447,449
+  s_005b580fa65ef1::t_99d53a5b9a2e2e 116,145,234
+  s_005b580fa65ef1::t_047086a3abfd8c 102,173,177,193,195,213,228,299,335,339,369,416,439,441,443
+docs/development/architecture.mdx
+  s_005b580fa65ef1::t_6c378b455afe0f 61
+  s_005b580fa65ef1::t_20dcd285fc6cde 62
+frontend/src/pages/MarketPage.tsx
+  s_005b580fa65ef1::t_227b3eb0f11eee 385,392-405,411-414,418-420,431-436
+  s_005b580fa65ef1::t_4052cd71fd0b39 3,22,25,380,382-384,447
+  s_005b580fa65ef1::t_ffc8f39d40f9f4 23,31,131-133,275,277-282,284,301,307,381,386-391,406-410,415-417,421-430,437-446
+frontend/src/components/MarketCategories.tsx
+  s_005b580fa65ef1::t_ffc8f39d40f9f4 1-7,9-10,18-20,22-23,57-60
+  s_005b580fa65ef1::t_2e7a5790c7512a 8,16,21,46-55
+  s_005b580fa65ef1::t_d61e3611d9ed20 11-15,17,24-45,56
+src/routes/index.ts
+  s_005b580fa65ef1::t_9f200f620423b8 94,546-548
+src/controllers/marketController.ts
+  s_005b580fa65ef1::t_99d53a5b9a2e2e 20,25-27
+  s_005b580fa65ef1::t_9f200f620423b8 13-19,21-24,28-50
+tests/controllers/marketController.test.ts
+  s_005b580fa65ef1::t_196d6d7657bbb2 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "615b77b46727114a63915c200a40df37629f1b41",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_005b580fa65ef1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edea-20cf-7a62-9a2e-bc7291e1d7e8",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+src/routes/index.ts
+  s_39169fc1997b58::t_75a3c251a829d6 23,293
+tests/routes/index.test.ts
+  s_39169fc1997b58::t_71a54c3ea07e5c 334
+  s_39169fc1997b58::t_75a3c251a829d6 26
+docs/zh/features/group-management.mdx
+  s_39169fc1997b58::t_71a54c3ea07e5c 35-42
+tests/utils/namePattern.test.ts
+  s_39169fc1997b58::t_71a54c3ea07e5c 1-19
+docs/zh/api-reference/servers.mdx
+  s_39169fc1997b58::t_71a54c3ea07e5c 190-222
+locales/fr.json
+  s_39169fc1997b58::t_97dddc771bc1b2 584-604
+src/utils/namePattern.ts
+  s_39169fc1997b58::t_75a3c251a829d6 1-23
+src/types/index.ts
+  s_39169fc1997b58::t_75a3c251a829d6 954-964
+tests/controllers/serverController-toggleTool-live-config.test.ts
+  s_39169fc1997b58::t_97dddc771bc1b2 186,246-253,256-261,264-266
+  s_39169fc1997b58::t_71a54c3ea07e5c 254-255,262-263
+  s_39169fc1997b58::t_f575eef5fb1885 267-268
+locales/vi.json
+  s_39169fc1997b58::t_97dddc771bc1b2 585-605
+locales/tr.json
+  s_39169fc1997b58::t_97dddc771bc1b2 584-604
+locales/es.json
+  s_39169fc1997b58::t_97dddc771bc1b2 585-605
+frontend/src/components/ServerToolConfig.tsx
+  s_39169fc1997b58::t_d47e0c41de9be8 34,209,524-528,532-533,626-627
+  s_39169fc1997b58::t_71a54c3ea07e5c 529-531
+  s_39169fc1997b58::t_35d29384397f41 1
+docs/features/group-management.mdx
+  s_39169fc1997b58::t_71a54c3ea07e5c 35-42
+tests/controllers/serverController.test.ts
+  s_39169fc1997b58::t_f6b813ddfc1738 144,3258-3259,3264-3265,3268-3270,3272,3280-3286,3290-3292,3299,3307-3309,3345-3349,3353-3365,3370-3379
+  s_39169fc1997b58::t_71a54c3ea07e5c 3260-3263,3266-3267,3273-3279,3287-3289,3293-3298,3300-3306,3350-3352,3366-3369
+  s_39169fc1997b58::t_35d29384397f41 3271,3310-3344
+  s_39169fc1997b58::t_1ae042643abb0b 3380
+docs/api-reference/servers.mdx
+  s_39169fc1997b58::t_71a54c3ea07e5c 185-217
+frontend/src/utils/capabilitySelection.ts
+  s_39169fc1997b58::t_01a6085037d799 1-9
+  s_39169fc1997b58::t_d47e0c41de9be8 10-17,20-23,27-28,34-37,42-51
+  s_39169fc1997b58::t_71a54c3ea07e5c 18-19,24-26,29-33,38-41
+locales/en.json
+  s_39169fc1997b58::t_97dddc771bc1b2 585-605
+tests/frontend/capabilitySelection.test.ts
+  s_39169fc1997b58::t_71a54c3ea07e5c 1-5,9-13,15-18,23-27,34-47
+  s_39169fc1997b58::t_01a6085037d799 6-8,14,19-22,28-33,48-49
+frontend/src/components/CapabilitySelection.tsx
+  s_39169fc1997b58::t_d47e0c41de9be8 1-22,29-35,54-65,91-92,96,104-109,141-144
+  s_39169fc1997b58::t_71a54c3ea07e5c 23-28,36-53,66-90,93-95,97-103,110-140
+locales/zh.json
+  s_39169fc1997b58::t_97dddc771bc1b2 587-607
+src/controllers/serverController.ts
+  s_39169fc1997b58::t_75a3c251a829d6 1,13-14,1651-1656,1663,1671-1676,1683-1686,1697-1702,1704-1714
+  s_39169fc1997b58::t_71a54c3ea07e5c 1657-1662,1664-1670,1677-1682,1687-1696,1703
+  s_39169fc1997b58::t_8f86e60d9e333c 1715-1716
+  s_39169fc1997b58::t_0b0da8a0d7d118 1650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12e88bd96383cf0e9062ca63b5d6d7c9b71221a9",
+  "prompts": {},
+  "sessions": {
+    "s_39169fc1997b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163cf-a900-7e83-a4f8-b8249b22311b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

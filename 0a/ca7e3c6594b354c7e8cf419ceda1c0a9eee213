@@ -1,0 +1,89 @@
+locales/es.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+frontend/src/App.tsx
+  s_4ef744778b6bbc::t_8654bf9ae6b789 28,85
+locales/en.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+src/routes/index.ts
+  s_4ef744778b6bbc::t_2045bf98119eb8 495-506
+  s_4ef744778b6bbc::t_548ea712b3c4ac 207-213,494,507-509
+tests/integration/hosted-skills.test.ts
+  s_4ef744778b6bbc::t_277f85bb6cc809 22,46,79-80,85,137-140,144,163,186-187,211,267,273,279-285,326
+  s_4ef744778b6bbc::t_c493d787ea4d6b 40-45,67-77,88-91,100-134,154-157,164-182,188-209,212-237,248-266,268-271,274-277,289-295,303-310,315-318,324-325,327-332,337-341
+  s_4ef744778b6bbc::t_b37f75407bef75 92-99
+  s_4ef744778b6bbc::t_697591361aaa86 161-162
+  s_4ef744778b6bbc::t_b686dd9d1ba431 296-302,311-314,319-323,333-336
+  s_4ef744778b6bbc::t_ae18b8c22ff51c 1-21,23-39,47,49-50,53-65,82,150,160
+  s_4ef744778b6bbc::t_222d1dc418c5a6 247
+  s_4ef744778b6bbc::t_1dcfc8e30e689b 48,51-52,66,78,81,83-84,86-87,135-136,141-143,145-149,151-153,158-159,183-185,210,238-246,272,278,286-288
+src/controllers/hostedSkillController.ts
+  s_4ef744778b6bbc::t_c493d787ea4d6b 19-93
+  s_4ef744778b6bbc::t_c24d1e50bbc2d1 1-18,94-107
+frontend/src/pages/SkillsPage.tsx
+  s_4ef744778b6bbc::t_c493d787ea4d6b 31-36,38-44,70-72,75-78,93,109-133,157-163,173-175,185-189,191-192,194-201,205-209,219-221,225-244,250-252,254-258,261-264,278-282,285-290,297-299,313-320
+  s_4ef744778b6bbc::t_8654bf9ae6b789 1-30,37,45-69,73-74,79-92,94-108,134-156,164-172,176-184,190,193,202-204,210-218,222-224,245-249,253,259-260,265-277,283-284,291-296,300-312,321-330
+src/types/hostedSkill.ts
+  s_4ef744778b6bbc::t_8a332cf50542a4 1-31
+frontend/src/components/layout/Header.tsx
+  s_4ef744778b6bbc::t_8654bf9ae6b789 32
+src/services/hostedSkillCatalog.ts
+  s_4ef744778b6bbc::t_c493d787ea4d6b 7-12,88-91,99-100,118-128,179-184,204-207,242-251,254-260
+  s_4ef744778b6bbc::t_277f85bb6cc809 94
+  s_4ef744778b6bbc::t_8a332cf50542a4 1-6,13-15,18-31,34-85,87,92-93,95-98,101-117,129-178,185-203,208-220,222,234-241,252-253,261
+  s_4ef744778b6bbc::t_b37f75407bef75 223-225
+  s_4ef744778b6bbc::t_56eaeb447678ff 16-17,221,226-233
+  s_4ef744778b6bbc::t_79dc071a763c1b 32-33,86
+locales/zh.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+README.fr.md
+  s_4ef744778b6bbc::t_222d1dc418c5a6 33
+README.md
+  s_4ef744778b6bbc::t_222d1dc418c5a6 35
+src/services/mcpService.ts
+  s_4ef744778b6bbc::t_62f34db09f823c 60,4892-4894,4896-4901
+  s_4ef744778b6bbc::t_56eaeb447678ff 59,4895
+frontend/src/components/layout/Sidebar.tsx
+  s_4ef744778b6bbc::t_8654bf9ae6b789 17,73-75
+docs/docs.json
+  s_4ef744778b6bbc::t_c493d787ea4d6b 34,85
+locales/fr.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+src/services/mcpSkills.ts
+  s_4ef744778b6bbc::t_c493d787ea4d6b 22-23,57-60,62
+  s_4ef744778b6bbc::t_62f34db09f823c 1-21,24-44,46-56,61,63-66,68-84
+  s_4ef744778b6bbc::t_404903ac9aca45 45,67
+locales/vi.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+docs/features/skills.mdx
+  s_4ef744778b6bbc::t_2045bf98119eb8 17-18
+  s_4ef744778b6bbc::t_c493d787ea4d6b 1-16,19-23
+locales/tr.json
+  s_4ef744778b6bbc::t_8654bf9ae6b789 2-18
+docs/zh/features/skills.mdx
+  s_4ef744778b6bbc::t_c493d787ea4d6b 1-16,19-23
+  s_4ef744778b6bbc::t_2045bf98119eb8 17-18
+README.zh.md
+  s_4ef744778b6bbc::t_222d1dc418c5a6 35
+src/services/hostedSkillImport.ts
+  s_4ef744778b6bbc::t_c493d787ea4d6b 2-8,20-25,33-34,37-42,93-95,97-103,135-137,147-150,166-178,183-187
+  s_4ef744778b6bbc::t_62f34db09f823c 9-19,26-32,35-36,43-92,96,104-134,138-146,151-165,179-181,188-191
+  s_4ef744778b6bbc::t_c8ab1f4f91035f 1,182
+.gitignore
+  s_4ef744778b6bbc::t_7756dbf8339983 53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0aca7e3c6594b354c7e8cf419ceda1c0a9eee213",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

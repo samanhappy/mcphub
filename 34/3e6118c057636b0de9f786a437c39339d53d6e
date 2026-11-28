@@ -1,0 +1,16 @@
+frontend/src/hooks/useRegistryData.ts
+  h_18676a549cd52a 44-45,50,55,84-85,88-96,98,100,103,106,108,111,115,127-139,145-161,184,186,292,295,305,307,328,330
+tests/frontend/marketPaginationHooks.test.ts
+  h_18676a549cd52a 208,212,268-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "343e6118c057636b0de9f786a437c39339d53d6e",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

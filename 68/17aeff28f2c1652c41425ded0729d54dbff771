@@ -1,0 +1,26 @@
+frontend/src/components/ui/LanguageSwitch.tsx
+  s_f83a8e4a0dae94::t_75eb3578a0525c 58,61
+frontend/src/components/ui/ThemeSwitch.tsx
+  s_f83a8e4a0dae94::t_5b95be883311fb 17,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6817aeff28f2c1652c41425ded0729d54dbff771",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f83a8e4a0dae94": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "ff1d8f6d-5cb7-4730-9dac-efbd6131d467",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

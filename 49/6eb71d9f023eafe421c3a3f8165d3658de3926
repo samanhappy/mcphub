@@ -1,0 +1,45 @@
+frontend/src/components/ui/DynamicForm.tsx
+  s_f6dc77f721944b::t_2d478fc7511ca1 190-195
+src/controllers/mcpbController.ts
+  s_f6dc77f721944b::t_7b06ed4a19e962 20-25
+  s_f6dc77f721944b::t_c6c78cd6a594ba 125-131
+  s_f6dc77f721944b::t_4fa344e519975e 50-55
+src/utils/rateLimit.ts
+  s_f6dc77f721944b::t_f27434dc09c947 35-44
+.github/workflows/ci.yml
+  s_f6dc77f721944b::t_5b36fede95dde8 9-11
+src/server.ts
+  s_f6dc77f721944b::t_76fc2c285ef136 212
+  s_f6dc77f721944b::t_69734e40737c20 28
+src/controllers/serverController.ts
+  s_f6dc77f721944b::t_87e090d9e565bc 150-154
+  s_f6dc77f721944b::t_70d04f7c674c88 2204,2267,2330
+  s_f6dc77f721944b::t_671d74c6c6e9fa 1321,1384,1450
+  s_f6dc77f721944b::t_6436b18383a570 2385,2448,2511
+tests/integration/server-headless-mode.test.ts
+  s_f6dc77f721944b::t_560350d8352675 72
+.github/workflows/npm-publish.yml
+  s_f6dc77f721944b::t_a9d20165892f64 7-9
+tests/integration/rate-limit-routing.test.ts
+  s_f6dc77f721944b::t_23667f971ac83c 64
+src/routes/index.ts
+  s_f6dc77f721944b::t_addc35c547576c 173,177
+  s_f6dc77f721944b::t_8cc72ec20d7148 213
+  s_f6dc77f721944b::t_5e20f9a46c7bce 426,436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "496eb71d9f023eafe421c3a3f8165d3658de3926",
+  "prompts": {},
+  "sessions": {
+    "s_f6dc77f721944b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd39689abffebutl23hZmwnP2h",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+docs/agents/guide-maintenance.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-24
+docs/agents/testing.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-7
+docs/agents/README.md
+  s_af466bb861a4af::t_b5b7efe4250fc6 3
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-2,4-41
+docs/agents/git-and-contribution.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-22
+docs/agents/typescript-and-frontend.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-10
+docs/agents/architecture.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-38
+docs/agents/development.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-38
+docs/agents/api-and-cli.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 1-20
+AGENTS.md
+  s_af466bb861a4af::t_ac5d77f8d4941c 3,5,7,9-10,12,14-16,18,20-29
+  s_af466bb861a4af::t_b5b7efe4250fc6 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "001924ba7b23a1ec58a7bb57fe680a95ed7c1861",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_af466bb861a4af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05ccb-e5a2-7033-96c8-927bdec1f14c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

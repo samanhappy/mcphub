@@ -1,0 +1,16 @@
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 654,659
+src/services/personalOAuthFlowService.ts
+  h_18676a549cd52a 73,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1932fbc6e9744ab51f4e694954e12f491db92c26",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

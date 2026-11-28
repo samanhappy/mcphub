@@ -1,0 +1,25 @@
+src/services/mcpService.ts
+  s_8bad91a49a8750::t_32adac987a7ac8 4813-4819
+src/services/mcpTools.ts
+  s_8bad91a49a8750::t_30c9fc91f98a57 569
+tests/integration/bearer-exclude-scope.test.ts
+  s_8bad91a49a8750::t_2914d21ede6296 142-150
+tests/routes/index.test.ts
+  s_8bad91a49a8750::t_0143c23a5aaf1d 158-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8735156e339bfe12af8290c7f8c3a5b2af982da",
+  "prompts": {},
+  "sessions": {
+    "s_8bad91a49a8750": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1eee1-b875-74e1-a3a2-9109cd5005b9",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

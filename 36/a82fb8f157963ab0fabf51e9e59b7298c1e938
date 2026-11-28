@@ -1,0 +1,27 @@
+tests/integration/ssrf-allowed-cidrs.test.ts
+  s_7bda6cfa816ced::t_6bdbe5bea8e68f 1-2,61-70,75
+  s_7bda6cfa816ced::t_cbadd3d8d5d18f 71-74
+  s_7bda6cfa816ced::t_832f129e9abd51 76-80
+src/utils/ssrf.ts
+  s_7bda6cfa816ced::t_52e7e92883ac4d 244-245
+  s_7bda6cfa816ced::t_6bdbe5bea8e68f 163-165,246
+src/utils/__tests__/ssrf-allowed-cidrs.test.ts
+  s_7bda6cfa816ced::t_b010f6b5fd2efd 98-103,110-113
+  s_7bda6cfa816ced::t_6bdbe5bea8e68f 104-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36a82fb8f157963ab0fabf51e9e59b7298c1e938",
+  "prompts": {},
+  "sessions": {
+    "s_7bda6cfa816ced": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e19-c2ea-7742-8c4f-eee1aa93f84f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

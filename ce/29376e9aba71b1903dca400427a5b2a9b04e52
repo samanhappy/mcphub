@@ -1,0 +1,21 @@
+tests/integration/personal-oauth.test.ts
+  s_4455457452ef43::t_8b1cc443c10389 743-761
+src/services/mcpOAuthProvider.ts
+  s_4455457452ef43::t_2388c4ab633a57 359-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce29376e9aba71b1903dca400427a5b2a9b04e52",
+  "prompts": {},
+  "sessions": {
+    "s_4455457452ef43": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1954a-95ee-77e0-956f-3a27d0044dde",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

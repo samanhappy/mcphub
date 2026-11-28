@@ -1,0 +1,16 @@
+scripts/build-release-notes.js
+  h_18676a549cd52a 16-21,89,95-133,145
+tests/scripts/build-release-notes.test.ts
+  h_18676a549cd52a 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bef0133a9f6da9c78c05903da6c571aba5487af8",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

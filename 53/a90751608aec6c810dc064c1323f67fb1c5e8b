@@ -1,0 +1,46 @@
+tests/routes/index.test.ts
+  s_e512fe17e78036::t_7b1e28a3f2bbbb 465-471
+  s_e512fe17e78036::t_c96c3763bf002a 140-141
+tests/integration/metrics.test.ts
+  s_e512fe17e78036::t_9ce673d12734bf 1-6,8-80,82-95,97-98,100,103-107,109-111
+  s_e512fe17e78036::t_b609863c900ef8 7,81,96,99,101-102,108
+src/services/mcpService.ts
+  s_e512fe17e78036::t_792e427983f775 1,1247-1249,1251,4217,4306,4443,4515,5417-5419
+  s_e512fe17e78036::t_6d348736113d6c 1250
+src/routes/index.ts
+  s_e512fe17e78036::t_792e427983f775 1,218
+src/controllers/metricsController.ts
+  s_e512fe17e78036::t_792e427983f775 1-8,10-38
+  s_e512fe17e78036::t_24816fa6bf7760 9
+tests/services/mcpService-hidden-server.test.ts
+  s_e512fe17e78036::t_7b1e28a3f2bbbb 480
+  s_e512fe17e78036::t_3d3e456c1b340c 449-479,481-487
+src/services/metricsService.ts
+  s_e512fe17e78036::t_792e427983f775 1-53
+package.json
+  s_e512fe17e78036::t_b0cce59cceb830 93
+docs/configuration/environment-variables.mdx
+  s_e512fe17e78036::t_378f8af667e72a 24-25
+docs/features/monitoring.mdx
+  s_e512fe17e78036::t_4f177eace7de1e 6,37-60
+docs/zh/features/monitoring.mdx
+  s_e512fe17e78036::t_142c52d69cd5ed 6,77-91
+pnpm-lock.yaml
+  s_e512fe17e78036::t_538d8028380006 116,186-188,191,203,1275-1278,2619-2621,4663-4667,5151-5153,5825,5836-5837,5839,5841,5844,5846,5851,5853,5856,5858,5861,5863,5866,5868,6512-6513,6677,6679,6681,6684-6685,6687,6689,6691,6693,6695,6697,7619,7621-7627,7669-7670,10147-10151,10292,10294-10298,10744-10747,10897,10912
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53a90751608aec6c810dc064c1323f67fb1c5e8b",
+  "prompts": {},
+  "sessions": {
+    "s_e512fe17e78036": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15261-a34c-7c82-b457-44a998c35d64",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

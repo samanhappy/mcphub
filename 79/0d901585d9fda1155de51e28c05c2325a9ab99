@@ -1,0 +1,37 @@
+docs/features/mcp-apps.mdx
+  s_3ca4160a14b96d::t_96b9400c8f60d2 31,33,35
+  s_3ca4160a14b96d::t_31552721f2d0ce 27
+tests/integration/mcp-apps-openapi-routing.test.ts
+  s_3ca4160a14b96d::t_3821c059e54875 281-283
+docs/zh/features/mcp-apps.mdx
+  s_3ca4160a14b96d::t_96b9400c8f60d2 29,31,33
+src/services/mcpService.ts
+  s_3ca4160a14b96d::t_96b9400c8f60d2 3653,3656,3694-3696,4223,4485
+  s_3ca4160a14b96d::t_2d3290fc9f7252 3922,3930-3931,3938,3962,3997,4299,4431,4521,4643
+  s_3ca4160a14b96d::t_3821c059e54875 3654,3693,3699,3707,3713,3719
+  s_3ca4160a14b96d::t_176417d77c949f 4221-4222,4483-4484
+tests/services/mcpService-apps.test.ts
+  s_3ca4160a14b96d::t_2d3290fc9f7252 582,608-617,623-631,647-648,652-655,660-662,665-666,718
+  s_3ca4160a14b96d::t_96b9400c8f60d2 618-622,632-646,649-651,656-659,663-664,716,719-720,731-732
+  s_3ca4160a14b96d::t_d1f9886b8af640 713-715,717,721-730
+tests/integration/sse-service-real-client.test.ts
+  s_3ca4160a14b96d::t_4c40224f42fa96 907
+tests/services/mcpService-group-alias.test.ts
+  s_3ca4160a14b96d::t_aa5e8c792d7606 288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "790d901585d9fda1155de51e28c05c2325a9ab99",
+  "prompts": {},
+  "sessions": {
+    "s_3ca4160a14b96d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1665e-fe34-7652-8d67-7c78cc21cc38",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

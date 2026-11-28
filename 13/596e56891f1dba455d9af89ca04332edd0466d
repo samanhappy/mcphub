@@ -1,0 +1,41 @@
+tests/services/smartRoutingService-alias.test.ts
+  s_1b2cf739cf3dc5::t_f41fe9040ca16c 1,135-147
+  s_1b2cf739cf3dc5::t_3bffacc4049a37 148
+src/services/mcpService.ts
+  s_1b2cf739cf3dc5::t_a8d3587e55e521 1,3623,3715,3755,3761,4259,4355,4417,4479,4521,4774
+tests/services/mcpService-group-alias.test.ts
+  s_1b2cf739cf3dc5::t_395a21842f83c9 1,134-136,219-229,246-251,260-270,272,287,289
+  s_1b2cf739cf3dc5::t_157668a187556e 24,30
+  s_1b2cf739cf3dc5::t_e50942b4e78b47 159,163-166,230-245,252-259
+  s_1b2cf739cf3dc5::t_5aba263bb5539e 271,273-286,288
+tests/services/mcpService-smart-routing-group.test.ts
+  s_1b2cf739cf3dc5::t_f41fe9040ca16c 192-197
+  s_1b2cf739cf3dc5::t_e50942b4e78b47 219,240
+src/services/smartRoutingService.ts
+  s_1b2cf739cf3dc5::t_a8d3587e55e521 17,393,417,586,595
+src/utils/mcpRequestGroup.ts
+  s_1b2cf739cf3dc5::t_91b275a2050fbe 1-9
+tests/integration/personal-credentials.test.ts
+  s_1b2cf739cf3dc5::t_e50942b4e78b47 1,51,689-701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "13596e56891f1dba455d9af89ca04332edd0466d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_1b2cf739cf3dc5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ec61-e257-7f12-9f8a-d75ab715e9af",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

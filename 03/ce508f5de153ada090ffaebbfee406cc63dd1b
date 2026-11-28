@@ -1,0 +1,20 @@
+src/controllers/credentialBindingController.ts
+  s_9cdcf612b2c1ad::t_6418174217f9a2 9,39-40,58
+  s_9cdcf612b2c1ad::t_922c72bc15d234 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "03ce508f5de153ada090ffaebbfee406cc63dd1b",
+  "prompts": {},
+  "sessions": {
+    "s_9cdcf612b2c1ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06288-430e-7a60-8816-c3802505d28b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

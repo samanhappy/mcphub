@@ -1,0 +1,42 @@
+docs/features/authentication.mdx
+  h_18676a549cd52a 78
+docs/zh/features/authentication.mdx
+  h_18676a549cd52a 34
+frontend/src/pages/PasskeysPage.tsx
+  h_18676a549cd52a 7,22-23,136-142
+frontend/src/services/passkeyService.ts
+  h_18676a549cd52a 11-13,25-32
+frontend/src/utils/passkeyAvailability.ts
+  h_18676a549cd52a 1-30
+locales/en.json
+  h_18676a549cd52a 1541
+locales/es.json
+  h_18676a549cd52a 1541
+locales/fr.json
+  h_18676a549cd52a 1539
+locales/tr.json
+  h_18676a549cd52a 1538
+locales/vi.json
+  h_18676a549cd52a 1541
+locales/zh.json
+  h_18676a549cd52a 1543
+src/services/passkeyService.ts
+  h_18676a549cd52a 2,55-57,71
+tests/controllers/passkeyController.test.ts
+  h_18676a549cd52a 478-486
+tests/frontend/passkeyAvailability.test.ts
+  h_18676a549cd52a 1-66
+tests/services/passkeyService.test.ts
+  h_18676a549cd52a 172-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b928976894d2b5d878affe4f737769561e0bfe3",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

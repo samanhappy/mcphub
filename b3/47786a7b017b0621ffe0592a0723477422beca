@@ -1,0 +1,27 @@
+tests/utils/testServerHelper.ts
+  s_7d8fbef93d26e8::t_526a2c79db4bb7 6,94
+tests/utils/testServerHelper.test.ts
+  s_7d8fbef93d26e8::t_07af5eba3c0853 24-27
+  s_7d8fbef93d26e8::t_f68dcc060a63a1 1-23,28-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b347786a7b017b0621ffe0592a0723477422beca",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7d8fbef93d26e8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1718d-5378-7620-b22a-b93090c22386",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

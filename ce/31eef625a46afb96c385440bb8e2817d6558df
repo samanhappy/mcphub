@@ -1,0 +1,27 @@
+frontend/src/components/PersonalOAuthControls.tsx
+  s_6fdc657ae7ff3f::t_50939be1c6ff2f 7-13,78,91
+  s_6fdc657ae7ff3f::t_5659ca89313447 40-42,49-53,55,76
+  s_6fdc657ae7ff3f::t_cee4391160635a 5,61-66,68-75,77,79-88,90,96,98-106
+frontend/src/components/ServerCard.tsx
+  s_6fdc657ae7ff3f::t_5659ca89313447 637,639-647
+  s_6fdc657ae7ff3f::t_905072bfd9a291 638
+tests/frontend/personalOAuthControls.test.ts
+  s_6fdc657ae7ff3f::t_4b71328bdb24aa 4,14,18-19,22-34,36-48,50-52,54-56,58-61,63-72,83
+  s_6fdc657ae7ff3f::t_1b14b4c1d18d94 16,20-21,35,49,53,57,62,73-82,84-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce31eef625a46afb96c385440bb8e2817d6558df",
+  "prompts": {},
+  "sessions": {
+    "s_6fdc657ae7ff3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13dc7-856a-7fc2-99b8-8584b61267ba",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+tests/services/groupService-authorization.test.ts
+  s_9664399dad2fde::t_6cb6c327369793 190
+src/services/sseService.ts
+  s_9664399dad2fde::t_d41f95c561f351 490
+  s_9664399dad2fde::t_7c805cc7c9393a 163-196,488,705,853-856,1029-1031
+  s_9664399dad2fde::t_07f8f83baafaf2 1032
+src/services/groupService.ts
+  s_9664399dad2fde::t_4700b0dd6ac41b 80
+  s_9664399dad2fde::t_461c0fce56528c 61,63-64,66,71-79,115-116
+tests/integration/sse-service-real-client.test.ts
+  s_9664399dad2fde::t_a4c5a7d3435c3e 360-361,366-367,369-414
+  s_9664399dad2fde::t_d41f95c561f351 362-365,368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc43a628872bc514bb6222f68a751fc0ea91143a",
+  "prompts": {},
+  "sessions": {
+    "s_9664399dad2fde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a093ad-c12e-7cf0-bbd8-b57d2c19dd83",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

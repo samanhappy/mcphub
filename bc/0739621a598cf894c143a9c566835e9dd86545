@@ -1,0 +1,21 @@
+docs/configuration/database-configuration.mdx
+  s_f3b9e6afcc4aaa::t_c0d2be6710b184 186-187
+docs/zh/configuration/database-configuration.mdx
+  s_f3b9e6afcc4aaa::t_c0d2be6710b184 186-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "bc0739621a598cf894c143a9c566835e9dd86545",
+  "prompts": {},
+  "sessions": {
+    "s_f3b9e6afcc4aaa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a028f5-b29a-7f62-a4d0-58286314c86a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

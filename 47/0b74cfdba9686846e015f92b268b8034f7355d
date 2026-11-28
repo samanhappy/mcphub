@@ -1,0 +1,21 @@
+docs/zh/features/group-management.mdx
+  s_8a387ae512716f::t_ab8b83d86d224d 612
+docs/zh/features/authentication.mdx
+  s_8a387ae512716f::t_ab8b83d86d224d 258-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "470b74cfdba9686846e015f92b268b8034f7355d",
+  "prompts": {},
+  "sessions": {
+    "s_8a387ae512716f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c367-b0bb-77d1-90c9-d71fdb0c3e18",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

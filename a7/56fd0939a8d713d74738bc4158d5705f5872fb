@@ -1,0 +1,19 @@
+tests/integration/personal-credentials.test.ts
+  s_968d126ba78827::t_f988e02998e4b9 1203,1215,1217,1220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a756fd0939a8d713d74738bc4158d5705f5872fb",
+  "prompts": {},
+  "sessions": {
+    "s_968d126ba78827": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16792-d4e7-7d90-b569-4583df0f8609",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

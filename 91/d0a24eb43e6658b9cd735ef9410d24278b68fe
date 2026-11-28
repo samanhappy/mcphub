@@ -1,0 +1,41 @@
+tests/integration/settings-sync.test.ts
+  s_eaf178d266acd9::t_27ef9152c3525f 14,23-39,44-45,48,50,60-73,87-90,147,162-165,256-271,273-284,466,472,480,542-643
+  s_eaf178d266acd9::t_d5d1847d67c1c7 1
+src/db/entities/Group.ts
+  s_eaf178d266acd9::t_ecb968d7c93a50 45-48
+src/utils/settingsSync.ts
+  s_eaf178d266acd9::t_27ef9152c3525f 127-128,252-255,261-265,270-271
+  s_eaf178d266acd9::t_ecb968d7c93a50 9,173-174,203,229,245-251,256-260,266-269,272-299,302
+docs/configuration/database-configuration.mdx
+  s_eaf178d266acd9::t_0846b8d92bf2b4 202
+  s_eaf178d266acd9::t_185b90c1d0717f 201,209-219
+  s_eaf178d266acd9::t_5f49f58296e8e7 220
+src/db/entities/Server.ts
+  s_eaf178d266acd9::t_ecb968d7c93a50 99-102
+docs/agents/architecture.md
+  s_eaf178d266acd9::t_185b90c1d0717f 42
+src/utils/migration.ts
+  s_eaf178d266acd9::t_27ef9152c3525f 33-35,358-360
+docs/zh/configuration/database-configuration.mdx
+  s_eaf178d266acd9::t_0846b8d92bf2b4 202
+  s_eaf178d266acd9::t_185b90c1d0717f 209-220
+  s_eaf178d266acd9::t_90bb27c6f464e4 201
+docs/configuration/mcp-settings.mdx
+  s_eaf178d266acd9::t_185b90c1d0717f 568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91d0a24eb43e6658b9cd735ef9410d24278b68fe",
+  "prompts": {},
+  "sessions": {
+    "s_eaf178d266acd9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15268-80db-7f60-b6e3-f9af5b748537",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

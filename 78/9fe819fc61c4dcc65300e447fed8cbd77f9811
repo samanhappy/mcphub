@@ -1,0 +1,44 @@
+frontend/src/components/RegistryServerDetail.tsx
+  h_18676a549cd52a 11,150-153,177
+frontend/src/components/ServerForm.tsx
+  h_18676a549cd52a 18-22,41-45,509-518,569-571,574-576
+frontend/src/pages/MarketPage.tsx
+  h_18676a549cd52a 17,218-220
+frontend/src/utils/serverName.ts
+  h_18676a549cd52a 1-38
+locales/en.json
+  h_18676a549cd52a 127
+locales/fr.json
+  h_18676a549cd52a 127
+locales/tr.json
+  h_18676a549cd52a 127
+locales/zh.json
+  h_18676a549cd52a 127
+src/controllers/mcpbController.ts
+  h_18676a549cd52a 8,51-54,58
+src/controllers/serverController.ts
+  h_18676a549cd52a 57,515-516,519,523,618,624,667-670,736,763-764,778,792,795,801,809,1007-1010,1014-1023,1026,1029,1035,1053,1057
+src/services/mcpService.ts
+  h_18676a549cd52a 44,1576-1587
+src/services/templateService.ts
+  h_18676a549cd52a 15,592-595,600-610,622-623,628
+src/utils/serverNameValidation.ts
+  h_18676a549cd52a 1-73
+tests/controllers/serverController.test.ts
+  h_18676a549cd52a 346-493
+tests/services/templateService-import-privilege.test.ts
+  h_18676a549cd52a 130-153
+tests/utils/serverNameValidation.test.ts
+  h_18676a549cd52a 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "789fe819fc61c4dcc65300e447fed8cbd77f9811",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

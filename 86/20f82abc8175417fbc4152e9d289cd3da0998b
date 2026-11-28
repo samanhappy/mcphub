@@ -1,0 +1,25 @@
+tests/frontend/serverPolling.test.ts
+  s_7d43572535c40a::t_324e37d846107e 14-30
+frontend/src/utils/serverPolling.ts
+  s_7d43572535c40a::t_d43b00874b9f7c 31-32
+  s_7d43572535c40a::t_36cde69f8401ff 9
+  s_7d43572535c40a::t_50ea786a85259b 30,33
+frontend/src/contexts/ServerContext.tsx
+  s_7d43572535c40a::t_305d67b96f467a 89,133,359-360,384-385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8620f82abc8175417fbc4152e9d289cd3da0998b",
+  "prompts": {},
+  "sessions": {
+    "s_7d43572535c40a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19f8c-a549-7113-a0be-90bcd2d722ca",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

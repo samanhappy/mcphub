@@ -1,0 +1,29 @@
+tests/integration/upstream-auto-negotiation.test.ts
+  s_fa8fbf98b05bc0::t_264221bed7b63e 38-39,64-92,174,181,310-333,337-341
+  s_fa8fbf98b05bc0::t_8cba4617116c50 334-336
+  s_fa8fbf98b05bc0::t_07450902957954 342
+src/services/mcpService.ts
+  s_fa8fbf98b05bc0::t_3aea54252621d2 1973-1982,1986
+  s_fa8fbf98b05bc0::t_f4e1266f098314 1983-1985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2c645c188d5f3c7e0b6dcd282eacf62b204bf9b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_fa8fbf98b05bc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a170bf-33d0-7280-9990-2ded8338d3be",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

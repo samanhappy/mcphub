@@ -1,0 +1,27 @@
+tests/integration/sse-service-real-client.test.ts
+  s_63a8cee02d73a8::t_d4ac5599a6d273 312-318
+  s_63a8cee02d73a8::t_f101a4c55797bc 289-290,295-298,301-311,320-325,327,329-333,335-336,340,349-350,352-354
+  s_63a8cee02d73a8::t_c2e66f96d043ef 348
+  s_63a8cee02d73a8::t_a276a12288fbb6 501,513
+  s_63a8cee02d73a8::t_f9657b02a3534f 291-294,299-300,319,326,328,334,337-339,341-347,351
+  s_63a8cee02d73a8::t_b4454c90ed29cb 517
+  s_63a8cee02d73a8::t_f3eafcca967e92 35,46-69,507-510,526,536,559-607,612
+tests/services/mcpService-per-session-client.test.ts
+  s_63a8cee02d73a8::t_74c782bb766981 332-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b6459c75a05231db9c3a8720f677422b130aa93d",
+  "prompts": {},
+  "sessions": {
+    "s_63a8cee02d73a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1020c-ea82-7211-a6ea-653a086c3172",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

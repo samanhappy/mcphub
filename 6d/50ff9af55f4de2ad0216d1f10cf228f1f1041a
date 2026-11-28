@@ -1,0 +1,42 @@
+tests/services/mcpService-header-env-from-config.test.ts
+  s_6330331b42af80::t_ac2a77dbd1a6fd 57,106,125,143-147,149-156
+  s_6330331b42af80::t_028bcc57cdeec3 148
+src/services/serverConfigEnvironment.ts
+  s_6330331b42af80::t_55344862e2eaa7 1,4-7,9,18-20
+  s_6330331b42af80::t_bc47b4320a0dc2 3,15
+  s_6330331b42af80::t_425050e55bc167 2
+  s_6330331b42af80::t_9d774ea89bc48e 8
+  s_6330331b42af80::t_672f73946a6d02 10-14
+  s_6330331b42af80::t_c1150019f8cb20 16-17
+tests/services/serverConfigEnvironment.test.ts
+  s_6330331b42af80::t_59bb785444bb29 1-2,4-8,10-26,28-37,39-49
+  s_6330331b42af80::t_b992fbdb6766f7 3
+  s_6330331b42af80::t_59d979a242bccd 9
+  s_6330331b42af80::t_a1cc9193a156d7 27
+  s_6330331b42af80::t_50ad774e134495 38
+src/services/mcpService.ts
+  s_6330331b42af80::t_bc47b4320a0dc2 1683
+  s_6330331b42af80::t_f7dd3fd94cdfcd 1,1560,1780,1927,3165
+src/controllers/oauthCallbackController.ts
+  s_6330331b42af80::t_3b7db2fa656c09 26,391
+src/services/principalRuntimeService.ts
+  s_6330331b42af80::t_1a7916abd14400 5,61
+tests/services/principalRuntimeService.test.ts
+  s_6330331b42af80::t_2922e1c0099411 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6d50ff9af55f4de2ad0216d1f10cf228f1f1041a",
+  "prompts": {},
+  "sessions": {
+    "s_6330331b42af80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10017-d4ad-7f33-b65f-76d1f60f776b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

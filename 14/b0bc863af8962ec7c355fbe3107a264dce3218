@@ -1,0 +1,57 @@
+src/services/oauthClientRegistration.ts
+  s_6656f4c3b0cf84::t_81ccce604b9a5d 50-55,58-62
+  s_6656f4c3b0cf84::t_0b8da27f02bf31 43-46,56-57
+src/services/mcpOAuthProvider.ts
+  s_6656f4c3b0cf84::t_d755fb11eba8e9 436-437,509-510
+  s_6656f4c3b0cf84::t_0b8da27f02bf31 26-31,354-359,370-379,389-393,395-404,415-416,447-448,456-457
+  s_6656f4c3b0cf84::t_81ccce604b9a5d 441-442
+  s_6656f4c3b0cf84::t_e1112243b839cd 360-369,380-388,405-414,449-455
+  s_6656f4c3b0cf84::t_1219901e432354 417-427
+  s_6656f4c3b0cf84::t_67e937c87cc305 394
+tests/integration/personal-oauth.test.ts
+  s_6656f4c3b0cf84::t_1219901e432354 812,820,871-872,877
+  s_6656f4c3b0cf84::t_8a0eb775faa651 795,823-827,865
+  s_6656f4c3b0cf84::t_81ccce604b9a5d 36-38,814-817,838-840,857-861,883-892,900-910
+  s_6656f4c3b0cf84::t_548a7bd5dd62da 16,18,34-35,39-40,49,56,770-794,796-811,813,818-819,821-822,828-835,837,841-856,862-864,866-870,873-876,878-882,893-899,911-915
+  s_6656f4c3b0cf84::t_01398d93e13155 836,916
+src/utils/serverConfigPersistence.ts
+  s_6656f4c3b0cf84::t_0b8da27f02bf31 406,413,417,425-426,430,511
+  s_6656f4c3b0cf84::t_e1112243b839cd 418-424,427-429
+src/clients/openapi.ts
+  s_6656f4c3b0cf84::t_e1112243b839cd 182-183,1075-1082
+  s_6656f4c3b0cf84::t_d755fb11eba8e9 60,143,885,1083-1086,1106-1114
+  s_6656f4c3b0cf84::t_bed35406c74f5a 1115
+docs/zh/configuration/mcp-settings.mdx
+  s_6656f4c3b0cf84::t_b66cf1a613969a 105-125
+frontend/src/utils/serverFormPayload.ts
+  s_6656f4c3b0cf84::t_e1112243b839cd 297-298
+src/services/personalOAuthService.ts
+  s_6656f4c3b0cf84::t_e1112243b839cd 88
+  s_6656f4c3b0cf84::t_0b8da27f02bf31 86-87,89-90
+docs/configuration/mcp-settings.mdx
+  s_6656f4c3b0cf84::t_b66cf1a613969a 123-143
+src/controllers/personalOAuthController.ts
+  s_6656f4c3b0cf84::t_0b8da27f02bf31 12,81-85,147-155
+  s_6656f4c3b0cf84::t_e1112243b839cd 86-95
+src/services/mcpService.ts
+  s_6656f4c3b0cf84::t_e1112243b839cd 179,4097-4101,4103
+  s_6656f4c3b0cf84::t_1219901e432354 4102
+tests/utils/serverConfigPersistence.test.ts
+  s_6656f4c3b0cf84::t_ed34bcb8319604 524-539
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14b0bc863af8962ec7c355fbe3107a264dce3218",
+  "prompts": {},
+  "sessions": {
+    "s_6656f4c3b0cf84": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ec1f-0183-7972-b3fb-230137bd7635",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

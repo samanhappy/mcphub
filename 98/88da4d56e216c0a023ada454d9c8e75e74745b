@@ -1,0 +1,33 @@
+docs/api-reference/tools.mdx
+  s_9d69d3c45ca50a::t_c06dba8c9a3a55 60
+  s_9d69d3c45ca50a::t_eb25a78fdc24bc 61
+docs/zh/api-reference/tools.mdx
+  s_9d69d3c45ca50a::t_c06dba8c9a3a55 58
+  s_9d69d3c45ca50a::t_32f7ba4cb7514f 59
+src/controllers/toolController.ts
+  s_9d69d3c45ca50a::t_706cf84dd3fb22 93-94
+tests/controllers/toolController.test.ts
+  s_9d69d3c45ca50a::t_a93c6d9c9dda03 1-13,19-22,24-45
+  s_9d69d3c45ca50a::t_01dea098c11f17 14-18,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9888da4d56e216c0a023ada454d9c8e75e74745b",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9d69d3c45ca50a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f5b9-1962-7b33-8b07-aa1b0cc443af",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

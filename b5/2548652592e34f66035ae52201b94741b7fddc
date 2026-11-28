@@ -1,0 +1,29 @@
+src/clients/openapi.ts
+  s_6330331b42af80::t_bc47b4320a0dc2 14
+  s_6330331b42af80::t_0f8e00749af74a 15-19,387,473,1068
+tests/integration/ssrf-dns-rebinding.test.ts
+  s_6330331b42af80::t_8f4fb217a8172b 10-30,44
+  s_6330331b42af80::t_929833c495c50a 1-9,31-43
+src/utils/__tests__/ssrf.test.ts
+  s_6330331b42af80::t_66c88c5ece8050 283-293
+src/services/proxy.ts
+  s_6330331b42af80::t_c883c07a80a924 74-77
+src/utils/ssrf.ts
+  s_6330331b42af80::t_1df22e33aedcb2 2-5,109-142,203-207,212-216,230-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b52548652592e34f66035ae52201b94741b7fddc",
+  "prompts": {},
+  "sessions": {
+    "s_6330331b42af80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10017-d4ad-7f33-b65f-76d1f60f776b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+src/controllers/oauthCallbackController.ts
+  h_18676a549cd52a 19,30-46,301-587,599-609,658-665,667-704
+src/controllers/oauthRelayController.ts
+  h_18676a549cd52a 5,27-34
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 1-6,29-40,48-53,179,333-487,490-493,499,522-690
+src/controllers/personalOAuthController.ts
+  h_18676a549cd52a 6,8,11-16,74-76,78-83,85,95-101,110-119,121-145,147-148,150
+src/services/personalOAuthContinuationService.ts
+  h_18676a549cd52a 1-203
+src/services/personalOAuthFlowService.ts
+  h_18676a549cd52a 1-132
+src/services/personalOAuthService.ts
+  h_18676a549cd52a 17,37-40,80,142,198-200,329-333,338-339,341-342,347-349,371-403,406-414,425-430,432,444-450,457-465
+src/services/replicaLock.ts
+  h_18676a549cd52a 55
+src/types/index.ts
+  h_18676a549cd52a 580-599,707
+src/utils/oauthConsentResource.ts
+  h_18676a549cd52a 20-21,69,80-96
+tests/integration/personal-oauth-client-signin.test.ts
+  h_18676a549cd52a 1-787
+tests/utils/oauthConsentResource.test.ts
+  h_18676a549cd52a 53-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33824ca141e0a6f2b78b92691d84b0b9adb4a390",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

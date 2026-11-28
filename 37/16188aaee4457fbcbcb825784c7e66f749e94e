@@ -1,0 +1,25 @@
+frontend/src/components/GroupVisibilityFields.tsx
+  s_9664399dad2fde::t_8776ebd0c5a60d 90-92
+  s_9664399dad2fde::t_8ec81c809fb741 50-65,118,141,148,195
+  s_9664399dad2fde::t_16cbf5a2d12eba 22,67-70,72-89,93-110,112-117,119-140,142-147,149-194,197
+frontend/src/components/AddGroupForm.tsx
+  s_9664399dad2fde::t_74cd35bf63f166 118-122
+frontend/src/components/EditGroupForm.tsx
+  s_9664399dad2fde::t_74cd35bf63f166 123-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3716188aaee4457fbcbcb825784c7e66f749e94e",
+  "prompts": {},
+  "sessions": {
+    "s_9664399dad2fde": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a093ad-c12e-7cf0-bbd8-b57d2c19dd83",
+        "model": "gpt-reserve"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

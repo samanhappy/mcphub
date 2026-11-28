@@ -1,0 +1,40 @@
+src/services/personalOAuthService.ts
+  s_66dbb0e2b1b9dd::t_efb03fa9701e96 39-40,42
+docs/zh/features/per-user-credentials.mdx
+  s_66dbb0e2b1b9dd::t_aeeae35bbf787b 143-144
+tests/integration/personal-credentials.test.ts
+  s_66dbb0e2b1b9dd::t_2de7595a2b555a 1986-2033,2041,2047,2051-2158,2168-2170
+  s_66dbb0e2b1b9dd::t_cd7507b171ddaa 2162-2165,2176-2178
+  s_66dbb0e2b1b9dd::t_6d41a5593ce382 2036,2179-2180
+  s_66dbb0e2b1b9dd::t_5eac7337ddb9d0 1983-1985
+  s_66dbb0e2b1b9dd::t_993bf4cab029c8 2034-2035
+  s_66dbb0e2b1b9dd::t_2fb8755aece140 2037-2040
+  s_66dbb0e2b1b9dd::t_1e9555e4c4aa3e 2042-2046
+  s_66dbb0e2b1b9dd::t_b1fdd41c039766 2048-2050
+  s_66dbb0e2b1b9dd::t_e42ccc3b2a3502 2159-2161
+  s_66dbb0e2b1b9dd::t_1558ab5671a0b4 2166-2167
+  s_66dbb0e2b1b9dd::t_aecde8f73fdda0 2171-2175
+  s_66dbb0e2b1b9dd::t_f195ea605c32cb 2181-2183
+  s_66dbb0e2b1b9dd::t_878bff29eb8708 2184-2185
+src/services/mcpService.ts
+  s_66dbb0e2b1b9dd::t_efb03fa9701e96 14,77,5984,5987-5991,6000-6002
+  s_66dbb0e2b1b9dd::t_a2033ee9175041 5992-5999
+docs/features/per-user-credentials.mdx
+  s_66dbb0e2b1b9dd::t_aeeae35bbf787b 149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f63d9faae4088e1a6bfc3c0f5755eea68f6d618",
+  "prompts": {},
+  "sessions": {
+    "s_66dbb0e2b1b9dd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c313-f7f3-72d1-846b-4d95109a8aa1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+docs/agents/git-and-contribution.md
+  s_1c4d254b9a0318::t_b853c5b23bfba7 8-12
+docs/configuration/mcp-settings.mdx
+  s_1c4d254b9a0318::t_b853c5b23bfba7 887-893
+docs/zh/configuration/mcp-settings.mdx
+  s_1c4d254b9a0318::t_b853c5b23bfba7 790-796
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6896ff8245c1e6710bd645f45a0de5a304ce403",
+  "prompts": {},
+  "sessions": {
+    "s_1c4d254b9a0318": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152f3-2fd7-76e2-9a10-665519c15e46",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

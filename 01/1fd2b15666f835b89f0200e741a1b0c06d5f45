@@ -1,0 +1,42 @@
+src/config/configManager.ts
+  s_dc0d0a3973c7aa::t_e6311f84aa57c7 4,19
+tests/config/base-path.test.ts
+  s_dc0d0a3973c7aa::t_5584d0a987905f 1-20
+tests/utils/basePath.test.ts
+  s_dc0d0a3973c7aa::t_5584d0a987905f 1-14
+tests/frontend/runtime.test.ts
+  s_dc0d0a3973c7aa::t_ea0e65db0ccf8f 1-34
+src/utils/basePath.ts
+  s_dc0d0a3973c7aa::t_e6311f84aa57c7 1-14
+frontend/viteProxy.ts
+  s_dc0d0a3973c7aa::t_e6311f84aa57c7 1-22
+docs/development/getting-started.mdx
+  s_dc0d0a3973c7aa::t_ea0e65db0ccf8f 106-109
+src/config/index.ts
+  s_dc0d0a3973c7aa::t_e6311f84aa57c7 5,17
+frontend/vite.config.ts
+  s_dc0d0a3973c7aa::t_e6311f84aa57c7 1,5,13-22,24-34,36-45,47-53,55-57,59-60,64-65,67
+docs/zh/development/getting-started.mdx
+  s_dc0d0a3973c7aa::t_ea0e65db0ccf8f 105-108
+tests/frontend/viteProxy.test.ts
+  s_dc0d0a3973c7aa::t_5584d0a987905f 2-15
+  s_dc0d0a3973c7aa::t_045810ec541b30 1
+.env.example
+  s_dc0d0a3973c7aa::t_ea0e65db0ccf8f 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "011fd2b15666f835b89f0200e741a1b0c06d5f45",
+  "prompts": {},
+  "sessions": {
+    "s_dc0d0a3973c7aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02920-f16a-7211-9831-239953975424",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

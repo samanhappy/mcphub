@@ -1,0 +1,28 @@
+docs/configuration/database-configuration.mdx
+  s_43cf7f80dabc0c::t_8d3453fc5aacae 202
+docs/zh/configuration/database-configuration.mdx
+  s_43cf7f80dabc0c::t_8d3453fc5aacae 202
+src/utils/settingsSync.ts
+  s_43cf7f80dabc0c::t_c899d2b25fa56f 3
+  s_43cf7f80dabc0c::t_6e732915c42db4 2,14-26,154-162,168,170
+tests/integration/settings-sync.test.ts
+  s_43cf7f80dabc0c::t_8d3453fc5aacae 214-226
+src/db/entities/Server.ts
+  s_43cf7f80dabc0c::t_4e909fdd085bf8 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfbe8325da4210c92be698c90de5a3c892df03a2",
+  "prompts": {},
+  "sessions": {
+    "s_43cf7f80dabc0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10fb3-d295-7fd3-a9d2-2db70afa614e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

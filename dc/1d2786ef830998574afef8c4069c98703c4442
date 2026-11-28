@@ -1,0 +1,29 @@
+src/clients/__tests__/openapi-input-schema.test.ts
+  s_d2c980ba2f54f5::t_fcc5890a85009d 35-38
+  s_d2c980ba2f54f5::t_e4cd8cec648ad2 7-34,39-67
+src/utils/openApiSchema.ts
+  s_d2c980ba2f54f5::t_44bb4082abbf46 2,7-30
+  s_d2c980ba2f54f5::t_d8c4c379c5310f 31
+tests/utils/openApiSchema.test.ts
+  s_d2c980ba2f54f5::t_8b1b7d6536d3a8 12-32,48-54,64-72
+  s_d2c980ba2f54f5::t_fcc5890a85009d 2-6,33-47,55-63
+  s_d2c980ba2f54f5::t_8b7034d40f5bad 73
+src/clients/openapi.ts
+  s_d2c980ba2f54f5::t_44bb4082abbf46 24,739-742
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc1d2786ef830998574afef8c4069c98703c4442",
+  "prompts": {},
+  "sessions": {
+    "s_d2c980ba2f54f5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d05a-ed85-7161-889e-0287d0811b09",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

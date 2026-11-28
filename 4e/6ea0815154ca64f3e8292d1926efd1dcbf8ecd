@@ -1,0 +1,14 @@
+.gitignore
+  h_18676a549cd52a 40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e6ea0815154ca64f3e8292d1926efd1dcbf8ecd",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

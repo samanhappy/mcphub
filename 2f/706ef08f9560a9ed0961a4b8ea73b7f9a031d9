@@ -1,0 +1,21 @@
+src/services/vectorSearchService.ts
+  s_186177c3ad3cd9::t_f7cf5e31952ff5 21
+  s_186177c3ad3cd9::t_6f6e43da469b35 995-1003
+  s_186177c3ad3cd9::t_5d7e73b328b094 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2f706ef08f9560a9ed0961a4b8ea73b7f9a031d9",
+  "prompts": {},
+  "sessions": {
+    "s_186177c3ad3cd9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd63b5866ffevi9nP36N0P1NAb",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

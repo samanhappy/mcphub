@@ -1,0 +1,23 @@
+README.fr.md
+  s_e4eb0414da5565::t_a8c9549dadb308 172-173
+README.zh.md
+  s_e4eb0414da5565::t_a8c9549dadb308 185-186
+README.md
+  s_e4eb0414da5565::t_513b226d9f239a 185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "860449aada673e892f2b81df613373174c5a80ef",
+  "prompts": {},
+  "sessions": {
+    "s_e4eb0414da5565": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12af7-f6b2-7be1-b733-6dfb8002e8f0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

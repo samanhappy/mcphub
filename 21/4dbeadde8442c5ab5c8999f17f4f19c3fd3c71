@@ -1,0 +1,23 @@
+src/utils/compatibleToolNames.ts
+  s_d182202877e951::t_754966464e5dee 2,19-21
+tests/services/mcpService-apps.test.ts
+  s_d182202877e951::t_431e529d05e72c 290-292,294,300,304-305
+src/utils/compatibleToolNames.test.ts
+  s_d182202877e951::t_431e529d05e72c 21-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "214dbeadde8442c5ab5c8999f17f4f19c3fd3c71",
+  "prompts": {},
+  "sessions": {
+    "s_d182202877e951": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e30b-b70f-7642-af33-3d5cce24b696",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

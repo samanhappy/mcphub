@@ -1,0 +1,20 @@
+AGENTS.md
+  h_18676a549cd52a 34
+docs/agents/README.md
+  h_18676a549cd52a 19,36-37
+docs/agents/git-and-contribution.md
+  h_18676a549cd52a 31-36,44-45
+docs/agents/security-advisories.md
+  h_18676a549cd52a 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ba41e8cce8c7f6f439a0d77f38e853f0f5b3c8cb",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

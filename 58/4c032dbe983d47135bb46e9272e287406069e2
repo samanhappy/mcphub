@@ -1,0 +1,25 @@
+src/services/oauthClientRegistration.ts
+  s_871530c3552d12::t_f729784f6fbc29 361-365,372,375-378
+tests/integration/oauth-registration-persistence.test.ts
+  s_871530c3552d12::t_9cdd6456a30eb9 40-43,53-68,75-104
+  s_871530c3552d12::t_f729784f6fbc29 69-74,121-124
+tests/services/oauthClientRegistration.test.ts
+  s_871530c3552d12::t_f729784f6fbc29 57-59
+  s_871530c3552d12::t_79cd20eab452a9 60,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "584c032dbe983d47135bb46e9272e287406069e2",
+  "prompts": {},
+  "sessions": {
+    "s_871530c3552d12": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b14c-1499-7291-8d69-4173e722c393",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

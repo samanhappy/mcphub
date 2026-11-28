@@ -1,0 +1,81 @@
+tests/frontend/serverDuplicate.test.ts
+  s_4455457452ef43::t_ff818fb60a8e5d 73,95
+tests/frontend/serverFormPayload.test.ts
+  s_4455457452ef43::t_ff818fb60a8e5d 555-557,565-567
+  s_4455457452ef43::t_cc081a88a820f8 558-564
+src/services/oauthSettingsStore.ts
+  s_4455457452ef43::t_222af5df24eafa 134,141-144,186
+src/types/index.ts
+  s_4455457452ef43::t_222af5df24eafa 531
+frontend/src/types/index.ts
+  s_4455457452ef43::t_ff818fb60a8e5d 256,453
+frontend/src/utils/serverDuplicate.ts
+  s_4455457452ef43::t_ff818fb60a8e5d 36
+tests/integration/personal-oauth-db.test.ts
+  s_4455457452ef43::t_f67222fab71cf5 108-112,117-120
+frontend/src/utils/serverFormPayload.ts
+  s_4455457452ef43::t_ff818fb60a8e5d 109-113
+src/services/oauthClientRegistration.ts
+  s_4455457452ef43::t_a6481db6ed5533 478-479,520-521
+src/services/personalOAuthService.ts
+  s_4455457452ef43::t_222af5df24eafa 21,55,263,270-273,287-292,298-305,310-317,334
+  s_4455457452ef43::t_a6481db6ed5533 293-296,306-309
+  s_4455457452ef43::t_5cd744854f8d4a 297
+docs/features/oauth.mdx
+  s_4455457452ef43::t_5cd744854f8d4a 163-164
+  s_4455457452ef43::t_ff818fb60a8e5d 162
+frontend/src/components/ServerForm.tsx
+  s_4455457452ef43::t_ff818fb60a8e5d 108
+tests/integration/personal-oauth.test.ts
+  s_4455457452ef43::t_903774b5b561bf 18,136,139-149,151-154,157,159-161,163,270-271,299
+  s_4455457452ef43::t_c7848dca3a42fb 2-5
+  s_4455457452ef43::t_d30ea4a4d22822 20,165-170,175-181,188-190,194-197,202-209,216-217,224-227,234-245,252-253,259-265,269
+  s_4455457452ef43::t_6eb8d2070cfb3d 109
+  s_4455457452ef43::t_72d773f021363e 367
+  s_4455457452ef43::t_7bba103951eb88 52,135,137-138,150,155-156,158,162,164
+  s_4455457452ef43::t_59cd114b742e5c 272-289
+  s_4455457452ef43::t_a6481db6ed5533 171-174,182-187,191-193,198-201,210-215,218-223,228-233,246-251,254-258,266-268,290-298,300-366
+src/services/mcpOAuthProvider.ts
+  s_4455457452ef43::t_b900e1a346345e 78,314,326,333,343,350,352-355,358-359,361-371,385-395,416,422,434
+  s_4455457452ef43::t_a6481db6ed5533 327-332,344-349,401-404,408-415
+  s_4455457452ef43::t_3a9b114ff5d1c6 337,372-384
+  s_4455457452ef43::t_6c3667528bb7dd 338-342
+  s_4455457452ef43::t_5cd744854f8d4a 351,405
+  s_4455457452ef43::t_8c0081eb42f17e 26
+  s_4455457452ef43::t_ca3b562c30b0ce 356-357,360
+docs/zh/features/oauth.mdx
+  s_4455457452ef43::t_ff818fb60a8e5d 162
+  s_4455457452ef43::t_5cd744854f8d4a 163-164
+src/utils/serverConfigPersistence.ts
+  s_4455457452ef43::t_222af5df24eafa 225
+  s_4455457452ef43::t_a6481db6ed5533 220-224
+tests/utils/serverConfigPersistence.test.ts
+  s_4455457452ef43::t_a61a05c8506f9e 5,11-13
+  s_4455457452ef43::t_f67222fab71cf5 6-10
+src/utils/settingsSync.ts
+  s_4455457452ef43::t_222af5df24eafa 166
+tests/services/mcpOAuthProvider.test.ts
+  s_4455457452ef43::t_af57232ecb79dc 33-35,360-362,365-370,375-377,381-385
+  s_4455457452ef43::t_4f3f0384b9d88b 363-364,371-374,378-380
+  s_4455457452ef43::t_2606b3e43a1df8 386
+tests/services/oauthSettingsStore.test.ts
+  s_4455457452ef43::t_f67222fab71cf5 6-10,60-63,66-72
+  s_4455457452ef43::t_dd5f413e0a0118 73
+  s_4455457452ef43::t_a61a05c8506f9e 58-59,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fdbe0f580bc3e11577d7e33bb2d1b3bed38e0ae",
+  "prompts": {},
+  "sessions": {
+    "s_4455457452ef43": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1954a-95ee-77e0-956f-3a27d0044dde",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,19 @@
+tests/integration/oauth-redirect-state-expiry.test.ts
+  s_cc9581e73a7dfa::t_6b7d197a1a2bc6 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bee75f301f68d9753500621fd2ff0050174657b7",
+  "prompts": {},
+  "sessions": {
+    "s_cc9581e73a7dfa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a113fd-8f42-7b21-8d6d-34c0ce7233ce",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,94 @@
+frontend/src/components/AddServerForm.tsx
+  h_18676a549cd52a 7,27
+frontend/src/components/ChangePasswordForm.tsx
+  h_18676a549cd52a 3,11,14-18,35-36,44,77,84-90,93-96,100,102-106,108,117-121,128-129,133,137-141,148-149,154,158-160,162,170-173,177-181,188-189,194,198,200,204-206,211,213-218,221
+frontend/src/components/CloudServerDetail.tsx
+  h_18676a549cd52a 5,29
+frontend/src/components/FakeIpExceptionsSettings.tsx
+  h_18676a549cd52a 24,30-40,42,45,47-50,55,76-79,84,103,112
+frontend/src/components/GroupCard.tsx
+  h_18676a549cd52a 14,49
+frontend/src/components/ServerCard.tsx
+  h_18676a549cd52a 36,162-163
+frontend/src/components/ServerToolConfig.tsx
+  h_18676a549cd52a 7,51
+frontend/src/components/ToolPolicyPanel.tsx
+  h_18676a549cd52a 23-26,30,43-46,49,71-77,80,104,114-122,126,131-132,134-138,144,146,149,155,158,168,178,181,188,190,193-194,203,233,252,263,266,270,276,279,283,288-308,312,317
+frontend/src/components/settings/AccountSecuritySection.tsx
+  h_18676a549cd52a 1-96
+frontend/src/components/settings/BearerKeysSection.tsx
+  h_18676a549cd52a 1-1201
+frontend/src/components/settings/BetterAuthSection.tsx
+  h_18676a549cd52a 1-364
+frontend/src/components/settings/FileStagingSection.tsx
+  h_18676a549cd52a 1-304
+frontend/src/components/settings/GeneralSettingsSection.tsx
+  h_18676a549cd52a 1-282
+frontend/src/components/settings/InstallMaintenanceSection.tsx
+  h_18676a549cd52a 1-471
+frontend/src/components/settings/OAuthServerSection.tsx
+  h_18676a549cd52a 1-396
+frontend/src/components/settings/RoutingNetworkSection.tsx
+  h_18676a549cd52a 1-200
+frontend/src/components/settings/SettingsPrimitives.tsx
+  h_18676a549cd52a 1-397
+frontend/src/components/settings/SmartRoutingSection.tsx
+  h_18676a549cd52a 1-1120
+frontend/src/components/settings/ToolResultCompressionSection.tsx
+  h_18676a549cd52a 1-206
+frontend/src/components/settings/UserRegistrationSection.tsx
+  h_18676a549cd52a 1-43
+frontend/src/components/settings/settingsRegistry.ts
+  h_18676a549cd52a 1-388
+frontend/src/components/ui/DefaultPasswordWarningModal.tsx
+  h_18676a549cd52a 21
+frontend/src/components/ui/LanguageSwitch.tsx
+  h_18676a549cd52a 45-46
+frontend/src/components/ui/PromptCard.tsx
+  h_18676a549cd52a 19,42
+frontend/src/components/ui/ToolCard.tsx
+  h_18676a549cd52a 20,55
+frontend/src/contexts/SettingsContext.tsx
+  h_18676a549cd52a 7,18-48,123-124,165-166,168-173,175,180-199,302-305,309-327,333,340-343,348,350-357,361,363-365,369,371-374,376,378,381-398,402-403,405-407,429,431-434,448,471,480-483,497-500,502,506-525,527-531,533-534,536-538,540-550,552-562,564-574,576-588,590-594,596-606,608-618,620-630,632-642,644-654,656-666,668-678,680-690,692-702,704-721,723-730,732-734,736-746,748-758,760-770,772-782,784-794,796-806,808-818,820-830,832-845,847-849,851,857-859,861-882,884-886,888-908,910-912,914-931,933-935,948-952,955-998,1000-1085
+frontend/src/contexts/settingsTypes.ts
+  h_18676a549cd52a 1-265
+frontend/src/hooks/useSettingsData.ts
+  h_18676a549cd52a 1-5,9-10,15-16
+frontend/src/hooks/useSettingsDraft.ts
+  h_18676a549cd52a 1-84
+frontend/src/pages/Dashboard.tsx
+  h_18676a549cd52a 8,68
+frontend/src/pages/SettingsPage.tsx
+  h_18676a549cd52a 1,3-14,17-20,24-48,53,55-56,60-63,65-67,69,71-76,78,80-85,87-102,104-109,111,113-115,117,119,121-137,139-146,149-150,154,161-173,176-185,189-191,193-196,198-201,203,205-207,210-217,219-245,247-286,288-367,369-374,376-396,398-425,427-442,444-449,451-452,458-459,461-465,467-469
+frontend/src/pages/SkillsPage.tsx
+  h_18676a549cd52a 21,217-218
+locales/en.json
+  h_18676a549cd52a 1251-1292
+locales/es.json
+  h_18676a549cd52a 1251-1292
+locales/fr.json
+  h_18676a549cd52a 1250-1291
+locales/tr.json
+  h_18676a549cd52a 1249-1290
+locales/vi.json
+  h_18676a549cd52a 1251-1292
+locales/zh.json
+  h_18676a549cd52a 1254-1295
+tests/frontend/settingsLocales.test.ts
+  h_18676a549cd52a 1-61
+tests/frontend/settingsRegistry.test.ts
+  h_18676a549cd52a 1-79
+tests/frontend/useSettingsDraft.test.ts
+  h_18676a549cd52a 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e472a65f28e563d04308833236e190a436f6defd",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

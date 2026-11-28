@@ -1,0 +1,16 @@
+src/clients/__tests__/openapi-server-template.test.ts
+  h_18676a549cd52a 5-10,51,55-57,59-69,93,96
+src/clients/openapi.ts
+  h_18676a549cd52a 88-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "628b6dc1aa23c064e5789da5f52a8719518b485d",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

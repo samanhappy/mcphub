@@ -1,0 +1,19 @@
+tests/integration/embedding-mutation-db.test.ts
+  s_082f9f2e1db260::t_ba93c328f61de5 1-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31d494dcda7430ae7ff812457cf3ebe8e236748b",
+  "prompts": {},
+  "sessions": {
+    "s_082f9f2e1db260": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abab-6240-73a3-85be-ddf1052fdf29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

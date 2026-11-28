@@ -1,0 +1,16 @@
+src/services/codeMode/quickjsWorkerRunner.ts
+  h_18676a549cd52a 14,43-44,372,483,513,520
+tests/services/codeModeIntegration.test.ts
+  h_18676a549cd52a 341-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0cf87704496f11d5f43af1a130b612bf18e469f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

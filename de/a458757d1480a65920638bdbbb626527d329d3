@@ -1,0 +1,28 @@
+docs/configuration/environment-variables.mdx
+  s_fe6af37ca1f56c::t_bfe2a798a502fe 117,123
+docs/zh/configuration/environment-variables.mdx
+  s_fe6af37ca1f56c::t_bfe2a798a502fe 100-132
+src/utils/smartRouting.ts
+  s_fe6af37ca1f56c::t_b9ea73d1c654a6 61-62,76,78,143
+tests/utils/smartRouting.test.ts
+  s_fe6af37ca1f56c::t_290be51a23a6a6 16,24,55,67-79,155-167
+  s_fe6af37ca1f56c::t_563f10debd7f27 149
+docs/features/smart-routing.mdx
+  s_fe6af37ca1f56c::t_bfe2a798a502fe 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dea458757d1480a65920638bdbbb626527d329d3",
+  "prompts": {},
+  "sessions": {
+    "s_fe6af37ca1f56c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a057ff-78f0-7622-8f0e-4b25b778bc92",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+docs/features/group-management.mdx
+  s_decbd347e999f2::t_4125fea2db1dbf 586-599
+docs/zh/features/group-management.mdx
+  s_decbd347e999f2::t_4125fea2db1dbf 581-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "911e9ec6cce3d43ab82e7897426f46f8087a7dd2",
+  "prompts": {},
+  "sessions": {
+    "s_decbd347e999f2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0950a-9904-7553-a893-ebdd3cd9ab80",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

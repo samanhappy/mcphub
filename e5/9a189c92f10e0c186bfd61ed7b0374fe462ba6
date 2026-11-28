@@ -1,0 +1,48 @@
+docs/docs.json
+  s_d6a710dca3505d::t_9d01c5c39f896d 45,93
+tests/integration/personal-oauth.test.ts
+  s_d6a710dca3505d::t_09e97f0b60af07 302-304
+  s_d6a710dca3505d::t_c156f8a05b9336 81,99-100,297-301,305-306
+  s_d6a710dca3505d::t_8d0bebf7ad5604 307
+docs/features/per-user-credentials.mdx
+  s_d6a710dca3505d::t_9d01c5c39f896d 20-21
+  s_d6a710dca3505d::t_1ea73c999f54ca 10-12
+README.md
+  s_d6a710dca3505d::t_9d01c5c39f896d 105-108
+tests/services/credentialBindingService.test.ts
+  s_d6a710dca3505d::t_e229775cd489ca 35-36,43,50-53,568-598,602-612
+  s_d6a710dca3505d::t_09e97f0b60af07 599-601
+  s_d6a710dca3505d::t_92843497adaa1a 613
+docs/zh/features/per-user-credentials.mdx
+  s_d6a710dca3505d::t_c156f8a05b9336 12
+  s_d6a710dca3505d::t_9d01c5c39f896d 20-21
+  s_d6a710dca3505d::t_04814530570fb0 10-11
+docs/configuration/credential-key-upgrade.mdx
+  s_d6a710dca3505d::t_ab05bf1f6b5118 74,76,78,82-88,92
+  s_d6a710dca3505d::t_9d01c5c39f896d 1-2,4-5,7,9,11,19,21,26,28-34,36,38-43,45,47,49,51,53,55,57,61,63,65,72,94,96,98
+  s_d6a710dca3505d::t_282d7c4fd86b4d 3,6,8,10,12-18,20,22-25,27,35,37,44,46,48,50,52,54,56,58-60,62,64,66-71,73,75,77,79-81,89-91,93,95,97,99
+docs/zh/configuration/credential-key-upgrade.mdx
+  s_d6a710dca3505d::t_282d7c4fd86b4d 3,6,8,10,12-18,20,22-25,27,35,37,44,46,48,50,52,54,56,58-60,62,64,66-71,73,75,77,79-81,89-91,93,95,97,99
+  s_d6a710dca3505d::t_9d01c5c39f896d 1-2,4-5,7,9,11,19,21,26,28-34,36,38-43,45,47,49,51,53,55,57,61,63,65,72,94,96,98
+  s_d6a710dca3505d::t_ab05bf1f6b5118 74,76,78,82-88,92
+README.zh.md
+  s_d6a710dca3505d::t_9d01c5c39f896d 104-107
+src/services/credentialBindingService.ts
+  s_d6a710dca3505d::t_a3e728d3e314a7 9,55-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e59a189c92f10e0c186bfd61ed7b0374fe462ba6",
+  "prompts": {},
+  "sessions": {
+    "s_d6a710dca3505d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17e01-f41d-7e31-b272-5e082c01fd45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

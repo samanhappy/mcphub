@@ -1,0 +1,34 @@
+.agents/skills/github-coordinator/SKILL.md
+  s_49a9e91635d22c::t_ce8bb41631a10a 18,21,33
+tests/scripts/inspect-github-queue.test.ts
+  s_49a9e91635d22c::t_a530758f2903a5 1-131,137-138
+  s_49a9e91635d22c::t_3e0f7151f6f116 132-136
+docs/agents/issue-tracker.md
+  s_49a9e91635d22c::t_eacaa93e13f979 53
+docs/agents/github-coordination.md
+  s_49a9e91635d22c::t_eacaa93e13f979 72-73,81-82,119
+scripts/inspect-github-queue.js
+  s_49a9e91635d22c::t_3e0f7151f6f116 77-88,104-112,119-122,137-140,148-149,166-183,207-208
+  s_49a9e91635d22c::t_b15598e23c96e9 1-76,89-103,113-118,123-136,141-147,150-165,184-206,209-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c0cfb27a90b11a44a2670dad2bae20b859e38d6",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_49a9e91635d22c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21753-d334-7092-9339-1420483b0ba9",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

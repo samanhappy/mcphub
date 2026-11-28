@@ -1,0 +1,114 @@
+src/services/mcpService.ts
+  s_854a02acf9066f::t_0437884fe3ceb2 16,1242,1255,2002,2401,3427
+  s_854a02acf9066f::t_db14d237e7799f 5480-5489,5492-5509
+  s_854a02acf9066f::t_d8c3ccb663410f 24,583-588,1168-1232,1248,5386,5462,5470-5479,5490-5491,5511-5512,5740,5743-5746,5749-5752,5754,5758-5760
+  s_854a02acf9066f::t_6ec8582f6d32e9 1233-1234,1246-1247,5510,5768
+tests/services/upstreamListRefresh.test.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 1-4,6,11-13,28,43-48,58-67
+  s_854a02acf9066f::t_4938e7d740eba1 7-10,29-42,49-57,68-81
+  s_854a02acf9066f::t_24898bbbc2e593 5,14-27
+tests/utils/mcpProtocol.test.ts
+  s_854a02acf9066f::t_cc31275b837203 19-21
+  s_854a02acf9066f::t_d8c3ccb663410f 1-18,22-25
+frontend/src/types/index.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 226,391,799
+src/utils/serverConfigPersistence.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 1,293
+  s_854a02acf9066f::t_cc31275b837203 332
+tests/services/mcpService-per-session-client.test.ts
+  s_854a02acf9066f::t_24898bbbc2e593 260-269
+tests/frontend/jsonImport.test.ts
+  s_854a02acf9066f::t_24898bbbc2e593 37-65
+src/types/index.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 467
+frontend/src/components/ServerForm.tsx
+  s_854a02acf9066f::t_02a34cd4f6e553 165
+frontend/src/utils/jsonImport.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 43,77,86-89
+  s_854a02acf9066f::t_d8c3ccb663410f 78-85
+src/dao/ServerDaoDbImpl.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 108,163,310
+  s_854a02acf9066f::t_cc31275b837203 339
+docs/zh/api-reference/mcp-http.mdx
+  s_854a02acf9066f::t_d8c3ccb663410f 55-75
+src/services/templateService.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 362-363
+frontend/src/utils/serverFormPayload.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 283-284
+tests/frontend/serverFormPayload.test.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 492-515
+  s_854a02acf9066f::t_09a36c65ac08ef 490-491,516
+src/utils/mcpProtocol.ts
+  s_854a02acf9066f::t_cc31275b837203 18-19
+  s_854a02acf9066f::t_d8c3ccb663410f 1-4,12-17,20-27
+tests/integration/sdk-v2-compatibility.test.ts
+  s_854a02acf9066f::t_e348a0533537e2 194-195,204,211-213,220,224-230
+  s_854a02acf9066f::t_d8c3ccb663410f 197-203,205-210
+  s_854a02acf9066f::t_0437884fe3ceb2 196,214-219,221-223
+tests/services/keepAliveService.test.ts
+  s_854a02acf9066f::t_a28f143f328504 53
+  s_854a02acf9066f::t_e348a0533537e2 42-44,49-52,54-57
+  s_854a02acf9066f::t_d8c3ccb663410f 45-48
+docs/configuration/mcp-settings.mdx
+  s_854a02acf9066f::t_db14d237e7799f 498-499,575-576,609-610,629-630,632-633,645-646,718-719,730-731,733-734,754-755,757-758,780-781,783-784,793-794,796-797,809-810,812-813,826-828,836-837
+  s_854a02acf9066f::t_d8c3ccb663410f 208-243
+src/controllers/serverController.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 250
+src/utils/migration.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 105
+src/clients/legacyMcpClient.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 1-6
+  s_854a02acf9066f::t_02a34cd4f6e553 21
+  s_854a02acf9066f::t_0437884fe3ceb2 28,37,41-43,50
+  s_854a02acf9066f::t_9b645a5820976c 13
+src/services/upstreamListRefresh.ts
+  s_854a02acf9066f::t_0437884fe3ceb2 1-8,10-23,25-26,30-46
+  s_854a02acf9066f::t_d8c3ccb663410f 24,27-29
+  s_854a02acf9066f::t_2e6b61ae76af25 9
+docs/api-reference/mcp-http.mdx
+  s_854a02acf9066f::t_d8c3ccb663410f 63-69
+  s_854a02acf9066f::t_73f62814ed44dd 56-62,70-83
+tests/dao/serverDaoDbImpl.test.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 388-402
+  s_854a02acf9066f::t_dddbfd16daa809 383-387,403-409
+docs/zh/configuration/mcp-settings.mdx
+  s_854a02acf9066f::t_d8c3ccb663410f 187-217
+tests/utils/serverConfigPersistence.test.ts
+  s_854a02acf9066f::t_e348a0533537e2 390-392,406-407
+  s_854a02acf9066f::t_d8c3ccb663410f 393-405
+tests/integration/upstream-auto-negotiation.test.ts
+  s_854a02acf9066f::t_d8c3ccb663410f 8-176
+  s_854a02acf9066f::t_3be3161c739301 1-7,177-178
+src/utils/settingsSync.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 51
+src/db/entities/Server.ts
+  s_854a02acf9066f::t_02a34cd4f6e553 65-67
+src/services/keepAliveService.ts
+  s_854a02acf9066f::t_a28f143f328504 98,100
+  s_854a02acf9066f::t_02a34cd4f6e553 97,99,101-102
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_854a02acf9066f::t_d8c3ccb663410f 86-92
+tests/integration/settings-sync.test.ts
+  s_854a02acf9066f::t_0c31651d944518 666-678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cddeab8ad5bf4ebe55e158c81a7638df90ae1fa8",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_854a02acf9066f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16c92-4a28-7210-801f-1dfb7938b0ef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

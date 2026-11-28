@@ -1,0 +1,22 @@
+tests/controllers/oauthCallbackController.test.ts
+  s_e399a5f801e65a::t_b42db571155166 35,41,148,182,189-190,202-205,211-241
+  s_e399a5f801e65a::t_a29ef02860633c 242-244
+src/controllers/oauthCallbackController.ts
+  s_e399a5f801e65a::t_a37bf5d63d52c7 395-396,399-400,419-444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9b7e8662b85b34e7ee6c89c1a51c710932cfabb4",
+  "prompts": {},
+  "sessions": {
+    "s_e399a5f801e65a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06cbb-096d-7380-a924-a7a2de7ffc80",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

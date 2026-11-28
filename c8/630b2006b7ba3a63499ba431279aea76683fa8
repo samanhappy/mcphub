@@ -1,0 +1,67 @@
+docs/configuration/mcp-settings.mdx
+  s_7bda6cfa816ced::t_34dfcba7f26064 791-812
+tests/controllers/serverController.test.ts
+  s_7bda6cfa816ced::t_3a1bcb56b2f3e6 837-840,844-846,856
+  s_7bda6cfa816ced::t_34dfcba7f26064 841-843,847-855
+docs/zh/configuration/mcp-settings.mdx
+  s_7bda6cfa816ced::t_34dfcba7f26064 724-745
+src/controllers/serverController.ts
+  s_7bda6cfa816ced::t_34dfcba7f26064 1857-1862
+  s_7bda6cfa816ced::t_0b8cced8455201 1,1853,1855-1856,1863-1864,1976-1977,2622-2624
+  s_7bda6cfa816ced::t_fa465a7ff2aa89 2625
+src/utils/__tests__/ssrf-allowed-cidrs.test.ts
+  s_7bda6cfa816ced::t_3a1bcb56b2f3e6 7-12,15-16,36-42,50-54,61-65,69-78,85-92,96-97
+  s_7bda6cfa816ced::t_34dfcba7f26064 1-6,13-14,17-35,43-49,55-60,66-68,79-84,93-95
+src/db/entities/SystemConfig.ts
+  s_7bda6cfa816ced::t_e0a2f1c38af625 13-14
+  s_7bda6cfa816ced::t_21ee61767d79ac 12
+locales/en.json
+  s_7bda6cfa816ced::t_13485a59ee214a 791-793
+frontend/src/contexts/SettingsContext.tsx
+  s_7bda6cfa816ced::t_13485a59ee214a 135,161-162,418,561,1053-1071,1222-1223
+src/services/cimdClientService.ts
+  s_7bda6cfa816ced::t_e0a2f1c38af625 158,166
+src/types/index.ts
+  s_7bda6cfa816ced::t_e0a2f1c38af625 255-257
+src/utils/ssrf.ts
+  s_7bda6cfa816ced::t_e0a2f1c38af625 2,6,23-26,41-44,46-54,144,148,180,197,199,215,234,239,241,245,262
+  s_7bda6cfa816ced::t_34dfcba7f26064 27-30,32-40
+  s_7bda6cfa816ced::t_21aeb0931ca3e5 31,45
+src/dao/SystemConfigDaoDbImpl.ts
+  s_7bda6cfa816ced::t_0b8cced8455201 25,44,63
+tests/integration/system-config-authorization.test.ts
+  s_7bda6cfa816ced::t_3a1bcb56b2f3e6 120
+tests/dao/SystemConfigDao.test.ts
+  s_7bda6cfa816ced::t_34dfcba7f26064 32-40
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_7bda6cfa816ced::t_21aeb0931ca3e5 1-20
+locales/fr.json
+  s_7bda6cfa816ced::t_13485a59ee214a 790-792
+frontend/src/pages/SettingsPage.tsx
+  s_7bda6cfa816ced::t_13485a59ee214a 642-643,666-670,3953-3976
+  s_7bda6cfa816ced::t_8722f8623a9de4 3977
+locales/zh.json
+  s_7bda6cfa816ced::t_13485a59ee214a 793-795
+locales/tr.json
+  s_7bda6cfa816ced::t_13485a59ee214a 790-792
+src/utils/migration.ts
+  s_7bda6cfa816ced::t_0b8cced8455201 151
+tests/integration/ssrf-allowed-cidrs.test.ts
+  s_7bda6cfa816ced::t_85a1c29454fbc6 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8630b2006b7ba3a63499ba431279aea76683fa8",
+  "prompts": {},
+  "sessions": {
+    "s_7bda6cfa816ced": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e19-c2ea-7742-8c4f-eee1aa93f84f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

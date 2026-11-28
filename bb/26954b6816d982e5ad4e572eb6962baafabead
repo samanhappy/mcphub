@@ -1,0 +1,193 @@
+tests/services/mcpService-toggle.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 210-300
+src/services/fileStaging/types.ts
+  s_4ef744778b6bbc::t_389875bd20124b 42-57,60-64,90-91
+docs/api-reference/servers.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 103,360
+frontend/src/utils/jsonImport.ts
+  s_4ef744778b6bbc::t_389875bd20124b 2,50,149-165
+  s_4ef744778b6bbc::t_8ec3c475328136 166-167
+src/utils/connectionRelevantConfig.ts
+  s_4ef744778b6bbc::t_389875bd20124b 10,12,18-19,26-30
+  s_4ef744778b6bbc::t_561055663170af 31
+src/dao/ServerDaoDbImpl.ts
+  s_4ef744778b6bbc::t_389875bd20124b 6,98,154,299,340
+src/services/fileStaging/__tests__/dispatch.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 23,247-270
+  s_4ef744778b6bbc::t_5a7771ab8aed31 271-272
+tests/controllers/fileStagingController.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 12-16,20-26,156-330
+frontend/src/components/ui/LanguageSwitch.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 66
+frontend/src/components/GroupCard.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 49,86-87,341-342
+src/services/fileStaging/policy.ts
+  s_4ef744778b6bbc::t_389875bd20124b 56-69,115-203
+frontend/src/types/index.ts
+  s_4ef744778b6bbc::t_389875bd20124b 110-129,239,439
+frontend/src/components/ServerCard.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 39,459,636-644,1014
+frontend/src/components/ServerForm.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 5-7,70-71,143,698-711
+  s_4ef744778b6bbc::t_97e1eb64609f9e 712-713
+frontend/src/components/ui/TagInput.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 1-99
+tests/serverFormPayload.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 125
+tests/services/mcpService-server-metadata.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 187-197
+tests/utils/serverConfigPersistence.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 3-5,543-607
+locales/es.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1225-1248
+locales/en.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1104-1126
+frontend/src/contexts/SettingsContext.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 10,135,168,206-208,424-436,558-572,868-904,1414,1442
+src/controllers/openApiController.ts
+  s_4ef744778b6bbc::t_389875bd20124b 1,8-9,12,14,18-26,270-402
+src/services/serverConfigPresenter.ts
+  s_4ef744778b6bbc::t_389875bd20124b 23
+src/services/fileStaging/__tests__/stateStore.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 17,57-115,223-269,508-663
+tests/dao/serverDao.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 26-46
+locales/zh.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1107-1129
+src/utils/settingsSync.ts
+  s_4ef744778b6bbc::t_389875bd20124b 51
+tests/services/serverConfigPresenter.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 116-123
+src/services/smartRoutingService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 29,742-765
+  s_4ef744778b6bbc::t_de9659f873e79f 766-767
+locales/tr.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1223-1246
+src/services/mcpService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 215,2886-2890,2893,2896-2899,2922,2985-2987,2989,3135-3138,3149,3787-3805,3911-3927,3942,3946-3949,3955-3960,3981-3983,3990,3994-4003,4676,4679,4848-4857,4869-4877,4880,4885,4896
+src/services/templateService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 363
+tests/routes/index.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 158-159
+src/services/openApiGeneratorService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 2,9-13,29,32-65,212-214,259-261,267,287-288,312-322
+tests/integration/settings-sync.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 546-561
+docs/zh/features/file-staging.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 156-176,179,184-185,194-196,248,279
+docs/zh/api-reference/openapi.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 16,25-26,29-30,34,67-68,71-72,76,91,151-152,155-156,163,185-186,200,203,220,243-245,280
+src/services/toolPolicyService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 9,25,31
+tests/services/templateService.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 172-184
+src/services/fileStaging/paths.ts
+  s_4ef744778b6bbc::t_389875bd20124b 203-208,211-214,222-227,241-245
+  s_4ef744778b6bbc::t_5d7492920eeced 246
+src/services/fileStaging/tools.ts
+  s_4ef744778b6bbc::t_389875bd20124b 22-23,56-77,81-82,85-88,136-139,229-259,261-279
+src/types/index.ts
+  s_4ef744778b6bbc::t_389875bd20124b 297-298,586
+src/utils/serverConfigPersistence.ts
+  s_4ef744778b6bbc::t_389875bd20124b 16,48-104,449,519
+src/services/fileStaging/dbStateStore.ts
+  s_4ef744778b6bbc::t_389875bd20124b 5,24-25,27-35,45,97,177,226,234,296,299,309-371,595-722,727,730-736,739-741,744,747-758
+tests/frontend/serverFormPayload.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 632-661
+tests/integration/bearer-exclude-scope.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 10-11,22-25,36-37,42,58,72,75-86,88-123,143-151,178-180,255-419
+src/db/entities/Server.ts
+  s_4ef744778b6bbc::t_389875bd20124b 27-29
+frontend/src/utils/serverFilters.ts
+  s_4ef744778b6bbc::t_389875bd20124b 2,26,34,42-43,60,62
+docs/features/file-staging.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 156-176,179,184-185,194-196,248,265,279
+locales/vi.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1225-1248
+src/routes/index.ts
+  s_4ef744778b6bbc::t_389875bd20124b 145-151,159-160,270-284,641-650
+  s_4ef744778b6bbc::t_af0192599fbbf7 651
+tests/services/smartRouting-staging.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 1-85
+locales/fr.json
+  s_4ef744778b6bbc::t_389875bd20124b 178-183,1224-1247
+tests/frontend/serverFilters.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 3-9,136-247
+src/controllers/fileStagingController.ts
+  s_4ef744778b6bbc::t_389875bd20124b 3,6-7,10,12-16,114-359
+docs/agents/architecture.md
+  s_4ef744778b6bbc::t_389875bd20124b 35
+docs/configuration/mcp-settings.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 79
+src/dao/ServerDao.ts
+  s_4ef744778b6bbc::t_389875bd20124b 6-9,140
+.gitignore
+  s_4ef744778b6bbc::t_389875bd20124b 57-58
+  s_4ef744778b6bbc::t_ba77daa8c6391b 56
+docs/migrations/0009-server-tags.sql
+  s_4ef744778b6bbc::t_389875bd20124b 1
+src/utils/fileStagingConfig.ts
+  s_4ef744778b6bbc::t_389875bd20124b 26,40,71
+src/services/fileStaging/__tests__/tools.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 7,21,42-45,136-215
+src/services/fileStaging/__tests__/dbStateStore.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 21,33-39,41-46,285-393,436-740
+src/services/mcpTools.ts
+  s_4ef744778b6bbc::t_389875bd20124b 466-476,497-545,626,676-681
+src/services/sseService.ts
+  s_4ef744778b6bbc::t_389875bd20124b 28,282-291,296-297,317-318,475-480,567,578-580,620
+tests/frontend/jsonImport.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 66-103
+docs/zh/api-reference/servers.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 138
+docs/development/architecture.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 94,100,112
+  s_4ef744778b6bbc::t_9bfd7da15da33f 113
+frontend/src/utils/serverTags.ts
+  s_4ef744778b6bbc::t_389875bd20124b 1-90
+docs/agents/testing.md
+  s_4ef744778b6bbc::t_389875bd20124b 21-22
+frontend/src/components/JSONImportForm.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 218-222
+frontend/src/utils/serverFormPayload.ts
+  s_4ef744778b6bbc::t_389875bd20124b 2,264
+docs/adr/0006-file-staging.md
+  s_4ef744778b6bbc::t_389875bd20124b 22-23
+frontend/src/pages/SettingsPage.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 664-675,762,789,897-912,1011,1027,1733-1860,3616-3865,3867-3868
+  s_4ef744778b6bbc::t_99cd12fd48a77e 3866,3869-3872
+src/services/fileStaging/stateStore.ts
+  s_4ef744778b6bbc::t_389875bd20124b 25-33,42,78-96,299,371,378-443,667-756,762-766,768-770,784-787
+docs/api-reference/openapi.mdx
+  s_4ef744778b6bbc::t_389875bd20124b 16,25-26,29-30,34,67-68,71-72,76,91,151-152,155-156,163,189-190,204,207,224,247-249,284
+src/utils/migration.ts
+  s_4ef744778b6bbc::t_389875bd20124b 1-4,159,167
+src/db/entities/FileStagingToken.ts
+  s_4ef744778b6bbc::t_389875bd20124b 4-7
+frontend/src/contexts/ServerContext.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 50,81,129,162,446
+frontend/src/pages/ServersPage.tsx
+  s_4ef744778b6bbc::t_389875bd20124b 1,3,15-20,22-28,39,65-82,85-102,107-108,272-275,298-319,330
+tests/controllers/serverController.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 1994-2050
+tests/dao/serverDaoDbImpl.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 412-471
+tests/services/mcpService-fileStaging.test.ts
+  s_4ef744778b6bbc::t_389875bd20124b 7,10-14,32,36-43,47,88,92-103,169-248,255-258,286-319,324-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb26954b6816d982e5ad4e572eb6962baafabead",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

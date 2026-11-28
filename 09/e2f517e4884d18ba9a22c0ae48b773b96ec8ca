@@ -1,0 +1,24 @@
+frontend/src/hooks/useMarketData.ts
+  h_18676a549cd52a 1,5-9,11,27-32,35-54,63,65,76,326-328,330,335-351
+frontend/src/hooks/useRegistryData.ts
+  h_18676a549cd52a 1,10-19,21,23-25,31,35-41,49-54,56,62,66,78,91,96,100-101,108,156-158,162,164,265,278,286,288-308
+frontend/src/pages/MarketPage.tsx
+  h_18676a549cd52a 15-19,40-42,64,85-88,191-194,369-373
+frontend/src/utils/marketPagination.ts
+  h_18676a549cd52a 1-57
+tests/frontend/marketPagination.test.ts
+  h_18676a549cd52a 1-95
+tests/frontend/marketPaginationHooks.test.ts
+  h_18676a549cd52a 1-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09e2f517e4884d18ba9a22c0ae48b773b96ec8ca",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

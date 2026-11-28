@@ -1,0 +1,21 @@
+tests/frontend/useCostData.test.ts
+  s_21be1b86795ca9::t_f4ebde6683bd7b 1-81
+frontend/src/hooks/useCostData.ts
+  s_21be1b86795ca9::t_f4ebde6683bd7b 10,21-26,29,47-55,59,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c7a294137c67390ce80ba3ad5168a777b1d9500",
+  "prompts": {},
+  "sessions": {
+    "s_21be1b86795ca9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187b4-d54c-77c0-a465-4ba796bad3a4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

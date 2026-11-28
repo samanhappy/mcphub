@@ -1,0 +1,45 @@
+docs/zh/installation.mdx
+  s_b273a78a842815::t_37cab6a540509b 10,516-518
+README.md
+  s_b273a78a842815::t_37cab6a540509b 59
+README.zh.md
+  s_b273a78a842815::t_37cab6a540509b 58
+.github/workflows/npm-publish.yml
+  s_b273a78a842815::t_37cab6a540509b 21
+docs/zh/configuration/docker-setup.mdx
+  s_b273a78a842815::t_37cab6a540509b 407
+docs/development/getting-started.mdx
+  s_b273a78a842815::t_37cab6a540509b 14
+docs/zh/development/getting-started.mdx
+  s_b273a78a842815::t_37cab6a540509b 14
+README.fr.md
+  s_b273a78a842815::t_37cab6a540509b 56
+docs/configuration/docker-setup.mdx
+  s_b273a78a842815::t_37cab6a540509b 421
+docs/zh/development.mdx
+  s_b273a78a842815::t_37cab6a540509b 10,20,33
+package.json
+  s_b273a78a842815::t_37cab6a540509b 161
+docs/installation.mdx
+  s_b273a78a842815::t_37cab6a540509b 10,543-545
+.github/workflows/ci.yml
+  s_b273a78a842815::t_37cab6a540509b 18,68,105
+docs/agents/development.md
+  s_b273a78a842815::t_37cab6a540509b 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c607427be9006a4b7f9864816388d4f2616498b9",
+  "prompts": {},
+  "sessions": {
+    "s_b273a78a842815": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19157-e842-79e3-a675-75d0d277b395",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

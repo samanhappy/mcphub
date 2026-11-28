@@ -1,0 +1,19 @@
+frontend/src/components/ui/LanguageSwitch.tsx
+  s_dd886074a2581b::t_c87305f2b747d9 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96b52916a5137ff578542918c0d43912e517aaf9",
+  "prompts": {},
+  "sessions": {
+    "s_dd886074a2581b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1fd4b-3a1e-7360-87d5-322034f0cc76",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

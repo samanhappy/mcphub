@@ -1,0 +1,86 @@
+locales/tr.json
+  s_8a387ae512716f::t_44ee35043aaac2 917
+tests/controllers/bearerKeyController.test.ts
+  s_8a387ae512716f::t_b4dff58cd0896c 139-140,193-236
+  s_8a387ae512716f::t_e7b278d3d5e7d0 10-11,22,54-55,112-113,128-132,134-138,141-158,160-169,171-181,183,185-192
+  s_8a387ae512716f::t_0717ce9eaa7b97 133,159,170,182,184,237
+src/services/sseService.ts
+  s_8a387ae512716f::t_eccf3fec73216e 283-284,552,565
+locales/vi.json
+  s_8a387ae512716f::t_44ee35043aaac2 919
+locales/en.json
+  s_8a387ae512716f::t_44ee35043aaac2 919
+frontend/src/pages/SettingsPage.tsx
+  s_8a387ae512716f::t_5d79127f25fc01 93,238,258-268,270,275,1847,2306,2334-2335,2341-2345,2347,2351
+  s_8a387ae512716f::t_fcacc31c0c60ca 149,1748-1749,2356,2362,2367,2372,2377
+  s_8a387ae512716f::t_8250955503bbbb 155,162,252,256-257,271-272,1741-1742,1746-1747,2207,2264,2327,2332-2333,2336-2340,2348-2349,2363
+locales/zh.json
+  s_8a387ae512716f::t_44ee35043aaac2 921
+src/controllers/bearerKeyController.ts
+  s_8a387ae512716f::t_daccf0d0bd4995 87-91
+  s_8a387ae512716f::t_eccf3fec73216e 4,64,66-86,92-104,106-108,174-175,177-178,209,251-252,255-259
+  s_8a387ae512716f::t_b4dff58cd0896c 173,176,253-254
+  s_8a387ae512716f::t_898db230bce692 65,105,260
+locales/es.json
+  s_8a387ae512716f::t_44ee35043aaac2 919
+docs/development/architecture.mdx
+  s_8a387ae512716f::t_44ee35043aaac2 103
+docs/features/authentication.mdx
+  s_8a387ae512716f::t_44ee35043aaac2 84,94-96
+  s_8a387ae512716f::t_d21f8903225c59 97
+locales/fr.json
+  s_8a387ae512716f::t_44ee35043aaac2 918
+tests/integration/personal-key-group-scope.test.ts
+  s_8a387ae512716f::t_b4dff58cd0896c 141,151,155,157,169,172,210,215,233,236-271,284,293,299,308,315,332,341,346,352,360
+  s_8a387ae512716f::t_22e8c530c9b697 138-140
+  s_8a387ae512716f::t_e865b869251ad0 142-144,148-150
+  s_8a387ae512716f::t_5e56b7715f2a39 152-154
+  s_8a387ae512716f::t_d818017048f6cb 156
+  s_8a387ae512716f::t_4b51186c0feb56 158-160,166-168
+  s_8a387ae512716f::t_2361a88fb6271b 170-171
+  s_8a387ae512716f::t_7e39cd0def4e45 173-175,207-209
+  s_8a387ae512716f::t_ea2886124c4bc3 211-214
+  s_8a387ae512716f::t_5a50ce0208a418 216-218,230-232
+  s_8a387ae512716f::t_30cf325a3668bd 234-235
+  s_8a387ae512716f::t_a1b1bff08adab2 272-274,281-283
+  s_8a387ae512716f::t_6e222e1aae2123 285-287,290-292
+  s_8a387ae512716f::t_4d1b0e5abbf08d 294-298
+  s_8a387ae512716f::t_bd24157fdf455a 300-302,305-307
+  s_8a387ae512716f::t_485f9bab3008ed 309-314
+  s_8a387ae512716f::t_5f240cfc12e756 316-318,329-331
+  s_8a387ae512716f::t_7718796834d784 333-335,338-340
+  s_8a387ae512716f::t_56d747edb8cd60 342-345
+  s_8a387ae512716f::t_468b9d01e5c3f4 347-351
+  s_8a387ae512716f::t_02fd0c8ae30354 353-355,357-359
+  s_2561d7998b27a5::t_990f0714245c27 1-137,145-147,161-165,176-206,219-229,275-280,288-289,303-304,319-328,336-337,356
+src/types/index.ts
+  s_8a387ae512716f::t_b4dff58cd0896c 446
+docs/features/group-management.mdx
+  s_8a387ae512716f::t_2aca1d2515eaab 626
+docs/agents/architecture.md
+  s_8a387ae512716f::t_b4dff58cd0896c 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bfb60501f93b25adf0140a1124b5593d868946b",
+  "prompts": {},
+  "sessions": {
+    "s_2561d7998b27a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c367-fe54-7931-9486-1250cd51d63d",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    },
+    "s_8a387ae512716f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c367-b0bb-77d1-90c9-d71fdb0c3e18",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

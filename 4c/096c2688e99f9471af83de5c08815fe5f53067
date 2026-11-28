@@ -1,0 +1,25 @@
+tests/integration/password-login-sso-lifecycle.test.ts
+  s_f5df60eafc4b5e::t_213480a17c6d1d 100-114
+tests/services/betterAuth.bootstrap.test.ts
+  s_f5df60eafc4b5e::t_b05e4da745e467 177-182
+  s_f5df60eafc4b5e::t_7c82e1884f4c59 183
+  s_f5df60eafc4b5e::t_316a4a80705b45 172-176
+src/betterAuth.ts
+  s_f5df60eafc4b5e::t_213480a17c6d1d 79-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c096c2688e99f9471af83de5c08815fe5f53067",
+  "prompts": {},
+  "sessions": {
+    "s_f5df60eafc4b5e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18b1c-de29-7100-a5a5-19f9542a2eb8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

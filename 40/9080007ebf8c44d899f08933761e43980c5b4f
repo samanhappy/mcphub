@@ -1,0 +1,24 @@
+src/services/mcpService.ts
+  s_df311f4983e3f3::t_a9f430fda081a4 4022,4045,4480,4738
+  s_df311f4983e3f3::t_38074a3300f5d0 4041-4044,4064
+tests/services/mcpService-group-alias.test.ts
+  s_df311f4983e3f3::t_8249348f43055f 1,226-235,245-267,277-279,286,294-297
+  s_df311f4983e3f3::t_a9f430fda081a4 236-244,268-276,280-285,287-293
+  s_df311f4983e3f3::t_3b591320344af8 298-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "409080007ebf8c44d899f08933761e43980c5b4f",
+  "prompts": {},
+  "sessions": {
+    "s_df311f4983e3f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17ae5-bcac-7170-8962-e2cf1f2a8499",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

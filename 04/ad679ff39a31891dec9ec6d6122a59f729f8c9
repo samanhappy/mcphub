@@ -1,0 +1,43 @@
+tests/integration/hosted-skills.test.ts
+  s_4ef744778b6bbc::t_36b2a5625bc7f7 391-393,447-450,460-478,486-492
+  s_4ef744778b6bbc::t_03abd315dbbf46 418-442
+  s_4ef744778b6bbc::t_f2f164b98ba82b 75,157-164,210-217,221,224-227,290-291,314-315,374-380,387-390,394-400,413-414,417,443-446,451-459,480-485,493-494
+  s_4ef744778b6bbc::t_6b9a354f675175 154-156
+  s_4ef744778b6bbc::t_ef03f4fa356267 479
+src/services/hostedSkillCatalog.ts
+  s_4ef744778b6bbc::t_8ab59472365886 314-315,317-318,323-324,329,388-391
+  s_4ef744778b6bbc::t_655175b063193a 297-300
+  s_4ef744778b6bbc::t_23e9e0ee1d3c8d 4,7,24,33-35,42-44,80,98,151
+  s_4ef744778b6bbc::t_44b02a8c852d57 173,175-178,192,238
+  s_4ef744778b6bbc::t_36b2a5625bc7f7 36,223-227,232-234,249-253,394-397,420-423
+  s_4ef744778b6bbc::t_6b9a354f675175 155
+  s_4ef744778b6bbc::t_85791b3df4ecaf 29,194-195,392-393,398-404
+  s_4ef744778b6bbc::t_16c62899235580 157-160,163-170,186,188-191,193,196-199,202,206,208-222,228-231,235-237,239-240,242-248,254-296,301-313,316,319-322,328,330-336,338,349,357-358,361,366-372,408-419,424,443
+docs/zh/features/skills.mdx
+  s_4ef744778b6bbc::t_09addc5f0475d1 15,21,23
+  s_4ef744778b6bbc::t_6b9a354f675175 22
+src/controllers/hostedSkillController.ts
+  s_4ef744778b6bbc::t_44b02a8c852d57 10,30-33
+docs/features/skills.mdx
+  s_4ef744778b6bbc::t_09addc5f0475d1 15,21,23
+  s_4ef744778b6bbc::t_6b9a354f675175 22
+src/services/mcpSkills.ts
+  s_4ef744778b6bbc::t_85791b3df4ecaf 8,61,64-65,80
+  s_4ef744778b6bbc::t_36b2a5625bc7f7 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04ad679ff39a31891dec9ec6d6122a59f729f8c9",
+  "prompts": {},
+  "sessions": {
+    "s_4ef744778b6bbc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edeb-28c3-7340-aeed-b1741a791cc6",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+frontend/src/components/ServerForm.tsx
+  s_b13d47881349ab::t_57676002c7b5a6 147,156,838-872
+frontend/src/types/index.ts
+  s_b13d47881349ab::t_bd185d40c27bd3 265,406
+frontend/src/utils/serverFormPayload.ts
+  s_b13d47881349ab::t_924a68589204e3 96
+locales/en.json
+  s_b13d47881349ab::t_fc764ed1cef548 236-238
+locales/fr.json
+  s_b13d47881349ab::t_80ddc799a9e908 228-230
+locales/tr.json
+  s_b13d47881349ab::t_d7b788800da5e9 228-230
+locales/zh.json
+  s_b13d47881349ab::t_c4b843f84e6143 236-238
+package.json
+  s_b13d47881349ab::t_cfd40207f81ec4 88
+pnpm-lock.yaml
+  s_b13d47881349ab::t_5b10d71df1494f 165-167,1456,1462,1468,1474,1480,1486,1492,1498,1504,1510,1516,1522,1528,1605,1612,1619,1626,1633,1640,1757,1764,1771,1778,1785,1792,1799,1806,2155,2161,2167,2173,2179,2185,2191,2197,3759,3766,3773,3780,3787,3794,3801,3808,4779-4785,4801-4804,9679-9684,9699-9702
+src/clients/__tests__/openapi-cookie.test.ts
+  s_b13d47881349ab::t_439038a47e318e 1-277
+src/clients/openapi.ts
+  s_b13d47881349ab::t_c5223b042964c6 1-2,36-44,101-102,527,616-627,631-635,646,655,692-785,788
+src/services/mcpService.ts
+  s_b13d47881349ab::t_ba0dc2c8bf3e95 416-421,3025-3034,3198-3204,3400-3406
+src/types/index.ts
+  s_b13d47881349ab::t_b8d3304b76779a 481
+src/utils/serverConfigPersistence.ts
+  s_b13d47881349ab::t_dc6580cbaee77a 129-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "50511faa21b6fede521b9c764333811c50fd2140",
+  "prompts": {},
+  "sessions": {
+    "s_b13d47881349ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09530aa2-802a-4288-953c-37337abe14dc",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+src/utils/serverConfigPersistence.ts
+  s_279cafa2390126::t_4653c680c1499d 347-357,371-372
+locales/fr.json
+  s_279cafa2390126::t_34d4c0524cf302 1216-1218
+  s_279cafa2390126::t_e547e935b1f0af 159
+docs/zh/configuration/mcp-settings.mdx
+  s_279cafa2390126::t_e9f59d57680c16 842-848
+src/services/dataService.ts
+  s_279cafa2390126::t_4653c680c1499d 23-25
+  s_279cafa2390126::t_5443d28e01970b 20-22
+src/middlewares/auth.ts
+  s_279cafa2390126::t_775ee404669f39 135,169
+  s_279cafa2390126::t_4653c680c1499d 200-204
+src/dao/ServerDao.ts
+  s_279cafa2390126::t_4653c680c1499d 324-326
+  s_279cafa2390126::t_92d2d2d94c032b 1,319
+src/utils/migration.ts
+  s_279cafa2390126::t_775ee404669f39 118
+  s_279cafa2390126::t_3ec16019af015d 160,195
+src/controllers/serverController.ts
+  s_279cafa2390126::t_4653c680c1499d 402-406
+  s_279cafa2390126::t_775ee404669f39 1337
+locales/vi.json
+  s_279cafa2390126::t_e547e935b1f0af 159
+  s_279cafa2390126::t_34d4c0524cf302 1217-1219
+src/db/entities/Group.ts
+  s_279cafa2390126::t_775ee404669f39 47-48
+  s_279cafa2390126::t_8bdabe985ae407 46
+locales/es.json
+  s_279cafa2390126::t_e547e935b1f0af 159
+  s_279cafa2390126::t_34d4c0524cf302 1217-1219
+src/services/mcpService.ts
+  s_279cafa2390126::t_775ee404669f39 678,687,694
+  s_279cafa2390126::t_b481b233345aa0 2246,2265,2302,2343,2374,2391,2497,2535,2821,5541,5964
+tests/integration/personal-credentials.test.ts
+  s_279cafa2390126::t_8c042e2cfee2a6 1713
+  s_279cafa2390126::t_4653c680c1499d 1721-1769
+  s_279cafa2390126::t_dc19fcd1802f02 24,56,1714-1720,1770-1772
+src/services/groupService.ts
+  s_279cafa2390126::t_4653c680c1499d 150-153,180-182
+docs/configuration/mcp-settings.mdx
+  s_279cafa2390126::t_e9f59d57680c16 75,77
+src/services/authorizationService.ts
+  s_279cafa2390126::t_775ee404669f39 22
+  s_279cafa2390126::t_4653c680c1499d 25-28
+frontend/src/components/EditUserForm.tsx
+  s_279cafa2390126::t_4653c680c1499d 57-64,151-162
+  s_279cafa2390126::t_c23937623a43b1 26,163-165
+tests/integration/user-group-storage.test.ts
+  s_279cafa2390126::t_4653c680c1499d 29-35,38-44,49-51,60-69,84-96
+  s_279cafa2390126::t_bef2b75936bc9f 1-28,36-37,45-48,52-59,70-83,97-103
+tests/controllers/serverController.test.ts
+  s_279cafa2390126::t_4653c680c1499d 1618,1650,1682,1723,1776
+  s_279cafa2390126::t_6403d9775c9ac8 162,181
+  s_279cafa2390126::t_e40f8fb95a0812 211,1817
+frontend/src/hooks/useGroupData.ts
+  s_279cafa2390126::t_4653c680c1499d 45-48,78-84
+src/services/userService.ts
+  s_279cafa2390126::t_6403d9775c9ac8 64,74-77,141
+tests/frontend/serverFormPayload.test.ts
+  s_279cafa2390126::t_8c042e2cfee2a6 535
+  s_279cafa2390126::t_4653c680c1499d 539-551
+  s_279cafa2390126::t_e208cdbcc15eae 536-538,552-554
+src/services/serverConfigEnvironment.ts
+  s_279cafa2390126::t_775ee404669f39 20,27
+locales/tr.json
+  s_279cafa2390126::t_e547e935b1f0af 159
+  s_279cafa2390126::t_34d4c0524cf302 1215-1217
+src/types/index.ts
+  s_279cafa2390126::t_5443d28e01970b 27,38,494,497,657,795
+tests/integration/user-group-sharing.test.ts
+  s_279cafa2390126::t_4653c680c1499d 12-14,20-24,27-59
+  s_279cafa2390126::t_d5199e4cbc6840 1-11,15-19,25-26
+locales/zh.json
+  s_279cafa2390126::t_e547e935b1f0af 159
+  s_279cafa2390126::t_34d4c0524cf302 1220-1222
+frontend/src/components/UserGroupSelection.tsx
+  s_279cafa2390126::t_4653c680c1499d 3-32
+  s_279cafa2390126::t_b911b7643d7925 1-2,33-38
+src/utils/oauthBearer.ts
+  s_279cafa2390126::t_775ee404669f39 27
+frontend/src/utils/serverFormPayload.ts
+  s_279cafa2390126::t_4653c680c1499d 257-260
+src/utils/groupAccess.ts
+  s_279cafa2390126::t_4653c680c1499d 22-27
+  s_279cafa2390126::t_a64eb4f83174a2 12,20-21
+tests/services/userService.test.ts
+  s_279cafa2390126::t_8fa0e37d7ebea3 12-15,19,43,178-185
+  s_279cafa2390126::t_1c293dc2950e8e 186
+locales/en.json
+  s_279cafa2390126::t_34d4c0524cf302 1217-1219
+  s_279cafa2390126::t_e547e935b1f0af 159
+src/dao/ServerDaoDbImpl.ts
+  s_279cafa2390126::t_775ee404669f39 160,302
+  s_279cafa2390126::t_1c03029856b1ea 105,341
+src/controllers/userController.ts
+  s_279cafa2390126::t_4653c680c1499d 151-161,193-194
+tests/services/dataService.test.ts
+  s_279cafa2390126::t_4e971b8dcc753c 38-53
+tests/controllers/userController.test.ts
+  s_279cafa2390126::t_8c042e2cfee2a6 191
+  s_279cafa2390126::t_7a4abb7b666677 190,192-196,201-211,220-223
+  s_279cafa2390126::t_4653c680c1499d 197-200,212-219
+frontend/src/components/GroupVisibilityFields.tsx
+  s_279cafa2390126::t_4653c680c1499d 35-38,113-118
+  s_279cafa2390126::t_3f38540825dc5e 1,7,21,30
+docs/features/authentication.mdx
+  s_279cafa2390126::t_e9f59d57680c16 37-39
+frontend/src/components/ServerForm.tsx
+  s_279cafa2390126::t_4653c680c1499d 1975-1984
+  s_279cafa2390126::t_1d5f0a3f39d72b 1,147,244,260,268
+src/dao/UserDaoDbImpl.ts
+  s_279cafa2390126::t_775ee404669f39 20,58,80
+src/controllers/groupController.ts
+  s_279cafa2390126::t_4653c680c1499d 160-168,171,202,325-333,356,409-417,420,437-440
+  s_279cafa2390126::t_9aaadedc5236cb 848
+docs/api-reference/users.mdx
+  s_279cafa2390126::t_3c3c6b5f0766d3 99,102
+frontend/src/components/AddGroupForm.tsx
+  s_279cafa2390126::t_67bc76c355f08a 26,61
+frontend/src/components/EditGroupForm.tsx
+  s_279cafa2390126::t_8f1e035468ef30 27,62
+frontend/src/types/index.ts
+  s_279cafa2390126::t_102f57bfcbaede 226,393,424,515,558,572
+src/dao/GroupDaoDbImpl.ts
+  s_279cafa2390126::t_44bde7fdca2be4 25,41,54,65,78,90,103,115,142,161,211
+src/db/entities/Server.ts
+  s_279cafa2390126::t_b68d2ad5de955f 51,56-58
+src/db/entities/User.ts
+  s_279cafa2390126::t_df82d742eae64c 32-34
+src/db/repositories/ServerRepository.ts
+  s_279cafa2390126::t_dc7c73f80e11f2 132-135
+src/services/capabilitySnapshotService.ts
+  s_279cafa2390126::t_c9e6421a0091f0 69,82
+src/utils/settingsSync.ts
+  s_279cafa2390126::t_c89cdd79f99142 51,98,257
+tests/frontend/serverLocales.test.ts
+  s_279cafa2390126::t_a60a19ae8c979f 10-12,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60d7cf34d03dd61500e1b6988508d45ded9fdc06",
+  "prompts": {},
+  "sessions": {
+    "s_279cafa2390126": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19131-3917-7983-8065-ab23320ad947",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

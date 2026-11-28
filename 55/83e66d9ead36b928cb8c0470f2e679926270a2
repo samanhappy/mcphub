@@ -1,0 +1,31 @@
+tests/controllers/serverController.test.ts
+  s_39169fc1997b58::t_24807b228b1f54 55,83,3349-3359,3361-3365,3367-3368,3370-3375,3377-3383,3385-3386
+  s_39169fc1997b58::t_47eb5616d93b31 3360,3366,3369,3376,3384
+tests/integration/personal-credentials.test.ts
+  s_39169fc1997b58::t_24807b228b1f54 39,50-51,174,1175-1183,1188-1189,1194-1199,1202,1204-1209,1212-1216,1218-1222
+  s_39169fc1997b58::t_67d6d6f2c162b2 1184-1185,1187,1190-1191,1193,1200-1201,1210-1211
+  s_39169fc1997b58::t_05b2af452aba60 1186,1192,1203,1217,1223-1224
+src/controllers/serverController.ts
+  s_39169fc1997b58::t_576844a14fbb5a 1,26,1678-1690,1692-1696,1705,1727
+  s_39169fc1997b58::t_93ea69d1fdb37b 1691
+docs/api-reference/servers.mdx
+  s_39169fc1997b58::t_a80c8f1982a7c2 200
+docs/zh/api-reference/servers.mdx
+  s_39169fc1997b58::t_f2f3a5754c19c8 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5583e66d9ead36b928cb8c0470f2e679926270a2",
+  "prompts": {},
+  "sessions": {
+    "s_39169fc1997b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163cf-a900-7e83-a4f8-b8249b22311b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

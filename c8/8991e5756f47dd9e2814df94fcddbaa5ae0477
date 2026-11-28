@@ -1,0 +1,24 @@
+tests/services/mcpService-header-env-from-config.test.ts
+  s_a463a729881b49::t_a3c2b891436e59 90
+  s_a463a729881b49::t_17ef69c7ab3011 57-59,160-176
+tests/services/serverConfigEnvironment.test.ts
+  s_a463a729881b49::t_a3c2b891436e59 36-50
+src/services/serverConfigEnvironment.ts
+  s_a463a729881b49::t_5caae6da1aa473 19-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c88991e5756f47dd9e2814df94fcddbaa5ae0477",
+  "prompts": {},
+  "sessions": {
+    "s_a463a729881b49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10031-0694-7b30-a3db-4465dbc76a9f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

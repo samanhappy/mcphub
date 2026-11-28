@@ -1,0 +1,49 @@
+src/services/mcpService.ts
+  s_0a4ef10ad0d36a::t_3a1c9ecc3dd1f2 103-107
+  s_0a4ef10ad0d36a::t_36fd1d5aae192c 2331,2333,4571-4575,4626,4628-4630,4732,4734
+tests/fixtures/credential-server.mjs
+  s_0a4ef10ad0d36a::t_cb1012ed97a33e 31
+tests/integration/personal-credentials.test.ts
+  s_0a4ef10ad0d36a::t_3a1c9ecc3dd1f2 1,717,730-732,736,743-745,748-752,758-763,767-771
+  s_0a4ef10ad0d36a::t_453d45a433a2a0 733-735,737-742,746-747,753-757,764-766
+  s_0a4ef10ad0d36a::t_cb1012ed97a33e 716,718-729,772
+tests/services/principalRuntimeService.test.ts
+  s_0a4ef10ad0d36a::t_cb1012ed97a33e 128,130-138
+  s_0a4ef10ad0d36a::t_31f87d115ad73f 129
+tests/utils/serialization.test.ts
+  s_0a4ef10ad0d36a::t_cb1012ed97a33e 10,18-24,27-29,36-38,45-46
+  s_0a4ef10ad0d36a::t_453d45a433a2a0 47,118
+  s_0a4ef10ad0d36a::t_31f87d115ad73f 11-17,25-26,30-35,39-44,150-152,202
+  s_0a4ef10ad0d36a::t_36fd1d5aae192c 74,137,144
+src/utils/serialization.ts
+  s_0a4ef10ad0d36a::t_31f87d115ad73f 78-85
+  s_0a4ef10ad0d36a::t_58a6a1595f31d6 7,77,86,94-102,140
+src/utils/upstreamError.ts
+  s_0a4ef10ad0d36a::t_31f87d115ad73f 2-6,44-53,61-67,80-82
+  s_0a4ef10ad0d36a::t_36fd1d5aae192c 1,7-26,38-43,59-60,68-69,71-79,83
+  s_0a4ef10ad0d36a::t_3a1c9ecc3dd1f2 27-36,54-58,70
+  s_0a4ef10ad0d36a::t_6883ee72cf691d 37
+tests/services/logService.test.ts
+  s_0a4ef10ad0d36a::t_36fd1d5aae192c 50
+tests/utils/upstreamError.test.ts
+  s_0a4ef10ad0d36a::t_31f87d115ad73f 1-34,59
+  s_0a4ef10ad0d36a::t_1aac34a4cbae06 35-58,60-62
+src/services/principalRuntimeService.ts
+  s_0a4ef10ad0d36a::t_58a6a1595f31d6 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "20e3be54721d85b7c19f73088081866dd7f59d8a",
+  "prompts": {},
+  "sessions": {
+    "s_0a4ef10ad0d36a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c956-d8b1-7380-8e1c-74f3b564668a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+tests/integration/sse-service-real-client.test.ts
+  s_599a5e26082593::t_60728809513e80 273,338
+  s_599a5e26082593::t_d8ff006505b699 59-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "02ae3607f1673dd4575d05fdf498dc1dbc33bc09",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_599a5e26082593": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f174-a1bc-7031-9586-37945042f4a8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

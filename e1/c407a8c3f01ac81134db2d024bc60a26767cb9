@@ -1,0 +1,25 @@
+src/controllers/bearerKeyController.ts
+  s_2561d7998b27a5::t_da602b678330d6 90
+src/services/sseService.ts
+  s_2561d7998b27a5::t_61781e6fd02333 334-336
+tests/controllers/bearerKeyController.test.ts
+  s_2561d7998b27a5::t_5b5a5538545a43 198
+tests/integration/personal-key-group-scope.test.ts
+  s_2561d7998b27a5::t_4e3cd5702a6a40 12,149-151,153,335-350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1c407a8c3f01ac81134db2d024bc60a26767cb9",
+  "prompts": {},
+  "sessions": {
+    "s_2561d7998b27a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c367-fe54-7931-9486-1250cd51d63d",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

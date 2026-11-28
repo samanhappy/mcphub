@@ -1,0 +1,25 @@
+frontend/src/components/ui/DynamicForm.tsx
+  s_f6dc77f721944b::t_337d90ff7eae24 193-195,197-205,208
+src/controllers/serverController.ts
+  s_f6dc77f721944b::t_62729238e8c772 2199-2203,2266-2270,2333-2337
+  s_f6dc77f721944b::t_cc0bbc2dc466b6 2392-2396,2459-2463,2526-2530
+  s_f6dc77f721944b::t_7bc274ccfebca4 1316,1379,1445
+src/controllers/mcpbController.ts
+  s_f6dc77f721944b::t_e93d52649f2113 118-120,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4923ed1e02746d6823d599808d1643f30ec84595",
+  "prompts": {},
+  "sessions": {
+    "s_f6dc77f721944b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd39689abffebutl23hZmwnP2h",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+locales/es.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1114-1115
+frontend/src/components/ToolPolicyPanel.tsx
+  s_a33e9af8757d31::t_6906188cc2c2f3 5-6,8,58-62,127-141
+  s_a33e9af8757d31::t_d900a7308296bf 7
+src/server.ts
+  s_a33e9af8757d31::t_05e0e218fe1b78 2,99
+docs/configuration/mcp-settings.mdx
+  s_a33e9af8757d31::t_5ea8a207b28ef9 923,934-935
+tests/frontend/toolPolicyPanel.test.ts
+  s_a33e9af8757d31::t_5ea8a207b28ef9 158
+  s_a33e9af8757d31::t_fc9d3fcae0a760 146-157,159-177
+docs/zh/configuration/database-configuration.mdx
+  s_a33e9af8757d31::t_5ea8a207b28ef9 217-234
+src/utils/settingsSync.ts
+  s_a33e9af8757d31::t_6906188cc2c2f3 190-196,198-199
+  s_a33e9af8757d31::t_5f78325081dadb 197
+locales/en.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1114-1115
+docs/zh/configuration/mcp-settings.mdx
+  s_a33e9af8757d31::t_5ea8a207b28ef9 826,837-838
+tests/integration/tool-policy-db.test.ts
+  s_a33e9af8757d31::t_473bf8c1cbdd8a 1-3,5-10,16,22-24,26,45,110-171
+  s_a33e9af8757d31::t_49910202d70161 25
+  s_a33e9af8757d31::t_122631078d148e 172
+src/utils/toolPolicy.ts
+  s_a33e9af8757d31::t_6906188cc2c2f3 7-18
+locales/zh.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1117-1118
+docs/configuration/database-configuration.mdx
+  s_a33e9af8757d31::t_5ea8a207b28ef9 217-234
+locales/fr.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1113-1114
+locales/tr.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1112-1113
+src/services/toolPolicyDiagnostics.ts
+  s_a33e9af8757d31::t_03b9dd67111cb8 21
+  s_a33e9af8757d31::t_05e0e218fe1b78 1-4,6-20,22-26,28-33
+  s_a33e9af8757d31::t_0f898a512fc7ea 5,27
+locales/vi.json
+  s_a33e9af8757d31::t_11480307f8fa9a 1114-1115
+tests/integration/settings-sync.test.ts
+  s_a33e9af8757d31::t_1aed0961d2f946 679-695
+tests/services/toolPolicyDiagnostics.test.ts
+  s_a33e9af8757d31::t_2b8ca7e2e4d9b2 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5874805d4a3c85209f8f2079a67fc66063f3196",
+  "prompts": {},
+  "sessions": {
+    "s_a33e9af8757d31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180ad-0906-7dd1-9b80-7a711e50258b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

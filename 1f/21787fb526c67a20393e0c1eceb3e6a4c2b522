@@ -1,0 +1,60 @@
+src/services/mcpStdioLifecycle.ts
+  s_2e022f70f9f49e::t_73ef1c447fcc21 20,100,255-257,261
+  s_2e022f70f9f49e::t_a677e86526146d 1-19,21-99,101-254,258-260,262-665
+tests/services/mcpRequestScope.test.ts
+  s_2e022f70f9f49e::t_d4ef2643429cd8 50-57
+  s_2e022f70f9f49e::t_1d3d6c0bca3114 1-49,58-59
+src/services/mcpService.ts
+  s_2e022f70f9f49e::t_e0e6cb958bd3d1 3747
+  s_2e022f70f9f49e::t_266763420ba9bf 3-14,77-81,109,111-119,180,182
+  s_2e022f70f9f49e::t_73ef1c447fcc21 3494-3504
+  s_2e022f70f9f49e::t_6dabbd4dd18d4e 68-72,1068,4245,4302,4377,4450,4704,4766
+  s_2e022f70f9f49e::t_a4688435cbe6de 56,3928,4099,4206,4775,4784
+  s_2e022f70f9f49e::t_d4ef2643429cd8 76,3962,3965,3967-3983,4738
+  s_2e022f70f9f49e::t_3da144d6a44813 1-2,48,3492-3493,3505,3508-3518,3520-3528,3530,3532-3563,3588-3589,3591-3597,3599-3606,3608-3609,3611-3614,3616,3619-3625,3627,3632-3637,3639-3652,3654-3665,3698-3704,3706-3710,3712-3717,3719-3727,3730-3737,3741,3744-3746,3748-3751,3754-3757,3760-3763,3788-3794,3797,3800-3815,3818-3824,3826,3829-3831,3833-3852,3854-3863,3866-3871,3874-3876,3878-3879,3881-3883,3885-3886,3889-3912,3914-3924,3926-3927,3930-3931,3933,3937-3961,3963-3964,3966,3984
+tests/services/mcpService-resource-templates.test.ts
+  s_2e022f70f9f49e::t_b66a010a55e55d 508-524,527-530,534-545,548-565,571-574,578-579
+  s_2e022f70f9f49e::t_d4ef2643429cd8 525-526,531-533,546-547,566-570,575-577
+src/services/mcpRequestScope.ts
+  s_2e022f70f9f49e::t_15c80101e3cae9 1-19
+src/services/mcpResources.ts
+  s_2e022f70f9f49e::t_d4ef2643429cd8 1-504
+tests/integration/mcp-request-scope.test.ts
+  s_2e022f70f9f49e::t_67c294d348a2c1 6-11
+  s_2e022f70f9f49e::t_484eaed042d22e 1-5,12-63,68-77,86-87,92-103
+  s_2e022f70f9f49e::t_d4ef2643429cd8 64-67,78-85,88-91
+src/types/mcpRouting.ts
+  s_2e022f70f9f49e::t_d4ef2643429cd8 3-27
+  s_2e022f70f9f49e::t_103cc683cfd50e 1-2
+src/services/mcpConnectionLifecycle.ts
+  s_2e022f70f9f49e::t_73ef1c447fcc21 19-22,24,26,194
+  s_2e022f70f9f49e::t_b0536f4e83a14d 1-18,23,25,27-193,195-393
+docs/agents/architecture.md
+  s_2e022f70f9f49e::t_54b9801254a0af 8
+src/services/mcpPrompts.ts
+  s_2e022f70f9f49e::t_dbfe1a12d93ed5 1-292
+src/services/mcpTools.ts
+  s_2e022f70f9f49e::t_36d08fd63c3bc7 1-1205
+src/utils/mcpRequestLogging.ts
+  s_2e022f70f9f49e::t_22d71df6b7ae72 1-142
+src/utils/mcpRouteNames.ts
+  s_2e022f70f9f49e::t_896d9a295083f6 1-64
+src/utils/toolUnavailableError.ts
+  s_2e022f70f9f49e::t_fcba62f7ef3e6f 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f21787fb526c67a20393e0c1eceb3e6a4c2b522",
+  "prompts": {},
+  "sessions": {
+    "s_2e022f70f9f49e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e9b8-7cb4-7ad0-82a6-16eb7cd28872",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

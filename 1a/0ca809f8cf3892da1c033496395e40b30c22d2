@@ -1,0 +1,23 @@
+frontend/viteBasePath.ts
+  s_dc0d0a3973c7aa::t_1cb55557e08454 1-52
+tests/frontend/viteBasePath.test.ts
+  s_dc0d0a3973c7aa::t_0e3deacc2c71ca 1-63
+frontend/vite.config.ts
+  s_dc0d0a3973c7aa::t_1cb55557e08454 5,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1a0ca809f8cf3892da1c033496395e40b30c22d2",
+  "prompts": {},
+  "sessions": {
+    "s_dc0d0a3973c7aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02920-f16a-7211-9831-239953975424",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

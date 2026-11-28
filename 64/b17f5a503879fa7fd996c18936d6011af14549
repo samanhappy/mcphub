@@ -1,0 +1,30 @@
+.github/codeql/extensions/mcphub-javascript/qlpack.yml
+  s_ddfe0ac222d71f::t_46863345d65dc0 1,5,7
+.github/codeql/extensions/mcphub-javascript/models/ssrf.yml
+  s_ddfe0ac222d71f::t_46863345d65dc0 4
+  s_ddfe0ac222d71f::t_8cc600b004e776 6
+src/clients/openapi.ts
+  s_ddfe0ac222d71f::t_659f9c0999fd7a 427,429
+  s_ddfe0ac222d71f::t_b3eef557612d86 434
+  s_ddfe0ac222d71f::t_ab6887e1e930b3 257-259,263,346-348,358,361,430-431,444,862,865
+src/utils/__tests__/ssrf.test.ts
+  s_ddfe0ac222d71f::t_ab6887e1e930b3 115,123,131,140
+src/utils/ssrf.ts
+  s_ddfe0ac222d71f::t_ab6887e1e930b3 109,124,132,149-150,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "64b17f5a503879fa7fd996c18936d6011af14549",
+  "prompts": {},
+  "sessions": {
+    "s_ddfe0ac222d71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d0c-7477-70e0-972f-5cea99edb512",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

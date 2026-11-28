@@ -1,0 +1,22 @@
+src/controllers/oauthCallbackController.ts
+  h_18676a549cd52a 332,411,502
+src/controllers/oauthServerController.ts
+  h_18676a549cd52a 619,635,650
+src/services/personalOAuthContinuationService.ts
+  h_18676a549cd52a 13-16,21-22,24,27,32,37,53,60,89,92,94-95,106-107,109-110
+src/types/index.ts
+  h_18676a549cd52a 596
+tests/integration/personal-oauth-client-signin.test.ts
+  h_18676a549cd52a 6,139,144,152,222,348,476,479,553,556,792-850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "814a112f29e4e1592a2b050df6e86f4b3f30ca2f",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

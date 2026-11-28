@@ -1,0 +1,25 @@
+tests/utils/smartRoutingPath.test.ts
+  s_dae2bd887020e1::t_d0b319ebace3fd 41-54
+  s_dae2bd887020e1::t_b701804ae70752 55-56
+tests/integration/smart-routing-path-auth.test.ts
+  s_dae2bd887020e1::t_d0b319ebace3fd 135-145
+  s_dae2bd887020e1::t_65e2e05994baa2 1,85,146-148
+src/utils/smartRoutingPath.ts
+  s_dae2bd887020e1::t_0b7cfab3c73650 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c31b1f202abc4f948a06f78ef9905c12c490a76f",
+  "prompts": {},
+  "sessions": {
+    "s_dae2bd887020e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a144fb-373a-7793-a41c-37da615b9c7e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

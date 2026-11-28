@@ -1,0 +1,79 @@
+src/utils/credentialTemplate.ts
+  s_b0941a93fde056::t_130638f046c97d 33-34,50-57,65-70,72-83,86-89,91-93,95-96,111-114,118-122,127,130-142,178-183
+  s_b0941a93fde056::t_379f7a2a84def7 29-32,35-49,58-61,84-85,90,94,97-99,115,143,147
+  s_b0941a93fde056::t_a4ab9f0fddaa00 64
+  s_b0941a93fde056::t_cdcdefe06f3698 62-63,71
+tests/integration/credential-slots-dashboard.test.ts
+  s_b0941a93fde056::t_130638f046c97d 107-130
+  s_b0941a93fde056::t_ffa88cab2dbb0a 106
+src/services/credentialBindingService.ts
+  s_b0941a93fde056::t_379f7a2a84def7 13-14,154-155,190-191,266,274
+  s_b0941a93fde056::t_130638f046c97d 103-105,195-199
+src/types/index.ts
+  s_b0941a93fde056::t_379f7a2a84def7 434-435
+locales/zh.json
+  s_b0941a93fde056::t_4ea30ee1be8977 1432
+  s_b0941a93fde056::t_cf551af8d6bbbd 1433
+locales/tr.json
+  s_b0941a93fde056::t_4ea30ee1be8977 1427
+  s_b0941a93fde056::t_a827847004cefe 1428
+docs/zh/features/per-user-credentials.mdx
+  s_b0941a93fde056::t_dd88e484c0d438 20
+  s_b0941a93fde056::t_2dd7a721dbc612 134-154
+locales/en.json
+  s_b0941a93fde056::t_4ea30ee1be8977 1430
+  s_b0941a93fde056::t_3aa5c3f423fb5c 1431
+docs/agents/typescript-and-frontend.md
+  s_b0941a93fde056::t_dd88e484c0d438 10
+frontend/src/pages/CredentialsPage.tsx
+  s_b0941a93fde056::t_130638f046c97d 60-88,150-154
+  s_b0941a93fde056::t_ad58422fa409e8 59
+tests/services/credentialBindingService.test.ts
+  s_b0941a93fde056::t_ffa88cab2dbb0a 401-412,417,421-426,436,447-449,462-474,482-483
+  s_b0941a93fde056::t_130638f046c97d 85,99,413-416,418-420,427-435,437-446,450-461,475-481,484-508
+  s_b0941a93fde056::t_e9a4ba393ad7a1 509-537
+locales/vi.json
+  s_b0941a93fde056::t_dd88e484c0d438 1430-1431
+frontend/src/utils/serverFormPayload.ts
+  s_b0941a93fde056::t_130638f046c97d 257-264
+frontend/src/components/ServerForm.tsx
+  s_b0941a93fde056::t_130638f046c97d 1803-1816,1862-1873,2113-2116
+  s_b0941a93fde056::t_2c94652aab3d28 1772,1819-1821
+  s_b0941a93fde056::t_4ea30ee1be8977 1773-1776
+  s_b0941a93fde056::t_42d475e2dec6df 1799-1802,1817-1818,1822,1855-1861
+frontend/src/types/index.ts
+  s_b0941a93fde056::t_379f7a2a84def7 197-198
+src/services/mcpService.ts
+  s_b0941a93fde056::t_379f7a2a84def7 42,1659
+src/services/serverConfigPresenter.ts
+  s_b0941a93fde056::t_130638f046c97d 52-57
+locales/es.json
+  s_b0941a93fde056::t_4ea30ee1be8977 1430
+  s_b0941a93fde056::t_9cfbf8bcf0c748 1431
+locales/fr.json
+  s_b0941a93fde056::t_4ea30ee1be8977 1428
+  s_b0941a93fde056::t_cee1d316f09d0e 1429
+docs/features/per-user-credentials.mdx
+  s_b0941a93fde056::t_e9a4ba393ad7a1 20
+  s_b0941a93fde056::t_91aa8f23b32b1d 138-158
+src/utils/upstreamError.ts
+  s_b0941a93fde056::t_130638f046c97d 27-32,37-39
+tests/services/mcpService-header-env-from-config.test.ts
+  s_b0941a93fde056::t_73bdff3fa75b39 178-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ca3a7c14437f7ecec04ee330d2f1854496d8dce",
+  "prompts": {},
+  "sessions": {
+    "s_b0941a93fde056": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16150-6ab3-7411-9989-1be3fbf43f62",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

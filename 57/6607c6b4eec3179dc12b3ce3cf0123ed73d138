@@ -1,0 +1,78 @@
+docs/api-reference/groups.mdx
+  s_df311f4983e3f3::t_7386400f5107e6 189
+src/types/index.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 49
+frontend/src/types/index.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 367
+src/services/mcpService.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 4039-4040,4042-4043,4051-4053,4167,4235,4237
+  s_df311f4983e3f3::t_ea1ed8d267bb53 1,4236
+  s_df311f4983e3f3::t_465c57f3958128 4041,5646-5652,5768-5775
+src/services/groupService.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 29
+tests/integration/settings-sync.test.ts
+  s_df311f4983e3f3::t_39e69332ff033d 184,207
+src/db/entities/Group.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 32
+src/controllers/groupController.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 38-40,77-80,270-272,274-276,494-498,500-503
+  s_df311f4983e3f3::t_51932f1d4f391b 273,499
+src/utils/groupToolNames.ts
+  s_df311f4983e3f3::t_6b5d94ed31124a 1-16,18-19,23-27
+  s_df311f4983e3f3::t_ea1ed8d267bb53 17,20-22
+frontend/src/components/ServerToolConfig.tsx
+  s_df311f4983e3f3::t_9fbde5288163c9 50,470-473,478
+  s_df311f4983e3f3::t_a2742d4d4a05c0 484-502
+src/services/smartRoutingService.ts
+  s_df311f4983e3f3::t_ea1ed8d267bb53 8,172
+  s_df311f4983e3f3::t_6b5d94ed31124a 139-140,146-151,153-164,166-168,170-171,407,531,724
+  s_df311f4983e3f3::t_dfc194d4626384 152,165,169
+docs/features/group-management.mdx
+  s_df311f4983e3f3::t_fd1f62c276c12e 653-658
+locales/en.json
+  s_df311f4983e3f3::t_03aee12d90de62 583-584
+locales/es.json
+  s_df311f4983e3f3::t_3225c9cf621b6c 583-584
+locales/fr.json
+  s_df311f4983e3f3::t_aee0ba62739a6a 582-583
+locales/tr.json
+  s_df311f4983e3f3::t_8633262bf85fd9 582-583
+locales/vi.json
+  s_df311f4983e3f3::t_6cdf75fa58aec6 583-584
+locales/zh.json
+  s_df311f4983e3f3::t_e777be2b2b5354 585-586
+tests/controllers/groupController.pinnedTools.test.ts
+  s_df311f4983e3f3::t_16ce833f9fb2d4 102-128
+tests/services/groupService-capabilities.test.ts
+  s_df311f4983e3f3::t_f9a45b4df51881 61,75
+tests/services/mcpService-group-alias.test.ts
+  s_df311f4983e3f3::t_a3f818383d7ac1 193-294
+tests/services/smartRoutingService-search-results.test.ts
+  s_df311f4983e3f3::t_cc6dd514d1dc6e 104-142
+src/utils/settingsSync.ts
+  s_bf1a2fd7198b0e::t_ef50e51ee12b38 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "576607c6b4eec3179dc12b3ce3cf0123ed73d138",
+  "prompts": {},
+  "sessions": {
+    "s_bf1a2fd7198b0e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17ae6-0a95-7d03-b8b3-c62afa42a0f8",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    },
+    "s_df311f4983e3f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17ae5-bcac-7170-8962-e2cf1f2a8499",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+src/utils/listFreshness.ts
+  s_63a8cee02d73a8::t_3fe75d213bc522 45-49
+  s_63a8cee02d73a8::t_2ae93f3537bbf7 1,6-7,13-17,19,39,50
+  s_63a8cee02d73a8::t_d7c7d1d7bdb98e 2-5,8-12,18,20-38,40-44
+docs/zh/api-reference/mcp-http.mdx
+  s_63a8cee02d73a8::t_75cf58ae576c22 51,83-100
+src/clients/legacyMcpClient.ts
+  s_63a8cee02d73a8::t_1dcc54445ff1e6 47-48,58-59,66-67,76-77
+  s_63a8cee02d73a8::t_9bd251aeb8928a 7-8,20-42
+  s_63a8cee02d73a8::t_0bd9752dba0a00 49,60,68,78
+  s_63a8cee02d73a8::t_2c4d564e5f35d3 1,43-45,50-51,61-62,69-70,79-80
+tests/services/mcpService-apps.test.ts
+  s_63a8cee02d73a8::t_5964f141588c11 261,267-272,278-285,363
+  s_63a8cee02d73a8::t_561adaa05ac563 13,240,364-371,377-385
+  s_63a8cee02d73a8::t_3fe75d213bc522 372-376
+  s_63a8cee02d73a8::t_a027278cd1b502 1,128-129,147,150,235-236,286-362
+  s_63a8cee02d73a8::t_a2cb522fbbc34d 134,234,386-396,404
+  s_63a8cee02d73a8::t_1dcc54445ff1e6 237,262-266,273-277
+  s_63a8cee02d73a8::t_cfb54b1030e8ea 397-401
+  s_63a8cee02d73a8::t_972b686bb70219 402-403
+  s_63a8cee02d73a8::t_330ce48b6cd34d 123-127
+  s_63a8cee02d73a8::t_9f812ec4ec582d 405
+src/services/mcpService.ts
+  s_63a8cee02d73a8::t_cfb54b1030e8ea 68,1104,1119,1134,5160-5163,5180-5181,5218
+  s_63a8cee02d73a8::t_1dcc54445ff1e6 1-2,4-5,1064-1067,1076-1079,4758-4764,4970-4972,4977-4979,5158,5175-5179,5184-5190,5205-5212,5217,5219,5221-5229,5233-5242
+  s_63a8cee02d73a8::t_12306cebf2055e 5166-5173
+  s_63a8cee02d73a8::t_0bd9752dba0a00 1083,4737,4745,4766-4767,4968-4969,4974-4976,4981-4985,5155-5157,5159,5164-5165,5174,5182-5183,5191-5194,5198,5204,5213,5215-5216,5220,5230-5232,5243,5258,5264,5268,5272
+  s_63a8cee02d73a8::t_8585bd39945db6 3,4765
+tests/integration/sdk-v2-compatibility.test.ts
+  s_63a8cee02d73a8::t_330ce48b6cd34d 25,38-41,97-115
+  s_63a8cee02d73a8::t_a027278cd1b502 60-65
+  s_63a8cee02d73a8::t_ff67d1e8b84a6b 78-96,116-117,133
+  s_63a8cee02d73a8::t_1dcc54445ff1e6 119-122
+  s_63a8cee02d73a8::t_d613d90e6f699c 58-59,66-77
+  s_63a8cee02d73a8::t_5964f141588c11 1,118,123-132
+  s_63a8cee02d73a8::t_98bb8afa4dc862 134
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_63a8cee02d73a8::t_75cf58ae576c22 53-59
+docs/adr/0004-positive-list-cache-hints.md
+  s_63a8cee02d73a8::t_75cf58ae576c22 3,87,90-94
+docs/api-reference/mcp-http.mdx
+  s_63a8cee02d73a8::t_75cf58ae576c22 43-52,88-111
+src/utils/listFreshness.test.ts
+  s_63a8cee02d73a8::t_2ae93f3537bbf7 1-37
+  s_63a8cee02d73a8::t_35f7c446c3ed63 38
+tests/integration/sse-service-real-client.test.ts
+  s_63a8cee02d73a8::t_75cf58ae576c22 625,648,652,678,686-691
+  s_63a8cee02d73a8::t_12306cebf2055e 1-2,33,623-624,626-647,649-651,653-677,679-685,692-704
+  s_63a8cee02d73a8::t_3db0716cb0d468 705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "55ec978caea35b4fec2ba1c5e9a02f43f185e245",
+  "prompts": {},
+  "sessions": {
+    "s_63a8cee02d73a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1020c-ea82-7211-a6ea-653a086c3172",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

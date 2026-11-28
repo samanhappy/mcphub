@@ -1,0 +1,27 @@
+src/db/groupSchema.ts
+  s_82f6cb927028a6::t_00aed74b8ebe21 1-34,66
+src/db/groupSchema.test.ts
+  s_82f6cb927028a6::t_41ee98acae93b8 1-4,48-111
+  s_82f6cb927028a6::t_e0660b7f5b7643 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7aae1d02f5c2abcfd037005b943903d4779d857",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_82f6cb927028a6": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "896e62da-28e7-47f1-8dcb-8a8447c218c8",
+        "model": "gemini-4-hydrogen"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

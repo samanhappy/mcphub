@@ -1,0 +1,190 @@
+src/dao/DatabaseDaoFactory.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 13,26,45,117-123,160
+src/controllers/credentialBindingController.ts
+  s_9cdcf612b2c1ad::t_d223077f4a7826 8-11,42-44
+  s_9cdcf612b2c1ad::t_dfe74aef2807ba 1-7,12-41,45-63
+frontend/src/pages/CredentialsPage.tsx
+  s_9cdcf612b2c1ad::t_54bc8b5b29e804 1-223
+docs/api-reference/credentials.mdx
+  s_9cdcf612b2c1ad::t_f3afe52b568d7e 1-59
+src/db/entities/Server.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 58-60,94-98
+  s_9cdcf612b2c1ad::t_a52c27ca8d91c7 99
+tests/services/userService.test.ts
+  s_9cdcf612b2c1ad::t_ad3180e24ef79a 12-13,30-36,161,168-169
+src/services/serverConfigPresenter.ts
+  s_9cdcf612b2c1ad::t_8d67cd10f74abe 29
+frontend/src/components/ServerForm.tsx
+  s_9cdcf612b2c1ad::t_f264ce307a9d09 89-97,117-118,389-417
+  s_9cdcf612b2c1ad::t_c99e336d716056 1911
+  s_9cdcf612b2c1ad::t_fee160d6658088 1873-1910,1912-1960
+  s_9cdcf612b2c1ad::t_2a83a987020b28 418
+src/dao/index.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 13
+  s_9cdcf612b2c1ad::t_d000f5006b7572 12
+tests/services/serverConfigPresenter.test.ts
+  s_9cdcf612b2c1ad::t_517fa3bacef329 68-71,116-119
+  s_9cdcf612b2c1ad::t_173635e9509e46 145-146
+tests/services/mcpService-principal-credentials.test.ts
+  s_9cdcf612b2c1ad::t_c390705690b76b 1-195,204-223,232-237,255-314
+  s_9cdcf612b2c1ad::t_8ca543f77caf33 196-197,238-254
+  s_9cdcf612b2c1ad::t_ebdbc92e34d804 198-203,224-231
+src/services/userService.ts
+  s_9cdcf612b2c1ad::t_305d8fe18833ac 2,4,122-126
+src/utils/serverConfigValidation.ts
+  s_9cdcf612b2c1ad::t_f07d1a6eb250f9 17-34,36-38
+  s_9cdcf612b2c1ad::t_c9a3b551e328de 35
+docs/docs.json
+  s_9cdcf612b2c1ad::t_f3afe52b568d7e 120,155
+tests/services/mcpService-stdio-cleanup.test.ts
+  s_9cdcf612b2c1ad::t_244415bcc7c225 87,97-99,215
+tests/fixtures/credential-stdio-server.mjs
+  s_9cdcf612b2c1ad::t_a1134a4c08689a 1-33
+docs/configuration/mcp-settings.mdx
+  s_9cdcf612b2c1ad::t_730ff33ce0e93c 84,114-149
+  s_9cdcf612b2c1ad::t_7c92167eb047fb 150
+src/dao/ServerDaoDbImpl.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 88,100-101,141,155-156,240,252-253,268,280-281
+tests/dao/credentialBindingDao.test.ts
+  s_9cdcf612b2c1ad::t_0630a88e586558 1-27,33-37,39-51,62-67
+  s_9cdcf612b2c1ad::t_e42d3f209b14c6 28,54,58
+  s_9cdcf612b2c1ad::t_efa56396cc1de4 29-32,38,52-53,55-57,59-61
+frontend/src/services/credentialService.ts
+  s_9cdcf612b2c1ad::t_54bc8b5b29e804 1-21
+tests/utils/serverConfigPersistence.test.ts
+  s_9cdcf612b2c1ad::t_97f74bc45167cd 2,251-288
+  s_9cdcf612b2c1ad::t_517fa3bacef329 5-34
+  s_9cdcf612b2c1ad::t_cab480a030aa26 289
+tests/services/credentialBindingService.test.ts
+  s_9cdcf612b2c1ad::t_e42d3f209b14c6 39
+  s_9cdcf612b2c1ad::t_0630a88e586558 1-38,40-133,139-164,186
+  s_9cdcf612b2c1ad::t_efa56396cc1de4 134-138
+  s_9cdcf612b2c1ad::t_c81bbb914b1adf 165-185
+src/db/repositories/CredentialBindingRepository.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 1-54
+locales/fr.json
+  s_9cdcf612b2c1ad::t_5d51eb6e0620ce 112-121,377,388-407
+  s_9cdcf612b2c1ad::t_b44343ffb9cb7b 408
+docs/zh/api-reference/credentials.mdx
+  s_9cdcf612b2c1ad::t_f3afe52b568d7e 1-38
+src/utils/migration.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 15,44,86,97-98,107-116
+  s_9cdcf612b2c1ad::t_d1efcd83092240 117-119
+src/utils/serverConfigPersistence.ts
+  s_9cdcf612b2c1ad::t_8d67cd10f74abe 38-80,217-219,236,252,267-268,280
+tests/controllers/credentialBindingController.test.ts
+  s_9cdcf612b2c1ad::t_0630a88e586558 1-6,8-20,22-118
+  s_9cdcf612b2c1ad::t_d223077f4a7826 7,21
+tests/dao/credentialBindingDaoDbImpl.test.ts
+  s_9cdcf612b2c1ad::t_0d59193c63ac07 1-52
+frontend/src/utils/serverFormPayload.ts
+  s_9cdcf612b2c1ad::t_db5596ea348bb2 46-55,221-227,242
+src/services/credentialBindingService.ts
+  s_9cdcf612b2c1ad::t_741f0d51ed4adf 172,177,182,244-250
+  s_9cdcf612b2c1ad::t_c832b042f9647b 94-108,173-176,206-209
+  s_9cdcf612b2c1ad::t_dfe74aef2807ba 1-93,109-156,159-170,178-181,183-205,210-243,251-264
+  s_9cdcf612b2c1ad::t_5cc2dfad1d0bfb 157-158
+  s_9cdcf612b2c1ad::t_e42d3f209b14c6 171
+tests/integration/credential-stdio-real-client.test.ts
+  s_9cdcf612b2c1ad::t_a1134a4c08689a 1-110
+src/db/entities/CredentialBinding.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 1-33
+tests/dao/serverDaoDbImpl.test.ts
+  s_9cdcf612b2c1ad::t_0d59193c63ac07 139-166
+tests/integration/credential-binding-authorization.test.ts
+  s_9cdcf612b2c1ad::t_920f34b6270203 1-11,13-67
+  s_9cdcf612b2c1ad::t_ae375deca7199d 12
+locales/zh.json
+  s_9cdcf612b2c1ad::t_5d51eb6e0620ce 112-121,380,389-408
+  s_9cdcf612b2c1ad::t_edb054beb07375 409
+frontend/src/types/index.ts
+  s_9cdcf612b2c1ad::t_db5596ea348bb2 195-222,232,393-394
+tests/services/credentialCrypto.test.ts
+  s_9cdcf612b2c1ad::t_517fa3bacef329 1-6,8-13,15-17,19-21,23-27,40-41
+  s_9cdcf612b2c1ad::t_c90867ad26720b 34
+  s_9cdcf612b2c1ad::t_320b8ef0005990 14,18,22,28-33,35-39
+  s_9cdcf612b2c1ad::t_e42d3f209b14c6 7
+locales/tr.json
+  s_9cdcf612b2c1ad::t_5d51eb6e0620ce 112-121,377,388-407
+  s_9cdcf612b2c1ad::t_ce7fabb184e42d 408
+locales/en.json
+  s_9cdcf612b2c1ad::t_5d51eb6e0620ce 112-121,376,387-406
+  s_9cdcf612b2c1ad::t_3216c23e8f3d95 407
+tests/frontend/serverFormPayload.test.ts
+  s_9cdcf612b2c1ad::t_94ea531626ea2e 4-27
+src/controllers/serverController.ts
+  s_9cdcf612b2c1ad::t_f07d1a6eb250f9 57-60,539-543,688-691,928-932
+  s_9cdcf612b2c1ad::t_4fd4549b2efa10 213
+  s_9cdcf612b2c1ad::t_9142b83ca96ecc 39,1078-1079
+  s_9cdcf612b2c1ad::t_1da02303a37dcd 1080
+docs/configuration/environment-variables.mdx
+  s_9cdcf612b2c1ad::t_730ff33ce0e93c 30,36-40
+  s_9cdcf612b2c1ad::t_f951c6254f3830 41
+src/routes/index.ts
+  s_9cdcf612b2c1ad::t_d000f5006b7572 155-158,346-350
+  s_9cdcf612b2c1ad::t_1a250dfff0d932 154
+  s_9cdcf612b2c1ad::t_1773c40cde08d4 351
+src/dao/CredentialBindingDaoDbImpl.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 1-54
+tests/controllers/serverController.test.ts
+  s_9cdcf612b2c1ad::t_244415bcc7c225 47-50,78,1319,1338
+  s_9cdcf612b2c1ad::t_5daae2eef6677f 1339-1341
+src/db/entities/index.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 13,29,46
+frontend/src/components/layout/Header.tsx
+  s_9cdcf612b2c1ad::t_1b6a4b65178e65 27
+docs/features/authentication.mdx
+  s_9cdcf612b2c1ad::t_730ff33ce0e93c 28-41
+src/dao/DaoFactory.ts
+  s_9cdcf612b2c1ad::t_d000f5006b7572 9,27,47,121-127,154,233-234
+  s_9cdcf612b2c1ad::t_88461e0cda1e8a 235-236
+frontend/src/components/layout/Sidebar.tsx
+  s_9cdcf612b2c1ad::t_1b6a4b65178e65 15,70
+frontend/src/components/ServerCard.tsx
+  s_9cdcf612b2c1ad::t_1b6a4b65178e65 19,21,155,545-556
+  s_9cdcf612b2c1ad::t_b98edb84f0d4f2 557
+.env.example
+  s_9cdcf612b2c1ad::t_730ff33ce0e93c 8-14
+src/db/repositories/index.ts
+  s_9cdcf612b2c1ad::t_71c1533d37d41f 13,29
+src/types/index.ts
+  s_9cdcf612b2c1ad::t_8d67cd10f74abe 399-430,450
+  s_9cdcf612b2c1ad::t_dfe74aef2807ba 378
+src/services/credentialCrypto.ts
+  s_9cdcf612b2c1ad::t_741f0d51ed4adf 12-15,20-21,24-27,30,46,58
+  s_9cdcf612b2c1ad::t_e42d3f209b14c6 22
+  s_9cdcf612b2c1ad::t_8d67cd10f74abe 1-11,16-19,23,28-29,31-45,47-57,59-69
+src/services/mcpService.ts
+  s_9cdcf612b2c1ad::t_5e90b8ed353a03 1862-1888,2240-2244,2256
+  s_9cdcf612b2c1ad::t_4f9bf6ad1cdbaa 1091-1094
+  s_9cdcf612b2c1ad::t_cc7ee895732180 1746-1813
+  s_9cdcf612b2c1ad::t_102c8084278352 92-93,745-803,812-893
+  s_9cdcf612b2c1ad::t_a572f2333adc20 2940
+  s_9cdcf612b2c1ad::t_d000f5006b7572 894
+  s_9cdcf612b2c1ad::t_a2f33e4c9e5122 53
+  s_9cdcf612b2c1ad::t_6e950331c90e22 3558-3562,3681-3682,3684-3693,3695-3700,3713,3741-3748,3805-3809,3909-3910,3912-3921,3923-3928,3954-3961
+  s_9cdcf612b2c1ad::t_305d8fe18833ac 804-811
+  s_9cdcf612b2c1ad::t_4fd4549b2efa10 2411-2414,2422-2424,2450
+  s_9cdcf612b2c1ad::t_ba0ba9600c8db7 1565-1578,1610,1619-1627,1633,1649-1656,1702-1704,2738
+  s_9cdcf612b2c1ad::t_9142b83ca96ecc 57,2628
+src/dao/CredentialBindingDao.ts
+  s_9cdcf612b2c1ad::t_dfe74aef2807ba 1-119
+frontend/src/App.tsx
+  s_9cdcf612b2c1ad::t_1b6a4b65178e65 25,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "eb62545029c04ed9a553308d6c5ad13aa2a546ae",
+  "prompts": {},
+  "sessions": {
+    "s_9cdcf612b2c1ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06288-430e-7a60-8816-c3802505d28b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

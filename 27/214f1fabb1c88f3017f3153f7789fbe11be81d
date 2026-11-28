@@ -1,0 +1,32 @@
+tests/services/mcpService-onDemand.test.ts
+  s_1cea7af971a5ce::t_e4b4ae75255dd7 263-264,268
+  s_1cea7af971a5ce::t_afb916c8cdf0aa 260-262
+  s_1cea7af971a5ce::t_6d0c35322a10d3 265-267
+  s_1cea7af971a5ce::t_8f1009f26ef7da 269-271
+  s_1cea7af971a5ce::t_e3e3489d45162a 183,204-205,242-259,272-280,366-371,396-397
+src/db/replicaSchema.ts
+  s_1cea7af971a5ce::t_d074792d74a8cf 24
+src/services/mcpService.ts
+  s_1cea7af971a5ce::t_d074792d74a8cf 6234
+  s_1cea7af971a5ce::t_e4b4ae75255dd7 6235-6256
+tests/services/mcpService-disabled-tool-execution.test.ts
+  s_1cea7af971a5ce::t_0ccc423f3637a5 183-190
+tests/integration/replica-config.test.ts
+  s_1cea7af971a5ce::t_9c3852075a4753 2-10,34,52,61-72,92,97,137-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27214f1fabb1c88f3017f3153f7789fbe11be81d",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

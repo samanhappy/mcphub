@@ -1,0 +1,52 @@
+docs/features/file-staging.mdx
+  h_18676a549cd52a 36,49-50,63,65,281
+docs/zh/features/file-staging.mdx
+  h_18676a549cd52a 36,49-50,63,65,281
+frontend/src/components/ServerCard.tsx
+  h_18676a549cd52a 2,216-219,967-969,1109-1110,1113
+frontend/src/components/ServerStagingEditor.tsx
+  h_18676a549cd52a 1-230
+frontend/src/components/ui/ToolCard.tsx
+  h_18676a549cd52a 26,30,38-39,46,64-65,68,311-313,480-492
+frontend/src/components/ui/ToolFileStagingEditor.tsx
+  h_18676a549cd52a 1-272
+frontend/src/services/toolService.ts
+  h_18676a549cd52a 1-5,192-266
+frontend/src/utils/fileStaging.ts
+  h_18676a549cd52a 1-246
+locales/en.json
+  h_18676a549cd52a 409-423,500-501,941-958
+locales/es.json
+  h_18676a549cd52a 409-423,500-501,941-958
+locales/fr.json
+  h_18676a549cd52a 409-423,501-502,940-957
+locales/tr.json
+  h_18676a549cd52a 409-423,501-502,940-957
+locales/vi.json
+  h_18676a549cd52a 409-423,500-501,941-958
+locales/zh.json
+  h_18676a549cd52a 409-423,502-503,943-960
+src/controllers/serverController.ts
+  h_18676a549cd52a 1839,1845,1860-1861,1865-1876,1976-1977,2162-2167,2197-2203
+src/services/mcpService.ts
+  h_18676a549cd52a 3142-3143,3159
+tests/controllers/serverController-fileStaging.test.ts
+  h_18676a549cd52a 355-409,501-561
+tests/controllers/serverController-hiddenParams.test.ts
+  h_18676a549cd52a 446-489
+tests/frontend/fileStaging.test.ts
+  h_18676a549cd52a 1-123
+tests/services/serverStagingProjection.test.ts
+  h_18676a549cd52a 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3da006f746029a3375bc213c4d32ace06bdef3bc",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

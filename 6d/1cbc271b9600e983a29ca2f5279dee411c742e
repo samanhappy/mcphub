@@ -1,0 +1,19 @@
+frontend/src/components/ui/Pagination.tsx
+  s_a8c0a1ebf6559b::t_52397b0cf73a3d 90,94,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d1cbc271b9600e983a29ca2f5279dee411c742e",
+  "prompts": {},
+  "sessions": {
+    "s_a8c0a1ebf6559b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18218-0cac-7442-89e1-633a06a0b17e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+locales/tr.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 792
+locales/es.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 793
+locales/en.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 793
+locales/vi.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 793
+frontend/src/components/MarketServerCard.tsx
+  s_005b580fa65ef1::t_531a800a534ae1 17,34,95-99
+frontend/src/pages/HostedMarket.tsx
+  s_005b580fa65ef1::t_765355a31435d7 550,635-642
+  s_005b580fa65ef1::t_531a800a534ae1 522,544,546-549,551,556,571,644,651
+locales/fr.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 792
+locales/zh.json
+  s_005b580fa65ef1::t_124aa436f1c0bf 795
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e8a066df9cadf8462acdc76efb896f05c4981c7",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_005b580fa65ef1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edea-20cf-7a62-9a2e-bc7291e1d7e8",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

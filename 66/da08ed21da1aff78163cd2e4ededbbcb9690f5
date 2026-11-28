@@ -1,0 +1,29 @@
+src/cli/http.ts
+  s_b0bba458af920b::t_10c0fcca290cb9 106-156
+  s_b0bba458af920b::t_9205c468723129 1
+tests/integration/cli-mcp-call.test.ts
+  s_b0bba458af920b::t_a42cb78c9cee61 1-10,12-28,30,32-60,62-71,73-83,85-88,90-94,96-106,108-114,116-117,119-120,122-128,130-140
+  s_b0bba458af920b::t_b5dba6e3442bc9 11,29,31,61,72,84,89,95,107,115,118,121,129
+docs/features/cli.mdx
+  s_b0bba458af920b::t_e0befbabeab63b 199-200
+tests/cli/commands/call.test.ts
+  s_b0bba458af920b::t_176dda8716ad95 7-26,49,55,61,67,73,93
+tests/cli/http.test.ts
+  s_b0bba458af920b::t_52d771012d4ad4 9-12,21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66da08ed21da1aff78163cd2e4ededbbcb9690f5",
+  "prompts": {},
+  "sessions": {
+    "s_b0bba458af920b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a120ac-a1e9-79b3-8725-2e4a52b186fd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

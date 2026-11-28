@@ -1,0 +1,150 @@
+tests/services/mcpService-description-override-embedding.test.ts
+  s_82148e74e59332::t_55620470e0f15c 14
+  s_82148e74e59332::t_b05a7d938988cc 11
+  s_82148e74e59332::t_9cd1627433a2ca 10,17-18
+.github/workflows/ci.yml
+  s_82148e74e59332::t_b05a7d938988cc 18
+tests/services/mcpService-reconnect.test.ts
+  s_82148e74e59332::t_55620470e0f15c 43-45
+  s_82148e74e59332::t_b05a7d938988cc 2,23-42,162
+  s_82148e74e59332::t_a305fd9547ed6e 46-47,49
+tests/services/mcpService-reinit-race.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 10
+  s_82148e74e59332::t_c28ee334a3235d 9,19
+tests/services/mcpService-onDemand.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 28
+  s_82148e74e59332::t_c2754a86929a4f 27,34
+README.zh.md
+  s_82148e74e59332::t_b05a7d938988cc 58
+src/services/mcpOAuthProvider.ts
+  s_82148e74e59332::t_50be5050793267 4
+  s_82148e74e59332::t_b05a7d938988cc 22
+docs/zh/development.mdx
+  s_82148e74e59332::t_b05a7d938988cc 10,20,33
+docs/adr/0003-mcp-2026-07-28-staged-upgrade-path.md
+  s_82148e74e59332::t_b05a7d938988cc 6,19,24-31
+docs/agents/development.md
+  s_82148e74e59332::t_b05a7d938988cc 93
+src/clients/legacyMcpClient.ts
+  s_82148e74e59332::t_b05a7d938988cc 32-34
+  s_82148e74e59332::t_899020eababfc1 1-31,35-44
+tests/integration/personal-credentials.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 16-18
+  s_82148e74e59332::t_35aa5f7f7dace4 387,390,395
+tests/services/mcpService-startup-concurrency.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 10
+  s_82148e74e59332::t_657a2c9e463f72 9,19
+tests/services/mcpService-server-metadata.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 13
+  s_82148e74e59332::t_55620470e0f15c 15-16
+  s_82148e74e59332::t_c682981f2f8de4 12,19
+tests/services/mcpService-toggle.test.ts
+  s_82148e74e59332::t_142c88de38efc0 10
+  s_82148e74e59332::t_9de4664962719c 9,19
+tests/services/mcpService-request-options.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 11
+  s_82148e74e59332::t_55620470e0f15c 13-14
+  s_82148e74e59332::t_9ea944ce0b8cea 10,17
+src/services/mcpService.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-2,9-13,19,21-22,25-33,95-100,952,1064-1066,1390-1399,1403,1449-1453,1461-1463,1488-1492,1500-1502,1582-1588,1622,1627,1817-1828,2449-2450,2509-2511,3161,3934-3938,4140-4144,4669
+  s_82148e74e59332::t_e9c12f82c6cf22 4670-4674,4686-4690,4693,4786,4926,4938-4944
+src/services/sseService.ts
+  s_82148e74e59332::t_b05a7d938988cc 4-6,61-62
+  s_82148e74e59332::t_7c0b8f40c68422 106,767,775,821,827,889,901,1114
+tests/services/mcpService-apps.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-2,26-27
+  s_82148e74e59332::t_55620470e0f15c 32-33
+  s_82148e74e59332::t_6c79445c31ecde 36
+src/types/index.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-7,442-444
+tests/integration/sdk-v2-compatibility.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 18,32-105,110
+  s_82148e74e59332::t_a762a8f37b1dd1 1-17,19-31,106-109,111-112
+tests/services/keepAliveService.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 1,67-69
+tests/services/mcpService-stdio-cleanup.test.ts
+  s_82148e74e59332::t_50be5050793267 247
+  s_82148e74e59332::t_b05a7d938988cc 3-5,25-26,35,154-161,278-282,284-286,311-319
+docs/zh/development/getting-started.mdx
+  s_82148e74e59332::t_b05a7d938988cc 14
+.pnpmfile.cjs
+  s_82148e74e59332::t_670329914e6bd7 1-12
+README.md
+  s_82148e74e59332::t_b05a7d938988cc 59
+src/utils/mcpProtocol.ts
+  s_82148e74e59332::t_899020eababfc1 1-8
+src/services/proxy.ts
+  s_82148e74e59332::t_b05a7d938988cc 9
+tests/services/mcpService-source-ip.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 9
+  s_82148e74e59332::t_109145fdfe64d6 8,15
+src/services/oauthService.ts
+  s_82148e74e59332::t_b05a7d938988cc 1
+docs/zh/installation.mdx
+  s_82148e74e59332::t_b05a7d938988cc 10,516-517
+docs/development/getting-started.mdx
+  s_82148e74e59332::t_b05a7d938988cc 14
+tests/services/mcpService-targeted-reload.test.ts
+  s_82148e74e59332::t_55620470e0f15c 22-23
+  s_82148e74e59332::t_b05a7d938988cc 11
+  s_82148e74e59332::t_a0ef5c3b9b80dd 10,34
+README.fr.md
+  s_82148e74e59332::t_b05a7d938988cc 56
+tests/services/mcpService-header-env-from-config.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-2,72-73
+  s_82148e74e59332::t_45762a8f559857 84
+tests/services/mcpService-null-tool-result.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 20
+  s_82148e74e59332::t_6d700779705788 19,26
+docs/installation.mdx
+  s_82148e74e59332::t_b05a7d938988cc 10,543-544
+tests/fixtures/credential-server.mjs
+  s_82148e74e59332::t_b05a7d938988cc 1-2,14,22-24
+  s_82148e74e59332::t_7aa92404b38e04 28,31,34,37
+tests/services/mcpService-passthrough-headers.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-14,94-95
+  s_82148e74e59332::t_747e8d37bd24ec 106,110-113,171-187
+tests/services/mcpService-oauth-static-auth-header.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 1-13,82-83
+tests/services/mcpService-transport-error.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 10
+  s_82148e74e59332::t_3b5cc5cf0fa441 9,19
+tests/services/mcpService-per-session-client.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 12,174-179,311
+  s_82148e74e59332::t_55620470e0f15c 26-27
+  s_82148e74e59332::t_38fb7f9517df09 11,63,332
+src/services/sseService.test.ts
+  s_82148e74e59332::t_b05a7d938988cc 27-30,109,117-118,123,824,884,886-888
+  s_82148e74e59332::t_f97dafce6b9240 1022
+src/utils/jsonSchemaValidator.ts
+  s_82148e74e59332::t_a605ccdeb97ea0 12-14
+  s_82148e74e59332::t_b05a7d938988cc 5-6,25
+src/services/keepAliveService.ts
+  s_82148e74e59332::t_b05a7d938988cc 1
+Dockerfile
+  s_82148e74e59332::t_4909e372ce6b2b 46
+package.json
+  s_82148e74e59332::t_4c0c1710ecbeb6 54-57,64-65,104,158
+pnpm-lock.yaml
+  s_82148e74e59332::t_c8b216921c3b30 52-53,63,67-78,97-102,212-214,1195-1212,1223-1236,6055,6384-6404,6418,6427-6443
+tests/integration/sse-service-real-client.test.ts
+  s_82148e74e59332::t_28e9859225fefa 17-20
+tests/services/keepalive.test.ts
+  s_82148e74e59332::t_e40386053a638e 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e72cbddffe2a3692a003061584408f1e079231c9",
+  "prompts": {},
+  "sessions": {
+    "s_82148e74e59332": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e2c1-fad3-70a3-b52f-3e471837d95c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

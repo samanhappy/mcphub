@@ -1,0 +1,67 @@
+frontend/src/App.tsx
+  s_c531b7d369418f::t_d1e7f9a413a9ad 20,76
+locales/fr.json
+  s_c531b7d369418f::t_1cba034863899b 1573-1574,1584
+  s_c531b7d369418f::t_98e02d95b9ae60 1596-1597
+  s_c531b7d369418f::t_362b07cca9f22b 1575-1583,1585-1595
+docs/agents/typescript-and-frontend.md
+  s_c531b7d369418f::t_d1e7f9a413a9ad 11-16
+locales/en.json
+  s_c531b7d369418f::t_98e02d95b9ae60 1598-1599
+  s_c531b7d369418f::t_1cba034863899b 1575-1597
+locales/es.json
+  s_c531b7d369418f::t_1cba034863899b 1575-1576
+  s_c531b7d369418f::t_98e02d95b9ae60 1598-1599
+  s_c531b7d369418f::t_362b07cca9f22b 1577-1597
+locales/vi.json
+  s_c531b7d369418f::t_1cba034863899b 1575-1576
+  s_c531b7d369418f::t_362b07cca9f22b 1577-1597
+  s_c531b7d369418f::t_98e02d95b9ae60 1598-1599
+locales/zh.json
+  s_c531b7d369418f::t_1cba034863899b 1577-1599
+  s_c531b7d369418f::t_98e02d95b9ae60 1600-1601
+frontend/src/pages/SettingsPage.tsx
+  s_c531b7d369418f::t_7103a95b057ec5 1172,1175
+  s_c531b7d369418f::t_98e02d95b9ae60 1173-1174,1176-1179
+  s_c531b7d369418f::t_d1e7f9a413a9ad 3510
+  s_c531b7d369418f::t_33c024aebc3c3b 671,679,890,1138,3496-3509,3511-3544
+docs/features/oauth.mdx
+  s_c531b7d369418f::t_85d968e3813672 270-272
+  s_c531b7d369418f::t_abfc8e3bec9149 248
+frontend/src/components/layout/Header.tsx
+  s_c531b7d369418f::t_abfc8e3bec9149 25
+docs/zh/features/oauth.mdx
+  s_c531b7d369418f::t_85d968e3813672 270-272
+  s_c531b7d369418f::t_7103a95b057ec5 248
+frontend/src/pages/OAuthApprovalsPage.tsx
+  s_c531b7d369418f::t_1cba034863899b 1-37,39-68,70-72,75-77,80,82,84,86-97,99-108,110-113,115-120,122-135,137,139-143,145-151
+  s_c531b7d369418f::t_15f5598e3b551a 121,138
+  s_c531b7d369418f::t_bf5f50e71c77a9 38,69,73-74,78-79,81,83,85,98,109,114,136,144
+locales/tr.json
+  s_c531b7d369418f::t_1cba034863899b 1572-1573
+  s_c531b7d369418f::t_362b07cca9f22b 1574-1594
+  s_c531b7d369418f::t_98e02d95b9ae60 1595-1596
+frontend/src/types/index.ts
+  s_c531b7d369418f::t_1cba034863899b 960-969
+frontend/src/components/ui/UserProfileMenu.tsx
+  s_c531b7d369418f::t_d1e7f9a413a9ad 147-155
+  s_c531b7d369418f::t_c52355bc08f2b9 146
+frontend/src/contexts/SettingsContext.tsx
+  s_c531b7d369418f::t_d1e7f9a413a9ad 85-86,228-229,557-558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fc7e6305ddc568f236a36afbaba1254a61b0df0",
+  "prompts": {},
+  "sessions": {
+    "s_c531b7d369418f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1abb5-f94f-7b62-b626-25b8d0a5a199",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

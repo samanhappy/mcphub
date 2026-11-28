@@ -1,0 +1,16 @@
+src/controllers/oauthCallbackController.ts
+  h_18676a549cd52a 42,325-326,333,403-404,413,504
+src/services/personalOAuthContinuationService.ts
+  h_18676a549cd52a 14,28,31,33,38,40,42,44,47,50-54,57-64,66,69-73,120-128,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cb4cd6bd984e27ff500a38d3c03ef4c775179d2",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

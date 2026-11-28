@@ -1,0 +1,24 @@
+tests/integration/personal-credentials.test.ts
+  s_21ae9117f46c87::t_2b673abf9e951f 15,1266-1400
+  s_21ae9117f46c87::t_0737ce857c17ac 1401
+tests/utils/upstreamError.test.ts
+  s_21ae9117f46c87::t_2b673abf9e951f 50-77
+src/utils/upstreamError.ts
+  s_21ae9117f46c87::t_d3599f00799994 95-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d03dd3cd4778e4667a6b00be0061ed6d099cd9cc",
+  "prompts": {},
+  "sessions": {
+    "s_21ae9117f46c87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1be23-5490-7862-a80e-88398395270a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

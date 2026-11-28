@@ -1,0 +1,49 @@
+docs/configuration/mcp-settings.mdx
+  s_b3348a37a38314::t_f8066cb5a63d49 888-905,907,909
+  s_b3348a37a38314::t_9d7c42c7961e90 906,908
+src/types/index.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 284
+tests/integration/ssrf-allowed-cidrs.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 14-19,86-101
+  s_b3348a37a38314::t_5c1a8bcb08e4a4 102
+tests/dao/SystemConfigDao.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 49-55
+tests/services/mcpService-header-env-from-config.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 1-5,215-225
+  s_b3348a37a38314::t_d4320cf479d89b 226
+src/controllers/serverController.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 4,2106-2113,2116,2889-2897
+tests/controllers/serverController.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 895-923
+src/utils/ssrf.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 24,44-79,81-86,88,186-190,194-197,232,267,287,292,294,296,300,317-322
+src/services/mcpService.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 1776,1790-1792,1833-1835
+docs/zh/configuration/mcp-settings.mdx
+  s_b3348a37a38314::t_9d7c42c7961e90 808,810
+  s_b3348a37a38314::t_f8066cb5a63d49 790-807,809,811
+tests/integration/system-config-authorization.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 126-129
+src/db/entities/SystemConfig.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 19
+tests/dao/SystemConfigDaoDbImpl.test.ts
+  s_b3348a37a38314::t_f8066cb5a63d49 11
+src/utils/__tests__/ssrf-fake-ip.test.ts
+  s_b3348a37a38314::t_56d379282dc97f 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d17de609d179735b6ab20709fee1a1679d97cc55",
+  "prompts": {},
+  "sessions": {
+    "s_b3348a37a38314": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a199e2-a971-7022-a1b8-4e4c7cd094cf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

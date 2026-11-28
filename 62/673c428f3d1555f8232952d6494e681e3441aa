@@ -1,0 +1,62 @@
+frontend/src/App.tsx
+  h_18676a549cd52a 7,13-18,55-69,71-80,82-113,116-122
+frontend/src/components/PermissionChecker.tsx
+  h_18676a549cd52a 3,41-44
+frontend/src/components/ProtectedRoute.tsx
+  h_18676a549cd52a 5,9-10,14-16,29-32,36
+frontend/src/components/index.ts
+  h_18676a549cd52a 3-4,14-17
+frontend/src/components/layout/Header.tsx
+  h_18676a549cd52a 3,5,10,16,22-26,31,35,37,40-70,116-117,126-127,129
+frontend/src/components/layout/Sidebar.tsx
+  h_18676a549cd52a 1,3,5-6,8,10,12-16,18,22-27,33-34,37-49,51-55,64,67-72,74-96,99-161,163-182,184-187,189-266,269-270
+frontend/src/components/ui/AboutDialog.tsx
+  h_18676a549cd52a 2,97-101,106,260-261
+frontend/src/components/ui/SponsorDialog.tsx
+  h_18676a549cd52a 1-2,14-22,25-37,39,41,44,47,51,53-60,63-65,70,81-82
+frontend/src/components/ui/UserProfileMenu.tsx
+  h_18676a549cd52a 1,3-13,26-30,35,38-50,53,61-62,65-68,84,87-96,98-99,101,106-112,114,117,119-139,141-142,144,148-149,170,172-185,187-189,192-195,199-214,219-276,278-279,281,283-284,287,289-290,292,294-295,302-304,306-307,311,313,315-316,318-322,324-325
+frontend/src/components/ui/WeChatDialog.tsx
+  h_18676a549cd52a 1-2,14-22,25-37,39,41,44,47,51-60,68-69
+frontend/src/constants/permissions.ts
+  h_18676a549cd52a 3-4
+frontend/src/contexts/GroupContext.tsx
+  h_18676a549cd52a 1-256
+frontend/src/hooks/useGroupData.ts
+  h_18676a549cd52a 1,3
+frontend/src/layouts/MainLayout.tsx
+  h_18676a549cd52a 1-2,8-19,30-64,66-68,72-80
+frontend/src/utils/navigationPermissions.ts
+  h_18676a549cd52a 1,3-18
+frontend/src/utils/navigationRegistry.ts
+  h_18676a549cd52a 1-273
+locales/en.json
+  h_18676a549cd52a 571-578
+locales/es.json
+  h_18676a549cd52a 571-578
+locales/fr.json
+  h_18676a549cd52a 572-579
+locales/tr.json
+  h_18676a549cd52a 572-579
+locales/vi.json
+  h_18676a549cd52a 571-578
+locales/zh.json
+  h_18676a549cd52a 573-580
+tests/frontend/navigationLocales.test.ts
+  h_18676a549cd52a 1-39
+tests/frontend/navigationPermissions.test.ts
+  h_18676a549cd52a 1-29,32-56,59-68
+tests/frontend/navigationRegistry.test.ts
+  h_18676a549cd52a 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62673c428f3d1555f8232952d6494e681e3441aa",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

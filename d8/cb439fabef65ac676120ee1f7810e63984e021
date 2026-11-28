@@ -1,0 +1,14 @@
+frontend/src/pages/LoginPage.tsx
+  h_18676a549cd52a 249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d8cb439fabef65ac676120ee1f7810e63984e021",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+src/utils/protectedResource.ts
+  s_2c8ef62f350b5a::t_a22197f99029f4 6-9,11,15-23
+tests/controllers/oauthServerController.test.ts
+  s_2c8ef62f350b5a::t_588a0c493ab780 57-64,143-169
+  s_2c8ef62f350b5a::t_06f0738f6b89b2 170-171
+tests/integration/protected-resource-metadata.test.ts
+  s_2c8ef62f350b5a::t_a22197f99029f4 25-29,51,82-84,86-100,103-106
+  s_2c8ef62f350b5a::t_405242d39ba5e8 77-81,85,101-102,107-118
+src/controllers/oauthServerController.ts
+  s_2c8ef62f350b5a::t_a22197f99029f4 14,157,668,716,722
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfea1b7f668c28ead60dad846cc9aa6cd0c6f33b",
+  "prompts": {},
+  "sessions": {
+    "s_2c8ef62f350b5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13946-f691-7600-8315-fbb8c2657183",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

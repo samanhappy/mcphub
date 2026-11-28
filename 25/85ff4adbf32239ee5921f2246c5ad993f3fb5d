@@ -1,0 +1,19 @@
+.agents/settings.local.json
+  s_54c82856eacd9e::t_e89534f88b99ac 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2585ff4adbf32239ee5921f2246c5ad993f3fb5d",
+  "prompts": {},
+  "sessions": {
+    "s_54c82856eacd9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6febb2d-d79d-42c0-948a-0418312a74f1",
+        "model": "unknown"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

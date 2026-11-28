@@ -1,0 +1,25 @@
+frontend/src/pages/SettingsPage.tsx
+  s_a710827f26ec15::t_b245446f2ef805 2193
+  s_a710827f26ec15::t_375ac88a69b0ff 315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bad11a5d698b8c6aa43cda50159d07feae2350c",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a710827f26ec15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18018-03b3-7242-bc5b-f3371319806f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+src/utils/migration.ts
+  s_b02333119f2673::t_aa317138934057 23,67-68,122-123,127,353
+tests/integration/settings-sync.test.ts
+  s_b02333119f2673::t_234a8e11086c53 7,47-65,71-72,77-78,83,86,265,267-268,280-289,291-297,299-305,307,312-317
+  s_b02333119f2673::t_aa317138934057 66-70,73-76,79-82,266,269-279,290,298,306,308-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9f5053b97c6594c9a81c4e730740a9a64ca9048",
+  "prompts": {},
+  "sessions": {
+    "s_b02333119f2673": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a110a2-44e9-7022-9197-7582b3531f75",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
