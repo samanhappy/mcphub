@@ -12,6 +12,7 @@ import {
   getAdminCount,
   checkReservedUsername,
 } from '../services/userService.js';
+import type { RequestPrincipal } from '../services/authorizationService.js';
 import { validatePasswordStrength } from '../utils/passwordValidation.js';
 
 // Admin permission check middleware function
@@ -209,7 +210,7 @@ export const updateExistingUser = async (req: Request, res: Response): Promise<v
     const updatedUser = await updateUser(
       username,
       updateData,
-      (req as Request & { user?: { username: string } }).user?.username,
+      (req as Request & { user?: RequestPrincipal }).user,
     );
     if (!updatedUser) {
       res.status(404).json({
@@ -253,7 +254,7 @@ export const deleteExistingUser = async (req: Request, res: Response): Promise<v
     }
 
     // Check if trying to delete the current admin user
-    const currentUser = (req as any).user;
+    const { user: currentUser } = req as Request & { user: RequestPrincipal };
     if (currentUser.username === username) {
       res.status(400).json({
         success: false,
@@ -262,7 +263,7 @@ export const deleteExistingUser = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const success = await deleteUser(username, currentUser.username);
+    const success = await deleteUser(username, currentUser);
     if (success) await deleteCredentialBindings({ username });
     if (!success) {
       res.status(400).json({

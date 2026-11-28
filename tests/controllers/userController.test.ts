@@ -125,9 +125,13 @@ describe('userController', () => {
 
       await updateExistingUser(req, res);
 
-      expect(mockUpdateUser).toHaveBeenCalledWith('testuser', {
-        email: 'updated@example.com',
-      });
+      expect(mockUpdateUser).toHaveBeenCalledWith(
+        'testuser',
+        {
+          email: 'updated@example.com',
+        },
+        { username: 'admin', isAdmin: true },
+      );
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -153,10 +157,14 @@ describe('userController', () => {
 
       await updateExistingUser(req, res);
 
-      expect(mockUpdateUser).toHaveBeenCalledWith('testuser', {
-        isAdmin: true,
-        email: 'admin@example.com',
-      });
+      expect(mockUpdateUser).toHaveBeenCalledWith(
+        'testuser',
+        {
+          isAdmin: true,
+          email: 'admin@example.com',
+        },
+        { username: 'admin', isAdmin: true },
+      );
     });
 
     it('should require at least one field to update', async () => {
@@ -198,7 +206,11 @@ describe('admin-managed user groups', () => {
       makeReq({ params: { username: 'alice' }, body: { userGroups: [' readers ', 'readers'] } }),
       res,
     );
-    expect(mockUpdateUser).toHaveBeenCalledWith('alice', { userGroups: ['readers'] });
+    expect(mockUpdateUser).toHaveBeenCalledWith(
+      'alice',
+      { userGroups: ['readers'] },
+      { username: 'admin', isAdmin: true },
+    );
     expect(res.status).not.toHaveBeenCalledWith(400);
   });
   it.each([null, 'readers', [7], ['']])('rejects malformed membership: %j', async (userGroups) => {

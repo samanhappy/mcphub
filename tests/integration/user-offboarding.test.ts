@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import {
   IUser,
+  BearerKey,
   IOAuthToken,
   IGroup,
   ServerConfig,
@@ -13,6 +14,8 @@ import {
 } from '../../src/types/index.js';
 
 let users: IUser[];
+let systemKeys: BearerKey[];
+let skipAuth: boolean;
 let approvals: OAuthClientApproval[];
 let passkeys: UserPasskey[];
 let tokens: IOAuthToken[];
@@ -62,7 +65,7 @@ jest.mock('../../src/dao/index.js', () => ({
       return user;
     },
   }),
-  getBearerKeyDao: () => ({ findEnabled: async () => [], deleteByOwner: async () => 0 }),
+  getBearerKeyDao: () => ({ findEnabled: async () => systemKeys, deleteByOwner: async () => 0 }),
   getOAuthClientDao: () => ({ findByClientId: async () => client }),
   getOAuthTokenDao: () => ({
     findByAccessToken: async (value: string) => tokens.find((token) => token.accessToken === value),
@@ -90,7 +93,9 @@ jest.mock('../../src/dao/index.js', () => ({
     update: async (name: string, data: Partial<ServerConfig>) =>
       Object.assign(servers.find((s) => s.name === name)!, data),
   }),
-  getSystemConfigDao: () => ({ get: async () => ({ oauthServer: { enabled: true } }) }),
+  getSystemConfigDao: () => ({
+    get: async () => ({ oauthServer: { enabled: true }, routing: { skipAuth } }),
+  }),
 }));
 jest.mock('../../src/dao/DaoFactory.js', () => ({
   getSystemConfigDao: () => ({ get: async () => ({ oauthServer: { enabled: true } }) }),
@@ -150,6 +155,8 @@ describe('local user offboarding', () => {
       { username: 'admin', password: await bcrypt.hash('admin-password', 4), isAdmin: true },
       { username: 'victim', password: await bcrypt.hash('victim-password', 4), isAdmin: false },
     ];
+    systemKeys = [];
+    skipAuth = false;
     tokens = [];
     approvals = [];
     passkeys = [
@@ -244,6 +251,27 @@ describe('local user offboarding', () => {
     expect(response.status).toBe(200);
     return response.body;
   };
+
+  it.each(['system key', 'skipAuth'])('allows %s to manage users', async (mode) => {
+    skipAuth = mode === 'skipAuth';
+    const headers: Record<string, string> = skipAuth ? {} : { Authorization: 'Bearer system-key' };
+    if (!skipAuth) {
+      systemKeys.push({
+        id: 'system-key',
+        name: 'System key',
+        enabled: true,
+        kind: 'system',
+        accessType: 'all',
+        token: 'system-key',
+        owner: 'legacy-owner',
+      });
+    }
+
+    await request(app).put('/api/users/victim').set(headers).send({ disabled: true }).expect(200);
+    expect(users.find(({ username }) => username === 'victim')?.disabled).toBe(true);
+    await request(app).delete('/api/users/victim').set(headers).expect(200);
+    await request(app).put('/api/users/admin').set(headers).send({ disabled: true }).expect(409);
+  });
 
   it('keeps an enabled admin across concurrent requests to suspend two admins', async () => {
     users[1].isAdmin = true;

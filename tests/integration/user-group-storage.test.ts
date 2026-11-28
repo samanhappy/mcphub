@@ -115,8 +115,8 @@ dbSuite('user-group PostgreSQL storage', () => {
     await users.create({ username: adminA, password: 'hash', isAdmin: true });
     await users.create({ username: adminB, password: 'hash', isAdmin: true });
     const results = await Promise.allSettled([
-      updateUser(adminB, { disabled: true }, adminA),
-      updateUser(adminA, { isAdmin: false }, adminB),
+      updateUser(adminB, { disabled: true }, { username: adminA }),
+      updateUser(adminA, { isAdmin: false }, { username: adminB }),
     ]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     const enabledAdmins = (await users.findAdmins()).filter((user) => !user.disabled);

@@ -5,6 +5,7 @@ import { UserDaoDbImpl } from '../dao/UserDaoDbImpl.js';
 import { revokeUserAuthorizationCodes, revokeUserTokens } from '../models/OAuth.js';
 import { IUser } from '../types/index.js';
 import { getBearerKeyDao, getUserDao, getGroupDao, getServerDao } from '../dao/index.js';
+import type { RequestPrincipal } from './authorizationService.js';
 import { logger } from '../utils/logger.js';
 
 // Get all users
@@ -116,20 +117,20 @@ export const updateUser = async (
     userGroups?: string[];
     disabled?: boolean;
   },
-  actor?: string,
+  actor?: RequestPrincipal,
 ): Promise<IUser | null> => {
   return withUserAdminLock(async () => {
     const userDao = getUserDao();
     const user = await userDao.findByUsername(username);
     if (!user) return null;
 
-    if (actor) {
-      const currentActor = await userDao.findByUsername(actor);
+    if (actor && actor.credentialEligible !== false) {
+      const currentActor = await userDao.findByUsername(actor.username);
       if (!currentActor?.isAdmin || currentActor.disabled) {
         throw new UserAdminConflict('Administrator access changed');
       }
     }
-    if (data.disabled && actor === username) {
+    if (data.disabled && actor?.username === username) {
       throw new UserAdminConflict('Cannot suspend your own account');
     }
     if (data.disabled || data.isAdmin === false) await requireOtherEnabledAdmin(user);
@@ -176,7 +177,7 @@ export const updateUser = async (
       });
       if (!updated) return null;
       logger.log('User account status changed', {
-        actor,
+        actor: actor?.username,
         target: username,
         disabled: data.disabled,
       });
@@ -188,11 +189,11 @@ export const updateUser = async (
 };
 
 // Delete a user
-export const deleteUser = async (username: string, actor?: string): Promise<boolean> => {
+export const deleteUser = async (username: string, actor?: RequestPrincipal): Promise<boolean> => {
   return withUserAdminLock(async () => {
     const userDao = getUserDao();
-    if (actor) {
-      const currentActor = await userDao.findByUsername(actor);
+    if (actor && actor.credentialEligible !== false) {
+      const currentActor = await userDao.findByUsername(actor.username);
       if (!currentActor?.isAdmin || currentActor.disabled) return false;
     }
     const userToDelete = (await userDao.findAll()).find((user) => user.username === username);
