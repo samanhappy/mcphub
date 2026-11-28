@@ -61,7 +61,19 @@ import {
 } from './serverConfigEnvironment.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { isHostedSkillUri, skillsAvailable } from './hostedSkillCatalog.js';
-import { readHostedSkillResource, registerSkillHandlers } from './mcpSkills.js';
+import {
+  getGroupSkillsDelivery,
+  readHostedSkillResource,
+  registerSkillHandlers,
+} from './mcpSkills.js';
+import {
+  executeSkillTool,
+  isReservedSkillToolName,
+  isSkillToolName,
+  SKILL_TOOL_DEFINITIONS,
+  SKILLS_TOOLS_INSTRUCTION,
+  shouldExposeSkillTools,
+} from './mcpSkillTools.js';
 import { revalidateUpstreamList, type UpstreamList } from './upstreamListRefresh.js';
 import { LegacyMcpClient } from '../clients/legacyMcpClient.js';
 import {
@@ -563,6 +575,7 @@ type McpServerDescriptor = {
   group?: string;
   instructions?: string;
   appendGroupSuffix?: boolean;
+  disableNativeSkills?: boolean;
 };
 
 // Blank parts are dropped; nothing left means no instructions at all, not "".
@@ -577,17 +590,28 @@ const joinInstructions = (...parts: (string | undefined)[]): string | undefined 
 const getGroupInstructions = async (group?: string): Promise<string | undefined> => {
   const lookupGroup = getGroupLookupName(group);
   const foundGroup = lookupGroup ? await findRouteGroup(lookupGroup) : null;
-  return foundGroup && canAccessGroupRoute(foundGroup) ? foundGroup.instructions : undefined;
+  const base =
+    foundGroup && canAccessGroupRoute(foundGroup) ? foundGroup.instructions : undefined;
+  const clientCapabilities = RequestContextService.getInstance().getRequestContext()?.clientCapabilities;
+  const skillHint = (await shouldExposeSkillTools(group, clientCapabilities))
+    ? SKILLS_TOOLS_INSTRUCTION
+    : undefined;
+  return joinInstructions(base, skillHint);
 };
 
 const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescriptor> => {
-  const groupInstructions = await getGroupInstructions(group);
+  const [groupInstructions, skillsDelivery] = await Promise.all([
+    getGroupInstructions(group),
+    getGroupSkillsDelivery(group),
+  ]);
+  const disableNativeSkills = skillsDelivery === 'tools';
   if (!group || isSmartRoutingGroup(group)) {
     return {
       name: config.mcpHubName,
       version: config.mcpHubVersion,
       group,
       instructions: joinInstructions(groupInstructions),
+      disableNativeSkills,
     };
   }
 
@@ -599,6 +623,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
       version: serverInfo.version || config.mcpHubVersion,
       instructions: joinInstructions(groupInstructions, serverInfo.instructions),
       appendGroupSuffix: false,
+      disableNativeSkills,
     };
   }
 
@@ -608,6 +633,7 @@ const getMcpServerDescriptor = async (group?: string): Promise<McpServerDescript
     group,
     instructions: joinInstructions(groupInstructions),
     appendGroupSuffix: true,
+    disableNativeSkills,
   };
 };
 
@@ -3992,18 +4018,70 @@ const stagingErrorText = (error: unknown): string =>
   // Only ledger errors are user-safe; an fs/DB message can carry absolute paths.
   error instanceof StagingError ? error.message : 'File staging request failed';
 
-/** Prepend the hub's virtual tools when the route has a staging target. */
+const getEffectiveClientCapabilities = (extra: any): unknown => {
+  const requestContext = RequestContextService.getInstance().getRequestContext();
+  if (requestContext?.stateless) return requestContext.clientCapabilities;
+  const sessionId = extra?.sessionId || '';
+  return sessionId ? servers[sessionId]?.getClientCapabilities() : undefined;
+};
+
+const withSkillTools = async (
+  group: string | undefined,
+  tools: Tool[],
+  extra: any,
+): Promise<Tool[]> => {
+  const clientCapabilities = getEffectiveClientCapabilities(extra);
+  if (!(await shouldExposeSkillTools(group, clientCapabilities))) {
+    return tools;
+  }
+  const shadowed = tools.filter((tool) => isReservedSkillToolName(tool.name));
+  if (shadowed.length > 0) {
+    logger.warn(
+      `[skills] upstream tools shadowed by reserved hub skill tools: ${shadowed
+        .map((tool) => tool.name)
+        .join(', ')}`,
+    );
+  }
+  const injected: Tool[] = SKILL_TOOL_DEFINITIONS.map((tool) => ({
+    name: tool.name,
+    title: tool.title,
+    description: tool.description,
+    annotations: { ...tool.annotations },
+    inputSchema: tool.inputSchema as Tool['inputSchema'],
+  }));
+  return [...injected, ...tools.filter((tool) => !isReservedSkillToolName(tool.name))];
+};
+
+const handleHubSkillToolCall = async (request: any, extra: any) => {
+  const name = request?.params?.name;
+  if (!isSkillToolName(name)) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: 'Unknown hub built-in tool' }],
+    };
+  }
+  const group = getMcpRequestGroup(extra);
+  const clientCapabilities = getEffectiveClientCapabilities(extra);
+  const args =
+    request?.params?.arguments && typeof request.params.arguments === 'object'
+      ? (request.params.arguments as Record<string, unknown>)
+      : {};
+  return executeSkillTool(name, args, group, clientCapabilities);
+};
+
+/** Prepend the hub's virtual tools when the route has a staging target or active skill tools. */
 const withStagingTools = async (
   group: string | undefined,
   tools: Tool[],
   extra: any,
 ): Promise<Tool[]> => {
+  let result = await withSkillTools(group, tools, extra);
   // A route with no resolvable principal (system key, anonymous, hosted
   // identity the hub cannot map) must not advertise tools it would refuse.
-  if (!stagingAskUsername(extra)) return tools;
+  if (!stagingAskUsername(extra)) return result;
   const targets = await resolveStagingTargets(group);
-  if (targets.length === 0) return tools;
-  const shadowed = tools.filter((tool) => isReservedStagingName(tool.name));
+  if (targets.length === 0) return result;
+  const shadowed = result.filter((tool) => isReservedStagingName(tool.name));
   if (shadowed.length > 0) {
     // The hub name wins and fails closed, so the upstream tool is unreachable;
     // never let a member silently impersonate a hub built-in.
@@ -4022,7 +4100,7 @@ const withStagingTools = async (
     description: tool.description,
     inputSchema: tool.inputSchema as Tool['inputSchema'],
   }));
-  return [...injected, ...tools.filter((tool) => !isReservedStagingName(tool.name))];
+  return [...injected, ...result.filter((tool) => !isReservedStagingName(tool.name))];
 };
 
 /**
@@ -4976,7 +5054,8 @@ const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?:
   // exception: describing a hub built-in is how a $smart client learns its
   // schema, and it never executes anything.
   if (
-    isReservedStagingName(request?.params?.arguments?.toolName) &&
+    (isReservedStagingName(request?.params?.arguments?.toolName) ||
+      isReservedSkillToolName(request?.params?.arguments?.toolName)) &&
     request?.params?.name !== 'describe_tool'
   ) {
     return Promise.resolve({
@@ -4987,24 +5066,30 @@ const handleOriginalToolCallRequest = (request: any, extra: any, policyGroupId?:
   // The reserved hub namespace is dispatched before replica/policy/principal
   // wrappers: a virtual tool must never acquire a per-user runtime, refresh an
   // unrelated upstream list, or be filtered as an upstream tool.
-  return isReservedStagingName(request?.params?.name)
-    ? handleHubStagingCall(request, extra)
-    : observeToolCall(() =>
-        withReplicaServerScope(() =>
-          withToolPolicy(
-            callToolWithPrincipal,
-            request,
-            policyGroupId === undefined ? extra : { ...extra, policyGroupId },
-            true,
-            policyGroupId,
-          ),
-        ),
-      );
+  if (isReservedStagingName(request?.params?.name)) {
+    return handleHubStagingCall(request, extra);
+  }
+  if (isReservedSkillToolName(request?.params?.name)) {
+    return handleHubSkillToolCall(request, extra);
+  }
+  return observeToolCall(() =>
+    withReplicaServerScope(() =>
+      withToolPolicy(
+        callToolWithPrincipal,
+        request,
+        policyGroupId === undefined ? extra : { ...extra, policyGroupId },
+        true,
+        policyGroupId,
+      ),
+    ),
+  );
 };
 export const handleCallToolRequest = async (request: any, extra: any, policyGroupId?: string) => {
   if (
     isReservedStagingName(request?.params?.name) ||
-    isReservedStagingName(request?.params?.arguments?.toolName)
+    isReservedStagingName(request?.params?.arguments?.toolName) ||
+    isReservedSkillToolName(request?.params?.name) ||
+    isReservedSkillToolName(request?.params?.arguments?.toolName)
   ) {
     return handleOriginalToolCallRequest(request, extra, policyGroupId);
   }
@@ -5048,6 +5133,7 @@ type CreateMcpServerOptions = {
   group?: string;
   instructions?: string;
   appendGroupSuffix?: boolean;
+  disableNativeSkills?: boolean;
 };
 
 export const createMcpServer = (
@@ -5091,7 +5177,11 @@ export const createMcpServer = (
   server.setRequestHandler('prompts/list', handleListPromptsRequest);
   server.setRequestHandler('resources/list', handleListResourcesRequest);
   server.setRequestHandler('resources/templates/list', handleListResourceTemplatesRequest);
-  if (skillsAvailable() && RequestContextService.getInstance().getRequestContext()?.stateless) {
+  if (
+    skillsAvailable() &&
+    !normalizedOptions.disableNativeSkills &&
+    RequestContextService.getInstance().getRequestContext()?.stateless
+  ) {
     registerSkillHandlers(server);
     server.setRequestHandler('resources/read', (request, extra) =>
       isHostedSkillUri(request.params.uri)

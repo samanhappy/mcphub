@@ -160,7 +160,7 @@ export const createGroup = async (
   owner?: string,
   access: Pick<
     IGroup,
-    'visibility' | 'sharedWithUsers' | 'sharedWithUserGroups' | 'instructions'
+    'visibility' | 'sharedWithUsers' | 'sharedWithUserGroups' | 'instructions' | 'skillsDelivery'
   > = {},
 ): Promise<IGroup | null> => {
   try {
@@ -184,6 +184,7 @@ export const createGroup = async (
       name,
       description,
       ...(access.instructions ? { instructions: access.instructions } : {}),
+      ...(access.skillsDelivery ? { skillsDelivery: access.skillsDelivery } : {}),
       servers: validServers,
       owner: owner || 'admin',
       visibility: access.visibility ?? 'private',

@@ -1,5 +1,6 @@
 import { fromJsonSchema, ProtocolError, type Server } from '@modelcontextprotocol/server';
 import { getGroupDao } from '../dao/DaoFactory.js';
+import type { IGroup, SkillsDeliveryMode } from '../types/index.js';
 import { canAccessGroupRoute } from '../utils/groupAccess.js';
 import { getMcpRequestGroup } from '../utils/mcpRequestGroup.js';
 import { UserContextService } from './userContextService.js';
@@ -17,10 +18,15 @@ export const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
 const cache = { ttlMs: 0, cacheScope: 'private' as const };
 const unknownSkill = () => new ProtocolError(-32602, 'Unknown Skill or resource');
 
-async function getPublicationFilter(): Promise<(skill: SkillPublication) => boolean> {
-  if (!skillsAvailable()) return () => false;
-  const target = getMcpRequestGroup();
-  if (!target) return (skill) => skill.enabled && skill.global;
+function resolveLookupTarget(routeGroup?: string): string | undefined {
+  const target = routeGroup ?? getMcpRequestGroup();
+  if (!target || target === '$smart') return undefined;
+  return target.startsWith('$smart/') ? target.slice('$smart/'.length) : target;
+}
+
+export async function resolveAccessibleSkillGroup(routeGroup?: string): Promise<IGroup | null> {
+  const target = resolveLookupTarget(routeGroup);
+  if (!target) return null;
   const dao = getGroupDao();
   const group =
     (await dao.findByName(target)) ??
@@ -31,13 +37,40 @@ async function getPublicationFilter(): Promise<(skill: SkillPublication) => bool
     ((group.visibility === 'private' || group.visibility === 'group') && !user) ||
     !canAccessGroupRoute(group, user ?? undefined)
   ) {
+    return null;
+  }
+  return group;
+}
+
+export async function getGroupSkillsDelivery(routeGroup?: string): Promise<SkillsDeliveryMode> {
+  const group = await resolveAccessibleSkillGroup(routeGroup);
+  return group?.skillsDelivery ?? 'native';
+}
+
+export function clientDeclaresSkillsExtension(clientCapabilities: unknown): boolean {
+  if (!clientCapabilities || typeof clientCapabilities !== 'object') return false;
+  const extensions = (clientCapabilities as { extensions?: unknown }).extensions;
+  if (!extensions || typeof extensions !== 'object') return false;
+  return Object.prototype.hasOwnProperty.call(extensions, SKILLS_EXTENSION_ID);
+}
+
+export async function getPublicationFilter(
+  routeGroup?: string,
+  options?: { allowNativeOnly?: boolean },
+): Promise<(skill: SkillPublication) => boolean> {
+  if (!skillsAvailable()) return () => false;
+  const target = resolveLookupTarget(routeGroup);
+  if (!target) return (skill) => skill.enabled && skill.global;
+  const group = await resolveAccessibleSkillGroup(routeGroup);
+  if (!group) return () => false;
+  if (options?.allowNativeOnly && group.skillsDelivery === 'tools') {
     return () => false;
   }
   return (skill) => skill.enabled && skill.groupIds.includes(group.id);
 }
 
 async function getVisibleSnapshot(uri: string) {
-  const allowed = await getPublicationFilter();
+  const allowed = await getPublicationFilter(undefined, { allowNativeOnly: true });
   const snapshot = findSkillSnapshot(uri);
   if (!snapshot || !allowed(snapshot.skill)) throw unknownSkill();
   return snapshot;
@@ -56,7 +89,7 @@ const getParams = fromJsonSchema<{ uri: string }>({
 export function registerSkillHandlers(server: Server) {
   server.registerCapabilities({ extensions: { [SKILLS_EXTENSION_ID]: {} } });
   server.setRequestHandler('skills/list', { params: listParams }, async ({ cursor }) => {
-    const allowed = await getPublicationFilter();
+    const allowed = await getPublicationFilter(undefined, { allowNativeOnly: true });
     const entries = listSkillSnapshots((snapshot) =>
       allowed(snapshot.skill) ? snapshot.entries.map((entry) => ({ snapshot, entry })) : [],
     )

@@ -37,6 +37,8 @@ export interface IUser {
   stagingSalt?: string;
 }
 
+export type SkillsDeliveryMode = 'native' | 'tools' | 'both';
+
 // Group interface for server grouping
 export interface IGroup {
   visibility?: 'private' | 'group' | 'public';
@@ -46,6 +48,7 @@ export interface IGroup {
   name: string; // Display name of the group
   description?: string; // Optional description of the group
   instructions?: string; // Sent as the MCP initialize instructions on this group's routes
+  skillsDelivery?: SkillsDeliveryMode; // How Skills are delivered on this group's routes (default: 'native')
   servers: string[] | IGroupServerConfig[]; // Array of server names or server configurations that belong to this group
   owner?: string; // Owner of the group, defaults to 'admin' user
 }
@@ -953,6 +956,7 @@ export interface AddGroupRequest {
   name: string; // Name of the group to add
   description?: string; // Optional description of the group
   instructions?: string; // Optional MCP initialize instructions for the group's routes
+  skillsDelivery?: SkillsDeliveryMode; // How Skills are delivered on this group's routes
   servers?: string[] | IGroupServerConfig[]; // Array of server names or server configurations
 }
 

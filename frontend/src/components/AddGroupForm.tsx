@@ -28,6 +28,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
     name: '',
     description: '',
     instructions: '',
+    skillsDelivery: 'native',
     servers: [] as IGroupServerConfig[],
   });
 
@@ -36,7 +37,9 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
     setAvailableServers(allServers.filter((server) => server.enabled !== false));
   }, [allServers]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -61,6 +64,7 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
         sharedWithUserGroups: formData.sharedWithUserGroups,
         sharedWithUsers: formData.sharedWithUsers,
         instructions: formData.instructions,
+        skillsDelivery: formData.skillsDelivery,
       });
       if (!result || !result.success) {
         setError(result?.message || t('groups.createError'));
@@ -124,6 +128,29 @@ const AddGroupForm = ({ onAdd, onCancel }: AddGroupFormProps) => {
                   placeholder={t('groups.instructionsPlaceholder')}
                 />
                 <p className="text-xs text-[var(--hub-ink-3)] mt-1">{t('groups.instructionsHelp')}</p>
+              </div>
+
+              <div>
+                <label
+                  className="block text-[var(--hub-ink-2)] text-sm font-bold mb-2"
+                  htmlFor="skillsDelivery"
+                >
+                  {t('groups.skillsDelivery')}
+                </label>
+                <select
+                  id="skillsDelivery"
+                  name="skillsDelivery"
+                  value={formData.skillsDelivery}
+                  onChange={handleChange}
+                  className="w-full border border-[var(--hub-line)] bg-[var(--hub-surface)] rounded-md px-3 py-2 text-[var(--hub-ink)] focus:outline-none focus:border-[var(--hub-ink-2)]"
+                >
+                  <option value="native">{t('groups.skillsDeliveryNative')}</option>
+                  <option value="tools">{t('groups.skillsDeliveryTools')}</option>
+                  <option value="both">{t('groups.skillsDeliveryBoth')}</option>
+                </select>
+                <p className="text-xs text-[var(--hub-ink-3)] mt-1">
+                  {t('groups.skillsDeliveryHelp')}
+                </p>
               </div>
 
               <div>

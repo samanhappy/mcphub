@@ -23,6 +23,9 @@ export class Group {
   @Column({ type: 'text', nullable: true })
   instructions?: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  skillsDelivery?: 'native' | 'tools' | 'both';
+
   @Column({ type: 'simple-json' })
   servers: Array<
     | string
