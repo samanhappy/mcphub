@@ -1,4 +1,5 @@
 import type { CredentialSlot } from '../../types/index.js';
+import { emptySafeJsonTransformer } from '../transformers/emptySafeJson.js';
 import {
   Entity,
   Column,
@@ -24,7 +25,7 @@ export class Server {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   tags?: string[];
 
   @Column({ type: 'text', nullable: true })
@@ -39,13 +40,13 @@ export class Server {
   @Column({ type: 'varchar', length: 500, nullable: true })
   command?: string;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   args?: string[];
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   env?: Record<string, string>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   headers?: Record<string, string>;
 
   @Column({ type: 'boolean', default: true })
@@ -77,37 +78,37 @@ export class Server {
   @Column({ type: 'varchar', length: 16, nullable: true })
   protocolNegotiation?: 'auto' | 'legacy';
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   tools?: import('../../types/index.js').ServerConfig['tools'];
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   staging?: import('../../types/index.js').ServerStagingConfig;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   prompts?: Record<string, { enabled: boolean; description?: string }>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   resources?: Record<string, { enabled: boolean; description?: string }>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   options?: Record<string, any>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   oauth?: Record<string, any>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   proxy?: Record<string, any>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   openapi?: Record<string, any>;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   passthroughHeaders?: string[];
 
   @Column({ type: 'boolean', nullable: true })
   perSessionClient?: boolean;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'text', nullable: true, transformer: emptySafeJsonTransformer })
   credentialTemplate?: CredentialSlot[];
 
   // Internal declaration fingerprint; never exposed through the server DAO.
