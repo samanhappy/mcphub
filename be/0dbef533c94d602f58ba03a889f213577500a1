@@ -1,0 +1,22 @@
+src/controllers/userController.ts
+  h_18676a549cd52a 15,213,257,266
+src/services/userService.ts
+  h_18676a549cd52a 8,120,127-128,133,180,192,195-196
+tests/controllers/userController.test.ts
+  h_18676a549cd52a 128-134,160-167,209-213
+tests/integration/user-group-storage.test.ts
+  h_18676a549cd52a 118-119
+tests/integration/user-offboarding.test.ts
+  h_18676a549cd52a 8,17-18,68,96-98,158-159,255-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be0dbef533c94d602f58ba03a889f213577500a1",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
